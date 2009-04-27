@@ -55,6 +55,8 @@ procedure Exchange(var P1, P2: Pointer); overload;
 procedure Exchange(var P1, P2: Int64); overload;
 {$ENDIF}
 
+function MulDiv(Multiplicand, Multiplier, Divisor: LongWord): LongWord;
+
 implementation
 
 uses
@@ -123,6 +125,12 @@ asm
 end;
 {$ENDIF}
 
+function MulDiv(Multiplicand, Multiplier, Divisor: LongWord): LongWord;
+asm
+        MUL EDX
+        DIV ECX
+end;
+
 function IsPlatformUnicode(MinVersion: Word): Boolean;
 var
   Version: Cardinal;
@@ -149,7 +157,6 @@ begin
   else
     Result := False;
 end;
-
 
 end.
 

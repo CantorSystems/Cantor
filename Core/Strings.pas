@@ -3,9 +3,9 @@
 
     Core string, code page, character set and MIME encoding implementation
 
-    Copyright (c) 2007-2008 The Unified Environment Laboratory
+    Copyright (c) 2007-2009 The Unified Environment Laboratory
 
-    TODO: GB18030 support
+    TODO: ISO 2022 and GB18030 support
 *)
 
 unit Strings;
@@ -62,8 +62,8 @@ function QuadCharToWideChar(Source: PQuadChar; Count: Integer;
 function WideCharToQuadChar(Source: PWideChar; Count: Integer;
   Dest: PQuadChar): Integer;
 
-procedure QuadCharSwapByteOrder(Source, Dest: PQuadChar; Count: Integer);
-procedure WideCharSwapByteOrder(Source, Dest: PWideChar; Count: Integer);
+procedure SwapQuadCharByteOrder(Source, Dest: PQuadChar; Count: Integer);
+procedure SwapWideCharByteOrder(Source, Dest: PWideChar; Count: Integer);
 
 function QuickFind(S: PChar; Count: Integer; SortedSet: PChar;
   SortedCount: Integer): PChar; overload;
@@ -533,9 +533,9 @@ begin
   end;
 end;
 
-procedure QuadCharSwapByteOrder(Source, Dest: PQuadChar; Count: Integer);
+procedure SwapQuadCharByteOrder(Source, Dest: PQuadChar; Count: Integer);
 asm
-         OR EAX, EAX
+         TEST EAX, EAX
          JZ @@2
 
          PUSH ESI
@@ -555,9 +555,9 @@ asm
 @@2:
 end;
 
-procedure WideCharSwapByteOrder(Source, Dest: PWideChar; Count: Integer);
+procedure SwapWideCharByteOrder(Source, Dest: PWideChar; Count: Integer);
 asm
-         OR EAX, EAX
+         TEST EAX, EAX
          JZ @@2
 
          PUSH ESI
@@ -1097,7 +1097,7 @@ begin
       if FData.CodePage = CP_UTF16 + Byte(BigEndian) then
         Move(PWideChar(DataBuffer(FData))[FIndex], S[0], CharsWritten * SizeOf(WideChar))
       else
-        WideCharSwapByteOrder(PWideChar(DataBuffer(FData)) + FIndex, S, CharsWritten);
+        SwapWideCharByteOrder(PWideChar(DataBuffer(FData)) + FIndex, S, CharsWritten);
 
       Result := True;
     end
@@ -1107,7 +1107,7 @@ begin
         MultiByteToWideChar(FData.CodePage, MB_ERR_INVALID_CHARS,
           PAnsiChar(DataBuffer(FData)) + FIndex, FLength, S, CharCount);
       if BigEndian then
-        WideCharSwapByteOrder(S, S, CharsWritten);
+        SwapWideCharByteOrder(S, S, CharsWritten);
       Result := CharsWritten <> 0;
     end;
   end

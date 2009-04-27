@@ -86,25 +86,15 @@ type
     constructor Create(FileName: PCoreChar; Access, Creation: Cardinal;
       Share: Cardinal = FILE_SHARE_READ;
       Attributes: Cardinal = FILE_ATTRIBUTE_NORMAL); overload;
-    constructor Create(Drive: CoreChar; Access, Creation: Cardinal;
-      Share: Cardinal = FILE_SHARE_READ;
-      Attributes: Cardinal = FILE_ATTRIBUTE_NORMAL); overload;
-    constructor Create(PhysicalDrive: Byte; Access, Creation: Cardinal;
-      Share: Cardinal = FILE_SHARE_READ;
-      Attributes: Cardinal = FILE_ATTRIBUTE_NORMAL); overload;
     constructor Create(StdHandleType: Cardinal); overload;
     destructor Destroy; override;
+    function Lock(Offset, Count: Int64): Boolean;
     function Open(FileName: PCoreChar; Access, Creation: Cardinal;
       Share: Cardinal = FILE_SHARE_READ;
-      Attributes: Cardinal = FILE_ATTRIBUTE_NORMAL): Boolean; overload;
-    function Open(Drive: CoreChar; Access, Creation: Cardinal;
-      Share: Cardinal = FILE_SHARE_READ;
-      Attributes: Cardinal = FILE_ATTRIBUTE_NORMAL): Boolean; overload;
-    function Open(PhysicalDrive: Byte; Access, Creation: Cardinal;
-      Share: Cardinal = FILE_SHARE_READ;
-      Attributes: Cardinal = FILE_ATTRIBUTE_NORMAL): Boolean; overload;
+      Attributes: Cardinal = FILE_ATTRIBUTE_NORMAL): Boolean;
     function Read(var Data; Count: Integer): Integer; override;
     function Seek(Offset: Int64; Origin: Cardinal): Int64;
+    function Unlock(Offset, Count: Int64): Boolean;
     function Write(const Data; Count: Integer): Integer; override;
   // properties
     property Handle: THandle read FHandle;
@@ -176,20 +166,6 @@ begin
     RaiseLastPlatformError;
 end;
 
-constructor THandleStream.Create(Drive: CoreChar; Access, Creation,
-  Share, Attributes: Cardinal);
-begin
-  if not Open(Drive, Access, Creation, Share, Attributes) then
-    RaiseLastPlatformError;
-end;
-
-constructor THandleStream.Create(PhysicalDrive: Byte; Access, Creation,
-  Share, Attributes: Cardinal);
-begin
-  if not Open(PhysicalDrive, Access, Creation, Share, Attributes) then
-    RaiseLastPlatformError;
-end;
-
 constructor THandleStream.Create(StdHandleType: Cardinal);
 begin
   FHandle := {$IFDEF Tricks} System. {$ENDIF} GetStdHandle(StdHandleType);
@@ -228,6 +204,31 @@ begin
 {$ENDIF}
 end;
 
+function THandleStream.Lock(Offset, Count: Int64): Boolean;
+(*var
+{$IFDEF Unicode}
+  Flags: Cardinal;
+  Overlapped: TOverlapped;
+{$ENDIF}*)
+begin
+(*{$IFDEF Unicode}
+  Flags := LOCKFILE_FAIL_IMMEDIATELY;
+  if Exclusive then
+    Flags := Flags or LOCKFILE_EXCLUSIVE_LOCK;
+  with Int64Rec(Offset), Overlapped do
+  begin
+    Offset := Lo;
+    OffsetHigh := Hi;
+    hEvent := 0;
+  end;
+  with Int64Rec(Count) do
+    Result := LockFileEx(Handle, Flags, 0, Lo, Hi, Overlapped);
+{$ELSE}*)
+  Result := LockFile(Handle, Int64Rec(Offset).Lo, Int64Rec(Offset).Hi,
+    Int64Rec(Count).Lo, Int64Rec(Count).Hi);
+//{$ENDIF}
+end;
+
 function THandleStream.Open(FileName: PCoreChar; Access, Creation,
   Share, Attributes: Cardinal): Boolean;
 begin
@@ -236,32 +237,6 @@ begin
   FHandle := {$IFDEF Unicode} CreateFileW {$ELSE} CreateFileA {$ENDIF}
     (FileName, Access, Share, nil, Creation, Attributes, 0);
   Result := FHandle <> INVALID_HANDLE_VALUE;
-end;
-
-const
-  DriveLetter = 4;
-var
-  DrivePath: array[0..6] of CoreChar = ('\', '\', '.', '\', '@', ':', #0);
-
-function THandleStream.Open(Drive: CoreChar; Access, Creation, Share,
-  Attributes: Cardinal): Boolean;
-begin
-  DrivePath[DriveLetter] := Drive;
-  Result := Open(DrivePath, Access, Creation, Share, Attributes);
-end;
-
-const
-  PhysicalDriveLetter = 17;
-var
-  PhysicalDrivePath: array[0..18] of CoreChar =
-    ('\', '\', '.', '\', 'P', 'h', 'y', 's', 'i', 'c', 'a', 'l',
-     'D', 'r', 'i', 'v', 'e', '@', #0);
-
-function THandleStream.Open(PhysicalDrive: Byte; Access, Creation, Share,
-  Attributes: Cardinal): Boolean;
-begin
-  PhysicalDrivePath[PhysicalDriveLetter] := CoreChar(PhysicalDrive + Byte('0'));
-  Result := Open(PhysicalDrivePath, Access, Creation, Share, Attributes);
 end;
 
 function THandleStream.Read(var Data; Count: Integer): Integer;
@@ -304,6 +279,12 @@ begin
   finally
     SetPosition(Pos);
   end;
+end;
+
+function THandleStream.Unlock(Offset, Count: Int64): Boolean;
+begin
+  Result := UnlockFile(Handle, Int64Rec(Offset).Lo, Int64Rec(Offset).Hi,
+    Int64Rec(Count).Lo, Int64Rec(Count).Hi);
 end;
 
 function THandleStream.Write(const Data; Count: Integer): Integer;

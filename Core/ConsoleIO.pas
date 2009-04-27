@@ -18,6 +18,10 @@ const
   STD_OUTPUT_HANDLE           = Windows.STD_OUTPUT_HANDLE;
   STD_ERROR_HANDLE            = Windows.STD_ERROR_HANDLE;
 
+{$IFNDEF Tricks}
+  CRLF: array[0..Length(sLineBreak) - 1] of AnsiChar = sLineBreak;
+{$ENDIF}
+
 type
   TConsoleStream = THandleStream;
 
@@ -107,14 +111,12 @@ begin
 end;
 
 procedure TConsole.WriteLn(LineBreaks: Integer);
-const
-  CRLF: array[0..1] of Char = sLineBreak;
 var
   I: Integer;
   BytesWritten: Cardinal;
 begin
   for I := 0 to LineBreaks - 1 do
-    WriteFile(FOutput, CRLF, Length(CRLF), BytesWritten, nil);
+    WriteFile(FOutput, CRLF, SizeOf(CRLF), BytesWritten, nil);
 end;
 
 procedure TConsole.WriteLn(Text: PAnsiChar; ByteCount, LineBreaks: Integer);

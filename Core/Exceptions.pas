@@ -184,9 +184,10 @@ begin
     (FORMAT_MESSAGE_FROM_SYSTEM, nil, ErrorCode, 0, Buffer, Count, nil);
   while (Result > 0) and
   {$IFDEF Unicode}
-    (Buffer[Result] >= WideChar(#0)) and (Buffer[Result] <= WideChar(#32))
+    ((Buffer[Result] >= WideChar(#0)) and (Buffer[Result] <= WideChar(#32)) or
+     (Buffer[Result] = WideChar('.')))
   {$ELSE}
-    (Buffer[Result] in [#0..#32])
+    (Buffer[Result] in [#0..#32, '.'])
   {$ENDIF}
   do
     Dec(Result);
@@ -319,7 +320,7 @@ begin
   {$ELSE}
     WriteFile(hError, Buffer, Len, Dummy, nil);
   {$ENDIF}
-    WriteFile(hError, sLineBreak[1], Length(sLineBreak), Dummy, nil);
+    WriteFile(hError, CRLF[1], SizeOf(CRLF), Dummy, nil);
   end
   else
     {$IFDEF Unicode} MessageBoxW {$ELSE} MessageBoxA {$ENDIF}
