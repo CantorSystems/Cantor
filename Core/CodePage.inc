@@ -3,11 +3,11 @@
     MultiByteToWideChar() and WideCharToMultiByte() functions
 
     Copyright (c) 2004 Kenta Yoshimura
-    Copyright (c) 2008 The Unified Environment Laboratory
+    Copyright (c) 2008-2009 The Unified Environment Laboratory
 *)
 
 const
-  CP_EBCDIC_US                  = 37;           // IBM EBCDIC - U.S./Canada
+  CP_EBCDIC_US                  = 037;          // IBM EBCDIC - U.S./Canada
 
   CP_OEM_US                     = 437;          // OEM - United States
 
@@ -46,21 +46,23 @@ const
   CP_ANSI_Korean                = 949;          // ANSI/OEM - Korean (Unified Hangeul Code)
   CP_ANSI_TraditionalChinese    = 950;          // ANSI/OEM - Traditional Chinese (Taiwan; Hong Kong SAR, PRC)
 
-  CP_EBCDIC_Turkish_Latin5       = 1026;        // IBM EBCDIC - Turkish (Latin-5)
-  CP_EBCDIC_Latin1               = 1047;        // IBM EBCDIC - Latin 1/Open System
-  CP_EBCDIC_US_Euro              = 1140;        // IBM EBCDIC - U.S./Canada (037 + Euro symbol)
-  CP_EBCDIC_Germany_Euro         = 1141;        // IBM EBCDIC - Germany (20273 + Euro symbol)
-  CP_EBCDIC_Denmark_Euro         = 1142;        // IBM EBCDIC - Denmark/Norway (20277 + Euro symbol)
-  CP_EBCDIC_Finland_Euro         = 1143;        // IBM EBCDIC - Finland/Sweden (20278 + Euro symbol)
-  CP_EBCDIC_Italy_Euro           = 1144;        // IBM EBCDIC - Italy (20280 + Euro symbol)
-  CP_EBCDIC_America_Euro         = 1145;        // IBM EBCDIC - Latin America/Spain (20284 + Euro symbol)
-  CP_EBCDIC_UK_Euro              = 1146;        // IBM EBCDIC - United Kingdom (20285 + Euro symbol)
-  CP_EBCDIC_France_Euro          = 1147;        // IBM EBCDIC - France (20297 + Euro symbol)
-  CP_EBCDIC_International_Euro   = 1148;        // IBM EBCDIC - International (500 + Euro symbol)
-  CP_EBCDIC_Icelandic_Euro       = 1149;        // IBM EBCDIC - Icelandic (20871 + Euro symbol)
+  CP_EBCDIC_Turkish_Latin5      = 1026;         // IBM EBCDIC - Turkish (Latin-5)
+  CP_EBCDIC_Latin1              = 1047;         // IBM EBCDIC - Latin 1/Open System
+  CP_EBCDIC_US_Euro             = 1140;         // IBM EBCDIC - U.S./Canada (037 + Euro symbol)
+  CP_EBCDIC_Germany_Euro        = 1141;         // IBM EBCDIC - Germany (20273 + Euro symbol)
+  CP_EBCDIC_Denmark_Euro        = 1142;         // IBM EBCDIC - Denmark/Norway (20277 + Euro symbol)
+  CP_EBCDIC_Finland_Euro        = 1143;         // IBM EBCDIC - Finland/Sweden (20278 + Euro symbol)
+  CP_EBCDIC_Italy_Euro          = 1144;         // IBM EBCDIC - Italy (20280 + Euro symbol)
+  CP_EBCDIC_America_Euro        = 1145;         // IBM EBCDIC - Latin America/Spain (20284 + Euro symbol)
+  CP_EBCDIC_UK_Euro             = 1146;         // IBM EBCDIC - United Kingdom (20285 + Euro symbol)
+  CP_EBCDIC_France_Euro         = 1147;         // IBM EBCDIC - France (20297 + Euro symbol)
+  CP_EBCDIC_International_Euro  = 1148;         // IBM EBCDIC - International (500 + Euro symbol)
+  CP_EBCDIC_Icelandic_Euro      = 1149;         // IBM EBCDIC - Icelandic (20871 + Euro symbol)
 
   CP_UCS2_LE                    = 1200;         // Unicode UCS-2 Little-Endian (BMP of ISO 10646)
   CP_UCS2_BE                    = 1201;         // Unicode UCS-2 Big-Endian
+  CP_Unicode                    = CP_UCS2_LE;
+  CP_UnicodeFFFE                = CP_UCS2_BE;
 
   CP_ANSI_CentralEuropean       = 1250;         // ANSI - Central European
   CP_ANSI_Cyrillic              = 1251;         // ANSI - Cyrillic
@@ -123,6 +125,7 @@ const
   CP_EBCDIC_Thai                = 20838;        // IBM EBCDIC - Thai
 
   CP_Russian                    = 20866;        // Russian - KOI8-R
+  CP_Ukrainian                  = 21866;        // Ukrainian (KOI8-U)
 
   CP_EBCDIC_Icelandic           = 20871;        // IBM EBCDIC - Icelandic
   CP_EBCDIC_Cyrillic_Russian    = 20880;        // IBM EBCDIC - Cyrillic (Russian)
@@ -132,11 +135,9 @@ const
   CP_JISX0208_1990_0121_1990    = 20932;        // JIS X 0208-1990 & 0121-1990
   CP_GB2312                     = 20936;        // Simplified Chinese (GB2312)
 
-  CP_EBCDIC_Cyrillic_Serbian     = 21025;        // IBM EBCDIC - Cyrillic (Serbian, Bulgarian)
+  CP_EBCDIC_Cyrillic_Serbian    = 21025;        // IBM EBCDIC - Cyrillic (Serbian, Bulgarian)
 
   CP_ExtendedAlphaLowercase     = 21027;        // Extended Alpha Lowercase
-
-  CP_Ukrainian                  = 21866;        // Ukrainian (KOI8-U)
 
   CP_ISO8859_1                  = 28591;        // ISO 8859-1 Latin I
   CP_ISO8859_2                  = 28592;        // ISO 8859-2 Central Europe
@@ -157,13 +158,21 @@ const
   CP_ISO2022_SC                 = 50227;        // ISO 2022 Simplified Chinese
   CP_ISO2022_TC                 = 50229;        // ISO 2022 Traditional Chinese
 
-  CP_JapaneseKatakanaExtended   = 50930;        // Japanese (Katakana) Extended
+  CP_ECMA_114                   = CP_ISO8859_6; // ECMA-114
+  CP_ECMA_118                   = CP_ISO8859_7; // ECMA-118
+  CP_ELOT_928                   = CP_ISO8859_7; // ELOT_928
+
+  CP_Cyrillic                   = CP_ISO8859_5;
+  CP_Greek                      = CP_ISO8859_7;
+  CP_Greek8                     = CP_ISO8859_7;
+
+  CP_JapaneseKatakanaExt        = 50930;        // Japanese (Katakana) Extended
   CP_US_Japanese                = 50931;        // US/Canada and Japanese
   CP_KoreanExtended             = 50933;        // Korean Extended and Korean
-  CP_SimplifiedChineseExtended  = 50935;        // Simplified Chinese Extended and Simplified Chinese
+  CP_SimplifiedChineseExt       = 50935;        // Simplified Chinese Extended and Simplified Chinese
   CP_SimplifiedChinese          = 50936;        // Simplified Chinese
   CP_US_TraditionalChinese      = 50937;        // US/Canada and Traditional Chinese
-  CP_JapaneseLatinExtended      = 50939;        // Japanese (Latin) Extended and Japanese
+  CP_JapaneseLatinExt           = 50939;        // Japanese (Latin) Extended and Japanese
 
   CP_EUC_JP                     = 51932;        // EUC - Japanese
   CP_EUC_SC                     = 51936;        // EUC - Simplified Chinese
@@ -187,82 +196,103 @@ const
   CODE_JPN_JIS                  = 50220;        // JIS
   CODE_JPN_EUC                  = 51932;        // EUC-JP
 
-  CP_ansi_x3_4_1968             = 1252;         // Western                     // ansi_x3.4-1968
-  CP_ansi_x3_4_1986             = 1252;         // Western                     // ansi_x3.4-1986
-  CP_ascii                      = 1252;         // Western
-  CP_big5                       = 950;          // Traditional Chinese (BIG5)
-  CP_chinese                    = 936;          // Chinese Simplified
+  CP_ANSI_x3_4_1968             = 1252;         // Western                     // ANSI_x3.4-1968
+  CP_ANSI_x3_4_1986             = 1252;         // Western                     // ANSI_x3.4-1986
+  CP_ASCII                      = 1252;         // Western
   CP_367                        = 1252;         // Western
   CP_819                        = 1252;         // Western
 
-  CP_csascii                    = 1252;         // Western
-  CP_csbig5                     = 950;          // Traditional Chinese (BIG5)
-  CP_cseuckr                    = 949;          // Korean
-  CP_cseucpkdfmtjapanese        = CODE_JPN_EUC; // Japanese (EUC)
-  CP_csgb2312                   = 936;          // Chinese Simplified (GB2312)
-  CP_csiso2022jp                = CODE_JPN_JIS; // Japanese (JIS-Allow 1 byte Kana)
-  CP_csiso2022kr                = 50225;        // Korean (ISO)
-  CP_csiso58gb231280            = 936;          // Chinese Simplified (GB2312)
-  CP_csisolatin2                = 28592;        // Central European (ISO)
-  CP_csisolatinhebrew           = 1255;         // Hebrew (ISO-Visual)
-  CP_cskoi8r                    = 20866;        // Cyrillic (KOI8-R)
-  CP_csksc56011987              = 949;          // Korean
-  CP_csshiftjis                 = 932;          // Shift-JIS
+  CP_Big5                       = 950;          // Traditional Chinese (BIG5)
+  CP_Chinese                    = 936;          // Chinese Simplified
+  CP_GBK                        = CP_GB2312;
 
-  CP_gb_2312_80                 = 936;          // Chinese Simplified (GB2312) // gb_2318-80
-  CP_hebrew                     = 1255;         // Hebrew
-  CP_hz_gb_2312                 = 936;          // Chinese Simplified (HZ)     // hz-gb-2312
+  CP_CSASCII                    = 1252;         // Western
+  CP_CSBig5                     = 950;          // Traditional Chinese (BIG5)
+  CP_CSEUCKr                    = 949;          // Korean
+  CP_CSEUCPkdFmtJapanese        = CODE_JPN_EUC; // Japanese (EUC)
+  CP_CSGB2312                   = 936;          // Chinese Simplified (GB2312)
+  CP_CSISO2022Jp                = CODE_JPN_JIS; // Japanese (JIS-Allow 1 byte Kana)
+  CP_CSISO2022Kr                = 50225;        // Korean (ISO)
+  CP_CSISO58GB231280            = 936;          // Chinese Simplified (GB2312)
+  CP_CSISOLatin2                = 28592;        // Central European (ISO)
+  CP_CSISOLatinHebrew           = 1255;         // Hebrew (ISO-Visual)
+  CP_CSKOI8R                    = 20866;        // Cyrillic (KOI8-R)
+  CP_CSKSC56011987              = 949;          // Korean
+  CP_CSShiftJIS                 = 932;          // Shift-JIS
 
-  CP_ibm367                     = 1252;         // Western
-  CP_ibm819                     = 1252;         // Western
-  CP_ibm852                     = 852;          // Central European (DOS)
-  CP_ibm866                     = 866;          // Cyrillic (DOS)
+  CP_GB_2312_80                 = 936;          // Chinese Simplified (GB2312) // GB_2318-80
+  CP_Hebrew                     = 1255;         // Hebrew
+  CP_Visual                     = CP_Hebrew;
+  CP_HZ_GB_2312                 = 936;          // Chinese Simplified (HZ)     // HZ-GB-2312
 
-  CP_iso_2022_jp                = CODE_JPN_JIS; // Japanese (JIS)              // iso-2022-jp
-  CP_iso_2022_kr                = 50225;        // Korean (ISO)                // iso-2022-kr
-  CP_iso_8859_1                 = 1252;         // Western                     // iso-8859_1
-  CP_iso_8859_2                 = 28592;        // Central European (ISO)      // iso-8859_2
-  CP_iso_8859_8                 = 1255;         // Hebrew (ISO-Visual)         // iso-8859_8
-  CP_iso_ir_100                 = 1252;         // Western                     // iso-ir-100
-  CP_iso_ir_101                 = 28592;        // Central European (ISO)      // iso-ir-101
-  CP_iso_ir_138                 = 1255;         // Hebrew (ISO-Visual)         // iso-ir-138
-  CP_iso_ir_149                 = 949;          // Korean                      // iso-ir-149
-  CP_iso_ir_58                  = 936;          // Chinese Simplified (GB2312) // iso-ir-58
-  CP_iso_ir_6                   = 1252;         // Western                     // iso-ir-6
-  CP_iso646_us                  = 1252;         // Western                     // iso646-us
-  CP_iso_646_irv_1991           = 1252;         // Western                     // iso_646.irv:1991
-  CP_iso_8859_1_1987            = 1252;         // Western                     // iso_8859-1:1987
-  CP_iso_8859_2_1987            = 28592;        // Central European (ISO)      // iso_8859-2:1987
-  CP_iso_8859_8_1988            = 1255;         // Hebrew (ISO-Visual)         // iso_8859-8:1988
-  CP_koi8_r                     = 20866;        // Cyrillic (KOI8-R)           // koi8-r
-  CP_ks_c_5601                  = 949;          // Korean                      // ks_c_5601
-  CP_ks_c_5601_1987             = 949;          // Korean                      // ks_c_5601-1987
-  CP_ks_c_5601_1989             = 949;          // Korean                      // ks_c_5601-1989
-  CP_ksc5601                    = 949;          // Korean                      // ksc5601
-  CP_ksc_5601                   = 949;          // Korean                      // ksc_5601
+  CP_IBM367                     = 1252;         // Western
+  CP_IBM819                     = 1252;         // Western
+  CP_IBM852                     = 852;          // Central European (DOS)
+  CP_IBM866                     = 866;          // Cyrillic (DOS)
+
+  CP_ISO_2022_Jp                = CODE_JPN_JIS; // Japanese (JIS)              // ISO-2022-Jp
+  CP_ISO_2022_Kr                = 50225;        // Korean (ISO)                // ISO-2022-Kr
+  CP_ISO_8859_1                 = 1252;         // Western                     // ISO-8859_1
+  CP_ISO_8859_2                 = 28592;        // Central European (ISO)      // ISO-8859_2
+  CP_ISO_8859_8                 = 1255;         // Hebrew (ISO-Visual)         // ISO-8859_8
+  CP_ISO_IR_100                 = 1252;         // Western                     // ISO-ir-100
+  CP_ISO_IR_101                 = 28592;        // Central European (ISO)      // ISO-ir-101
+  CP_ISO_IR_138                 = 1255;         // Hebrew (ISO-Visual)         // ISO-ir-138
+  CP_ISO_IR_149                 = 949;          // Korean                      // ISO-ir-149
+  CP_ISO_IR_58                  = 936;          // Chinese Simplified (GB2312) // ISO-ir-58
+  CP_ISO_IR_6                   = 1252;         // Western                     // ISO-ir-6
+  CP_ISO646_us                  = 1252;         // Western                     // ISO646-us
+  CP_ISO_646_irv_1991           = 1252;         // Western                     // ISO_646.irv:1991
+  CP_ISO_8859_1_1987            = 1252;         // Western                     // ISO_8859-1:1987
+  CP_ISO_8859_2_1987            = 28592;        // Central European (ISO)      // ISO_8859-2:1987
+  CP_ISO_8859_8_1988            = 1255;         // Hebrew (ISO-Visual)         // ISO_8859-8:1988
+  CP_KOI8_r                     = 20866;        // Cyrillic (KOI8-R)           // KOI8-R
+  CP_KS_C_5601                  = 949;          // Korean                      // KS_C_5601
+  CP_KS_C_5601_1987             = 949;          // Korean                      // KS_C_5601-1987
+  CP_KS_C_5601_1989             = 949;          // Korean                      // KS_C_5601-1989
+  CP_KSC5601                    = 949;          // Korean                      // KSC5601
+  CP_KSC_5601                   = 949;          // Korean                      // KSC_5601
 
   CP_l2                         = 28592;        // Central European (ISO)
-  CP_latin1                     = 1252;         // Western
-  CP_latin2                     = 28592;        // Central European (ISO)
-  CP_ms_kanji                   = 932;          // Shift-JIS
-  CP_shift_jis                  = 932;          // Shift-JIS
-  CP_us                         = 1252;         // Western
+  CP_Latin1                     = 1252;         // Western
+  CP_Latin2                     = 28592;        // Central European (ISO)
+  CP_MS_Kanji                   = 932;          // Shift-JIS
+  CP_Shift_JIS                  = 932;          // Shift-JIS
+  CP_US                         = 1252;         // Western
 
-  CP_windows_1250               = 1250;         // Central European (Windows)  // windows-1250
-  CP_windows_1251               = 1251;         // Cyrillic (Windows)          // windows-1251
-  CP_windows_1252               = 1252;         // Western                     // windows-1252
-  CP_windows_1253               = 1253;         // Greek (Windows)             // windows-1253
-  CP_widnows_1254               = 1254;         // Turkish (Windows)           // windows-1254
-  CP_widnows_1255               = 1255;         // Hebrew                      // windows-1255
-  CP_widnows_1256               = 1256;         // Arabic                      // windows-1256
-  CP_widnows_1257               = 1257;         // Baltic (Windows)            // windows-1257
-  CP_widnows_1258               = 1258;         // Vietnamese                  // windows-1258
-  CP_windows_874                = 874;          // Thai                        // windows-874
+  CP_Windows_1250               = 1250;         // Central European (Windows)  // Windows-1250
+  CP_Windows_1251               = 1251;         // Cyrillic (Windows)          // Windows-1251
+  CP_Windows_1252               = 1252;         // Western                     // Windows-1252
+  CP_Windows_1253               = 1253;         // Greek (Windows)             // Windows-1253
+  CP_Windows_1254               = 1254;         // Turkish (Windows)           // Windows-1254
+  CP_Windows_1255               = 1255;         // Hebrew                      // Windows-1255
+  CP_Windows_1256               = 1256;         // Arabic                      // Windows-1256
+  CP_Windows_1257               = 1257;         // Baltic (Windows)            // Windows-1257
+  CP_Windows_1258               = 1258;         // Vietnamese                  // Windows-1258
+  CP_Windows_874                = 874;          // Thai                        // Windows-874
 
-  CP_x_cp1250                   = 1250;         // Central European (Windows)  // x-cp1250
-  CP_x_cp1251                   = 1251;         // Cyrillic (Windows)          // x-cp1251
-  CP_x_euc                      = CODE_JPN_EUC; // Japanese (EUC)              // x-euc
-  CP_x_euc_jp                   = CODE_JPN_EUC; // Japanese (EUC)              // x-euc-jp
-  CP_x_sjis                     = 932;          // Shift-JIS                   // x-sjis
-  CP_x_x_big5                   = 950;          // Traditional Chinese (BIG5)  // x-x-big5
-  
+  CP_X_CP1250                   = 1250;         // Central European (Windows)  // X-CP1250
+  CP_X_CP1251                   = 1251;         // Cyrillic (Windows)          // X-CP1251
+  CP_X_EUC                      = CODE_JPN_EUC; // Japanese (EUC)              // X-EUC
+  CP_X_EUC_Jp                   = CODE_JPN_EUC; // Japanese (EUC)              // X-EUC-Jp
+  CP_X_SJIS                     = 932;          // Shift-JIS                   // X-SJIS
+  CP_X_X_Big5                   = 950;          // Traditional Chinese (BIG5)  // X-X-Big5
+
+  CP_ISO_Latin1                 = CP_ISO8859_1;
+
+  CP_ACP                        = Windows.CP_ACP;
+  CP_OEMCP                      = Windows.CP_OEMCP;
+  CP_UTF7                       = Windows.CP_UTF7;
+  CP_UTF8                       = Windows.CP_UTF8;
+
+  CP_UTF16_LE                   = CP_UCS2_LE;
+  CP_UTF16_BE                   = CP_UCS2_BE;
+
+  CP_UTF16                      = CP_UTF16_LE;  // platform-dependent
+
+  CP_UTF32_LE                   = CP_UCS4_LE;
+  CP_UTF32_BE                   = CP_UCS4_BE;
+
+  CP_UTF32                      = CP_UTF32_LE;  // platform-dependent
+
+

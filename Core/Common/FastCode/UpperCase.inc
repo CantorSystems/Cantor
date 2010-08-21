@@ -24,7 +24,7 @@
  *
  * ***** END LICENSE BLOCK ***** *)
 
-{$IFDEF MMX}
+{$IFDEF ForceMMX}
 
 //function UpperCase_JOH_MMX_3_b(const S: string): string;
 const
@@ -164,7 +164,7 @@ end;
 
 {$ELSE}
 
-//function UpperCase_JOH_IA32_5_d(const S: string): string;
+//function UpperCase_JOH_IA32_5_c(const S: string): string;
 asm {Size = 134 Bytes}
   push    ebx
   push    edi
