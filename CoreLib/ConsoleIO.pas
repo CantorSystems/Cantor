@@ -1,5 +1,5 @@
 (*
-    The Unified Environment, legacy Win32 core
+    The Unified Environment Core Library
 
     Legacy console input-output implementation
 
@@ -18,10 +18,6 @@ const
   STD_OUTPUT_HANDLE           = Windows.STD_OUTPUT_HANDLE;
   STD_ERROR_HANDLE            = Windows.STD_ERROR_HANDLE;
 
-{$IFNDEF Tricks}
-  CRLF: array[0..Length(sLineBreak) - 1] of AnsiChar = sLineBreak;
-{$ENDIF}
-
 type
   TConsoleStream = THandleStream;
 
@@ -32,11 +28,11 @@ type
     procedure SetCodePage(Value: Cardinal);
   public
     constructor Create;
-    procedure ReadLn(Prompt: PAnsiChar; ByteCount: Integer;
+    procedure ReadLn(Prompt: PLegacyChar; ByteCount: Integer;
       LineBreaks: Integer = 1); overload;
     procedure ReadLn(Prompt: TUniString; LineBreaks: Integer = 1); overload;
     procedure WriteLn(LineBreaks: Integer = 1); overload;
-    procedure WriteLn(Text: PAnsiChar; ByteCount: Integer;
+    procedure WriteLn(Text: PLegacyChar; ByteCount: Integer;
       LineBreaks: Integer = 1); overload;
     procedure WriteLn(Text: TUniString; LineBreaks: Integer = 1); overload;
   // properties
@@ -61,11 +57,11 @@ begin
 end;
 
 const
-  sElipsis: array[0..2] of Char = '...';
+  sElipsis: array[0..2] of LegacyChar = '...';
 
-procedure TConsole.ReadLn(Prompt: PAnsiChar; ByteCount, LineBreaks: Integer);
+procedure TConsole.ReadLn(Prompt: PLegacyChar; ByteCount, LineBreaks: Integer);
 var
-  Dummy: array[0..$FF] of AnsiChar; // preventing flood
+  Dummy: array[0..$FF] of LegacyChar; // preventing flood
   BytesRead: Cardinal;
 begin
   WriteLn;
@@ -79,7 +75,7 @@ end;
 procedure TConsole.ReadLn(Prompt: TUniString; LineBreaks: Integer);
 var
   CodePage: Cardinal;
-  P: PAnsiChar;
+  P: PLegacyChar;
   L: Integer;
 begin
   if Prompt <> nil then
@@ -119,7 +115,7 @@ begin
     WriteFile(FOutput, CRLF, SizeOf(CRLF), BytesWritten, nil);
 end;
 
-procedure TConsole.WriteLn(Text: PAnsiChar; ByteCount, LineBreaks: Integer);
+procedure TConsole.WriteLn(Text: PLegacyChar; ByteCount, LineBreaks: Integer);
 var
   BytesWritten: Cardinal;
 begin
@@ -130,7 +126,7 @@ end;
 procedure TConsole.WriteLn(Text: TUniString; LineBreaks: Integer);
 begin
   if Text <> nil then
-    WriteLn(Text.AsChar[GetConsoleOutputCP], Text.Length, LineBreaks)
+    WriteLn(Text.AsLegacyChar[GetConsoleOutputCP], Text.Length, LineBreaks)
   else
     WriteLn(LineBreaks);
 end;

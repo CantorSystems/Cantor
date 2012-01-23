@@ -77,9 +77,9 @@ type
 {$ENDIF}
 
 {$IFNDEF Tricks}
+var
   CRLF: array[0..Length(sLineBreak) - 1] of LegacyChar = sLineBreak;
   HexDigits: array [$0..$F] of LegacyChar = '0123456789ABCDEF';
-var
   MainWindow: THandle;
 {$ENDIF}
 

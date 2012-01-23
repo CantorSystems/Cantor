@@ -1,5 +1,5 @@
 (*
-    The Unified Environment, legacy Win32 core
+    The Unified Environment Core Library
 
     Core stream and file system I/O implementation
 
@@ -18,13 +18,12 @@ uses
 type
   TReadableStream = class(TObject)
   protected
-    procedure Error(Code: Integer); virtual; abstract;
     function GetPosition: Int64; virtual; abstract;
     function GetSize: Int64; virtual; abstract;
     procedure SetPosition(Value: Int64); virtual; abstract;
   public
-    function Read(var Data; Count: Integer): Integer; virtual; abstract;
-    procedure ReadBuffer(var Data; Count: Integer);
+    function Read(var Data; Count: Cardinal): Cardinal; virtual; abstract;
+    procedure ReadBuffer(var Data; Count: Cardinal);
   // properties
     property Position: Int64 read GetPosition write SetPosition;
     property Size: Int64 read GetSize;
@@ -34,18 +33,13 @@ type
   protected
     procedure SetSize(Value: Int64); virtual; abstract;
   public
-    function Write(const Buf; Count: Integer): Integer; virtual; abstract;
-    procedure WriteBuffer(const Data; Count: Integer);
+    function Write(const Buf; Count: Cardinal): Cardinal; virtual; abstract;
+    procedure WriteBuffer(const Data; Count: Cardinal);
   // properties
     property Size write SetSize;
   end;
 
-  TCoreStream = class(TWriteableStream)
-  protected
-    procedure Error(Code: Integer); override;
-  end;
-
-  TStream = TCoreStream;
+  TStream = TWriteableStream;
 
 const
   GENERIC_READ                = Windows.GENERIC_READ;
@@ -92,10 +86,10 @@ type
     function Open(FileName: PCoreChar; Access, Creation: Cardinal;
       Share: Cardinal = FILE_SHARE_READ;
       Attributes: Cardinal = FILE_ATTRIBUTE_NORMAL): Boolean;
-    function Read(var Data; Count: Integer): Integer; override;
+    function Read(var Data; Count: Cardinal): Cardinal; override;
     function Seek(Offset: Int64; Origin: Cardinal): Int64;
     function Unlock(Offset, Count: Int64): Boolean;
-    function Write(const Data; Count: Integer): Integer; override;
+    function Write(const Data; Count: Cardinal): Cardinal; override;
   // properties
     property Handle: THandle read FHandle;
   end;
@@ -107,7 +101,6 @@ type
 
 const
   MAX_PATH = Windows.MAX_PATH;
-  PathDelimiter = CoreChar('\');
 
 { Absent in Windows.pas }
 
@@ -130,31 +123,24 @@ function SetFilePointerEx(hFile: THandle; liDistanceToMove: Int64;
 
 { TReadableStream }
 
-procedure TReadableStream.ReadBuffer(var Data; Count: Integer);
+procedure TReadableStream.ReadBuffer(var Data; Count: Cardinal);
 var
-  Bytes: Integer;
+  Bytes: Cardinal;
 begin
   Bytes := Read(Data, Count);
   if Bytes <> Count then
-    // TODO: exception
+    RaiseLastPlatformError; // TODO: exception
 end;
 
 { TWriteableStream }
 
-procedure TWriteableStream.WriteBuffer(const Data; Count: Integer);
+procedure TWriteableStream.WriteBuffer(const Data; Count: Cardinal);
 var
-  Bytes: Integer;
+  Bytes: Cardinal;
 begin
   Bytes := Write(Data, Count);
   if Bytes <> Count then
-    // TODO: exception
-end;
-
-{ TCoreStream }
-
-procedure TCoreStream.Error(Code: Integer);
-begin
-  // TODO: exception
+    RaiseLastPlatformError; // TODO: exception
 end;
 
 { THandleStream }
@@ -205,28 +191,9 @@ begin
 end;
 
 function THandleStream.Lock(Offset, Count: Int64): Boolean;
-(*var
-{$IFDEF Unicode}
-  Flags: Cardinal;
-  Overlapped: TOverlapped;
-{$ENDIF}*)
 begin
-(*{$IFDEF Unicode}
-  Flags := LOCKFILE_FAIL_IMMEDIATELY;
-  if Exclusive then
-    Flags := Flags or LOCKFILE_EXCLUSIVE_LOCK;
-  with Int64Rec(Offset), Overlapped do
-  begin
-    Offset := Lo;
-    OffsetHigh := Hi;
-    hEvent := 0;
-  end;
-  with Int64Rec(Count) do
-    Result := LockFileEx(Handle, Flags, 0, Lo, Hi, Overlapped);
-{$ELSE}*)
   Result := LockFile(Handle, Int64Rec(Offset).Lo, Int64Rec(Offset).Hi,
     Int64Rec(Count).Lo, Int64Rec(Count).Hi);
-//{$ENDIF}
 end;
 
 function THandleStream.Open(FileName: PCoreChar; Access, Creation,
@@ -239,12 +206,10 @@ begin
   Result := FHandle <> INVALID_HANDLE_VALUE;
 end;
 
-function THandleStream.Read(var Data; Count: Integer): Integer;
-var
-  Rslt: Cardinal absolute Result;
+function THandleStream.Read(var Data; Count: Cardinal): Cardinal;
 begin
 {$IFDEF Tricks} System. {$ENDIF}
-  ReadFile(FHandle, Data, Count, Rslt, nil);
+  ReadFile(FHandle, Data, Count, Result, nil);
 end;
 
 function THandleStream.Seek(Offset: Int64; Origin: Cardinal): Int64;
@@ -287,12 +252,10 @@ begin
     Int64Rec(Count).Lo, Int64Rec(Count).Hi);
 end;
 
-function THandleStream.Write(const Data; Count: Integer): Integer;
-var
-  Rslt: Cardinal absolute Result;
+function THandleStream.Write(const Data; Count: Cardinal): Cardinal;
 begin
 {$IFDEF Tricks} System. {$ENDIF}
-  WriteFile(FHandle, Data, Count, Rslt, nil);
+  WriteFile(FHandle, Data, Count, Result, nil);
 end;
 
 end.
