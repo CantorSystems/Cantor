@@ -9,7 +9,7 @@ unit Main;
 interface
 
 uses
-  Windows, SysUtils, Core, Strings, Strings2, Exceptions, Lite;
+  Windows, Exceptions, CoreUtils, CoreWrappers, Strings, Strings2;
 
 type
   TStrings = array of WideString;
@@ -57,15 +57,14 @@ type
 
 { Main functions }
 
-procedure Title;
-procedure Run;
-
-{ Service functions }
-
-var
-  PerfFreq: Int64;
-
-function PerfValue(Source: Int64): AnsiString;
+  TApplication = class
+  private
+    FConsole: TStreamConsole;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Run;
+  end;
 
 { Unit tests }
 
@@ -82,27 +81,9 @@ var
 implementation
 
 uses
-  Containers;
+  CoreClasses;
 
 { Main functions }
-
-procedure Title;
-begin
-  WriteLn('== The Unified Environment Core Tests ==', 2);
-end;
-
-procedure Run;
-const
-  Surrogate: array[0..2] of WideChar = (WideChar($D800), WideChar($DC00), WideChar(0));
-  Malformed: array[0..2] of WideChar = (WideChar($800), WideChar($C00), WideChar(0));
-begin
-  LockTest;
-{  CharSetTest;
-  SingleStringTest('Mother ушла на работу, а потом вернулась домой.');
-  SingleStringTest(Malformed, 2);
-  //SingleStringTest(Surrogate);
-  RandomStringTest($FFFF, $FFFF div 64, $400);}
-end;
 
 { Unit tests }
 
@@ -112,7 +93,7 @@ var
 begin
   Test := TRangeStringTest.Create([siRangeBlocks]);
   try
-    WriteLn(Format('Single string test: %hs s', 0, [PerfValue(Test.Execute(Str))]), LineBreak);
+//    WriteLn(Format('Single string test: %hs s', 0, [PerfValue(Test.Execute(Str))]), LineBreak);
   finally
     Test.Free;
   end;
@@ -132,10 +113,10 @@ begin
 //  raise EExclusiveLock.Create(Test);
   WriteLn(Msg);
   Time := Test.Execute(Strings, Asterisk);
-  WriteLn;
+{  WriteLn;
   WriteLn(Format('Elapsed time: %hs s, performance: %hs cps', 0, [
     PerfValue(Time), FloatToStr(TotalLength / (Time / PerfFreq), 2)
-  ]), 2);
+  ]), 2);}
 end;
 
 var
@@ -259,7 +240,7 @@ end;
 
 function PerfValue(Source: Int64): AnsiString;
 begin
-  Result := FloatToStr(Source / PerfFreq, 6);
+//  Result := FloatToStr(Source / PerfFreq, 6);
 end;
 
 { TStringTest }
@@ -399,19 +380,59 @@ begin
     (CP_UTF8, 0, Pointer(Source), W, Pointer(Result), S, nil, nil));
 end;
 
-procedure Foo(Args: array of string);
+{procedure Foo(Args: array of string);
 var
 I: Cardinal;
 begin
   for I := Low(Args) to High(Args) do
     Windows.MessageBox(0, PChar(Args[I]), nil, 0);
+end;}
+
+{ TApplication }
+
+const
+  sPressEnterToExit = 'Press ENTER to exit';
+
+constructor TApplication.Create;
+begin
+  FConsole := TStreamConsole.Create;
+  FConsole.WriteLn('== The Unified Environment Core Tests ==', 2);
 end;
 
-initialization
-  CharSets := TLegacyCharSets.Create;
-  QueryPerformanceFrequency(PerfFreq);
+destructor TApplication.Destroy;
+begin
+  with FConsole do
+  begin
+    ReadLn(sPressEnterToExit);
+    Free;
+  end;
+end;
 
-finalization
-  CharSets.Free;
+procedure TApplication.Run;
+const
+  Surrogate: array[0..2] of WideChar = (WideChar($D800), WideChar($DC00), WideChar(0));
+  Malformed: array[0..2] of WideChar = (WideChar($800), WideChar($C00), WideChar(0));
+var
+  A: Integer;
+  P: PLegacyChar;
+  W: PWideChar;
+begin
+  LockTest;
+{  CharSetTest;
+  SingleStringTest('Mother ушла на работу, а потом вернулась домой.');
+  SingleStringTest(Malformed, 2);
+  //SingleStringTest(Surrogate);
+  RandomStringTest($FFFF, $FFFF div 64, $400);}
+  P := Format('My string "%s" at %i', [PLegacyChar('СТРОКА'), 9]);
+  FreeMemAndNil(P);
+//  W := LatinFormat('My string "%S" at %i', [PLegacyChar('СТРОКА'), 9]);
+//  FreeMem(W);
+  W := LegacyFormat('My string "%S" at %i', CP_ACP, [PLegacyChar('СТРОКА'), 9]);
+  FreeMemAndNil(W);
+  W := WideFormat('My string "%S" at %i', [PLegacyChar('СТРОКА'), 9]);
+  FreeMemAndNil(W);
+  A := 12 div Cardinal(W);
+  Inc(P, A);
+end;
 
 end.

@@ -1,7 +1,7 @@
 (*
     Unicode 5.2 code blocks
 
-    Copyright (c) 2009 The Unified Environment Laboratory
+    Copyright (c) 2009-2012 The Unified Environment Laboratory
 
     Used abbreviations:
       * Aboriginal -> (removed)
@@ -24,6 +24,19 @@
       * Use -> (removed)
 *)
 
+type
+  PSurrogates = ^TSurrogates;
+  TSurrogates = packed record
+    Hi, Lo: WideChar; // fixed word order, always big-endian
+  end;
+
+  PUTF16Char = ^UTF16Char;
+  UTF16Char = packed record
+    case Word of
+      0: (BasicChar: WideChar);
+      1: (Surrogates: TSurrogates);
+  end;
+
 const
   BOM_UTF7            = $762F2B;      // byte sequence is platform-dependent
   BOM_UTF7_LastBytes  = [$38, $39, $2B, $2F];
@@ -35,29 +48,34 @@ const
   BOM_UTF32_BE        = $FFFE0000;
   BOM_UTF32_LE        = $0000FEFF;
 
-  Unknown_Latin       = LegacyChar($1A);
+  Unknown_Latin       = #$1A;
 
   Unknown_UTF7        = '+//0-';
   Unknown_UTF7_Bytes  = Cardinal(Length(Unknown_UTF7));
-  UnknownUTF7: array[0..Unknown_UTF7_Bytes - 1] of LegacyChar = Unknown_UTF7; // TODO; remove
+  UnknownUTF7: array[0..Unknown_UTF7_Bytes - 1] of LegacyChar = Unknown_UTF7;
 
   Unknown_UTF8        = $BDBFEF;  // byte sequence is platform-dependent
   Unknown_UTF8_Bytes  = 3;
-  UnknownUTF8: array[0..Unknown_UTF8_Bytes - 1] of Byte = ($EF, $BF, $BD);  // TODO; remove
+  UnknownUTF8: array[0..Unknown_UTF8_Bytes - 1] of Byte = ($EF, $BF, $BD);
 
   Unknown_UTF16_LE    = WideChar($FFFD);
   Unknown_UTF16_BE    = WideChar($FDFF);
 
   Unknown_UTF16       = Unknown_UTF16_LE;  // platform-dependent
 
-  UnknownUTF16: array[Boolean] of WideChar = (Unknown_UTF16_LE, Unknown_UTF16_BE); // TODO; remove
+  UnknownUTF16: array[Boolean] of WideChar = (Unknown_UTF16_LE, Unknown_UTF16_BE);
 
   Unknown_UTF32_LE    = QuadChar($0000FFFD);
   Unknown_UTF32_BE    = QuadChar($FDFF0000);
 
   Unknown_UTF32       = Unknown_UTF32_LE;  // platform-dependent
 
-  UnknownUTF32: array[Boolean] of QuadChar = (Unknown_UTF32_LE, Unknown_UTF32_BE); // TODO; remove
+  UnknownUTF32: array[Boolean] of QuadChar = (Unknown_UTF32_LE, Unknown_UTF32_BE);
+
+  UTF7_MaxCharBytes   = 7;
+  UTF8_MaxCharBytes   = 4;
+  UTF16_MaxCharBytes  = SizeOf(UTF16Char);
+  UTF32_MaxCharBytes  = SizeOf(QuadChar);
 
 type
   TCharBlock = (

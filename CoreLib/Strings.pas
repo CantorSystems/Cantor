@@ -28,7 +28,6 @@ uses
   Windows, CoreUtils, CoreClasses;
 
 {$I CodePage.inc}
-{$I Unicode.inc}
 
 type
   // CESU-8: encode surrogates as is
@@ -265,8 +264,6 @@ function Decompose(Source: PWideChar; Count: Cardinal; Dest: PWideChar): Cardina
 function Decompose(Source: PQuadChar; Count: Cardinal): Cardinal; overload;
 function Decompose(Source: PQuadChar; Count: Cardinal; Dest: PQuadChar): Cardinal; overload;}
 
-function FindCharBlock(Source: QuadChar; PrevBlock: TCharBlock = cbUnknown): TCharBlock;
-
 { Missing in Windows.pas }
 
 const
@@ -280,21 +277,6 @@ const
   WC_SEPCHARS           = $00000020;  // generate separate chars
   WC_DEFAULTCHAR        = $00000040;  // replace with default char
 
-type
-  TCHAR   = CoreChar;
-  LPCTSTR = PCoreChar;
-  LPTSTR  = PCoreChar;
-
-  TCPInfoEx = packed record
-    MaxCharSize: UINT;
-    DefaultChar: array[0..MAX_DEFAULTCHAR - 1] of CHAR;
-    LeadByte: array[0..MAX_LEADBYTES - 1] of BYTE;
-    UnicodeDefaultChar: WCHAR;
-    CodePage: UINT;
-    CodePageName: array[0..MAX_PATH - 1] of TCHAR;
-  end;
-
-function GetCPInfoEx(CodePage: UINT; dwFlags: DWORD; var lpCPInfoEx: TCPInfoEx): BOOL; stdcall;
 
 implementation
 
@@ -353,51 +335,6 @@ begin
     Move(Source^, Dest^, Count * SizeOf(QuadChar));
   Result := Count;
 end;}
-
-function FindCharBlock(Source: QuadChar; PrevBlock: TCharBlock): TCharBlock;
-var
-  Min, Max: TUnicodeBlock;
-begin
-  if PrevBlock in [Low(TUnicodeBlock)..High(TUnicodeBlock)] then
-  begin
-    if Source < UnicodeBlockRanges[PrevBlock].Min then
-    begin
-      Min := Low(TUnicodeBlock);
-      Max := Pred(PrevBlock);
-    end
-    else if Source > UnicodeBlockRanges[PrevBlock].Max then
-    begin
-      Min := Succ(PrevBlock);
-      Max := High(TUnicodeBlock);
-    end
-    else
-    begin
-      Result := PrevBlock;
-      Exit;
-    end;
-  end
-  else
-  begin
-    Min := Low(TUnicodeBlock);
-    Max := High(TUnicodeBlock);
-  end;
-  while Min <= Max do
-  begin
-    Result := TCharBlock((Ord(Min) + Ord(Max)) div 2);
-    if Source < UnicodeBlockRanges[Result].Min then
-      Max := Pred(Result)
-    else if Source > UnicodeBlockRanges[Result].Max then
-      Min := Succ(Result)
-    else
-      Exit;
-  end;
-  Result := cbNonUnicode;
-end;
-
-{ Missing in Windows.pas }
-
-function GetCPInfoEx(CodePage: UINT; dwFlags: DWORD; var lpCPInfoEx: TCPInfoEx): BOOL; stdcall;
-  external kernel32 name {$IFDEF UNICODE} 'GetCPInfoExW' {$ELSE} 'GetCPInfoExA' {$ENDIF} ;
 
 { TCharDecoder }
 

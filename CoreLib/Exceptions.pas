@@ -3,7 +3,7 @@
 
     Core exceptions implementation
 
-    Copyright (c) 2008-2010 The Unified Environment Laboratory
+    Copyright (c) 2008-2012 The Unified Environment Laboratory
 *)
 
 unit Exceptions;
@@ -16,7 +16,7 @@ uses
 {$IFDEF Tricks}
   SysSfIni,
 {$ENDIF}
-  Core;
+  CoreUtils;
 
 { Exceptions }
 
@@ -24,50 +24,45 @@ type
   Exception = class;
   ExceptionClass = class of Exception;
 
-  TExceptionOptions = set of (eoFreeMessage, eoCanFree);
+  TExceptionOptions = set of (eoWideChar, eoFreeMessage, eoCanFree);
 
   Exception = class
   private
-    FMessage: PCoreChar;
+    FMessage: PLegacyChar;
     FOptions: TExceptionOptions;
   public
-    constructor Create(Msg: TMessageText); overload;
-    constructor Create(Msg: TMessageText; const Args: array of const); overload;
+    constructor Create(Msg: PLegacyChar); overload;
+    constructor Create(Msg: PLegacyChar; const Args: array of const); overload;
+    constructor Create(Msg: PWideChar; Count: Cardinal); overload;
+    constructor Create(Msg: PLegacyChar; CodePage: Word; const Args: array of const); overload;
+    //constructor Create(Msg: PWideChar; const Args: array of const); overload;
     destructor Destroy; override;
+    procedure FreeInstance; override;
   // properties
-    property Message: PCoreChar read FMessage;
+    property Message: PLegacyChar read FMessage;
     property Options: TExceptionOptions read FOptions;
   end;
 
-  ECore = class(Exception);
-  EAbort = class(ECore);
-  EAbstract = class(ECore);
-  EInvalidCast = class(ECore);
+  EAbort = class(Exception);
+  EAbstract = class(Exception);
+  EInvalidCast = class(Exception);
 {$IFOPT C+}
-  EAssertionFailed = class(ECore);
+  EAssertionFailed = class(Exception);
 {$ENDIF}
 
-  EHeap = class(Exception)
-  public
-    procedure FreeInstance; override;
-  end;
-
-  EOutOfMemory = class(EHeap);
-  EInvalidPointer = class(EHeap);
-
-  EExternal = class(Exception);
+  EOutOfMemory = class(Exception);
+  EInvalidPointer = class(Exception);
 
   PExceptionRecord = ^TExceptionRecord;
   TExceptionRecord = record
-    ExceptionCode: Cardinal;
-    ExceptionFlags: Cardinal;
+    ExceptionCode, ExceptionFlags: LongWord;
     ExceptionRecord: PExceptionRecord;
     ExceptionAddress: Pointer;
-    NumberParameters: Cardinal;
-    ExceptionInformation: array[0..14] of Cardinal;
+    NumberParameters: LongWord;
+    ExceptionInformation: array [0..14] of Cardinal;
   end;
 
-  EHard = class(EExternal)
+  EHard = class(Exception)
   private
     FInfo: PExceptionRecord;
   public
@@ -92,32 +87,30 @@ type
   EAccessViolation = class(EHard);
   EGeneralFault = class(EHard);
 
-  EPlatform = class(EExternal)
+  EPlatform = class(Exception)
   private
-    FErrorCode: Cardinal;
+    FErrorCode: LongWord;
   public
-    constructor Create(ErrorCode: Cardinal);
+    constructor Create(ErrorCode: LongWord);
     destructor Destroy; override;
   // properties
-    property ErrorCode: Cardinal read FErrorCode;
+    property ErrorCode: LongWord read FErrorCode;
   end;
 
 {$IFNDEF Tricks}
   EInOutError = EPlatform;
 {$ENDIF}
 
-  EContainer = class(Exception);
-
-  ESharingViolation = class(EContainer)
+  {ESharingViolation = class(EContainer)
   private
     FObj: TObject;
   public
     constructor Create(Obj: TObject);
   // properties
     property Obj: TObject read FObj;
-  end;
+  end;}
 
-  EString = class(EContainer);
+  EString = class(Exception);
 
 { Exception raising }
 
@@ -127,14 +120,13 @@ procedure RaiseLastPlatformError;
 { Exception handling }
 
 procedure ShowException(E: Exception);
-{$IFDEF Unicode}
 procedure UseExceptionMessageBox;
-{$ENDIF}
+procedure UseExceptionMessageWrite;
 
 implementation
 
 uses
-  Windows, CoreConst, Strings;
+  Windows, CoreConsts;
 
 { Error handlers }
 
@@ -160,7 +152,7 @@ end;
 type
   TExceptionRec = packed record
     ClassId: ExceptionClass;
-    Ident: TMessageText;
+    Ident: PLegacyChar;
   end;
 
 const
@@ -265,7 +257,7 @@ var
   AccessOp: PLegacyChar;
   AccessAddress: Pointer;
   MemInfo: TMemoryBasicInformation;
-  ModuleName: array[0..MAX_PATH] of CoreChar;
+  ModuleName: array[0..MAX_PATH] of WideChar;
   L: Cardinal;
 begin
   with P^ do
@@ -278,11 +270,10 @@ begin
     VirtualQuery(ExceptionAddress, MemInfo, SizeOf(MemInfo));
     if MemInfo.State = MEM_COMMIT then
     begin
-      L := {$IFDEF Unicode} GetModuleFileNameW {$ELSE} GetModuleFileNameA {$ENDIF}
-       (THandle(MemInfo.AllocationBase), ModuleName, Length(ModuleName));
+      L := GetModuleFileNameW(THandle(MemInfo.AllocationBase), ModuleName, Length(ModuleName));
       if L <> 0 then
       begin
-        ModuleName[L] := CoreChar(0);
+        ModuleName[L] := WideChar(0);
         Result := EAccessViolation.Create(sModuleAccessViolation,
           [ExceptionAddress, ModuleName, AccessOp, AccessAddress]); // TODO: ExtractFileName
         Exit;
@@ -362,9 +353,11 @@ begin
   InvalidPointer := nil;
 end;
 
-{$IFDEF Unicode}
-procedure ExceptionErrorMessage(Msg: PWideChar); overload;
+procedure ExceptionErrorMessage(Msg: PWideChar; CodePage: Word); // via ErrorMessage
 asm
+        PUSH ESI
+        MOV ESI, EDX
+
         PUSH EAX
         CALL WideStrLen
         INC EAX
@@ -388,12 +381,11 @@ asm
         PUSH EAX  // Length
         PUSH EDX  // Msg
         PUSH 0
-        MOVZX EAX, IsConsole  // ACP = 0, OEMCP = 1
-        PUSH EAX
+        PUSH ESI  // CodePage
      {$IFDEF Tricks}
-        CALL System.WideCharToMultiByte  // BASM rule: 1 line = 1 statement
+        CALL System.WideCharToMultiByte
      {$ELSE}
-        CALL WideCharToMultiByte         // and nothing else
+        CALL WideCharToMultiByte         
      {$ENDIF}
 
         MOV EDX, EAX
@@ -403,9 +395,10 @@ asm
         MOV ESP, EDI
         POP EDI
         POP EBX
+        POP ESI
 end;
 
-procedure ExceptMsgBox(Msg: PWideChar; Len: Cardinal);
+procedure ExceptMsgBox(Msg: PWideChar; Len: Cardinal); // asm service
 asm
         MOV ECX, EDX // MsgLen
         OR ECX, 1
@@ -440,6 +433,15 @@ asm
         POP EDI
 end;
 
+procedure ExceptionMessageWrite(Msg: PWideChar);
+asm
+        PUSH EAX
+        CALL GetConsoleOutputCP
+        MOV EDX, EAX
+        POP EAX
+        JMP ExceptionErrorMessage
+end;
+
 procedure ExceptionMessageBox(Msg: PWideChar);
 var
   L, Flags: Cardinal;
@@ -466,9 +468,14 @@ begin
   end;
 end;
 
+procedure DefaultExceptionMessage(Msg: PWideChar);
+asm
+        MOVZX EDX, IsConsole // 0 = ACP, 1 = OEMCP
+        JMP ExceptionErrorMessage
+end;
+
 var
-  ExceptionMessageProc: procedure(Msg: PWideChar) = ExceptionErrorMessage;
-{$ENDIF}
+  ExceptionMessageProc: procedure(Msg: PWideChar) = DefaultExceptionMessage;
 
 { Exception raising }
 
@@ -485,7 +492,7 @@ end;
 
 procedure RaiseLastPlatformError;
 var
-  LastError: Cardinal;
+  LastError: LongWord;
 begin
   LastError := GetLastError;
   if LastError <> 0 then
@@ -496,126 +503,60 @@ end;
 
 procedure ShowException(E: Exception);
 begin
-{$IFDEF Unicode}
-  ExceptionMessageProc(E.Message);
-{$ELSE}
-  ErrorMessage(E.Message, StrLen(E.Message));
-{$ENDIF}
+  if eoWideChar in E.Options then
+    ExceptionMessageProc(PWideChar(E.Message))
+  else
+    ErrorMessage(E.Message, StrLen(E.Message));
 end;
 
-{$IFDEF Unicode}
 procedure UseExceptionMessageBox;
 begin
   ExceptionMessageProc := ExceptionMessageBox;
 end;
-{$ENDIF}
+
+procedure UseExceptionMessageWrite;
+begin
+  ExceptionMessageProc := ExceptionMessageWrite;
+end;
 
 { Exception}
 
-constructor Exception.Create(Msg: TMessageText);
-{$IFDEF Unicode} // TODO: Localization
-var
-  L: Cardinal;
-{$IFNDEF Lite}
-  P: Pointer;
-{$ENDIF}
-begin
-  L := StrLen(Msg);
-  if L <> 0 then
-  begin
-    Inc(L);
-  {$IFDEF Lite}
-    GetMem(FMessage, L * SizeOf(WideChar));
-    ReallocMem(FMessage, {$IFDEF Tricks} System. {$ENDIF}
-      MultiByteToWideChar(CP_CORE, 0, Msg, L, FMessage, L) * SizeOf(WideChar));
-  {$ELSE} // Delphi 6 compatibility
-    GetMem(P, L * SizeOf(WideChar) + SizeOf(Cardinal));
-    L := {$IFDEF Tricks} System. {$ENDIF}
-      MultiByteToWideChar(CP_CORE, 0, Msg, L, Pointer(PLegacyChar(P) + SizeOf(Cardinal)), L);
-    ReallocMem(P, L * SizeOf(WideChar) + SizeOf(Cardinal));
-    PCardinal(P)^ := L - 1;
-    Pointer(FMessage) := PLegacyChar(P) + SizeOf(Cardinal);
-  {$ENDIF}
-    Include(FOptions, eoFreeMessage);
-  end;
-{$ELSE}
+constructor Exception.Create(Msg: PLegacyChar);
 begin
   FMessage := Msg;
-{$ENDIF}
+  FOptions := [eoCanFree];
 end;
 
-constructor Exception.Create(Msg: TMessageText; const Args: array of const);
-var
-  L: Cardinal;
-{$IFNDEF Lite}
-  P: Pointer;
-{$ENDIF}
-{$IFDEF Unicode}
-  W: PWideChar;
-{$ENDIF}
+constructor Exception.Create(Msg: PLegacyChar; const Args: array of const);
 begin
-  L := StrLen(Msg);
-  if L <> 0 then
-  begin
-    Inc(L);
-  {$IFDEF Unicode} // TODO: Localization
-    GetMem(W, L * SizeOf(WideChar));
-    L := {$IFDEF Tricks} System. {$ENDIF}
-      MultiByteToWideChar(CP_CORE, 0, Msg, L, W, L);
-    ReallocMem(W, L * SizeOf(WideChar));
-  {$ENDIF}
-    Inc(L, EstimateArgs(Args));
-  {$IFDEF Lite}
-    GetMem(FMessage, L * SizeOf(CoreChar));
-  {$ELSE}
-    GetMem(P, L * SizeOf(CoreChar) + SizeOf(Cardinal));
-  {$ENDIF}
-  {$IFDEF Unicode}
-    L := WideFormatBuf(W, Args,
-    {$IFDEF Lite}
-      FMessage
-    {$ELSE}
-      Pointer(PLegacyChar(P) + SizeOf(Cardinal))
-    {$ENDIF}
-    );
-  {$ELSE}
-    L := FormatBuf(Msg, Args, 
-    {$IFDEF Lite}
-      FMessage
-    {$ELSE}
-      PLegacyChar(P) + SizeOf(Cardinal)
-    {$ENDIF}
-    );
-  {$ENDIF}
-  {$IFDEF Lite}
-    ReallocMem(FMessage, (L + 1) * SizeOf(CoreChar));
-  {$ELSE}
-    ReallocMem(P, (L + 1) * SizeOf(CoreChar) + SizeOf(Cardinal));
-    PCardinal(P)^ := L;
-    Pointer(FMessage) := PLegacyChar(P) + SizeOf(Cardinal);
-  {$ENDIF}
-    FMessage[L] := CoreChar(0);
-    Include(FOptions, eoFreeMessage);
-  end;
+  FMessage := Format(Msg, Args);
+  FOptions := [eoFreeMessage, eoCanFree];
+end;
+
+constructor Exception.Create(Msg: PWideChar; Count: Cardinal);
+var
+  Bytes: Cardinal;
+begin
+  Bytes := Count * SizeOf(WideChar);
+  GetMem(FMessage, Bytes + SizeOf(WideChar));
+  Move(Msg^, FMessage^, Bytes);
+  PWideChar(FMessage)[Count] := WideChar(0);
+  FOptions := [eoWideChar, eoFreeMessage, eoCanFree];
+end;
+
+constructor Exception.Create(Msg: PLegacyChar; CodePage: Word; const Args: array of const);
+begin
+  FMessage := Pointer(LegacyFormat(Msg, CodePage, Args));
+  FOptions := [eoWideChar, eoFreeMessage, eoCanFree];
 end;
 
 destructor Exception.Destroy;
 begin
   if eoFreeMessage in FOptions then
-  begin
-  {$IFDEF Lite}
     FreeMem(FMessage);
-  {$ELSE}
-    if FMessage <> nil then
-      FreeMem(PLegacyChar(FMessage) - SizeOf(Cardinal));
-  {$ENDIF}
-  end;
-  inherited;
 end;
 
-{ EHeap }
-
-procedure EHeap.FreeInstance;
+procedure Exception.FreeInstance;
 begin
   if eoCanFree in FOptions then
     inherited FreeInstance;
@@ -623,36 +564,21 @@ end;
 
 { EPlatform }
 
-constructor EPlatform.Create(ErrorCode: Cardinal);
-var
-  L: Cardinal;
+constructor EPlatform.Create(ErrorCode: LongWord);
 begin
-  L := {$IFDEF Unicode} FormatMessageW {$ELSE} FormatMessageA {$ENDIF}
-    (FORMAT_MESSAGE_FROM_SYSTEM or FORMAT_MESSAGE_ALLOCATE_BUFFER, nil,
-      ErrorCode, 0, @FMessage, 0, nil);
-  while (L <> 0) and
-  {$IFDEF Unicode}
-    ((FMessage[L] >= WideChar(0)) and (FMessage[L] <= WideChar(32)) or
-     (FMessage[L] = WideChar('.')))
-  {$ELSE}
-    (FMessage[L] in [#0..#32, '.'])
-  {$ENDIF}
-  do
-    Dec(L);
-  if L <> 0 then
-    FMessage[L + 1] := CoreChar(0);
+  FMessage := Pointer(SysErrorMessage(ErrorCode));
+  FOptions := [eoWideChar, eoCanFree];
   FErrorCode := ErrorCode;
 end;
 
 destructor EPlatform.Destroy;
 begin
-  LocalFree(Cardinal(FMessage));
-  inherited;
+  LocalFree(Cardinal(FMessage)); 
 end;
 
 { ESharingViolation }
 
-constructor ESharingViolation.Create(Obj: TObject);
+{constructor ESharingViolation.Create(Obj: TObject);
 var
   ClassName: array[0..256] of LegacyChar;
   P: PShortString;
@@ -661,10 +587,12 @@ begin
   P := PPointer(PPLegacyChar(Obj)^ + vmtClassName)^;
   L := Length(P^);
   Idx := Cardinal((L > 1) and (P^[1] in ['T', 't']));
-  StrCopy(ClassName, @P^[Idx + 1], Length(P^) - Idx);
+  L := Length(P^) - Idx;
+  Move(ClassName, P^[Idx + 1], L);
+  ClassName[L] := #0;
   inherited Create(sSharingViolation, [ClassName]);
   FObj := Obj;
-end;
+end;}
 
 initialization
   InitExceptions;

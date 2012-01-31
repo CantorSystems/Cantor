@@ -5,7 +5,7 @@ unit Strings2;
 interface
 
 uses
-  Windows, CoreUtils, CoreClasses, Strings;
+  Windows, CoreUtils, CoreClasses, CoreStrings, Strings;
 
 type
   TStringOption = (soBigEndian, soAttachBuffer, soDetectCharSet);
@@ -2460,7 +2460,7 @@ begin
         1: Result := TSingleByteCharSet.Create(Info);
         2: Result := TDoubleByteCharSet.Create(Info);
       else
-        raise EString.Create; // TODO: Not impemented yet
+        //raise EString.Create; // TODO: Not impemented yet
       end;  
       FItems.Append(Result);
     end;
