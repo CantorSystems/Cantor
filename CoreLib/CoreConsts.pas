@@ -34,7 +34,7 @@ const
   sWriteAccess        = 'Write';
 
   sAccessViolation = 'Access violation at address %p. %hs of address %p';
-  sModuleAccessViolation = 'Access violation at address %p in module "%s". %hs of address %p';
+  sModuleAccessViolation = 'Access violation at address %p in module "%ws". %hs of address %p';
 
   sAbstractError    = 'Abstract method call'; // instead of meaningless "Abstract Error"
   sGeneralFault     = 'General fault %#02X';  // e. g. 0x0F for 15

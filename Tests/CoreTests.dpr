@@ -34,7 +34,7 @@ begin
 {$IFDEF Tricks}
   UseErrorMessageWrite;
 {$ENDIF}
-//  UseExceptionMessageWrite;
+  UseExceptionMessageWrite;
 
 {$IFDEF ForceMMX}
   if not MMX_Supported then

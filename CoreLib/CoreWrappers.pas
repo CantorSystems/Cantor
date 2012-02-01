@@ -41,33 +41,6 @@ type
 
   TStream = TWriteableStream;
 
-const
-  GENERIC_READ                = Windows.GENERIC_READ;
-  GENERIC_WRITE               = Windows.GENERIC_WRITE;
-  GENERIC_EXECUTE             = Windows.GENERIC_EXECUTE;
-  GENERIC_ALL                 = Windows.GENERIC_ALL;
-
-  CREATE_NEW                  = Windows.CREATE_NEW;
-  CREATE_ALWAYS               = Windows.CREATE_ALWAYS;
-  OPEN_EXISTING               = Windows.OPEN_EXISTING;
-  OPEN_ALWAYS                 = Windows.OPEN_ALWAYS;
-  TRUNCATE_EXISTING           = Windows.TRUNCATE_EXISTING;
-
-  FILE_SHARE_READ             = Windows.FILE_SHARE_READ;
-  FILE_SHARE_WRITE            = Windows.FILE_SHARE_WRITE;
-  FILE_SHARE_DELETE           = Windows.FILE_SHARE_DELETE;
-
-  FILE_ATTRIBUTE_READONLY     = Windows.FILE_ATTRIBUTE_READONLY;
-  FILE_ATTRIBUTE_HIDDEN       = Windows.FILE_ATTRIBUTE_HIDDEN;
-  FILE_ATTRIBUTE_SYSTEM       = Windows.FILE_ATTRIBUTE_SYSTEM;
-  FILE_ATTRIBUTE_DIRECTORY    = Windows.FILE_ATTRIBUTE_DIRECTORY;
-  FILE_ATTRIBUTE_ARCHIVE      = Windows.FILE_ATTRIBUTE_ARCHIVE;
-  FILE_ATTRIBUTE_NORMAL       = Windows.FILE_ATTRIBUTE_NORMAL;
-  FILE_ATTRIBUTE_TEMPORARY    = Windows.FILE_ATTRIBUTE_TEMPORARY;
-  FILE_ATTRIBUTE_COMPRESSED   = Windows.FILE_ATTRIBUTE_COMPRESSED;
-  FILE_ATTRIBUTE_OFFLINE      = Windows.FILE_ATTRIBUTE_OFFLINE;
-
-type
   THandleStream = class(TStream)
   private
     FHandle: THandle;
@@ -146,16 +119,11 @@ type
     property Value: Int64 read GetValue;
   end;
 
-{ File system }
-
-const
-  MAX_PATH = Windows.MAX_PATH;
-
 { Absent in Windows.pas }
 
 function GetFileSizeEx(hFile: THandle; var lpFileSize: Int64): LongBool; stdcall;
 function SetFilePointerEx(hFile: THandle; liDistanceToMove: Int64;
-  lpNewFilePointer: PInt64; dwMoveMethod: Cardinal): LongBool; stdcall;
+  lpNewFilePointer: PInt64; dwMoveMethod: LongWord): LongBool; stdcall;
 
 implementation
 
@@ -216,27 +184,15 @@ end;
 
 function THandleStream.GetPosition: Int64;
 begin
-{$IFDEF Unicode} // since Windows 2000
+  // GetFileSizeEx available since Windows 2000
   if not SetFilePointerEx(FHandle, 0, @Result, FILE_CURRENT) then
     Result := -1;
-{$ELSE}
-  with Int64Rec(Result) do
-  begin
-    Hi := 0;
-    Lo := SetFilePointer(FHandle, 0, @Hi, FILE_CURRENT);
-  end;
-{$ENDIF}
 end;
 
 function THandleStream.GetSize: Int64;
 begin
-{$IFDEF Unicode} // since Windows 2000
   if not GetFileSizeEx(FHandle, Result) then
     Result := -1;
-{$ELSE}
-  with Int64Rec(Result) do
-    Lo := GetFileSize(FHandle, @Hi);
-{$ENDIF}
 end;
 
 function THandleStream.Lock(Offset, Count: Int64): Boolean;
@@ -250,8 +206,7 @@ function THandleStream.Open(FileName: PWideChar; Access, Creation,
 begin
   if FHandle <> 0 then
     CloseHandle(FHandle);
-  FHandle := {$IFDEF Unicode} CreateFileW {$ELSE} CreateFileA {$ENDIF}
-    (FileName, Access, Share, nil, Creation, Attributes, 0);
+  FHandle := CreateFileW(FileName, Access, Share, nil, Creation, Attributes, 0);
   Result := FHandle <> INVALID_HANDLE_VALUE;
 end;
 
@@ -263,23 +218,14 @@ end;
 
 function THandleStream.Seek(Offset: Int64; Origin: LongWord): Int64;
 begin
-{$IFDEF Unicode} // since Windows 2000
+  // SetFilePointerEx available since Windows 2000
   if not SetFilePointerEx(FHandle, Offset, @Result, Origin) then
     Result := -1;
-{$ELSE}
-  Result := Offset;
-  with Int64Rec(Result) do
-    Lo := SetFilePointer(Handle, Lo, @Hi, Origin);
-{$ENDIF}
 end;
 
 procedure THandleStream.SetPosition(Value: Int64);
 begin
-{$IFDEF Unicode} // since Windows 2000
   SetFilePointerEx(FHandle, Value, nil, FILE_BEGIN);
-{$ELSE}
-  Seek(Value, FILE_BEGIN);
-{$ENDIF}
 end;
 
 procedure THandleStream.SetSize(Value: Int64);

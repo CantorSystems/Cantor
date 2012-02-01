@@ -148,9 +148,11 @@ function QuadStrScan(Where: PQuadChar; What: QuadChar; Count: Cardinal): PQuadCh
 
 function FindCharBlock(Source: QuadChar; PrevBlock: TCharBlock = cbUnknown): TCharBlock;
 
-{ Legacy Windows service }
+{ LocalFree finalization required }
 
 function SysErrorMessage(ErrorCode: LongWord): PWideChar;
+
+{ Legacy Windows service }
 
 function FormatBuf(Fmt: PLegacyChar; const Args: array of const;
   Buf: PLegacyChar): Cardinal;
@@ -684,7 +686,7 @@ begin
   Result := cbNonUnicode;
 end;
 
-{ Legacy Windows service }
+{ LocalFree finalization required }
 
 function SysErrorMessage(ErrorCode: LongWord): PWideChar;
 var
@@ -700,6 +702,8 @@ begin
   if L <> 0 then
     Result[L + 1] := WideChar(0);
 end;
+
+{ Legacy Windows service }
 
 const
   VarArgSize = SizeOf(TVarRec);
@@ -767,10 +771,15 @@ var
 begin
   L := {$IFDEF Tricks} System. {$ENDIF}
     MultiByteToWideChar(CodePage, 0, Source, Count, nil, 0);
-  GetMem(Result, (L + 1) * SizeOf(WideChar));
-{$IFDEF Tricks} System. {$ENDIF}
-  MultiByteToWideChar(CodePage, 0, Source, Count, Result, L);
-  Result[L] := WideChar(0);
+  if L <> 0 then
+  begin
+    GetMem(Result, (L + 1) * SizeOf(WideChar));
+  {$IFDEF Tricks} System. {$ENDIF}
+    MultiByteToWideChar(CodePage, 0, Source, Count, Result, L);
+    Result[L] := WideChar(0);
+  end
+  else
+    Result := nil;
 end;
 
 function EncodeLegacy(Source: PWideChar; CodePage: Word): PLegacyChar;
@@ -783,23 +792,28 @@ var
   L: Cardinal;
 begin
   L := {$IFDEF Tricks} System. {$ENDIF}
-    WideCharToMultiByte(CodePage, WC_DEFAULTCHAR, Source, Count, nil, 0, nil, nil);
-  GetMem(Result, (L + 1) * SizeOf(WideChar));
-{$IFDEF Tricks} System. {$ENDIF}
-  WideCharToMultiByte(CodePage, WC_DEFAULTCHAR, Source, Count, Result, L, Unknown_Latin, nil);
-  Result[L] := #0;
+    WideCharToMultiByte(CodePage, 0, Source, Count, nil, 0, nil, nil);
+  if L <> 0 then
+  begin
+    GetMem(Result, L + 1);
+  {$IFDEF Tricks} System. {$ENDIF}
+    WideCharToMultiByte(CodePage, 0, Source, Count, Result, L, nil, nil);
+    Result[L] := #0;
+  end
+  else
+    Result := nil;
 end;
 
 function Format(Fmt: PLegacyChar; const Args: array of const): PLegacyChar;
 begin
   GetMem(Result, StrLen(Fmt) + EstimateArgs(Args) + 1);
-  ReallocMem(Result, FormatBuf(Fmt, Args, Result));
+  ReallocMem(Result, FormatBuf(Fmt, Args, Result) + 1);
 end;
 
 function WideFormat(Fmt: PWideChar; const Args: array of const): PWideChar;
 begin
   GetMem(Result, (WideStrLen(Fmt) + EstimateArgs(Args) + 1) * SizeOf(WideChar));
-  ReallocMem(Result, WideFormatBuf(Fmt, Args, Result) * SizeOf(WideChar));
+  ReallocMem(Result, (WideFormatBuf(Fmt, Args, Result) + 1) * SizeOf(WideChar));
 end;
 
 {function LatinFormat(Fmt: PLegacyChar; const Args: array of const): PWideChar;

@@ -9,10 +9,10 @@ unit Main;
 interface
 
 uses
-  Windows, Exceptions, CoreUtils, CoreWrappers, Strings, Strings2;
+  Windows, Exceptions, CoreUtils, CoreWrappers;
 
 type
-  TStrings = array of WideString;
+{  TStrings = array of WideString;
 
   TStringTest = class
   protected
@@ -53,7 +53,7 @@ type
   protected
     function DecodeUtf8(const Source: UTF8String): WideString; override;
     function EncodeUtf8(const Source: WideString): UTF8String; override;
-  end;
+  end;}
 
 { Main functions }
 
@@ -68,7 +68,7 @@ type
 
 { Unit tests }
 
-procedure SingleStringTest(Str: PWideChar; LineBreak: Integer = 1);
+{procedure SingleStringTest(Str: PWideChar; LineBreak: Integer = 1);
 procedure RandomStringTest(StepCount, Asterisk, MaxLength: Integer); overload;
 
 procedure CharSetTest;
@@ -76,18 +76,15 @@ procedure CharSetTest;
 procedure LockTest;
 
 var
-  CharSets: TLegacyCharSets;
+  CharSets: TLegacyCharSets;}
 
 implementation
-
-uses
-  CoreClasses;
 
 { Main functions }
 
 { Unit tests }
 
-procedure SingleStringTest(Str: PWideChar; LineBreak: Integer);
+(*procedure SingleStringTest(Str: PWideChar; LineBreak: Integer);
 var
   Test: TStringTest;
 begin
@@ -378,7 +375,7 @@ begin
   SetLength(Result, S);
   SetLength(Result, {$IFDEF Tricks} System. {$ENDIF} WideCharToMultiByte
     (CP_UTF8, 0, Pointer(Source), W, Pointer(Result), S, nil, nil));
-end;
+end;*)
 
 {procedure Foo(Args: array of string);
 var
@@ -417,20 +414,25 @@ var
   P: PLegacyChar;
   W: PWideChar;
 begin
-  LockTest;
+//  LockTest;
 {  CharSetTest;
   SingleStringTest('Mother ушла на работу, а потом вернулась домой.');
   SingleStringTest(Malformed, 2);
   //SingleStringTest(Surrogate);
   RandomStringTest($FFFF, $FFFF div 64, $400);}
+  FConsole.CodePage := 1251;
   P := Format('My string "%s" at %i', [PLegacyChar('СТРОКА'), 9]);
+  FConsole.WriteLn(P);
   FreeMemAndNil(P);
 //  W := LatinFormat('My string "%S" at %i', [PLegacyChar('СТРОКА'), 9]);
-//  FreeMem(W);
+//  FreeMemAndNil(W);
   W := LegacyFormat('My string "%S" at %i', CP_ACP, [PLegacyChar('СТРОКА'), 9]);
   FreeMemAndNil(W);
   W := WideFormat('My string "%S" at %i', [PLegacyChar('СТРОКА'), 9]);
   FreeMemAndNil(W);
+  raise EPlatform.Create(20);
+//  P^ := LegacyChar(W^);
+  Inc(P);
   A := 12 div Cardinal(W);
   Inc(P, A);
 end;

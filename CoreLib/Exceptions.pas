@@ -4,6 +4,9 @@
     Core exceptions implementation
 
     Copyright (c) 2008-2012 The Unified Environment Laboratory
+
+    Conditional defines:
+      * Debug - use IDE friendly additional exception message (DelphiMsg)
 *)
 
 unit Exceptions;
@@ -28,18 +31,23 @@ type
 
   Exception = class
   private
-    FMessage: PLegacyChar;
+  {$IFDEF Debug}
+    FDelphiMsg: PLegacyChar;
+  {$ENDIF}
+    FMessage: PWideChar;
     FOptions: TExceptionOptions;
   public
     constructor Create(Msg: PLegacyChar); overload;
     constructor Create(Msg: PLegacyChar; const Args: array of const); overload;
     constructor Create(Msg: PWideChar; Count: Cardinal); overload;
     constructor Create(Msg: PLegacyChar; CodePage: Word; const Args: array of const); overload;
-    //constructor Create(Msg: PWideChar; const Args: array of const); overload;
     destructor Destroy; override;
     procedure FreeInstance; override;
   // properties
-    property Message: PLegacyChar read FMessage;
+  {$IFDEF Debug}
+    property DelphiMsg: PLegacyChar read FDelphiMsg;
+  {$ENDIF}
+    property Message: PWideChar read FMessage;
     property Options: TExceptionOptions read FOptions;
   end;
 
@@ -92,7 +100,9 @@ type
     FErrorCode: LongWord;
   public
     constructor Create(ErrorCode: LongWord);
+  {$IFNDEF Debug}
     destructor Destroy; override;
+  {$ENDIF}
   // properties
     property ErrorCode: LongWord read FErrorCode;
   end;
@@ -259,6 +269,7 @@ var
   MemInfo: TMemoryBasicInformation;
   ModuleName: array[0..MAX_PATH] of WideChar;
   L: Cardinal;
+  W: PWideChar;
 begin
   with P^ do
   begin
@@ -274,8 +285,12 @@ begin
       if L <> 0 then
       begin
         ModuleName[L] := WideChar(0);
-        Result := EAccessViolation.Create(sModuleAccessViolation,
-          [ExceptionAddress, ModuleName, AccessOp, AccessAddress]); // TODO: ExtractFileName
+        W := @ModuleName[L - 1];
+        while W^ <> PathDelimiter do
+          Dec(W);
+        Inc(W);
+        Result := EAccessViolation.Create(sModuleAccessViolation, CP_LEGACY,
+          [ExceptionAddress, W, AccessOp, AccessAddress]);
         Exit;
       end;
     end;
@@ -385,9 +400,10 @@ asm
      {$IFDEF Tricks}
         CALL System.WideCharToMultiByte
      {$ELSE}
-        CALL WideCharToMultiByte         
+        CALL WideCharToMultiByte
      {$ENDIF}
 
+        DEC EAX
         MOV EDX, EAX
         MOV EAX, EBX
         CALL ErrorMessage
@@ -504,9 +520,13 @@ end;
 procedure ShowException(E: Exception);
 begin
   if eoWideChar in E.Options then
-    ExceptionMessageProc(PWideChar(E.Message))
+    ExceptionMessageProc(E.Message)
   else
-    ErrorMessage(E.Message, StrLen(E.Message));
+  {$IFDEF Debug}
+    ErrorMessage(E.DelphiMsg, PCardinal(E.DelphiMsg - SizeOf(Cardinal))^);
+  {$ELSE}
+    ErrorMessage(Pointer(E.Message), StrLen(Pointer(E.Message)));
+  {$ENDIF}
 end;
 
 procedure UseExceptionMessageBox;
@@ -522,31 +542,82 @@ end;
 { Exception}
 
 constructor Exception.Create(Msg: PLegacyChar);
+{$IFDEF Debug}
+var
+  L: Cardinal;
 begin
-  FMessage := Msg;
+  L := StrLen(Msg);
+  if L <> 0 then
+  begin
+    GetMem(FDelphiMsg, L + 1 + SizeOf(Cardinal));
+    PCardinal(FDelphiMsg)^ := L;
+    Inc(FDelphiMsg, SizeOf(Cardinal));
+    Move(Msg^, FDelphiMsg^, L + 1);
+  end;
+{$ELSE}
+begin
+{$ENDIF}
+  FMessage := Pointer(Msg);
   FOptions := [eoCanFree];
 end;
 
 constructor Exception.Create(Msg: PLegacyChar; const Args: array of const);
+{$IFDEF Debug}
+var
+  L: Cardinal;
 begin
-  FMessage := Format(Msg, Args);
+  if Msg <> nil then
+  begin
+    GetMem(FDelphiMsg, StrLen(Msg) + EstimateArgs(Args) + 1 + SizeOf(Cardinal));
+    L := FormatBuf(Msg, Args, FDelphiMsg + SizeOf(Cardinal));
+    PCardinal(FDelphiMsg)^ := L;
+    ReallocMem(FDelphiMsg, L + 1 + SizeOf(Cardinal));
+    Inc(FDelphiMsg, SizeOf(Cardinal));
+    FMessage := Pointer(FDelphiMsg);
+    FOptions := [eoCanFree];
+  end;
+{$ELSE}
+begin
+  FMessage := Pointer(Format(Msg, Args));
   FOptions := [eoFreeMessage, eoCanFree];
+{$ENDIF}
 end;
 
 constructor Exception.Create(Msg: PWideChar; Count: Cardinal);
+{$IFDEF Debug}
 var
-  Bytes: Cardinal;
+  L: Cardinal;
 begin
-  Bytes := Count * SizeOf(WideChar);
-  GetMem(FMessage, Bytes + SizeOf(WideChar));
-  Move(Msg^, FMessage^, Bytes);
-  PWideChar(FMessage)[Count] := WideChar(0);
-  FOptions := [eoWideChar, eoFreeMessage, eoCanFree];
+  L := {$IFDEF Tricks} System. {$ENDIF}
+    WideCharToMultiByte(CP_ACP, 0, Msg, Count, nil, 0, nil, nil);
+  if L <> 0 then
+  begin
+    GetMem(FDelphiMsg, L + 1 + SizeOf(Cardinal));
+    PCardinal(FDelphiMsg)^ := L;
+    Inc(FDelphiMsg, SizeOf(Cardinal));
+  {$IFDEF Tricks} System. {$ENDIF}
+    WideCharToMultiByte(CP_ACP, 0, Msg, Count, FDelphiMsg, L, nil, nil);
+    FDelphiMsg[L] := #0;
+  end;
+{$ELSE}
+begin
+{$ENDIF}
+  if Msg <> nil then
+  begin
+    GetMem(FMessage, (Count + 1) * SizeOf(WideChar));
+    Move(Msg^, FMessage^, Count * SizeOf(WideChar));
+    FMessage[Count] := WideChar(0);
+    FOptions := [eoWideChar, eoFreeMessage];
+  end;
+  Include(FOptions, eoCanFree);
 end;
 
 constructor Exception.Create(Msg: PLegacyChar; CodePage: Word; const Args: array of const);
 begin
-  FMessage := Pointer(LegacyFormat(Msg, CodePage, Args));
+{$IFDEF Debug}
+  Create(Msg, Args);
+{$ENDIF}
+  FMessage := LegacyFormat(Msg, CodePage, Args);
   FOptions := [eoWideChar, eoFreeMessage, eoCanFree];
 end;
 
@@ -554,6 +625,13 @@ destructor Exception.Destroy;
 begin
   if eoFreeMessage in FOptions then
     FreeMem(FMessage);
+{$IFDEF Debug}
+  if FDelphiMsg <> nil then
+  begin
+    Dec(FDelphiMsg, SizeOf(Cardinal));
+    FreeMem(FDelphiMsg);
+  end;
+{$ENDIF}
 end;
 
 procedure Exception.FreeInstance;
@@ -565,16 +643,30 @@ end;
 { EPlatform }
 
 constructor EPlatform.Create(ErrorCode: LongWord);
+{$IFDEF Debug}
+var
+  W: PWideChar;
 begin
-  FMessage := Pointer(SysErrorMessage(ErrorCode));
+  W := SysErrorMessage(ErrorCode);
+  try
+    inherited Create(W, WideStrLen(W));
+  finally
+    LocalFree(Cardinal(W));
+  end;
+{$ELSE}
+begin
+  FMessage := SysErrorMessage(ErrorCode);
   FOptions := [eoWideChar, eoCanFree];
+{$ENDIF}
   FErrorCode := ErrorCode;
 end;
 
+{$IFNDEF Debug}
 destructor EPlatform.Destroy;
 begin
-  LocalFree(Cardinal(FMessage)); 
+  LocalFree(Cardinal(FMessage));
 end;
+{$ENDIF}
 
 { ESharingViolation }
 
