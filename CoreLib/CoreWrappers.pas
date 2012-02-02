@@ -4,6 +4,10 @@
     OOP-style platform-dependent wrappers
 
     Copyright (c) 2007-2012 The Unified Environment Laboratory
+
+    Conditional defines:
+      * Lite -- allow lite TStream implementation -- without virtual methods
+                but only THandleStream descendant
 *)
 
 unit CoreWrappers;
@@ -15,8 +19,11 @@ uses
 
 { Streams }
 
+{$IFDEF Lite}
+  {$I LiteStreams.inc}                       
+{$ELSE}
 type
-  TReadableStream = class(TObject)
+  TReadableStream = class
   protected
     function GetPosition: Int64; virtual; abstract;
     function GetSize: Int64; virtual; abstract;
@@ -39,9 +46,7 @@ type
     property Size write SetSize;
   end;
 
-  TStream = TWriteableStream;
-
-  THandleStream = class(TStream)
+  THandleStream = class(TWriteableStream)
   private
     FHandle: THandle;
   protected
@@ -51,8 +56,7 @@ type
     procedure SetSize(Value: Int64); override;
   public
     constructor Create(FileName: PWideChar; Access, Creation: LongWord;
-      Share: LongWord = FILE_SHARE_READ; Attributes: LongWord = FILE_ATTRIBUTE_NORMAL); overload;
-    constructor Create(StdHandleType: LongWord); overload;
+      Share: LongWord = FILE_SHARE_READ; Attributes: LongWord = FILE_ATTRIBUTE_NORMAL);
     destructor Destroy; override;
     function Lock(Offset, Count: Int64): Boolean;
     function Open(FileName: PWideChar; Access, Creation: LongWord;
@@ -64,6 +68,9 @@ type
   // properties
     property Handle: THandle read FHandle;
   end;
+{$ENDIF}
+
+  TStream = TWriteableStream;
 
   TFileStream = THandleStream;
   TStdStream = THandleStream;
@@ -95,15 +102,16 @@ type
 
   TScreenConsole = class(TConsole)
   private
+    procedure SetTextAttribute(Value: Word);
   public
     procedure ReadLn(Prompt: PWideChar; LineBreaks: Integer = 1); overload;
     procedure ReadLn(Prompt: PWideChar; Count: LongWord; LineBreaks: Integer); overload;
 
-    procedure SetTextAttribute(Value: Word);
-
     procedure WriteLn(LineBreaks: Integer = 1); overload;
     procedure WriteLn(Text: PWideChar; LineBreaks: Integer = 1); overload;
     procedure WriteLn(Text: PWideChar; Count: LongWord; LineBreaks: Integer); overload;
+  // properties
+    property TextAttribute: Word write SetTextAttribute;
   end;
 
   TPerformanceCounter = class
@@ -118,8 +126,8 @@ type
     property Frequency: Int64 read FFrequency;
     property Value: Int64 read GetValue;
   end;
-
-{ Absent in Windows.pas }
+                                             
+{ Absent in Windows.pas }                     
 
 function GetFileSizeEx(hFile: THandle; var lpFileSize: Int64): LongBool; stdcall;
 function SetFilePointerEx(hFile: THandle; liDistanceToMove: Int64;
@@ -166,13 +174,6 @@ constructor THandleStream.Create(FileName: PWideChar; Access, Creation,
   Share, Attributes: LongWord);
 begin
   if not Open(FileName, Access, Creation, Share, Attributes) then
-    RaiseLastPlatformError;
-end;
-
-constructor THandleStream.Create(StdHandleType: LongWord);
-begin
-  FHandle := {$IFDEF Tricks} System. {$ENDIF} GetStdHandle(StdHandleType);
-  if FHandle = INVALID_HANDLE_VALUE then
     RaiseLastPlatformError;
 end;
 
@@ -276,15 +277,13 @@ begin
 end;
 
 procedure TStreamConsole.ReadLn(Prompt: PLegacyChar; Count: LongWord; LineBreaks: Integer);
-const
-  sElipsis: array[0..2] of LegacyChar = '...';
 var
   Dummy: array[0..$FF] of LegacyChar; // preventing flood
   BytesRead: LongWord;
 begin
   WriteLn;
   WriteLn(Prompt, Count, 0);
-  WriteLn(sElipsis, Length(sElipsis), 0);
+  WriteLn(@Elipsis, SizeOf(Elipsis), 0);
 {$IFDEF Tricks} System. {$ENDIF}
   ReadFile(FInput, Dummy, SizeOf(Dummy), BytesRead, nil);
   WriteLn(LineBreaks - 1);
@@ -303,7 +302,7 @@ var
 begin
   for I := 0 to LineBreaks - 1 do
   {$IFDEF Tricks} System. {$ENDIF}
-    WriteFile(FOutput, CRLF, SizeOf(CRLF), BytesWritten, nil);
+    WriteFile(FOutput, LF, SizeOf(LF), BytesWritten, nil);
 end;
 
 procedure TStreamConsole.WriteLn(Text: PLegacyChar; LineBreaks: Integer);
@@ -328,15 +327,13 @@ begin
 end;
 
 procedure TScreenConsole.ReadLn(Prompt: PWideChar; Count: LongWord; LineBreaks: Integer);
-const
-  sElipsis: array[0..2] of WideChar = ('.', '.', '.');
 var
   Dummy: array[0..$FF] of WideChar; // preventing flood
   Read: LongWord;
 begin
   WriteLn;
   WriteLn(Prompt, Count, 0);
-  WriteLn(sElipsis, Length(sElipsis), 0);
+  WriteLn(@WideElipsis, 1, 0);
   ReadConsoleW(FInput, @Dummy, Length(Dummy), Read, nil);
   WriteLn(LineBreaks - 1);
 end;
@@ -352,7 +349,7 @@ var
   Written: LongWord;
 begin
   for I := 0 to LineBreaks - 1 do
-    WriteConsoleW(FOutput, @WideCRLF, Length(WideCRLF), Written, nil);
+    WriteConsoleW(FOutput, @WideLF, 1, Written, nil);
 end;
 
 procedure TScreenConsole.WriteLn(Text: PWideChar; LineBreaks: Integer);
