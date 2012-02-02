@@ -1,7 +1,7 @@
 (*
     Core Library Tests
 
-    Copyright (c) 2009 The Unified Environment Laboratory
+    Copyright (c) 2009-2012 The Unified Environment Laboratory
 *)
 
 unit Main;
@@ -9,7 +9,7 @@ unit Main;
 interface
 
 uses
-  Windows, Exceptions, CoreUtils, CoreWrappers;
+  Windows, Exceptions, CoreUtils, CoreWrappers, CoreClasses;
 
 type
 {  TStrings = array of WideString;
@@ -394,7 +394,7 @@ constructor TApplication.Create;
 begin
   FConsole := TStreamConsole.Create;
 {$IFDEF Compat}
-  FConsole.CodePage := GetACP;
+  FConsole.CodePage := CP_ACP;
 {$ENDIF}
   FConsole.WriteLn('== The Unified Environment Core Tests ==', 2);
 end;
@@ -417,6 +417,7 @@ var
   P: PLegacyChar;
   W: PWideChar;
 begin
+  THandleStream.Create('CoreTests.exe', GENERIC_READ, OPEN_EXISTING).Free;
 //  LockTest;
 {  CharSetTest;
   SingleStringTest('Mother ушла на работу, а потом вернулась домой.');
@@ -427,17 +428,16 @@ begin
   P := Format('My string "%s" at %i', [PLegacyChar('СТРОКА'), 9]);
   FConsole.WriteLn(P);
   FreeMemAndNil(P);
+//  raise ESharingViolation.Create(Self, opSyncUpdate);
+//  raise EIndex.Create(Self, -1, 0, 9);
 //  W := LatinFormat('My string "%S" at %i', [PLegacyChar('СТРОКА'), 9]);
 //  FreeMemAndNil(W);
   W := LegacyFormat('My string "%S" at %i', CP_ACP, [PLegacyChar('СТРОКА'), 9]);
   FreeMemAndNil(W);
   W := WideFormat('My string "%S" at %i', [PLegacyChar('СТРОКА'), 9]);
   FreeMemAndNil(W);
-  raise EPlatform.Create(20);
-//  P^ := LegacyChar(W^);
-  Inc(P);
-  A := 12 div Cardinal(W);
-  Inc(P, A);
+//  A := PCardinal(W)^;
+//  P^ := LegacyChar(A);
 end;
 
 end.

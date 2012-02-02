@@ -4,6 +4,9 @@
     Typecast and platform-based non-OOP utilites
 
     Copyright (c) 2007-2012 The Unified Environment Laboratory
+
+    Conditional defines:
+      * Compat -- allow ShortString, AnsiString and WideString at EstimateArgs
 *)
 
 unit CoreUtils;
@@ -65,11 +68,19 @@ type
 
 {$I Unicode.inc}
 
+var
+  Elipsis: LegacyChar = '…';
+  WideElipsis: WideChar = WideChar(8230);
+
 const
   PathDelimiter = WideChar('\'); // platform;
-  WideCRLF: array[0..1] of WideChar = (WideChar(13), WideChar(10));
-{$IFNDEF Tricks}
+
   CRLF: array[0..Length(sLineBreak) - 1] of LegacyChar = sLineBreak;
+  WideCRLF: array[0..1] of WideChar = (WideChar(13), WideChar(10));
+
+  WideLF: WideChar = WideChar(10);
+{$IFNDEF Tricks}
+  LF: LegacyChar = #10;
   HexDigits: array [$0..$F] of LegacyChar = '0123456789ABCDEF';
 var
   MainWindow: THandle;
@@ -102,7 +113,7 @@ function MulDiv(Multiplicand, Multiplier, Divisor: LongWord): LongWord;
 
 const
   DecimalLongInt  = 11;
-  DecimalQuadInt  = 22;
+  DecimalQuadInt  = 21;
   DecimalInt      = DecimalLongInt; // TODO: x64
 
   HexLongInt      = 8;
@@ -173,6 +184,15 @@ function WideFormat(Fmt: PWideChar; const Args: array of const): PWideChar;
 //function LatinFormat(Fmt: PLegacyChar; const Args: array of const): PWideChar;
 function LegacyFormat(Fmt: PLegacyChar; CodePage: Word; const Args: array of const): PWideChar;
 
+{ User-friendly class names }
+
+type
+  // only the first 255 characters are significant (c) Delphi Help
+  TClassName = array [0..256] of LegacyChar; // including null terminator
+
+function FriendlyClassName(var Dest: TClassName; Source: TClass): Byte; overload;
+function FriendlyClassName(var Dest: TClassName; Source: TObject): Byte; overload;
+
 implementation
 
 { Memory service }
@@ -223,30 +243,26 @@ end;
 { Platform support }
 
 function IsPlatformUnicode(MinVersion: Word): Boolean;
-var
-  Version: LongWord;
-begin
-  Version := GetVersion;
-  if Version and $80000000 = 0 then
-    Result := Swap(LongRec(Version).Lo) >= MinVersion
-  else
-    Result := False;
+asm
+        PUSH EAX
+        CALL GetVersion
+        MOV EDX, EAX
+        XOR EAX, EAX
+        POP ECX
+        TEST EDX, $80000000
+        JZ @@NT
+        RET
+@@NT:
+        XCHG DL, DH
+        CMP DX, CX
+        SETNB AL
 end;
 
 function IsPlatformUnicodeEx(MinVersion: Word): Boolean;
-var
-  Version: LongWord;
-begin
-  Version := GetVersion;
-  if Version and $80000000 = 0 then
-    with LongRec(Version) do
-    begin
-      Lo := Swap(Lo);
-      PlatformIsWindowsXP := Lo >= $501;
-      Result := Lo >= MinVersion;
-    end
-  else
-    Result := False;
+asm
+        CALL IsPlatformUnicode
+        CMP DX, $501
+        SETNB PlatformIsWindowsXP
 end;
 
 {$IFNDEF Tricks}
@@ -341,20 +357,26 @@ begin
     case TVarRec(Args[I]).VType of
       vtInteger:
         Inc(Result, DecimalInt);
+      vtInt64:
+        Inc(Result, DecimalQuadInt);
       vtPChar:
         Inc(Result, StrLen(TVarRec(Args[I]).VPChar));
-      vtPWideChar{, vtWideString}:
+      vtPWideChar:
         Inc(Result, WideStrLen(TVarRec(Args[I]).VPWideChar));
       vtPointer:
         Inc(Result, SizeOf(Pointer) * 2); // 2 hex digit per byte
       vtChar, vtWideChar:
         Inc(Result);
-      vtExtended, vtCurrency{, vtInt64}:
+      vtExtended, vtCurrency:
         Inc(Result, DecimalExtended);
-      {vtString:
-        Inc(Result, Length(TVarRec(Args[I]).VString^));
+    {$IFDEF Compat}
+      vtString:
+        Inc(Result, PByte(TVarRec(Args[I]).VString)^);
       vtAnsiString:
-        Inc(Result, Length(PLegacyChar(TVarRec(Args[I]).VAnsiString)));}
+        Inc(Result, PCardinal(PLegacyChar(TVarRec(Args[I]).VAnsiString) - SizeOf(Cardinal))^);
+      vtWideString:
+        Inc(Result, PCardinal(PLegacyChar(TVarRec(Args[I]).VWideString) - SizeOf(Cardinal))^ div SizeOf(WideChar));
+    {$ENDIF}
     end;
 end;
 
@@ -829,7 +851,7 @@ begin
     GetMem(W, L * SizeOf(WideChar));
     try
       Z := W;
-      for I := 0 to L div 4 - 1 do // FastCore
+      for I := 0 to L div 4 - 1 do // Fast core
       begin
         T := PLongWordArray(Fmt)[I];
         PLongWord(Z)^ := (T and $FF) or (((T and $FF00) shr 8) shl 16);
@@ -864,7 +886,36 @@ begin
   end;
 end;
 
+function FriendlyClassName(var Dest: TClassName; Source: TClass): Byte;
+var
+  P: PLegacyChar;
+begin
+  P := PPointer(PLegacyChar(Source) + vmtClassName)^;
+  Result := PByte(P)^; // Length(P^);
+  Inc(P);
+  if Result <> 0 then
+    if (Result > 1) and (P^ in ['T', 't']) then
+    begin
+      Inc(P);
+      Dec(Result);
+      Move(P^, Dest, Result);
+      Dest[Result] := #0;
+    end
+    else // Fast core
+      PWord(@Dest)^ := PByte(P)^;
+end;
+
+function FriendlyClassName(var Dest: TClassName; Source: TObject): Byte;
+begin
+  if Source <> nil then
+    Result := FriendlyClassName(Dest, TClass(PPointer(Source)^))
+  else
+  begin // Fast core
+    Result := SizeOf(Cardinal);
+    PCardinal(@Dest)^ := $6C6C756E; // 'null'
+    Dest[4] := #0;
+  end;
+end;
+
 end.
-
-
 

@@ -6,8 +6,9 @@
     Copyright (c) 2008-2012 The Unified Environment Laboratory
 
     Conditional defines:
-      * Compat - use IDE friendly and SysUtils compatible exceptions
-                 with additional exception message (DelphiMsg)
+      * Compat -- use IDE friendly and SysUtils compatible exceptions
+                  with additional message (DelphiMsg)
+      * Interfaces -- interface support
 *)
 
 unit Exceptions;
@@ -96,6 +97,12 @@ type
   EAccessViolation = class(EHard);
   EGeneralFault = class(EHard);
 
+{$IFDEF Interfaces}
+  EInterface = class(Exception);
+  EIntfNotSupported = class(EInterface);
+  ESafecall = class(EInterface);
+{$ENDIF}
+
   EPlatform = class(Exception)
   private
     FErrorCode: LongWord;
@@ -111,17 +118,6 @@ type
 {$IFNDEF Tricks}
   EInOutError = EPlatform;
 {$ENDIF}
-
-  {ESharingViolation = class(EContainer)
-  private
-    FObj: TObject;
-  public
-    constructor Create(Obj: TObject);
-  // properties
-    property Obj: TObject read FObj;
-  end;}
-
-  EString = class(Exception);
 
 { Exception raising }
 
@@ -167,20 +163,27 @@ type
   end;
 
 const
-  ExceptionMap: array[reDivByZero..reStackOverflow] of TExceptionRec = (
+  RuntimeExceptions: array[reDivByZero..reStackOverflow] of TExceptionRec = (
     (ClassId: EDivByZero; Ident: sDivByZero),
     (ClassId: ERangeError; Ident: sRangeError),
     (ClassId: EIntOverflow; Ident: sIntOverflow),
     (ClassId: EInvalidOp; Ident: sInvalidOp),
     (ClassId: EZeroDivide; Ident: sZeroDivide),
     (ClassId: EOverflow; Ident: sOverflow),
-    (ClassId: EUnderflow; Ident: sUnderflow),
+    (ClassId: EUnderflow; Ident: sUnderflow),             
     (ClassId: EInvalidCast; Ident: sInvalidCast),
     (ClassId: EAccessViolation; Ident: nil),
     (ClassId: EPrivilege; Ident: sPrivilege),
     (ClassId: EControlBreak; Ident: sControlC),
     (ClassId: EStackOverflow; Ident: sStackOverflow)
   );
+
+{$IFDEF Interfaces}
+  InterfaceExceptions: array[reIntfCastError..reSafeCallError] of TExceptionRec = (
+    (ClassId: EIntfNotSupported; Ident: sIntfNotSupported),
+    (ClassId: ESafecall; Ident: sSafecallException)
+  );
+{$ENDIF}
 
 procedure ErrorHandler(ErrorCode: Byte; ErrorAddr: Pointer);
 var
@@ -191,9 +194,14 @@ begin
       E := OutOfMemory;
     reInvalidPtr:
       E := InvalidPointer;
-    reDivByZero..reStackOverflow:
-      with ExceptionMap[TRuntimeError(ErrorCode)] do
+    Low(RuntimeExceptions)..High(RuntimeExceptions):
+      with RuntimeExceptions[TRuntimeError(ErrorCode)] do
         E := ClassId.Create(Ident);
+  {$IFDEF Interfaces}
+    Low(InterfaceExceptions)..High(InterfaceExceptions):
+      with InterfaceExceptions[TRuntimeError(ErrorCode)] do
+        E := ClassId.Create(Ident);
+  {$ENDIF}
   {$IFOPT C+}
     reAssertionFailed:
       E := EAssertionFailed.Create(sAssertionFailed);
@@ -213,9 +221,9 @@ begin
   // "as" typecast -- CoreLib exceptions only: build with runtime packages or die!
   ShowException(ExceptObject {$IFNDEF Compat} as Exception {$ENDIF});
   Halt(1);
-end;              
+end;
 
-function MapException(P: PExceptionRecord): TRuntimeError;
+function MapHardError(P: PExceptionRecord): TRuntimeError;
 begin
   case P.ExceptionCode of
     STATUS_INTEGER_DIVIDE_BY_ZERO:
@@ -252,9 +260,9 @@ function GetExceptionClass(P: PExceptionRecord): ExceptionClass;
 var
   ErrorCode: TRuntimeError;
 begin
-  ErrorCode := MapException(P);
-  if ErrorCode in [Low(ExceptionMap)..High(ExceptionMap)] then
-    Result := ExceptionMap[ErrorCode].ClassId
+  ErrorCode := MapHardError(P);
+  if ErrorCode in [Low(RuntimeExceptions)..High(RuntimeExceptions)] then
+    Result := RuntimeExceptions[ErrorCode].ClassId
   else
     Result := EGeneralFault;
 end;
@@ -302,10 +310,10 @@ begin
 end;
 
 begin
-  ErrorCode := MapException(P);
+  ErrorCode := MapHardError(P);
   case ErrorCode of
     reDivByZero..reInvalidCast, rePrivInstruction..reStackOverflow:
-      with ExceptionMap[ErrorCode] do
+      with RuntimeExceptions[ErrorCode] do
         Result := ClassId.Create(Ident);
     reAccessViolation:
       Result := CreateAVObject;
@@ -672,24 +680,6 @@ begin
   LocalFree(Cardinal(FMessage));
 end;
 {$ENDIF}
-
-{ ESharingViolation }
-
-{constructor ESharingViolation.Create(Obj: TObject);
-var
-  ClassName: array[0..256] of LegacyChar;
-  P: PShortString;
-  L, Idx: Cardinal;
-begin
-  P := PPointer(PPLegacyChar(Obj)^ + vmtClassName)^;
-  L := Length(P^);
-  Idx := Cardinal((L > 1) and (P^[1] in ['T', 't']));
-  L := Length(P^) - Idx;
-  Move(ClassName, P^[Idx + 1], L);
-  ClassName[L] := #0;
-  inherited Create(sSharingViolation, [ClassName]);
-  FObj := Obj;
-end;}
 
 initialization
   InitExceptions;
