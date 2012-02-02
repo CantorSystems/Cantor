@@ -130,7 +130,7 @@ procedure RaiseLastPlatformError;
 
 { Exception handling }
 
-procedure ShowException(E: TObject);
+procedure ShowException(E: {$IFDEF Compat} TObject {$ELSE} Exception {$ENDIF});
 procedure UseExceptionMessageBox;
 procedure UseExceptionMessageWrite;
 
@@ -210,9 +210,10 @@ end;
 
 procedure ExceptionHandler(ExceptObject: TObject; ExceptAddr: Pointer);
 begin
-  ShowException(ExceptObject);
+  // "as" typecast -- CoreLib exceptions only: build with runtime packages or die!
+  ShowException(ExceptObject {$IFNDEF Compat} as Exception {$ENDIF});
   Halt(1);
-end;
+end;              
 
 function MapException(P: PExceptionRecord): TRuntimeError;
 begin
@@ -518,16 +519,15 @@ end;
 
 { Exception handling }
 
-procedure ShowException(E: TObject);
+procedure ShowException(E: {$IFDEF Compat} TObject {$ELSE} Exception {$ENDIF});
 begin
 {$IFDEF Compat}
   if (E is Exception) and (eoWideChar in Exception(E).Options) then
     ExceptionMessageProc(Exception(E).Message)
-  else // compatible or SysUtils exception
+  else // treat as compatible or SysUtils exception, unsafe with 3rd-party exceptions
     ErrorMessage(Exception(E).DelphiMsg, PCardinal(Exception(E).DelphiMsg - SizeOf(Cardinal))^);
 {$ELSE}
-  // "as" typecast -- CoreLib exceptions only: build with runtime packages or die
-  if eoWideChar in (E as Exception).Options then
+  if eoWideChar in E.Options then
     ExceptionMessageProc(E.Message)
   else
     ErrorMessage(Pointer(E.Message), StrLen(Pointer(E.Message)));
