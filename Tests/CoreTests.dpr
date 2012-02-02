@@ -5,6 +5,7 @@
 
     Conditional defines:
       * Compat -- use Delphi IDE friendly exceptions
+      * CustomStub -- get Windows requirement message from custom stub (planning)
       * ForceMMX -- allow MMX with FastCode
       * Tricks  -- use tricky lite System unit
 
@@ -27,7 +28,6 @@ uses
 const
   sMMX = 'This program requires MMX';
   sPlatformRequired = 'This program requires Windows 2000';
-  //sPlatformRequired = PLegacyChar($00400050);
 
 var
   App: TApplication;
@@ -50,7 +50,11 @@ begin
 
   if not IsPlatformUnicode then
   begin
+  {$IFDEF CustomStub}
+    ErrorMessage(PLegacyChar($0040002F), PByte($0040002E)^);
+  {$ELSE}
     ErrorMessage(sPlatformRequired, StrLen(sPlatformRequired));
+  {$ENDIF}
     Exit;
   end;
 

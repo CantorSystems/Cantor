@@ -16,4 +16,6 @@ start:
   MOV AX, 4C00h
   INT 21h
   
-Message db 'This program requires Windows 2000$'
+MsgLen    db TermChar - Message
+Message   db 'This program requires Windows 2000'
+TermChar  db '$'
