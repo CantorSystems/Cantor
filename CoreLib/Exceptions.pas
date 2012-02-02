@@ -6,7 +6,8 @@
     Copyright (c) 2008-2012 The Unified Environment Laboratory
 
     Conditional defines:
-      * Debug - use IDE friendly additional exception message (DelphiMsg)
+      * Compat - use IDE friendly and SysUtils compatible exceptions
+                 with additional exception message (DelphiMsg)
 *)
 
 unit Exceptions;
@@ -31,7 +32,7 @@ type
 
   Exception = class
   private
-  {$IFDEF Debug}
+  {$IFDEF Compat}
     FDelphiMsg: PLegacyChar;
   {$ENDIF}
     FMessage: PWideChar;
@@ -44,7 +45,7 @@ type
     destructor Destroy; override;
     procedure FreeInstance; override;
   // properties
-  {$IFDEF Debug}
+  {$IFDEF Compat}
     property DelphiMsg: PLegacyChar read FDelphiMsg;
   {$ENDIF}
     property Message: PWideChar read FMessage;
@@ -100,7 +101,7 @@ type
     FErrorCode: LongWord;
   public
     constructor Create(ErrorCode: LongWord);
-  {$IFNDEF Debug}
+  {$IFNDEF Compat}
     destructor Destroy; override;
   {$ENDIF}
   // properties
@@ -129,7 +130,7 @@ procedure RaiseLastPlatformError;
 
 { Exception handling }
 
-procedure ShowException(E: Exception);
+procedure ShowException(E: TObject);
 procedure UseExceptionMessageBox;
 procedure UseExceptionMessageWrite;
 
@@ -209,7 +210,7 @@ end;
 
 procedure ExceptionHandler(ExceptObject: TObject; ExceptAddr: Pointer);
 begin
-  ShowException(ExceptObject as Exception); // build with runtime packages or die!
+  ShowException(ExceptObject);
   Halt(1);
 end;
 
@@ -517,16 +518,20 @@ end;
 
 { Exception handling }
 
-procedure ShowException(E: Exception);
+procedure ShowException(E: TObject);
 begin
-  if eoWideChar in E.Options then
+{$IFDEF Compat}
+  if (E is Exception) and (eoWideChar in Exception(E).Options) then
+    ExceptionMessageProc(Exception(E).Message)
+  else // compatible or SysUtils exception
+    ErrorMessage(Exception(E).DelphiMsg, PCardinal(Exception(E).DelphiMsg - SizeOf(Cardinal))^);
+{$ELSE}
+  // "as" typecast -- CoreLib exceptions only: build with runtime packages or die
+  if eoWideChar in (E as Exception).Options then
     ExceptionMessageProc(E.Message)
   else
-  {$IFDEF Debug}
-    ErrorMessage(E.DelphiMsg, PCardinal(E.DelphiMsg - SizeOf(Cardinal))^);
-  {$ELSE}
     ErrorMessage(Pointer(E.Message), StrLen(Pointer(E.Message)));
-  {$ENDIF}
+{$ENDIF}
 end;
 
 procedure UseExceptionMessageBox;
@@ -542,7 +547,7 @@ end;
 { Exception}
 
 constructor Exception.Create(Msg: PLegacyChar);
-{$IFDEF Debug}
+{$IFDEF Compat}
 var
   L: Cardinal;
 begin
@@ -562,7 +567,7 @@ begin
 end;
 
 constructor Exception.Create(Msg: PLegacyChar; const Args: array of const);
-{$IFDEF Debug}
+{$IFDEF Compat}
 var
   L: Cardinal;
 begin
@@ -584,7 +589,7 @@ begin
 end;
 
 constructor Exception.Create(Msg: PWideChar; Count: Cardinal);
-{$IFDEF Debug}
+{$IFDEF Compat}
 var
   L: Cardinal;
 begin
@@ -614,7 +619,7 @@ end;
 
 constructor Exception.Create(Msg: PLegacyChar; CodePage: Word; const Args: array of const);
 begin
-{$IFDEF Debug}
+{$IFDEF Compat}
   Create(Msg, Args);
 {$ENDIF}
   FMessage := LegacyFormat(Msg, CodePage, Args);
@@ -625,7 +630,7 @@ destructor Exception.Destroy;
 begin
   if eoFreeMessage in FOptions then
     FreeMem(FMessage);
-{$IFDEF Debug}
+{$IFDEF Compat}
   if FDelphiMsg <> nil then
   begin
     Dec(FDelphiMsg, SizeOf(Cardinal));
@@ -643,7 +648,7 @@ end;
 { EPlatform }
 
 constructor EPlatform.Create(ErrorCode: LongWord);
-{$IFDEF Debug}
+{$IFDEF Compat}
 var
   W: PWideChar;
 begin
@@ -661,7 +666,7 @@ begin
   FErrorCode := ErrorCode;
 end;
 
-{$IFNDEF Debug}
+{$IFNDEF Compat}
 destructor EPlatform.Destroy;
 begin
   LocalFree(Cardinal(FMessage));

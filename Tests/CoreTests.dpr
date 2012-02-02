@@ -19,6 +19,7 @@ uses
   ShareMM,
 {$ENDIF}
   Exceptions,
+  SysUtils,
   CoreWrappers,
   CoreUtils,
   Main in 'Main.pas';
@@ -54,11 +55,23 @@ begin
 
   App := TApplication.Create;
   try
-    try
+    {try
       App.Run;
     except
       on E: Exception do
         ShowException(E);
+    end;}
+    try
+      RaiseLastOSError; // SysUtils
+    except
+      on E: SysUtils.Exception do
+        Exceptions.ShowException(E);
+    end;
+    try
+      raise EPlatform.Create(66);
+    except
+      on E: Exceptions.Exception do
+        SysUtils.ShowException(E, nil);
     end;
   finally
     App.Free;

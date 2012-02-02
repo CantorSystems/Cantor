@@ -393,6 +393,9 @@ const
 constructor TApplication.Create;
 begin
   FConsole := TStreamConsole.Create;
+{$IFDEF Compat}
+  FConsole.CodePage := GetACP;
+{$ENDIF}
   FConsole.WriteLn('== The Unified Environment Core Tests ==', 2);
 end;
 
