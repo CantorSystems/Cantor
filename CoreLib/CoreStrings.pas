@@ -13,6 +13,13 @@ interface
 uses
   Windows, CoreUtils;
 
+type
+  TIgnoreOptions = set of (ioCase, ioComposition, ioDiacritics, ioHanzi, ioKana,
+    ioNonSpace, ioWidth);
+
+type
+  TNormalForm = (NFC, NFD, NFKC, NFKD);
+
 { Legacy Windows service }
 
 type
