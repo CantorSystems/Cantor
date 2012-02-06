@@ -1,0 +1,9 @@
+public class Platform
+
+  final static const target = 'PE';
+  final static const assembler = 'x86';
+
+  public final static const IsUnicode = true;
+  static const AW = 'W';
+
+end;

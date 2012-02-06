@@ -1,0 +1,206 @@
+public class Platform charset 'cp866' inner packed
+
+  final static const target = 'MENUET01';
+  final static const assembler = 'x86';
+
+  public class Bound
+    public var word(16) Org, Size;
+  end;
+
+// public enum WindowType = (FixedSize, OwnerDraw, Sizeable, SkinnedSizeable, SkinnedFixedSize);
+
+  public class Color
+    public var byte Blue, Green Red, Style;
+  end;
+
+  public class Rect
+    public var word(16) Y, X; // !!!
+  end;
+
+  // Определить и нарисовать окно
+  public DrawWindow(Bound x, y; Color windowColor, captionColor, borderColor) mcall 0;
+  // Поставить точку в окне
+  public PutPixel(word x, y; Color color, invert) mcall 1;
+  // Получить код нажатой клавиши
+  public out word GetKey mcall 2;
+  // Получить системное время
+  public out word GetSystemTime mcall 3;
+  // Вывести строку текста в окно
+  public DrawText(Rect rect; Color color; ref raw str; word length) mcall 4;
+  // Установить задержку (паузу)
+  public Pause(word milliseconds) mcall 5;
+  // Прочитать файл с RAM-диска
+  public out int ReadFileFromRamdisk(raw name; word startBlock, blockCount;
+    ref raw dest) mcall 6;
+  // Вывести изображение в окно
+  public DrawImage(ref raw image; Bound x, y) mcall 7;
+  // Определить 3D-кнопку
+  public Define3DButton(Bound x, y; word id; Color color) mcall 8;
+  // Удалить 3D-кнопку
+  public Delete3DButton(word reserved1, reserved2, id) mcall 8;
+
+  public class ThreadInfo
+    // TODO
+  end;
+
+  // Информация о потоке выполнения
+  public out word GetThreadInfo(ThreadInfo info; word slot) mcall 9;
+  // Ожидать события
+  public out word WaitForEvent mcall 10;
+  // Проверить, есть ли событие, без ожидания
+  public out word CheckForEvent mcall 11;
+  // Начать перерисовку окна
+  public BeginWindowPaint mcall 12, 1;
+  // Закончить перерисовку окна
+  public EndWindowPaint mcall 12, 2;
+  // Нарисовать прямоугольник в окне
+  public FillRect(Coord x, y; Color color) mcall 13;
+  // Получить размер экрана
+  public out Rect GetScreenSize mcall 14;
+  // Установить размер фонового изображения
+  public SetBackgroundSize(word width, height) mcall 15, 1;
+  // Поставить точку на фоновом изображении
+  public PutBackgroundPixel(word offset; Color color) mcall 15, 2;
+  // Перерисовать фон
+  public RedrawBackground mcall 15, 3;
+  // Установить режим отрисовки фона
+  public SetBackgroundMode(word mode) mcall 15, 4;
+  // Поместить блок пикселей на фон
+  public PutBackgroundPixels(raw pixels; word offset, length); mcall 15, 5;
+  // Спроецировать данные фона на адресное пространство процесса
+  public out word MapBackgroundData mcall 15, 6;
+  // Закрыть проекцию данных фона на адресное пространство процесса
+  public UnmapBackgroundData mcall 15, 7;
+  // Сохранить рамдиск на дискету
+  public out bool SaveRamdiskOnFloppy(word diskNumber) mcall 16;
+  // Получить идентификатор нажатой кнопки
+  public out word GetPressedButtonID mcall 17;
+
+  // Сделать самым нижним окно потока
+  public SetBackgroundWindow(word slot) mcall 18, 2;
+  // Завершить процесс/поток по слоту
+  public KillProcessOrThread(word slot) mcall 18, 2;
+  // Сделать активным окно заданного потока
+  public ActivateWindow(word slot) mcall 18, 3;
+
+  // Получить счётчик пустых тактов в секунду
+  public out word GetHltTicksPerSecond(word slot) mcall 18, 4;
+  // Получить тактовую частоту
+  public out word GetClockRate(word slot) mcall 18, 5;
+  // Сохранить рамдиск на дискету
+  public out bool SaveRamdiskToFile(ref raw fileName) mcall 18, 6;
+
+  // Получить номер активного окна
+  public out word GetActiveWindow( mcall 18, 7;
+  // Получить состояние спикера
+  public out bool GetSpeakerState mcall 18, 8, 1;
+  // Переключить состояние спикера
+  public ToggleSpeakerState mcall 18, 8, 2;
+  // Завершение работы системы с параметром
+  public ShutdownSystem(word mode) mcall 18, 9;
+  // Свернуть окно приложения
+  public MinimizeWindow mcall 18, 10;
+
+  public class DiskSubsystemInfo
+    // TODO
+  end;
+
+  public GetDiskSubsystemInfo(word type; var DiskSubsystemInfo info) mcall 18, 11;
+
+  public class KernelVersion
+    // TODO
+  end;
+
+  // Получить версию ядра
+  //public GetKernelVersion(var KernelVersion ver) mcall 18, 13;
+  public var KernelVersion GetKernelVersion mcall 18, 13;
+
+  // Ожидать начала обратного хода луча развёртки монитора
+  public out word WaitForFlyback mcall 18, 14;
+  // Поместить курсор мыши в центр экрана
+  public out word CenterMouse mcall 18, 15;
+  // Получить размер свободной оперативной памяти
+  public word GetFreeMemKB mcall 18, 16;
+  // Получить размер доступной оперативной памяти
+  public word GetAvailableMemKB mcall 18, 17;
+
+  // Завершить процесс/поток по идентификатору
+  public int EndProcessOrThread(word id) mcall 18, 18;
+
+  // Получить скорость мыши
+  public out word GetMouseSpeed mcall 18, 19, 0;
+  // Установить скорость мыши
+  public SetMouseSpeed(word speed) mcall 18, 19, 1;
+  // Получить задержку мыши
+  public out word GetMouseDelay mcall 18, 19, 2;
+  // Установить задержку мыши
+  public SetMouseDelay(word delay) mcall 18, 19, 3;
+  // Установить положение курсора мыши
+  public SetMousePos(Rect pos) mcall 18, 19, 4;
+  // Симулировать состояние кнопок мыши
+  public SimulateMouseButtonPress(word buttons) mcall 18, 19, 5;
+
+  public class MemoryInfo
+    // TODO
+  end;
+
+  // Получить информацию об оперативной памяти
+  public out int GetMemoryInfo(var ref MemoryInfo info) mcall 18, 20;
+  // Получить номер слота процесса/потока по идентификатору
+  public out word GetProcessOrThreadSlot(word id) mcall 18, 21
+
+
+  public SetSysLanguage mcall 21, 5; // Установить язык системы
+
+  public GetSysLanguage mcall 26, 5; // Получить язык системы
+
+  public GetSysDate mcall 29; // Получить системную дату
+
+  public ReadPixColorFromScreen mcall 35; // Прочитать цвет точки на экране
+  public ReadScreenArea mcall 36 Прочитать ; // область экрана
+  public GetScreenMouseCoords mcall 37, 0; // Получить экранные координаты мыши
+  public GetWindowMouseCoords mcall 37, 1; // Получить координаты мыши в окне
+  public GetMousePressedButtons mcall 37, 2; // Получить нажатые кнопки мыши
+
+  public DrawLine mcall 38; // Нарисовать отрезок
+
+  public SetEventMask mcall 40; // Установить маску ожидаемых событий
+
+  public DrawNumberInWin mcall 47; // Вывести число в окно
+
+  public GetSysColors mcall 48, 3; // Получить системные цвета окон
+  public GetSkinHeight mcall 48, 4; // Получить высоту скина
+
+  public CreateThread mcall 51, 1; // Создать поток
+
+  public PlayAtSpeaker mcall 55, 55; // Проиграть данные на встроенном спикере
+
+  public SetIPCArea mcall 60, 1; // Установить область для получения IPC
+  public SendIPCMessage mcall 60, 2; // Послать сообщение IPC
+
+  public SetKeyboardInputMode mcall 66, 1; // Установить режим ввода с клавиатуры
+  public GetKeyboardInputMode mcall 66, 2; // Получить режим ввода с клавиатуры
+
+  public ChangeWinPosAndSize mcall 67; // Изменить положение и размеры окна
+
+  public InitThreadHeap mcall 68, 11; // Инициализировать кучу процесса
+  public AllocMem mcall 68, 12; // Выделить блок памяти
+  public FreeMem mcall 68, 13; // Освободить блок памяти
+
+  public LoadDLL mcall 68, 19; // Загрузить DLL
+  public RelocMem mcall 68, 20; // Перераспределить блок памяти
+
+  public ReadFile mcall 70, 0; // Чтение файла с поддержкой длинных имён
+
+  public CreateFile mcall 70, 2; // Создание файла с поддержкой длинных имён
+  public OverwriteFile mcall 70, 2; // Перезапись файла с поддержкой длинных имён
+  public WriteFile mcall 70, 3; // Запись в существующий файл с поддержкой длинных имён
+
+  public RunProgram mcall 70, 7; // Запуск программы
+  public DeleteFile mcall 70, 8; // Удаление файла
+  public DeleteDirectory mcall 70, 8; // Удаление каталога
+
+  public SetWindowTitle mcall 71, 1; // Установить заголовок окна программы
+
+  public CloseProgram mcall -1; // Завершить программу
+end;

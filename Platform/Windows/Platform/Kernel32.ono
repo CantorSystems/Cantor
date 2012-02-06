@@ -1,0 +1,14 @@
+public class Kernel32 inner packed stdcall
+
+  public class Heap handle;
+
+  public out Heap GetProcessHeap;
+  public out ref raw HeapAlloc(Heap; word flags, bytes);
+  public out ref raw HeapReAlloc(Heap; word flags; ref raw mem; word bytes);
+  public out bool HeapFree(Heap; word flags; ref raw mem);
+
+  public class Thread handle;
+
+  public out Thread GetCurrentThreadId;
+
+end;

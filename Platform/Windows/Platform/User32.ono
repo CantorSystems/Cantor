@@ -1,0 +1,3 @@
+public class User32 inner packed stdcall
+
+end;
