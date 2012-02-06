@@ -1,6 +1,6 @@
-public class Kernel32 inner packed stdcall
+public static class Kernel32 inner packed stdcall
 
-  public class Heap handle;
+  public class Heap handle; // no finalization
 
   public out Heap GetProcessHeap;
   public out ref raw HeapAlloc(Heap; word flags, bytes);

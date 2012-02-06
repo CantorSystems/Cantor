@@ -1,9 +1,12 @@
-public class Platform
+public static class Platform
 
-  final static const target = 'PE';
-  final static const assembler = 'x86';
+  // experimental group syntax
+  final const is
+    target = 'PE';
+    assembler = 'x86';
+    public IsUnicode = false;
+  end;
 
-  public final static const IsUnicode = false;
-  static const AW = 'A';
+  const AW = 'A';
 
 end;
