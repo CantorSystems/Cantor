@@ -44,12 +44,16 @@ type
     property Size write SetSize;
   end;
 
-  TCreateFileOptions = set of (cfShareRead, cfShareWrite, cfShareDelete, // ordered
-    cfWrite, cfOverwrite, cfTruncate);
+  TFileAccess = set of (fiShareRead, fiShareWrite, fiShareDelete, // ordered
+    fiWrite, fiKeep, fiOverwrite, fiDeleteOnClose, fiSequentialScan,
+    fiRandomAccess, fiNoBuffering, fiOverlapped, fiWriteThrough);
+  TFileAttributes = set of (faReadOnly, faHidden, faSystem, faVolumeLabel,
+    faDirectory, faArchive, faNormal, faTemporary, faSparsed, faReparsePoint,
+    faCompressed, faOffline, faNonIndexable, faEncrypted, fa0x8000, faVirtual);
 
 const
-  cfRead = [cfShareRead];
-  cfCreate = [cfTruncate, cfShareRead];
+  fiRead = [fiShareRead, fiSequentialScan];
+  fiRewrite = [fiWrite, fiOverwrite, fiShareRead];
 
 type
   THandleStream = class(TWritableStream)
@@ -61,12 +65,12 @@ type
     procedure SetPosition(Value: QuadWord); override;
     procedure SetSize(Value: QuadWord); override;
   public
-    constructor Create(FileName: PWideChar; Options: TCreateFileOptions;
-      Attributes: LongWord = FILE_ATTRIBUTE_NORMAL); overload;
+    constructor Create(FileName: PWideChar; Access: TFileAccess;
+      Attributes: TFileAttributes = [faNormal]); overload;
     destructor Destroy; override;
 
-    function Open(FileName: PWideChar; Options: TCreateFileOptions;
-      Attributes: LongWord = FILE_ATTRIBUTE_NORMAL): Boolean; overload;
+    function Open(FileName: PWideChar; Access: TFileAccess;
+      Attributes: TFileAttributes = [faNormal]): Boolean; overload;
 
     function Seek(Offset: QuadWord; Origin: LongWord): QuadWord;
     function Read(var Data; Count: LongWord): Cardinal; override;
@@ -221,10 +225,10 @@ end;
 
 { THandleStream }
 
-constructor THandleStream.Create(FileName: PWideChar; Options: TCreateFileOptions;
-  Attributes: LongWord);
+constructor THandleStream.Create(FileName: PWideChar; Access: TFileAccess;
+  Attributes: TFileAttributes);
 begin
-  if not Open(FileName, Options, Attributes) then
+  if not Open(FileName, Access, Attributes) then
     RaiseLastPlatformError;
 end;
 
@@ -252,31 +256,33 @@ begin
     QuadRec(Count).Lo, QuadRec(Count).Hi);
 end;
 
-function THandleStream.Open(FileName: PWideChar;
-  Options: TCreateFileOptions; Attributes: LongWord): Boolean;
+function THandleStream.Open(FileName: PWideChar; Access: TFileAccess;
+  Attributes: TFileAttributes): Boolean;
 const
   SharingMask = FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE;
 var
-  Access, Creation: LongWord;
+  ReadWrite, Creation, Sharing: LongWord;
   NewHandle: THandle;
 begin
-  if cfWrite in Options then
+  if fiWrite in Access then
   begin
-    Access := GENERIC_WRITE;
-    if cfTruncate in Options then
-      Creation := TRUNCATE_EXISTING
-    else if cfOverwrite in Options then
+    ReadWrite := GENERIC_WRITE;
+    if fiOverwrite in Access then
       Creation := CREATE_ALWAYS
+    else if fiKeep in Access then
+      Creation := CREATE_NEW
     else
       Creation := OPEN_ALWAYS;
   end
   else
   begin
-    Access := GENERIC_READ;
+    ReadWrite := GENERIC_READ;
     Creation := OPEN_EXISTING;
   end;
-  NewHandle := CreateFileW(FileName, Access, Byte(Options) and SharingMask, nil,
-    Creation, Attributes, 0);
+  Sharing := Word(Access) and SharingMask;
+  Access := Access * [fiDeleteOnClose..fiWriteThrough];
+  NewHandle := CreateFileW(FileName, ReadWrite, Sharing, nil, Creation,
+    Word(Attributes) or (PWord(@Access)^ shl 20), 0);
   if NewHandle <> INVALID_HANDLE_VALUE then
   begin
     if FHandle <> 0 then
@@ -445,8 +451,7 @@ end;
 function TFileStreamMapping.Open(FileName: PWideChar; Options: TCreateFileMapping;
   Size: QuadWord; MappingName: PWideChar): Boolean;
 const
-  MapOptions: array[Boolean] of TCreateFileOptions =
-    ([cfShareRead], [cfWrite, cfOverwrite, cfShareRead]);
+  MapOptions: array[Boolean] of TFileAccess = (fiRead, fiRewrite);
 begin
   Result := FStream.Open(FileName, MapOptions[maWrite in Options]) and
     Open(FStream.Handle, Options, Size, MappingName);

@@ -16,12 +16,12 @@ type
     procedure SetPosition(Value: QuadWord);
     procedure SetSize(Value: QuadWord);
   public
-    constructor Create(FileName: PWideChar; Options: TCreateFileOptions;
-      Attributes: LongWord = FILE_ATTRIBUTE_NORMAL); overload;
+    constructor Create(FileName: PWideChar; Access: TFileAccess;
+      Attributes: TFileAttributes = [faNormal]); overload;
     destructor Destroy; override;
 
-    function Open(FileName: PWideChar; Options: TCreateFileOptions;
-      Attributes: LongWord = FILE_ATTRIBUTE_NORMAL): Boolean; overload;
+    function Open(FileName: PWideChar; Access: TFileAccess;
+      Attributes: TFileAttributes = [faNormal]): Boolean; overload;
 
     function Seek(Offset: QuadWord; Origin: LongWord): QuadWord;
     function Read(var Data; Count: LongWord): Cardinal;
