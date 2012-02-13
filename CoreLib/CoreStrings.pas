@@ -15,7 +15,7 @@ uses
 
 type
   TIgnoreOptions = set of (ioCase, ioComposition, ioDiacritics, ioHanzi, ioKana,
-    ioNonSpace, ioWidth);
+    ioNonSpace, ioPunctuation, ioTurkic, ioWidth);
 
 type
   TNormalForm = (NFC, NFD, NFKC, NFKD);

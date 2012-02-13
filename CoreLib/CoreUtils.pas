@@ -22,6 +22,11 @@ type
 {$IFDEF CPUX64}
   Integer   = NativeInt;
   Cardinal  = NativeUInt;
+  QuadWord  = NativeUInt;
+  PQuadWord = PNativeUInt;
+{$ELSE}
+  QuadWord  = {type} Int64;
+  PQuadWord = {type} PInt64;
 {$ENDIF}
 
   WordRec = packed record
@@ -37,7 +42,7 @@ type
       2: (Bytes: array [0..3] of Byte);
   end;
 
-  Int64Rec = packed record
+  QuadRec = packed record
     case Integer of
       0: (Lo, Hi: LongWord);
       1: (LongWords: array [0..1] of LongWord);

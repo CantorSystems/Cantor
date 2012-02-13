@@ -25,20 +25,20 @@ uses
 type
   TReadableStream = class
   protected
-    function GetPosition: Int64; virtual; abstract;
-    function GetSize: Int64; virtual; abstract;
-    procedure SetPosition(Value: Int64); virtual; abstract;
+    function GetPosition: QuadWord; virtual; abstract;
+    function GetSize: QuadWord; virtual; abstract;
+    procedure SetPosition(Value: QuadWord); virtual; abstract;
   public
     function Read(var Data; Count: LongWord): LongWord; virtual; abstract;
     procedure ReadBuffer(var Data; Count: LongWord);
   // properties
-    property Position: Int64 read GetPosition write SetPosition;
-    property Size: Int64 read GetSize;
+    property Position: QuadWord read GetPosition write SetPosition;
+    property Size: QuadWord read GetSize;
   end;
 
   TWriteableStream = class(TReadableStream)
   protected
-    procedure SetSize(Value: Int64); virtual; abstract;
+    procedure SetSize(Value: QuadWord); virtual; abstract;
   public
     function Write(const Buf; Count: LongWord): LongWord; virtual; abstract;
     procedure WriteBuffer(const Data; Count: LongWord);
@@ -50,20 +50,20 @@ type
   private
     FHandle: THandle;
   protected
-    function GetPosition: Int64; override;
-    function GetSize: Int64; override;
-    procedure SetPosition(Value: Int64); override;
-    procedure SetSize(Value: Int64); override;
+    function GetPosition: QuadWord; override;
+    function GetSize: QuadWord; override;
+    procedure SetPosition(Value: QuadWord); override;
+    procedure SetSize(Value: QuadWord); override;
   public
     constructor Create(FileName: PWideChar; Access, Creation: LongWord;
-      Share: LongWord = FILE_SHARE_READ; Attributes: LongWord = FILE_ATTRIBUTE_NORMAL);
+      Share: LongWord = FILE_SHARE_READ; Attributes: LongWord = FILE_ATTRIBUTE_NORMAL); overload;
     destructor Destroy; override;
-    function Lock(Offset, Count: Int64): Boolean;
+    function Lock(Offset, Count: QuadWord): Boolean;
     function Open(FileName: PWideChar; Access, Creation: LongWord;
       Share: LongWord = FILE_SHARE_READ; Attributes: LongWord = FILE_ATTRIBUTE_NORMAL): Boolean;
     function Read(var Data; Count: LongWord): Cardinal; override;
-    function Seek(Offset: Int64; Origin: LongWord): Int64;
-    function Unlock(Offset, Count: Int64): Boolean;
+    function Seek(Offset: QuadWord; Origin: LongWord): QuadWord;
+    function Unlock(Offset, Count: QuadWord): Boolean;
     function Write(const Data; Count: LongWord): LongWord; override;
   // properties
     property Handle: THandle read FHandle;
@@ -75,6 +75,41 @@ type
   TFileStream = THandleStream;
   TStdStream = THandleStream;
 
+  TFileMapping = class
+  private
+    FHandle: THandle;
+  public
+    constructor Create(hFile: THandle; Protect: LongWord; Size: QuadWord = 0;
+      MappingName: PWideChar = nil); overload;
+    constructor Create(MappingName: PWideChar; Access: LongWord;
+      InheritHandle: Boolean = True); overload;
+
+    destructor Destroy; override;
+
+    function Open(hFile: THandle; Protect: LongWord; Size: QuadWord = 0;
+      MappingName: PWideChar = nil): Boolean; overload;
+    function Open(MappingName: PWideChar; Access: LongWord;
+      InheritHandle: Boolean = True): Boolean; overload;
+
+    function MapView(Access: LongWord; Offset: QuadWord = 0; Count: Cardinal = 0): Pointer;
+    procedure UnmapView(P: Pointer);
+  // properties
+    property Handle: THandle read FHandle;
+  end;
+
+  TFileStreamMapping = class(TFileMapping)
+  private
+    FStream: TFileStream;
+  public
+    constructor Create(FileName: PWideChar; Protect: LongWord; Size: QuadWord = 0;
+      MappingName: PWideChar = nil); overload;
+    destructor Destroy; override;
+    function Open(FileName: PWideChar; Protect: LongWord; Size: QuadWord = 0;
+      MappingName: PWideChar = nil): Boolean;
+  // properties
+    property Stream: TFileStream read FStream;
+  end;
+                                             
   TConsole = class(TObject)
   private
     FInput, FOutput: THandle;
@@ -116,22 +151,22 @@ type
 
   TPerformanceCounter = class
   private
-    FFrequency: Int64;
-    function GetValue: Int64;
+    FFrequency: QuadWord;
+    function GetValue: QuadWord;
   public
     constructor Create;
-    function ElapsedMilliseconds(StartValue: Int64): Double;
-    function MillisecondsBetween(Value1, Value2: Int64): Double;
+    function ElapsedMilliseconds(StartValue: QuadWord): Double;
+    function MillisecondsBetween(Value1, Value2: QuadWord): Double;
   // properties
-    property Frequency: Int64 read FFrequency;
-    property Value: Int64 read GetValue;
+    property Frequency: QuadWord read FFrequency;
+    property Value: QuadWord read GetValue;
   end;
-                                             
-{ Absent in Windows.pas }                     
 
-function GetFileSizeEx(hFile: THandle; var lpFileSize: Int64): LongBool; stdcall;
-function SetFilePointerEx(hFile: THandle; liDistanceToMove: Int64;
-  lpNewFilePointer: PInt64; dwMoveMethod: LongWord): LongBool; stdcall;
+{ Absent in Windows.pas }
+
+function GetFileSizeEx(hFile: THandle; var lpFileSize: QuadWord): LongBool; stdcall;
+function SetFilePointerEx(hFile: THandle; liDistanceToMove: QuadWord;
+  lpNewFilePointer: PQuadWord; dwMoveMethod: LongWord): LongBool; stdcall;
 
 implementation
 
@@ -140,10 +175,10 @@ uses
 
 { Absent in Windows.pas }
 
-function GetFileSizeEx(hFile: THandle; var lpFileSize: Int64): LongBool; stdcall;
+function GetFileSizeEx(hFile: THandle; var lpFileSize: QuadWord): LongBool; stdcall;
   external kernel32 name 'GetFileSizeEx';
-function SetFilePointerEx(hFile: THandle; liDistanceToMove: Int64;
-  lpNewFilePointer: PInt64; dwMoveMethod: LongWord): LongBool; stdcall;
+function SetFilePointerEx(hFile: THandle; liDistanceToMove: QuadWord;
+  lpNewFilePointer: PQuadWord; dwMoveMethod: LongWord): LongBool; stdcall;
   external kernel32 name 'SetFilePointerEx';
 
 { TReadableStream }
@@ -180,26 +215,25 @@ end;
 destructor THandleStream.Destroy;
 begin
   CloseHandle(FHandle);
-  inherited;
 end;
 
-function THandleStream.GetPosition: Int64;
+function THandleStream.GetPosition: QuadWord;
 begin
   // GetFileSizeEx available since Windows 2000
   if not SetFilePointerEx(FHandle, 0, @Result, FILE_CURRENT) then
     Result := -1;
 end;
 
-function THandleStream.GetSize: Int64;
+function THandleStream.GetSize: QuadWord;
 begin
   if not GetFileSizeEx(FHandle, Result) then
     Result := -1;
 end;
 
-function THandleStream.Lock(Offset, Count: Int64): Boolean;
+function THandleStream.Lock(Offset, Count: QuadWord): Boolean;
 begin
-  Result := LockFile(Handle, Int64Rec(Offset).Lo, Int64Rec(Offset).Hi,
-    Int64Rec(Count).Lo, Int64Rec(Count).Hi);
+  Result := LockFile(Handle, QuadRec(Offset).Lo, QuadRec(Offset).Hi,
+    QuadRec(Count).Lo, QuadRec(Count).Hi);
 end;
 
 function THandleStream.Open(FileName: PWideChar; Access, Creation,
@@ -217,21 +251,21 @@ begin
   ReadFile(FHandle, Data, Count, Result, nil);
 end;
 
-function THandleStream.Seek(Offset: Int64; Origin: LongWord): Int64;
+function THandleStream.Seek(Offset: QuadWord; Origin: LongWord): QuadWord;
 begin
   // SetFilePointerEx available since Windows 2000
   if not SetFilePointerEx(FHandle, Offset, @Result, Origin) then
     Result := -1;
 end;
 
-procedure THandleStream.SetPosition(Value: Int64);
+procedure THandleStream.SetPosition(Value: QuadWord);
 begin
   SetFilePointerEx(FHandle, Value, nil, FILE_BEGIN);
 end;
 
-procedure THandleStream.SetSize(Value: Int64);
+procedure THandleStream.SetSize(Value: QuadWord);
 var
-  Pos: Int64;
+  Pos: QuadWord;
 begin
   Pos := GetPosition;
   try
@@ -242,16 +276,96 @@ begin
   end;
 end;
 
-function THandleStream.Unlock(Offset, Count: Int64): Boolean;
+function THandleStream.Unlock(Offset, Count: QuadWord): Boolean;
 begin
-  Result := UnlockFile(Handle, Int64Rec(Offset).Lo, Int64Rec(Offset).Hi,
-    Int64Rec(Count).Lo, Int64Rec(Count).Hi);
+  Result := UnlockFile(Handle, QuadRec(Offset).Lo, QuadRec(Offset).Hi,
+    QuadRec(Count).Lo, QuadRec(Count).Hi);
 end;
 
 function THandleStream.Write(const Data; Count: LongWord): Cardinal;
 begin
 {$IFDEF Tricks} System. {$ENDIF}
   WriteFile(FHandle, Data, Count, Result, nil);
+end;
+
+{ TFileMapping }
+
+constructor TFileMapping.Create(hFile: THandle; Protect: LongWord; Size: QuadWord;
+  MappingName: PWideChar);
+begin
+  if not Open(hFile, Protect, Size, MappingName) then
+    RaiseLastPlatformError;
+end;
+
+constructor TFileMapping.Create(MappingName: PWideChar; Access: LongWord;
+  InheritHandle: Boolean);
+begin
+  if not Open(MappingName, Access, InheritHandle) then
+    RaiseLastPlatformError;
+end;
+
+destructor TFileMapping.Destroy;
+begin
+  CloseHandle(FHandle);
+end;
+
+function TFileMapping.MapView(Access: LongWord; Offset: QuadWord; Count: Cardinal): Pointer;
+begin
+  Result := MapViewOfFile(FHandle, Access, QuadRec(Offset).Hi, QuadRec(Offset).Lo, Count);
+end;
+
+function TFileMapping.Open(hFile: THandle; Protect: LongWord; Size: QuadWord;
+  MappingName: PWideChar): Boolean;
+begin
+  if FHandle <> 0 then
+    CloseHandle(FHandle);
+  FHandle := CreateFileMappingW(hFile, nil, Protect, QuadRec(Size).Hi, QuadRec(Size).Lo,
+    MappingName);
+  Result := FHandle <> 0;
+end;
+
+function TFileMapping.Open(MappingName: PWideChar; Access: LongWord;
+  InheritHandle: Boolean): Boolean;
+begin
+  if FHandle <> 0 then
+    CloseHandle(FHandle);
+  FHandle := OpenFileMappingW(Access, InheritHandle, MappingName);
+  Result := FHandle <> 0;
+end;
+
+procedure TFileMapping.UnmapView(P: Pointer);
+begin
+  UnmapViewOfFile(P);
+end;
+
+{ TFileStreamMapping }
+
+constructor TFileStreamMapping.Create(FileName: PWideChar; Protect: LongWord;
+  Size: QuadWord; MappingName: PWideChar);
+begin
+  FStream := TFileStream.Create;
+  if not Open(FileName, Protect, Size, MappingName) then
+    RaiseLastPlatformError;
+end;
+
+destructor TFileStreamMapping.Destroy;
+begin
+  FStream.Free;
+  inherited;
+end;
+
+function TFileStreamMapping.Open(FileName: PWideChar; Protect: LongWord;
+  Size: QuadWord; MappingName: PWideChar): Boolean;
+const
+  ReadWrite: array[Boolean] of LongWord = (GENERIC_READ, GENERIC_WRITE);
+  Existing: array[Boolean] of LongWord = (OPEN_EXISTING, TRUNCATE_EXISTING);
+var
+  CanWrite: Boolean;
+begin
+  CanWrite := ((Protect and PAGE_READWRITE) <> 0) or
+    ((Protect and PAGE_EXECUTE_READWRITE) <> 0);
+  Result := FStream.Open(FileName, ReadWrite[CanWrite], Existing[CanWrite]) and
+    inherited Open(FStream.Handle, Protect, Size, MappingName);
 end;
 
 { TConsole }
@@ -373,18 +487,18 @@ begin
     RaiseLastPlatformError;
 end;
 
-function TPerformanceCounter.ElapsedMilliseconds(StartValue: Int64): Double;
+function TPerformanceCounter.ElapsedMilliseconds(StartValue: QuadWord): Double;
 begin
   Result := GetValue - StartValue / FFrequency;
 end;
 
-function TPerformanceCounter.GetValue: Int64;
+function TPerformanceCounter.GetValue: QuadWord;
 begin
   if not QueryPerformanceCounter(Result) then
     RaiseLastPlatformError;
 end;
 
-function TPerformanceCounter.MillisecondsBetween(Value1, Value2: Int64): Double;
+function TPerformanceCounter.MillisecondsBetween(Value1, Value2: QuadWord): Double;
 begin
   Result := (Value2 - Value1) / FFrequency;
 end;
