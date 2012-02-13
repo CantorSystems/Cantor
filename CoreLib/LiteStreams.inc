@@ -11,29 +11,32 @@ type
   private
     FHandle: THandle;
   protected
-    function GetPosition: Int64;
-    function GetSize: Int64;
-    procedure SetPosition(Value: Int64);
-    procedure SetSize(Value: Int64);
+    function GetPosition: QuadWord;
+    function GetSize: QuadWord;
+    procedure SetPosition(Value: QuadWord);
+    procedure SetSize(Value: QuadWord);
   public
-    constructor Create(FileName: PWideChar; Access, Creation: LongWord;
-      Share: LongWord = FILE_SHARE_READ; Attributes: LongWord = FILE_ATTRIBUTE_NORMAL); 
+    constructor Create(FileName: PWideChar; Options: TCreateFileOptions;
+      Attributes: LongWord = FILE_ATTRIBUTE_NORMAL); overload;
     destructor Destroy; override;
-    function Lock(Offset, Count: Int64): Boolean;
-    function Open(FileName: PWideChar; Access, Creation: LongWord;
-      Share: LongWord = FILE_SHARE_READ; Attributes: LongWord = FILE_ATTRIBUTE_NORMAL): Boolean;
+
+    function Open(FileName: PWideChar; Options: TCreateFileOptions;
+      Attributes: LongWord = FILE_ATTRIBUTE_NORMAL): Boolean; overload;
+
+    function Seek(Offset: QuadWord; Origin: LongWord): QuadWord;
     function Read(var Data; Count: LongWord): Cardinal;
     procedure ReadBuffer(var Data; Count: LongWord);
-    function Seek(Offset: Int64; Origin: LongWord): Int64;
-    function Unlock(Offset, Count: Int64): Boolean;
-    function Write(const Data; Count: LongWord): LongWord; 
+    function Write(const Data; Count: LongWord): LongWord;
     procedure WriteBuffer(const Data; Count: LongWord);
+
+    function Lock(Offset, Count: QuadWord): Boolean;
+    function Unlock(Offset, Count: QuadWord): Boolean;
   // properties
     property Handle: THandle read FHandle;
-    property Position: Int64 read GetPosition write SetPosition;
-    property Size: Int64 read GetSize write SetSize;
+    property Position: QuadWord read GetPosition write SetPosition;
+    property Size: QuadWord read GetSize write SetSize;
   end;
 
   TReadableStream = THandleStream;
-  TWriteableStream = THandleStream;
+  TWritableStream = THandleStream;
   

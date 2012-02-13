@@ -17,10 +17,35 @@ type
   TMutableObject = class;
   TNotifyEvent = procedure(Sender: TMutableObject) of object;
 
-  TMutableObject = class
-  end;
+  TObjectState = (osConstruction, osLive, osDestruction);
 
-//  TObjectState = (osCreating, osLive, osDestroying);
+  TMutableObject = class
+  private
+    FObjectState: TObjectState;
+    FUpdateCount: Integer;
+    FBeforeUpdate, FAfterUpdate: TNotifyEvent;
+  protected
+    procedure DoBeforeUpdate; virtual;
+    procedure DoAfterUpdate; virtual;
+  public
+    destructor Destroy; override;
+    procedure AfterConstruction; override;
+    procedure BeforeDestruction; override;
+
+    procedure BeginConsistentRead;
+    procedure EndConsistentRead; virtual;
+    function TryConsistentRead: Boolean; virtual;
+
+    procedure BeginUpdate;
+    procedure EndUpdate; virtual;
+    function TryUpdate: Boolean; virtual;
+
+  // properties
+    property ObjectState: TObjectState read FObjectState;
+  // events
+    property BeforeUpdate: TNotifyEvent read FBeforeUpdate write FBeforeUpdate;
+    property AfterUpdate: TNotifyEvent read FAfterUpdate write FAfterUpdate;
+  end;
 
 {  TSharedObject = class(TObject, IInterface)
   private
@@ -103,6 +128,107 @@ begin
   inherited Create(sIndexOutOfBounds, [Lo, Hi, @ClassName, Idx]);
   FObj := Obj;
   FIndex := Idx;
+end;
+
+{ TMutableObject }
+
+destructor TMutableObject.Destroy;
+begin
+  EndUpdate;
+end;
+
+procedure TMutableObject.AfterConstruction;
+begin
+  Inc(FObjectState);
+end;
+
+procedure TMutableObject.BeforeDestruction;
+begin
+  Inc(FObjectState);
+  BeginUpdate;
+end;
+
+procedure TMutableObject.DoBeforeUpdate;
+begin
+  if Assigned(FBeforeUpdate) then
+    if FObjectState = osLive then
+      FBeforeUpdate(Self)
+    else
+      FBeforeUpdate(nil);
+end;
+
+procedure TMutableObject.DoAfterUpdate;
+begin
+  if Assigned(FAfterUpdate) then
+    if FObjectState = osLive then
+      FAfterUpdate(Self)
+    else
+      FAfterUpdate(nil);
+end;
+
+function TMutableObject.TryConsistentRead: Boolean;
+asm
+        MOV ECX, EAX
+        XOR EAX, EAX
+        MOV EDX, EAX
+        DEC EDX
+   LOCK XADD [ECX].FUpdateCount, EDX
+        JNS @@rollback
+        INC EAX
+        RET
+@@rollback:
+        MOV EDX, EAX
+        INC EDX
+   LOCK XADD [ECX].FUpdateCount, EDX
+@@exit:
+end;
+
+procedure TMutableObject.BeginConsistentRead;
+begin
+  if not TryConsistentRead then
+    raise ESharingViolation.Create(Self, opConsistentRead);
+end;
+
+procedure TMutableObject.EndConsistentRead;
+asm
+        XOR EDX, EDX
+        INC EDX
+   LOCK XADD [EAX].FUpdateCount, EDX
+end;
+
+function TMutableObject.TryUpdate: Boolean;
+asm
+        MOV ECX, EAX
+        XOR EAX, EAX
+        MOV EDX, EAX
+        INC EDX
+   LOCK XADD [ECX].FUpdateCount, EDX
+        JG @@event
+        MOV EDX, EAX
+        DEC EDX
+   LOCK XADD [ECX].FUpdateCount, EDX
+        RET
+@@event:
+        MOV EAX, ECX
+        CALL DoBeforeUpdate
+        XOR EAX, EAX
+        INC EAX
+end;
+
+procedure TMutableObject.BeginUpdate;
+begin
+  if not TryUpdate then
+    raise ESharingViolation.Create(Self, opSyncUpdate);
+end;
+
+procedure TMutableObject.EndUpdate;
+asm
+        XOR EDX, EDX
+        DEC EDX
+   LOCK XADD [EAX].FUpdateCount, EDX
+        JNZ @@exit
+        CALL DoAfterUpdate
+@@exit:
 end;
 
 { TSharedObject }
