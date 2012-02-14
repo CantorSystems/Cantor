@@ -54,14 +54,15 @@ type
   private
     FRefCount: Integer;
   protected
-    procedure DoBeforeUpdate; override;
-    procedure DoAfterUpdate; override;
   {$IFDEF Interfaces}
     function _AddRef: Integer; stdcall;
     function _Release: Integer; stdcall;
     function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
   {$ENDIF}
   public
+    destructor Destroy; override;
+    procedure BeforeDestruction; override;
+
     procedure Lock;
     procedure Unlock; virtual;
     function TryLock: Boolean; virtual;
@@ -70,17 +71,17 @@ type
     procedure Release(AndFree: Boolean = True);
   end;
 
-  TSharedOperation = (opConsistentRead, opSyncUpdate, opExclusiveLock);
+  TSharingViolation = (svConsistentRead, svSyncUpdate, svExclusiveLock, svDestroy);
 
   ESharingViolation = class(Exception)
   private
     FObj: TObject;
-    FOperation: TSharedOperation;
+    FOperation: TSharingViolation;
   public
-    constructor Create(Obj: TObject; Op: TSharedOperation);
+    constructor Create(Obj: TObject; Op: TSharingViolation);
   // properties
     property Obj: TObject read FObj;
-    property Operation: TSharedOperation read FOperation;
+    property Operation: TSharingViolation read FOperation;
   end;
 
   EIndex = class(Exception)
@@ -88,7 +89,7 @@ type
     FObj: TObject;
     FIndex: Integer;
   public
-    constructor Create(Obj: TObject; Idx, Lo, Hi: Integer); 
+    constructor Create(Obj: TObject; Idx, Min, Max: Integer); 
   // properties
     property Obj: TObject read FObj;
     property Index: Integer read FIndex;
@@ -115,10 +116,10 @@ end;
 
 { ESharingViolation }
 
-constructor ESharingViolation.Create(Obj: TObject; Op: TSharedOperation);
+constructor ESharingViolation.Create(Obj: TObject; Op: TSharingViolation);
 const
-  Operations: array[TSharedOperation] of PLegacyChar =
-    (sConsistentRead, sSyncUpdate, sExclusiveLock);
+  Operations: array[TSharingViolation] of PLegacyChar =
+    (sConsistentRead, sSyncUpdate, sExclusiveLock, sDestroy);
 var
   ClassName: TClassName;
 begin
@@ -195,7 +196,7 @@ end;
 procedure TMutableObject.BeginConsistentRead;
 begin
   if not TryConsistentRead then
-    raise ESharingViolation.Create(Self, opConsistentRead);
+    raise ESharingViolation.Create(Self, svConsistentRead);
 end;
 
 procedure TMutableObject.EndConsistentRead;
@@ -227,7 +228,7 @@ end;
 procedure TMutableObject.BeginUpdate;
 begin
   if not TryUpdate then
-    raise ESharingViolation.Create(Self, opSyncUpdate);
+    raise ESharingViolation.Create(Self, svSyncUpdate);
 end;
 
 procedure TMutableObject.EndUpdate;
@@ -242,34 +243,38 @@ end;
 
 { TSharedObject }
 
-procedure TSharedObject.DoBeforeUpdate;
+destructor TSharedObject.Destroy;
 begin
-  if FObjectState = osDestruction then
-    Lock;
+  Unlock;
   inherited;
 end;
 
-procedure TSharedObject.DoAfterUpdate;
+procedure TSharedObject.BeforeDestruction;
 begin
+  Lock;
   inherited;
-  if FObjectState = osDestruction then
-    Unlock;
 end;
 
 function TSharedObject.TryLock: Boolean;
 asm
         MOV EDX, -2
    LOCK XADD [EAX].FRefCount, EDX
-        JS TryUpdate
+        JNS @@rollback
+        CALL TryUpdate
+        TEST EAX, EAX
+        JNZ @@exit
+@@rollback:
         MOV EDX, 2
    LOCK XADD [EAX].FRefCount, EDX
         XOR EAX, EAX
+@@exit:
 end;
 
 procedure TSharedObject.Lock;
 begin
   if not TryLock then
-    raise ESharingViolation.Create(Self, opExclusiveLock);
+    raise ESharingViolation.Create(Self,
+      TSharingViolation(Byte(svExclusiveLock) + Byte(FObjectState <> osLive)));
 end;
 
 procedure TSharedObject.Unlock;

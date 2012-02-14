@@ -54,6 +54,7 @@ const
   sConsistentRead = 'consistent read';
   sSyncUpdate = 'syncronized update';
   sExclusiveLock = 'exclusive lock';
+  sDestroy = 'destroy';
   sSharingViolation = 'Sharing violation while trying to %s of %hs object';
 
   sIndexOutOfBounds = 'Index out of bounds %i..%i on %hs[%i]';

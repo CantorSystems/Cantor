@@ -44,16 +44,16 @@ type
     property Size write SetSize;
   end;
 
-  TFileAccess = set of (fiShareRead, fiShareWrite, fiShareDelete, // ordered
-    fiWrite, fiKeep, fiOverwrite, fiDeleteOnClose, fiSequentialScan,
-    fiRandomAccess, fiNoBuffering, fiOverlapped, fiWriteThrough);
+  TFileAccess = set of (faShareRead, faShareWrite, faShareDelete, // ordered
+    faWrite, faKeep, faOverwrite, faDeleteOnClose, faSequential, faRandom,
+    faNoBuffering, faOverlapped, faWriteThrough);
   TFileAttributes = set of (faReadOnly, faHidden, faSystem, faVolumeLabel,
     faDirectory, faArchive, faNormal, faTemporary, faSparsed, faReparsePoint,
     faCompressed, faOffline, faNonIndexable, faEncrypted, fa0x8000, faVirtual);
 
 const
-  fiRead = [fiShareRead, fiSequentialScan];
-  fiRewrite = [fiWrite, fiOverwrite, fiShareRead];
+  fiRead = [faShareRead, faSequential];
+  fiRewrite = [faWrite, faOverwrite, faShareRead];
 
 type
   THandleStream = class(TWritableStream)
@@ -264,12 +264,12 @@ var
   ReadWrite, Creation, Sharing: LongWord;
   NewHandle: THandle;
 begin
-  if fiWrite in Access then
+  if faWrite in Access then
   begin
     ReadWrite := GENERIC_WRITE;
-    if fiOverwrite in Access then
+    if faOverwrite in Access then
       Creation := CREATE_ALWAYS
-    else if fiKeep in Access then
+    else if faKeep in Access then
       Creation := CREATE_NEW
     else
       Creation := OPEN_ALWAYS;
@@ -280,7 +280,7 @@ begin
     Creation := OPEN_EXISTING;
   end;
   Sharing := Word(Access) and SharingMask;
-  Access := Access * [fiDeleteOnClose..fiWriteThrough];
+  Access := Access * [faDeleteOnClose..faWriteThrough];
   NewHandle := CreateFileW(FileName, ReadWrite, Sharing, nil, Creation,
     Word(Attributes) or (PWord(@Access)^ shl 20), 0);
   if NewHandle <> INVALID_HANDLE_VALUE then
