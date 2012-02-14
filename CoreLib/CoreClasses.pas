@@ -4,6 +4,9 @@
     Non-platform general classes
 
     Copyright (c) 2008-2012 The Unified Environment Laboratory
+
+    Conditional defines:
+      * Interfaces -- IInterface implementation
 *)
 
 unit CoreClasses;
@@ -47,33 +50,25 @@ type
     property AfterUpdate: TNotifyEvent read FAfterUpdate write FAfterUpdate;
   end;
 
-{  TSharedObject = class(TObject, IInterface)
+  TSharedObject = class(TMutableObject, IInterface)
   private
-    FRefCount, FUpdateCount: Integer;
-//    FObjectState: TObjectState;
-    FOnChanging, FOnChanged: TNotifyEvent;
+    FRefCount: Integer;
   protected
-    procedure Changing; virtual;
-    procedure Changed; virtual;
-  // IInterface
+    procedure DoBeforeUpdate; override;
+    procedure DoAfterUpdate; override;
+  {$IFDEF Interfaces}
     function _AddRef: Integer; stdcall;
     function _Release: Integer; stdcall;
     function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
+  {$ENDIF}
   public
-    destructor Destroy; override;
-    class function NewInstance: TObject; override;
-    procedure AfterConstruction; override;
-    procedure BeforeDestruction; override;
-    function BeginUpdate: Integer;
-    function EndUpdate: Integer;
-    function Lock: Boolean;
-    function Ref: Integer;
-    function Release: Integer;
-    function Unlock: Boolean;
-  // events
-    property OnChanging: TNotifyEvent read FOnChanging write FOnChanging;
-    property OnChanged: TNotifyEvent read FOnChanged write FOnChanged;
-  end;}
+    procedure Lock;
+    procedure Unlock; virtual;
+    function TryLock: Boolean; virtual;
+
+    function Ref: TSharedObject;
+    procedure Release(AndFree: Boolean = True);
+  end;
 
   TSharedOperation = (opConsistentRead, opSyncUpdate, opExclusiveLock);
 
@@ -99,10 +94,24 @@ type
     property Index: Integer read FIndex;
   end;
 
+{ Core services }
+
+procedure ReleaseAndNil(var Obj);
+
 implementation
 
 uses
   CoreConsts;
+
+{ Core services }
+
+procedure ReleaseAndNil(var Obj);
+asm
+        XOR EDX, EDX
+        XCHG [EAX], EDX  // XCHG enforces LOCK
+        MOV EAX, EDX
+        JMP TSharedObject.Release
+end;
 
 { ESharingViolation }
 
@@ -233,140 +242,100 @@ end;
 
 { TSharedObject }
 
-{destructor TSharedObject.Destroy;
-asm
-   LOCK DEC [EAX].FUpdateCount
-        JNZ @@error
-        PUSH EAX
-        CALL Updated
-        POP EAX
-        CMP [EAX].FRefCount, 0
-        JNE @@error
-        RET
-@@error:
-        MOV EAX, reInvalidPtr
-        JMP System.Error
-end;
-
-procedure TSharedObject.AfterConstruction;
-asm
-//   LOCK INC [EAX].FRefCount
-   LOCK INC [EAX].FObjectState
-        JMP EndUpdate
-end;
-
-procedure TSharedObject.BeforeDestruction;
-asm
-   LOCK INC [EAX].FObjectState
-//   LOCK INC [EAX].FUpdateCount
-end;
-
-function TSharedObject.BeginUpdate: Integer;
-asm
-        TEST EAX, EAX
-        JZ @@exit
-        MOV EDX, 1
-   LOCK XADD [EAX].FUpdateCount, EDX
-        MOV EAX, EDX
-@@exit:
-end;
-
-function TSharedObject.EndUpdate: Integer;
-asm
-        TEST EAX, EAX
-        JZ @@exit
-        MOV EDX, EAX
-        MOV EAX, -1
-   LOCK XADD [EDX].FUpdateCount, EAX
-        DEC EAX
-        JNZ @@exit
-        MOV EAX, EDX
-        CALL Updated
-        XOR EAX, EAX
-@@exit:
-end;
-
-procedure TSharedObject.Changing;
+procedure TSharedObject.DoBeforeUpdate;
 begin
-  if Assigned(FOnChanging) then
-    FOnChanging(Self);
+  if FObjectState = osDestruction then
+    Lock;
+  inherited;
 end;
 
-procedure TSharedObject.Changed;
+procedure TSharedObject.DoAfterUpdate;
 begin
-  if Assigned(FOnChanged) then
-    FOnChanged(Self);
+  inherited;
+  if FObjectState = osDestruction then
+    Unlock;
 end;
 
-function TSharedObject.Lock: Boolean;
+function TSharedObject.TryLock: Boolean;
 asm
-        TEST EAX, EAX
-        JZ @@exit
-        CALL BeginUpdate
-        TEST EAX, EAX
-        SETNZ AL
-@@exit:
-end;
-
-class function TSharedObject.NewInstance: TObject;
-asm
-        CALL TObject.NewInstance
-        INC [EAX].FUpdateCount
-        DEC [EAX].FRefCount
-end;
-
-function TSharedObject.Ref: Integer;
-asm
-        TEST EAX, EAX
-        JZ @@exit
-        MOV EDX, 1
+        MOV EDX, -2
    LOCK XADD [EAX].FRefCount, EDX
-        MOV EAX, EDX
-@@exit:
-end;
-
-function TSharedObject.Release: Integer;
-asm
-        TEST EAX, EAX
-        JZ @@exit
-        MOV EDX, EAX
-        MOV EAX, -1
-   LOCK XADD [EDX].FRefCount, EAX
-        DEC EAX
-        MOV ECX, EAX
-        OR ECX, [EDX].FUpdateCount
-        JNZ @@exit
-        MOV EAX, EDX
-        CALL Destroy
+        JS TryUpdate
+        MOV EDX, 2
+   LOCK XADD [EAX].FRefCount, EDX
         XOR EAX, EAX
-@@exit:
 end;
 
-function TSharedObject.Unlock: Boolean;
+procedure TSharedObject.Lock;
+begin
+  if not TryLock then
+    raise ESharingViolation.Create(Self, opExclusiveLock);
+end;
+
+procedure TSharedObject.Unlock;
+asm
+        MOV EDX, 2
+   LOCK XADD [EAX].FRefCount, EDX
+        JNS EndUpdate
+end;
+
+function TSharedObject.Ref: TSharedObject;
 asm
         TEST EAX, EAX
         JZ @@exit
-        CALL EndUpdate
-        TEST EAX, EAX
-        SETNZ AL
+        XOR EDX, EDX
+        INC EDX
+   LOCK XADD [EAX].FRefCount, EDX
 @@exit:
-end;}
+end;
 
-{ IInterface }
+procedure TSharedObject.Release(AndFree: Boolean);
+asm
+        TEST EAX, EAX
+        JZ @@exit
+        XOR ECX, ECX
+        DEC ECX
+   LOCK XADD [EAX].FRefCount, ECX
+        JNZ @@exit
+        TEST EDX, EDX
+        JNZ Free
+@@exit:
+end;
 
-{function TSharedObject._AddRef: Integer;
-begin
-  Result := 0; // TODO
+{$IFDEF Interfaces}
+function TSharedObject._AddRef: Integer;
+asm
+        MOV EDX, [EBP]
+        JZ @@exit
+        XOR EAX, EAX
+        INC EAX
+   LOCK XADD [EDX].FRefCount, EAX
+        INC EAX
+@@exit:
 end;
 
 function TSharedObject._Release: Integer;
-begin
-  Result := 0; // TODO
+asm
+        MOV EDX, [EBP]
+        XOR EAX, EAX
+        DEC EAX
+   LOCK XADD [EDX].FRefCount, EAX
+        DEC EAX
+        JNZ @@exit
+        PUSH EAX
+        MOV EAX, EDX
+        CALL Free
+        POP EAX
+@@exit:
 end;
 
 function TSharedObject.QueryInterface(const IID: TGUID; out Obj): HResult;
 begin
-  Result := E_NOINTERFACE; // TODO
-end;}
+  if GetInterface(IID, Obj) then
+    Result := 0
+  else
+    Result := E_NOINTERFACE;
+end;
+{$ENDIF}
 
 end.
