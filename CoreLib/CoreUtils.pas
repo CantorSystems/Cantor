@@ -163,6 +163,7 @@ function WideStrScan(Where: PWideChar; What: WideChar; Count: Cardinal): PWideCh
 function QuadStrScan(Where: PQuadChar; What: QuadChar; Count: Cardinal): PQuadChar;
 
 function FindCharBlock(Source: QuadChar; PrevBlock: TCharBlock = cbUnknown): TCharBlock;
+function TranslateCodePage(Source: Word): Word;
 
 { LocalFree finalization required }
 
@@ -711,6 +712,18 @@ begin
       Exit;
   end;
   Result := cbNonUnicode;
+end;
+
+function TranslateCodePage(Source: Word): Word;
+begin
+  case Source of
+    CP_ACP:
+      Result := GetACP;
+    CP_OEMCP:
+      Result := GetOEMCP;
+  else
+    Result := Source;
+  end;
 end;
 
 { LocalFree finalization required }

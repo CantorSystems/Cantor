@@ -29,22 +29,19 @@ type
   TStringOptions = set of soBigEndian..soAttachBuffer;
   TCodePageOptions = set of soAttachBuffer..soDetectCharSet;
 
-  TEncodeOption = (eoAllowNonUnicode, eoBigEndian, eoForceInvalid, eoRangeBlocks);
+  TConvertOption = (coCase, coKana, coPunctuation, coNonSpace, coWidth, coHanzi, coTurkic,
+    coDiacritics, coComposition, coForceInvalid, coBigEndian, coNoSurrogates, coRangeBlocks);
 const
-  eoLatin1 = eoBigEndian;
+  coLatin1 = coBigEndian;
+  coAllowNonUnicode = coNoSurrogates;
+  coCESU8 = coNoSurrogates;
+  coModifiedUTF8 = coBigEndian;
 
 type
-  TEncodeLegacy = set of eoForceInvalid..eoForceInvalid;
-  TEncodeUTF16 = set of eoBigEndian..eoForceInvalid;
-  TEncodeUTF32 = set of eoAllowNonUnicode..eoForceInvalid;
-  TEncodeLatin = set of eoLatin1..eoForceInvalid; // same as TEncodeUTF16
-
-  // CESU-8: encode surrogates as is
-  // Modified UTF-8: CESU-8 plus encode #0 as ($C0, $80)
-  TUTF8Compliance = (cpRegular, cpCESU8, cpModified);
-
-  TIgnoreOptions = set of (ioCase, ioComposition, ioDiacritics, ioHanzi, ioKana,
-    ioNonSpace, ioPunctuation, ioTurkic, ioWidth);
+  TEncodeLegacy = set of coNonSpace..coForceInvalid;
+  TEncodeEndian = set of coForceInvalid..coNoSurrogates;
+  TEncodeLatin = set of coForceInvalid..coLatin1;
+  TEncodeUTF8 = set of coForceInvalid..coCESU8;
 
   TNormalForm = (NFC, NFD, NFKC, NFKD);
 
@@ -66,56 +63,13 @@ function GetCPInfoEx(CodePage, Flags: LongWord; var CPInfoEx: TCPInfoEx): BOOL; 
 
 type
   TCodePage = class(TSharedObject)
+  private
+    FNumber: Word;
+  {$IFNDEF Lite}
+    FBlocks: TUnicodeBlocks;
+  {$ENDIF}
   public
     class function MaxCharBytes: Byte; virtual; abstract;
-
-  {$IFDEF Latin}
-    function EstimateDecodeLatin(Source: PLegacyChar; Count: Cardinal;
-      Options: TEncodeLegacy = []): Cardinal; overload; virtual; abstract;
-    function EstimateDecodeLatin(Source: PLegacyChar;
-      Options: TEncodeLegacy = []): Cardinal; overload;
-  {$ENDIF}
-
-    function EstimateDecodeUTF8(Source: PLegacyChar; Count: Cardinal;
-      Options: TEncodeLegacy = []): Cardinal; overload; virtual; abstract;
-    function EstimateDecodeUTF8(Source: PLegacyChar;
-      Options: TEncodeLegacy = []): Cardinal; overload;
-
-    function EstimateDecodeUTF16(Source: PWideChar; Count: Cardinal;
-      Options: TEncodeLegacy = []): Cardinal; overload; virtual; abstract;
-    function EstimateDecodeUTF16(Source: PWideChar;
-      Options: TEncodeLegacy = []): Cardinal; overload;
-
-  {$IFDEF UTF32}
-    function EstimateDecodeUTF32(Source: PQuadChar; Count: Cardinal;
-      Options: TEncodeLegacy = []): Cardinal; overload; virtual; abstract;
-    function EstimateDecodeUTF32(Source: PQuadChar;
-      Options: TEncodeLegacy = []): Cardinal; overload;
-  {$ENDIF}
-
-  {$IFDEF Latin}
-    function EstimateEncodeLatin(Source: PLegacyChar; Count: Cardinal;
-      Options: TEncodeLatin = []): Cardinal; overload; virtual; abstract;
-    function EstimateEncodeLatin(Source: PLegacyChar;
-      Options: TEncodeLatin = []): Cardinal; overload;
-  {$ENDIF}
-
-    function EstimateEncodeUTF8(Source: PLegacyChar; Count: Cardinal; Options: TEncodeLegacy = [];
-      Compliance: TUTF8Compliance = cpRegular): Cardinal; overload; virtual; abstract;
-    function EstimateEncodeUTF8(Source: PLegacyChar; Options: TEncodeLegacy = [];
-      Compliance: TUTF8Compliance = cpRegular): Cardinal; overload;
-
-    function EstimateEncodeUTF16(Source: PLegacyChar; Count: Cardinal;
-      Options: TEncodeUTF16 = []): Cardinal; overload; virtual; abstract;
-    function EstimateEncodeUTF16(Source: PLegacyChar;
-      Options: TEncodeUTF16 = []): Cardinal; overload;
-
-  {$IFDEF UTF32}
-    function EstimateEncodeUTF32(Source: PLegacyChar; Count: Cardinal;
-      Options: TEncodeUTF32 = []): Cardinal; overload; virtual; abstract;
-    function EstimateEncodeUTF32(Source: PLegacyChar;
-      Options: TEncodeUTF32 = []): Cardinal; overload;
-  {$ENDIF}
 
   {$IFDEF Latin}
     function DecodeLatin(Dest: PLegacyChar; DestCount: Cardinal; Source: PLegacyChar;
@@ -149,21 +103,26 @@ type
   {$ENDIF}
 
     function EncodeUTF8(Dest: PLegacyChar; DestCount: Cardinal; Source: PLegacyChar;
-      SourceCount: Cardinal; Options: TEncodeLegacy = [];
-      Compliance: TUTF8Compliance = cpRegular): Cardinal; overload; virtual; abstract;
-    function EncodeUTF8(Dest: PLegacyChar; DestCount: Cardinal; Source: PLegacyChar;
-      Options: TEncodeLegacy = []; Compliance: TUTF8Compliance = cpRegular): Cardinal; overload;
+      SourceCount: Cardinal; Options: TEncodeUTF8 = []): Cardinal; overload; virtual; abstract;
+    function EncodeUTF8(Dest: PLegacyChar; DestCount: Cardinal;
+      Source: PLegacyChar; Options: TEncodeUTF8 = []): Cardinal; overload;
 
     function EncodeUTF16(Dest: PWideChar; DestCount: Cardinal; Source: PLegacyChar;
-      SourceCount: Cardinal; Options: TEncodeUTF16 = []): Cardinal; overload; virtual; abstract;
+      SourceCount: Cardinal; Options: TEncodeEndian = []): Cardinal; overload; virtual; abstract;
     function EncodeUTF16(Dest: PWideChar; DestCount: Cardinal;
-      Source: PLegacyChar; Options: TEncodeUTF16 = []): Cardinal; overload;
+      Source: PLegacyChar; Options: TEncodeEndian= []): Cardinal; overload;
 
   {$IFDEF UTF32}
     function EncodeUTF32(Dest: PQuadChar; DestCount: Cardinal; Source: PLegacyChar;
-      SourceCount: Cardinal; Options: TEncodeUTF32 = []): Cardinal; overload; virtual; abstract;
+      SourceCount: Cardinal; Options: TEncodeEndian = []): Cardinal; overload; virtual; abstract;
     function EncodeUTF32(Dest: PQuadChar; DestCount: Cardinal; Source: PLegacyChar;
-      Options: TEncodeUTF32 = []): Cardinal; overload;
+      Options: TEncodeEndian = []): Cardinal; overload;
+  {$ENDIF}
+
+  // properties
+    property Number: Word read FNumber;
+  {$IFNDEF Lite}
+    property Blocks: TUnicodeBlocks read FBlocks;
   {$ENDIF}
   end;
 
@@ -174,12 +133,10 @@ type
 
   TMemoryCodePage = class(TCodePage)
   private
-    FNumber: Word;
   {$IFDEF Lite}
     FName: PWideChar;
   {$ELSE}
     FName: TWideString;
-    FBlocks: TUnicodeBlocks;
   {$ENDIF}
     FSingleByteMap: TSingleByteMap;
     FWideMapLo, FWideMapHi: WideChar;
@@ -191,11 +148,7 @@ type
     destructor Destroy; override;
 
   // properties
-    property Number: Word read FNumber;
     property Name: {$IFDEF Lite} PWideChar {$ELSE} TWideString {$ENDIF} read FName;
-  {$IFNDEF Lite}
-    property Blocks: TUnicodeBlocks read FBlocks;
-  {$ENDIF}
 
     property WideMapCount: Word read GetWideMapCount;
     property WideMapLo: WideChar read FWideMapLo;
@@ -211,11 +164,6 @@ type
     class function MaxCharBytes: Byte; override;
 
   {$IFDEF Latin}
-    function EstimateDecodeLatin(Source: PLegacyChar; Count: Cardinal;
-      Options: TEncodeLegacy = []): Cardinal; override;
-    function EstimateEncodeLatin(Source: PLegacyChar; Count: Cardinal;
-      Options: TEncodeLatin = []): Cardinal; override;
-
     function DecodeLatin(Dest: PLegacyChar; DestCount: Cardinal; Source: PLegacyChar;
       SourceCount: Cardinal; Options: TEncodeLegacy = []): Cardinal; override;
     function EncodeLatin(Dest: PLegacyChar; DestCount: Cardinal; Source: PLegacyChar;
@@ -223,26 +171,11 @@ type
   {$ENDIF}
 
   {$IFDEF UTF32}
-    function EstimateDecodeUTF32(Source: PQuadChar; Count: Cardinal;
-      Options: TEncodeLegacy = []): Cardinal; override;
-    function EstimateEncodeUTF32(Source: PLegacyChar; Count: Cardinal;
-      Options: TEncodeUTF32 = []): Cardinal; override;
-
     function DecodeUTF32(Dest: PLegacyChar; DestCount: Cardinal; Source: PQuadChar;
       SourceCount: Cardinal; Options: TEncodeLegacy = []): Cardinal; override;
     function EncodeUTF32(Dest: PQuadChar; DestCount: Cardinal; Source: PLegacyChar;
-      SourceCount: Cardinal; Options: TEncodeUTF32 = []): Cardinal; override;
+      SourceCount: Cardinal; Options: TEncodeEndian = []): Cardinal; override;
   {$ENDIF}
-
-    function EstimateDecodeUTF8(Source: PLegacyChar; Count: Cardinal;
-      Options: TEncodeLegacy = []): Cardinal; override;
-    function EstimateDecodeUTF16(Source: PWideChar; Count: Cardinal;
-      Options: TEncodeLegacy = []): Cardinal; override;
-
-    function EstimateEncodeUTF8(Source: PLegacyChar; Count: Cardinal; Options: TEncodeLegacy = [];
-      Compliance: TUTF8Compliance = cpRegular): Cardinal; override;
-    function EstimateEncodeUTF16(Source: PLegacyChar; Count: Cardinal;
-      Options: TEncodeUTF16 = []): Cardinal; override;
 
     function DecodeUTF8(Dest: PLegacyChar; DestCount: Cardinal; Source: PLegacyChar;
       SourceCount: Cardinal; Options: TEncodeLegacy = []): Cardinal; override;
@@ -250,13 +183,14 @@ type
       SourceCount: Cardinal; Options: TEncodeLegacy = []): Cardinal; override;
 
     function EncodeUTF8(Dest: PLegacyChar; DestCount: Cardinal; Source: PLegacyChar;
-      SourceCount: Cardinal; Options: TEncodeLegacy = [];
-      Compliance: TUTF8Compliance = cpRegular): Cardinal; override;
+      SourceCount: Cardinal; Options: TEncodeUTF8 = []): Cardinal; override;
     function EncodeUTF16(Dest: PWideChar; DestCount: Cardinal; Source: PLegacyChar;
-      SourceCount: Cardinal; Options: TEncodeUTF16 = []): Cardinal; override;
+      SourceCount: Cardinal; Options: TEncodeEndian = []): Cardinal; override;
 
   // properties
+  {$WARNINGS OFF}
     property Map: TSingleByteMap read FSingleByteMap;
+  {$WARNINGS ON}
     property WideMap: PLegacyChar read FWideMap;
   end;
 
@@ -284,11 +218,6 @@ type
     class function MaxCharBytes: Byte; override;
 
   {$IFDEF Latin}
-    function EstimateDecodeLatin(Source: PLegacyChar; Count: Cardinal;
-      Options: TEncodeLegacy = []): Cardinal; override;
-    function EstimateEncodeLatin(Source: PLegacyChar; Count: Cardinal;
-      Options: TEncodeLatin = []): Cardinal; override;
-
     function DecodeLatin(Dest: PLegacyChar; DestCount: Cardinal; Source: PLegacyChar;
       SourceCount: Cardinal; Options: TEncodeLegacy = []): Cardinal; override;
     function EncodeLatin(Dest: PLegacyChar; DestCount: Cardinal; Source: PLegacyChar;
@@ -296,26 +225,11 @@ type
   {$ENDIF}
 
   {$IFDEF UTF32}
-    function EstimateDecodeUTF32(Source: PQuadChar; Count: Cardinal;
-      Options: TEncodeLegacy = []): Cardinal; override;
-    function EstimateEncodeUTF32(Source: PLegacyChar; Count: Cardinal;
-      Options: TEncodeUTF32 = []): Cardinal; override;
-
     function DecodeUTF32(Dest: PLegacyChar; DestCount: Cardinal; Source: PQuadChar;
       SourceCount: Cardinal; Options: TEncodeLegacy = []): Cardinal; override;
     function EncodeUTF32(Dest: PQuadChar; DestCount: Cardinal; Source: PLegacyChar;
-      SourceCount: Cardinal; Options: TEncodeUTF32 = []): Cardinal; override;
+      SourceCount: Cardinal; Options: TEncodeEndian = []): Cardinal; override;
   {$ENDIF}
-
-    function EstimateDecodeUTF8(Source: PLegacyChar; Count: Cardinal;
-      Options: TEncodeLegacy = []): Cardinal; override;
-    function EstimateDecodeUTF16(Source: PWideChar; Count: Cardinal;
-      Options: TEncodeLegacy = []): Cardinal; override;
-
-    function EstimateEncodeUTF8(Source: PLegacyChar; Count: Cardinal; Options: TEncodeLegacy = [];
-      Compliance: TUTF8Compliance = cpRegular): Cardinal; override;
-    function EstimateEncodeUTF16(Source: PLegacyChar; Count: Cardinal;
-      Options: TEncodeUTF16 = []): Cardinal; override;
 
     function DecodeUTF8(Dest: PLegacyChar; DestCount: Cardinal; Source: PLegacyChar;
       SourceCount: Cardinal; Options: TEncodeLegacy = []): Cardinal; override;
@@ -323,10 +237,9 @@ type
       SourceCount: Cardinal; Options: TEncodeLegacy = []): Cardinal; override;
 
     function EncodeUTF8(Dest: PLegacyChar; DestCount: Cardinal; Source: PLegacyChar;
-      SourceCount: Cardinal; Options: TEncodeLegacy = [];
-      Compliance: TUTF8Compliance = cpRegular): Cardinal; override;
+      SourceCount: Cardinal; Options: TEncodeUTF8 = []): Cardinal; override;
     function EncodeUTF16(Dest: PWideChar; DestCount: Cardinal; Source: PLegacyChar;
-      SourceCount: Cardinal; Options: TEncodeUTF16 = []): Cardinal; override;
+      SourceCount: Cardinal; Options: TEncodeEndian = []): Cardinal; override;
 
   // properties
     property SingleByteMap;
@@ -447,10 +360,6 @@ type
     property Options: TStringOptions read FOptions;
   end;
 
-{ Core services }
-
-function TranslateCodePage(Source: Word): Word;
-
 implementation
 
 uses
@@ -461,35 +370,9 @@ uses
 function GetCPInfoEx(CodePage, Flags: LongWord; var CPInfoEx: TCPInfoEx): BOOL; stdcall;
   external kernel32 name 'GetCPInfoExW';
 
-{ Core services }
-
-function TranslateCodePage(Source: Word): Word;
-begin
-  case Source of
-    CP_ACP:
-      Result := GetACP;
-    CP_OEMCP:
-      Result := GetOEMCP;
-  else
-    Result := Source;
-  end;
-end;
-
 { TCodePage }
 
 {$IFDEF Latin}
-function TCodePage.EstimateDecodeLatin(Source: PLegacyChar;
-  Options: TEncodeLegacy): Cardinal;
-begin
-  Result := EstimateDecodeLatin(Source, StrLen(Source), Options);
-end;
-
-function TCodePage.EstimateEncodeLatin(Source: PLegacyChar;
-  Options: TEncodeLatin): Cardinal;
-begin
-  Result := EstimateEncodeLatin(Source, StrLen(Source), Options);
-end;
-
 function TCodePage.DecodeLatin(Dest: PLegacyChar; DestCount: Cardinal;
   Source: PLegacyChar; Options: TEncodeLegacy): Cardinal;
 begin
@@ -504,18 +387,6 @@ end;
 {$ENDIF}
 
 {$IFDEF UTF32}
-function TCodePage.EstimateDecodeUTF32(Source: PQuadChar;
-  Options: TEncodeLegacy): Cardinal;
-begin
-  Result := EstimateDecodeUTF32(Source, QuadStrLen(Source), Options);
-end;
-
-function TCodePage.EstimateEncodeUTF32(Source: PLegacyChar;
-  Options: TEncodeUTF32): Cardinal;
-begin
-  Result := EstimateEncodeUTF32(Source, StrLen(Source), Options);
-end;
-
 function TCodePage.DecodeUTF32(Dest: PLegacyChar; DestCount: Cardinal;
   Source: PQuadChar; Options: TEncodeLegacy): Cardinal;
 begin
@@ -523,35 +394,11 @@ begin
 end;
 
 function TCodePage.EncodeUTF32(Dest: PQuadChar; DestCount: Cardinal;
-  Source: PLegacyChar; Options: TEncodeUTF32): Cardinal;
+  Source: PLegacyChar; Options: TEncodeEndian): Cardinal;
 begin
   Result := EncodeUTF32(Dest, DestCount, Source, StrLen(Source), Options);
 end;
 {$ENDIF}
-
-function TCodePage.EstimateDecodeUTF8(Source: PLegacyChar;
-  Options: TEncodeLegacy): Cardinal;
-begin
-  Result := EstimateDecodeUTF8(Source, StrLen(Source), Options);
-end;
-
-function TCodePage.EstimateDecodeUTF16(Source: PWideChar;
-  Options: TEncodeLegacy): Cardinal;
-begin
-  Result := EstimateDecodeUTF16(Source, WideStrLen(Source), Options);
-end;
-
-function TCodePage.EstimateEncodeUTF8(Source: PLegacyChar;
-  Options: TEncodeLegacy; Compliance: TUTF8Compliance): Cardinal;
-begin
-  Result := EstimateEncodeUTF8(Source, StrLen(Source), Options, Compliance);
-end;
-
-function TCodePage.EstimateEncodeUTF16(Source: PLegacyChar;
-  Options: TEncodeUTF16): Cardinal;
-begin
-  Result := EstimateEncodeUTF16(Source, StrLen(Source), Options);
-end;
 
 function TCodePage.DecodeUTF8(Dest: PLegacyChar; DestCount: Cardinal;
   Source: PLegacyChar; Options: TEncodeLegacy): Cardinal;
@@ -566,13 +413,13 @@ begin
 end;
 
 function TCodePage.EncodeUTF8(Dest: PLegacyChar; DestCount: Cardinal;
-  Source: PLegacyChar; Options: TEncodeLegacy; Compliance: TUTF8Compliance): Cardinal;
+  Source: PLegacyChar; Options: TEncodeUTF8): Cardinal;
 begin
-  Result := EncodeUTF8(Dest, DestCount, Source, StrLen(Source), Options, Compliance);
+  Result := EncodeUTF8(Dest, DestCount, Source, StrLen(Source), Options);
 end;
 
 function TCodePage.EncodeUTF16(Dest: PWideChar; DestCount: Cardinal;
-  Source: PLegacyChar; Options: TEncodeUTF16): Cardinal;
+  Source: PLegacyChar; Options: TEncodeEndian): Cardinal;
 begin
   Result := EncodeUTF16(Dest, DestCount, Source, StrLen(Source), Options);
 end;
@@ -608,7 +455,7 @@ begin
   end;
 
   B := 0;
-  while (B < MAX_LEADBYTES) and (Info.LeadByte[B] <> 0) do
+  while (Info.LeadByte[B] <> 0) and (B < MAX_LEADBYTES) do
   begin
     L := Info.LeadByte[B];
     FillChar(SourceMap[L], Info.LeadByte[B + 1] - L + 1, 0);
@@ -699,110 +546,75 @@ begin
 end;
 
 {$IFDEF Latin}
-function TSingleByteMemCodePage.EstimateDecodeLatin(Source: PLegacyChar;
-  Count: Cardinal; Options: TEncodeLegacy): Cardinal;
+function TSingleByteMemCodePage.DecodeLatin(Dest: PLegacyChar; DestCount: Cardinal;
+  Source: PLegacyChar; SourceCount: Cardinal; Options: TEncodeLegacy): Cardinal;
+var
+  I: Integer;
+  C: LegacyChar;
 begin
+  if DestCount > SourceCount then
+    DestCount := SourceCount;
 
+  for I := 0 to DestCount - 1 do
+  begin
+    C := Source[I];
+    if ((C in [#0..#$7F]) or ((C in [#$A0..#$FF]) and (coLatin1 in Options))) and
+     (WideChar(C) >= FWideMapLo) and (WideChar(C) <= FWideMapHi)
+    then
+      Dest[I] := FWideMap[Word(C) - Word(FWideMapLo)]
+    else if coForceInvalid in Options then
+      Dest[I] := Unknown_Latin
+    else
+    begin
+      Result := 0;
+      Exit;
+    end;
+  end;
+
+  Result := DestCount;
 end;
 
-function TSingleByteMemCodePage.EstimateEncodeLatin(Source: PLegacyChar;
-  Count: Cardinal; Options: TEncodeLatin): Cardinal;
-begin
-
-end;
-
-function TSingleByteMemCodePage.DecodeLatin(Dest: PLegacyChar;
-  DestCount: Cardinal; Source: PLegacyChar; SourceCount: Cardinal;
-  Options: TEncodeLegacy): Cardinal;
-begin
-
-end;
-
-function TSingleByteMemCodePage.EncodeLatin(Dest: PLegacyChar;
-  DestCount: Cardinal; Source: PLegacyChar; SourceCount: Cardinal;
-  Options: TEncodeLatin): Cardinal;
+function TSingleByteMemCodePage.EncodeLatin(Dest: PLegacyChar; DestCount: Cardinal;
+  Source: PLegacyChar; SourceCount: Cardinal; Options: TEncodeLatin): Cardinal;
 begin
 
 end;
 {$ENDIF}
 
 {$IFDEF UTF32}
-function TSingleByteMemCodePage.EstimateDecodeUTF32(Source: PQuadChar;
-  Count: Cardinal; Options: TEncodeLegacy): Cardinal;
+function TSingleByteMemCodePage.DecodeUTF32(Dest: PLegacyChar; DestCount: Cardinal;
+  Source: PQuadChar; SourceCount: Cardinal; Options: TEncodeLegacy): Cardinal;
 begin
 
 end;
 
-function TSingleByteMemCodePage.EstimateEncodeUTF32(Source: PLegacyChar;
-  Count: Cardinal; Options: TEncodeUTF32): Cardinal;
-begin
-
-end;
-
-function TSingleByteMemCodePage.DecodeUTF32(Dest: PLegacyChar;
-  DestCount: Cardinal; Source: PQuadChar; SourceCount: Cardinal;
-  Options: TEncodeLegacy): Cardinal;
-begin
-
-end;
-
-function TSingleByteMemCodePage.EncodeUTF32(Dest: PQuadChar;
-  DestCount: Cardinal; Source: PLegacyChar; SourceCount: Cardinal;
-  Options: TEncodeUTF32): Cardinal;
+function TSingleByteMemCodePage.EncodeUTF32(Dest: PQuadChar; DestCount: Cardinal;
+  Source: PLegacyChar; SourceCount: Cardinal; Options: TEncodeEndian): Cardinal;
 begin
 
 end;
 {$ENDIF}
 
-function TSingleByteMemCodePage.EstimateDecodeUTF16(Source: PWideChar;
-  Count: Cardinal; Options: TEncodeLegacy): Cardinal;
+function TSingleByteMemCodePage.DecodeUTF8(Dest: PLegacyChar; DestCount: Cardinal;
+  Source: PLegacyChar; SourceCount: Cardinal; Options: TEncodeLegacy): Cardinal;
 begin
 
 end;
 
-function TSingleByteMemCodePage.EstimateDecodeUTF8(Source: PLegacyChar;
-  Count: Cardinal; Options: TEncodeLegacy): Cardinal;
+function TSingleByteMemCodePage.DecodeUTF16(Dest: PLegacyChar; DestCount: Cardinal;
+  Source: PWideChar; SourceCount: Cardinal; Options: TEncodeLegacy): Cardinal;
 begin
 
 end;
 
-function TSingleByteMemCodePage.EstimateEncodeUTF8(Source: PLegacyChar;
-  Count: Cardinal; Options: TEncodeLegacy;
-  Compliance: TUTF8Compliance): Cardinal;
+function TSingleByteMemCodePage.EncodeUTF8(Dest: PLegacyChar; DestCount: Cardinal;
+  Source: PLegacyChar; SourceCount: Cardinal; Options: TEncodeUTF8): Cardinal;
 begin
 
 end;
 
-function TSingleByteMemCodePage.EstimateEncodeUTF16(Source: PLegacyChar;
-  Count: Cardinal; Options: TEncodeUTF16): Cardinal;
-begin
-
-end;
-
-function TSingleByteMemCodePage.DecodeUTF8(Dest: PLegacyChar;
-  DestCount: Cardinal; Source: PLegacyChar; SourceCount: Cardinal;
-  Options: TEncodeLegacy): Cardinal;
-begin
-
-end;
-
-function TSingleByteMemCodePage.DecodeUTF16(Dest: PLegacyChar;
-  DestCount: Cardinal; Source: PWideChar; SourceCount: Cardinal;
-  Options: TEncodeLegacy): Cardinal;
-begin
-
-end;
-
-function TSingleByteMemCodePage.EncodeUTF8(Dest: PLegacyChar;
-  DestCount: Cardinal; Source: PLegacyChar; SourceCount: Cardinal;
-  Options: TEncodeLegacy; Compliance: TUTF8Compliance): Cardinal;
-begin
-
-end;
-
-function TSingleByteMemCodePage.EncodeUTF16(Dest: PWideChar;
-  DestCount: Cardinal; Source: PLegacyChar; SourceCount: Cardinal;
-  Options: TEncodeUTF16): Cardinal;
+function TSingleByteMemCodePage.EncodeUTF16(Dest: PWideChar; DestCount: Cardinal;
+  Source: PLegacyChar; SourceCount: Cardinal; Options: TEncodeEndian): Cardinal;
 begin
 
 end;
@@ -919,46 +731,20 @@ begin
 end;
 
 {$IFDEF Latin}
-function TDoubleByteMemCodePage.EstimateDecodeLatin(Source: PLegacyChar;
-  Count: Cardinal; Options: TEncodeLegacy): Cardinal;
+function TDoubleByteMemCodePage.DecodeLatin(Dest: PLegacyChar; DestCount: Cardinal;
+  Source: PLegacyChar; SourceCount: Cardinal; Options: TEncodeLegacy): Cardinal;
 begin
 
 end;
 
-function TDoubleByteMemCodePage.EstimateEncodeLatin(Source: PLegacyChar;
-  Count: Cardinal; Options: TEncodeLatin): Cardinal;
-begin
-
-end;
-
-function TDoubleByteMemCodePage.DecodeLatin(Dest: PLegacyChar;
-  DestCount: Cardinal; Source: PLegacyChar; SourceCount: Cardinal;
-  Options: TEncodeLegacy): Cardinal;
-begin
-
-end;
-
-function TDoubleByteMemCodePage.EncodeLatin(Dest: PLegacyChar;
-  DestCount: Cardinal; Source: PLegacyChar; SourceCount: Cardinal;
-  Options: TEncodeLatin): Cardinal;
+function TDoubleByteMemCodePage.EncodeLatin(Dest: PLegacyChar; DestCount: Cardinal;
+  Source: PLegacyChar; SourceCount: Cardinal; Options: TEncodeLatin): Cardinal;
 begin
 
 end;
 {$ENDIF}
 
 {$IFDEF UTF32}
-function TDoubleByteMemCodePage.EstimateDecodeUTF32(Source: PQuadChar;
-  Count: Cardinal; Options: TEncodeLegacy): Cardinal;
-begin
-
-end;
-
-function TDoubleByteMemCodePage.EstimateEncodeUTF32(Source: PLegacyChar;
-  Count: Cardinal; Options: TEncodeUTF32): Cardinal;
-begin
-
-end;
-
 function TDoubleByteMemCodePage.DecodeUTF32(Dest: PLegacyChar;
   DestCount: Cardinal; Source: PQuadChar; SourceCount: Cardinal;
   Options: TEncodeLegacy): Cardinal;
@@ -966,63 +752,33 @@ begin
 
 end;
 
-function TDoubleByteMemCodePage.EncodeUTF32(Dest: PQuadChar;
-  DestCount: Cardinal; Source: PLegacyChar; SourceCount: Cardinal;
-  Options: TEncodeUTF32): Cardinal;
+function TDoubleByteMemCodePage.EncodeUTF32(Dest: PQuadChar; DestCount: Cardinal;
+  Source: PLegacyChar; SourceCount: Cardinal; Options: TEncodeEndian): Cardinal;
 begin
 
 end;
 {$ENDIF}
 
-function TDoubleByteMemCodePage.EstimateDecodeUTF16(Source: PWideChar;
-  Count: Cardinal; Options: TEncodeLegacy): Cardinal;
+function TDoubleByteMemCodePage.DecodeUTF8(Dest: PLegacyChar; DestCount: Cardinal;
+  Source: PLegacyChar; SourceCount: Cardinal; Options: TEncodeLegacy): Cardinal;
 begin
 
 end;
 
-function TDoubleByteMemCodePage.EstimateDecodeUTF8(Source: PLegacyChar;
-  Count: Cardinal; Options: TEncodeLegacy): Cardinal;
+function TDoubleByteMemCodePage.DecodeUTF16(Dest: PLegacyChar; DestCount: Cardinal;
+  Source: PWideChar; SourceCount: Cardinal; Options: TEncodeLegacy): Cardinal;
 begin
 
 end;
 
-function TDoubleByteMemCodePage.EstimateEncodeUTF8(Source: PLegacyChar;
-  Count: Cardinal; Options: TEncodeLegacy;
-  Compliance: TUTF8Compliance): Cardinal;
+function TDoubleByteMemCodePage.EncodeUTF8(Dest: PLegacyChar; DestCount: Cardinal;
+  Source: PLegacyChar; SourceCount: Cardinal; Options: TEncodeUTF8): Cardinal;
 begin
 
 end;
 
-function TDoubleByteMemCodePage.EstimateEncodeUTF16(Source: PLegacyChar;
-  Count: Cardinal; Options: TEncodeUTF16): Cardinal;
-begin
-
-end;
-
-function TDoubleByteMemCodePage.DecodeUTF8(Dest: PLegacyChar;
-  DestCount: Cardinal; Source: PLegacyChar; SourceCount: Cardinal;
-  Options: TEncodeLegacy): Cardinal;
-begin
-
-end;
-
-function TDoubleByteMemCodePage.DecodeUTF16(Dest: PLegacyChar;
-  DestCount: Cardinal; Source: PWideChar; SourceCount: Cardinal;
-  Options: TEncodeLegacy): Cardinal;
-begin
-
-end;
-
-function TDoubleByteMemCodePage.EncodeUTF8(Dest: PLegacyChar;
-  DestCount: Cardinal; Source: PLegacyChar; SourceCount: Cardinal;
-  Options: TEncodeLegacy; Compliance: TUTF8Compliance): Cardinal;
-begin
-
-end;
-
-function TDoubleByteMemCodePage.EncodeUTF16(Dest: PWideChar;
-  DestCount: Cardinal; Source: PLegacyChar; SourceCount: Cardinal;
-  Options: TEncodeUTF16): Cardinal;
+function TDoubleByteMemCodePage.EncodeUTF16(Dest: PWideChar; DestCount: Cardinal;
+  Source: PLegacyChar; SourceCount: Cardinal; Options: TEncodeEndian): Cardinal;
 begin
 
 end;

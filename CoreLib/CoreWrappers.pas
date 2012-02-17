@@ -52,8 +52,8 @@ type
     faCompressed, faOffline, faNonIndexable, faEncrypted, fa0x8000, faVirtual);
 
 const
-  fiRead = [faShareRead, faSequential];
-  fiRewrite = [faWrite, faOverwrite, faShareRead];
+  faRead = [faShareRead];
+  faRewrite = [faWrite, faOverwrite, faShareRead];
 
 type
   THandleStream = class(TWritableStream)
@@ -451,7 +451,7 @@ end;
 function TFileStreamMapping.Open(FileName: PWideChar; Options: TCreateFileMapping;
   Size: QuadWord; MappingName: PWideChar): Boolean;
 const
-  MapOptions: array[Boolean] of TFileAccess = (fiRead, fiRewrite);
+  MapOptions: array[Boolean] of TFileAccess = (faRead, faRewrite);
 begin
   Result := FStream.Open(FileName, MapOptions[maWrite in Options]) and
     Open(FStream.Handle, Options, Size, MappingName);
