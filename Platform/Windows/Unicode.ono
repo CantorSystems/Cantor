@@ -1,4 +1,4 @@
-public static class Platform
+public static class Platform override
 
   // experimental group syntax
   final const is
