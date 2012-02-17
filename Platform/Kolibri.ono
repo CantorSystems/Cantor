@@ -1,5 +1,5 @@
-//+charset cp866
-public static class Platform inner packed
+//@@ru-SU:cp866
+public static class Platform override inner packed
 
   final const is // experimental group syntax
     target = 'MENUET01';
@@ -184,7 +184,10 @@ public static class Platform inner packed
   /* usage magic
     var KeyboardLayout:Locale locale = KeyboardLayout; // calls unnamed out Locale
     if KeyboardLayout[Russian] = Success then
-      // welcome to Russia!
+      // welcome to USSR!
+    end;
+    if KeyboardLayout[layout] <> Success then
+      // restore failed
     end;
   */
 
