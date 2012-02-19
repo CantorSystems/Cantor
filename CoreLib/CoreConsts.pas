@@ -103,6 +103,7 @@ const
   sNKo                             = 'N’Ko';
   sSamaritan                       = 'Samaritan';
   sMandaic                         = 'Mandaic';
+  sArabicExtA                      = 'Arabic Extended-A';
   sDevanagari                      = 'Devanagari';
   sBengali                         = 'Bengali';
   sGurmukhi                        = 'Gurmukhi';
@@ -143,6 +144,7 @@ const
   sBatak                           = 'Batak';
   sLepcha                          = 'Lepcha';
   sOlChiki                         = 'Ol Chiki';
+  sSundaneseSupplement             = 'Sundanese Supplement';
   sVedicExtensions                 = 'Vedic Extensions';
   sPhoneticExt                     = 'Phonetic Extensions';
   sPhoneticExtSupplement           = 'Phonetic Extensions Supplement';
@@ -218,6 +220,7 @@ const
   sCham                            = 'Cham';
   sMyanmarExtA                     = 'Myanmar Extended-A';
   sTaiViet                         = 'Tai Viet';
+  sMeeteiMayekExt                  = 'Meetei Mayek Extensions';
   sEthiopicExtA                    = 'Ethiopic Extended-A';
   sMeeteiMayek                     = 'Meetei Mayek';
   sHangulSyllables                 = 'Hangul Syllables';
@@ -256,6 +259,8 @@ const
   sImperialAramaic                 = 'Imperial Aramaic';
   sPhoenician                      = 'Phoenician';
   sLydian                          = 'Lydian';
+  sMeroiticHieroglyphs             = 'Meroitic Hieroglyphs';
+  sMeroiticCursive                 = 'Meroitic Cursive';
   sKharoshthi                      = 'Kharoshthi';
   sOldSouthArabian                 = 'Old South Arabian';
   sAvestan                         = 'Avestan';
@@ -265,10 +270,15 @@ const
   sRumiNumeralSymbols              = 'Rumi Numeral Symbols';
   sBrahmi                          = 'Brahmi';
   sKaithi                          = 'Kaithi';
+  sSoraSompeng                     = 'Sora Sompeng';
+  sChakma                          = 'Chakma';
+  sSharada                         = 'Sharada';
+  sTakri                           = 'Takri';
   sCuneiform                       = 'Cuneiform';
   sCuneiformNumsAndPunctuation     = 'Cuneiform Numbers and Punctuation';
   sEgyptianHieroglyphs             = 'Egyptian Hieroglyphs';
   sBamumSupplement                 = 'Bamum Supplement';
+  sMiao                            = 'Miao';
   sKanaSupplement                  = 'Kana Supplement';
   sByzantineMusicalSymbols         = 'Byzantine Musical Symbols';
   sMusicalSymbols                  = 'Musical Symbols';
@@ -276,6 +286,7 @@ const
   sTaiXuanJingSymbols              = 'Tai Xuan Jing Symbols';
   sCountingRodNumerals             = 'Counting Rod Numerals';
   sMathAlphanumSymbols             = 'Mathematical Alphanumeric Symbols';
+  sArabicMathAlphabeticSymbols     = 'Arabic Mathematical Alphabetic Symbols';
   sMahjongTiles                    = 'Mahjong Tiles';
   sDominoTiles                     = 'Domino Tiles';
   sPlayingCards                    = 'Playing Cards';

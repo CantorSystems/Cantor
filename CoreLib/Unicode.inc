@@ -1,5 +1,5 @@
 (*
-    Unicode 6.0 code blocks
+    Unicode 6.1 code blocks
 
     Copyright (c) 2009-2012 The Unified Environment Laboratory
 
@@ -82,49 +82,52 @@ type
     cbUnknown, cbBasicLatin, cbLatin1Supplement, cbLatinExtA, cbLatinExtB,
     cbIPAExtensions, cbSpacingModLetters, cbCombiDiacriticalMarks, cbGreekAndCoptic,
     cbCyrillic, cbCyrillicSupplement, cbArmenian, cbHebrew, cbArabic, cbSyriac,
-    cbArabicSupplement, cbThaana, cbNKo, cbSamaritan, cbMandaic, cbDevanagari,
-    cbBengali, cbGurmukhi, cbGujarati, cbOriya, cbTamil, cbTelugu, cbKannada,
-    cbMalayalam, cbSinhala, cbThai, cbLao, cbTibetan, cbMyanmar, cbGeorgian,
-    cbHangulJamo, cbEthiopic, cbEthiopicSupplement, cbCherokee, cbUniCanadianSyllabics,
-    cbOgham, cbRunic, cbTagalog, cbHanunoo, cbBuhid, cbTagbanwa, cbKhmer, cbMongolian,
-    cbUniCanadianSyllabicsExt, cbLimbu, cbTaiLe, cbNewTaiLue, cbKhmerSymbols,
-    cbBuginese, cbTaiTham, cbBalinese, cbSundanese, cbBatak, cbLepcha, cbOlChiki,
-    cbVedicExtensions, cbPhoneticExt, cbPhoneticExtSupplement, cbCombiDiacriticalMarksSupplement,
+    cbArabicSupplement, cbThaana, cbNKo, cbSamaritan, cbMandaic, cbArabicExtA,
+    cbDevanagari, cbBengali, cbGurmukhi, cbGujarati, cbOriya, cbTamil, cbTelugu,
+    cbKannada, cbMalayalam, cbSinhala, cbThai, cbLao, cbTibetan, cbMyanmar,
+    cbGeorgian, cbHangulJamo, cbEthiopic, cbEthiopicSupplement, cbCherokee,
+    cbUniCanadianSyllabics, cbOgham, cbRunic, cbTagalog, cbHanunoo, cbBuhid,
+    cbTagbanwa, cbKhmer, cbMongolian, cbUniCanadianSyllabicsExt, cbLimbu, cbTaiLe,
+    cbNewTaiLue, cbKhmerSymbols, cbBuginese, cbTaiTham, cbBalinese, cbSundanese,
+    cbBatak, cbLepcha, cbOlChiki, cbSundaneseSupplement, cbVedicExtensions,
+    cbPhoneticExt, cbPhoneticExtSupplement, cbCombiDiacriticalMarksSupplement,
     cbLatinExtAdditional, cbGreekExt, cbGeneralPunctuation, cbSuperscriptsAndSubscripts,
     cbCurrencySymbols, cbCombiDiacriticalMarksForSymbols, cbLetterlikeSymbols,
     cbNumForms, cbArrows, cbMathOperators, cbMiscTechnical, cbControlPictures,
     cbOpticalCharRecognition, cbEnclosedAlphanums, cbBoxDrawing, cbBlockElements,
-    cbGeometricShapes, cbMiscSymbols, cbDingbats, cbMiscMathSymbolsA, cbSupplementalArrowsA,
-    cbBraillePatterns, cbSupplementalArrowsB, cbMiscMathSymbolsB, cbSupplementalMathOperators,
-    cbMiscSymbolsAndArrows, cbGlagolitic, cbLatinExtC, cbCoptic, cbGeorgianSupplement,
-    cbTifinagh, cbEthiopicExt, cbCyrillicExtA, cbSupplementalPunctuation,
-    cbCJKRadicalsSupplement, cbKangxiRadicals, cbIdeographicDescChars,
-    cbCJKSymbolsAndPunctuation, cbHiragana, cbKatakana, cbBopomofo, cbHangulCompatJamo,
-    cbKanbun, cbBopomofoExt, cbCJKStrokes, cbKatakanaPhoneticExt, cbEnclosedCJKLettersAndMonths,
-    cbCJKCompat, cbCJKUniIdeographsExtA, cbYijingHexagramSymbols, cbCJKUniIdeographs,
-    cbYiSyllables, cbYiRadicals, cbLisu, cbVai, cbCyrillicExtB, cbBamum, cbModToneLetters,
-    cbLatinExtD, cbSylotiNagri, cbCommonIndicNumForms, cbPhagsPa, cbSaurashtra,
-    cbDevanagariExt, cbKayahLi, cbRejang, cbHangulJamoExtA, cbJavanese, cbCham,
-    cbMyanmarExtA, cbTaiViet, cbEthiopicExtA, cbMeeteiMayek, cbHangulSyllables,
-    cbHangulJamoExtB, cbHighSurrogates, cbHighPrivateSurrogates, cbLowSurrogates,
-    cbPrivateArea, cbCJKCompatIdeographs, cbAlphabeticPresentForms, cbArabicPresentFormsA,
-    cbVarSelectors, cbVerticalForms, cbCombiHalfMarks, cbCJKCompatForms,
-    cbSmallFormVariants, cbArabicPresentFormsB, cbHalfwidthAndFullwidthForms,
-    cbSpecials, cbLinearBSyllabary, cbLinearBIdeograms, cbAegeanNums,
-    cbAncientGreekNums, cbAncientSymbols, cbPhaistosDisc, cbLycian, cbCarian,
-    cbOldItalic, cbGothic, cbUgaritic, cbOldPersian, cbDeseret, cbShavian,
+    cbGeometricShapes, cbMiscSymbols, cbDingbats, cbMiscMathSymbolsA,
+    cbSupplementalArrowsA, cbBraillePatterns, cbSupplementalArrowsB,
+    cbMiscMathSymbolsB, cbSupplementalMathOperators, cbMiscSymbolsAndArrows,
+    cbGlagolitic, cbLatinExtC, cbCoptic, cbGeorgianSupplement, cbTifinagh,
+    cbEthiopicExt, cbCyrillicExtA, cbSupplementalPunctuation, cbCJKRadicalsSupplement,
+    cbKangxiRadicals, cbIdeographicDescChars, cbCJKSymbolsAndPunctuation,
+    cbHiragana, cbKatakana, cbBopomofo, cbHangulCompatJamo, cbKanbun, cbBopomofoExt,
+    cbCJKStrokes, cbKatakanaPhoneticExt, cbEnclosedCJKLettersAndMonths, cbCJKCompat,
+    cbCJKUniIdeographsExtA, cbYijingHexagramSymbols, cbCJKUniIdeographs,
+    cbYiSyllables, cbYiRadicals, cbLisu, cbVai, cbCyrillicExtB, cbBamum,
+    cbModToneLetters, cbLatinExtD, cbSylotiNagri, cbCommonIndicNumForms,
+    cbPhagsPa, cbSaurashtra, cbDevanagariExt, cbKayahLi, cbRejang, cbHangulJamoExtA,
+    cbJavanese, cbCham, cbMyanmarExtA, cbTaiViet, cbMeeteiMayekExt, cbEthiopicExtA,
+    cbMeeteiMayek, cbHangulSyllables, cbHangulJamoExtB, cbHighSurrogates,
+    cbHighPrivateSurrogates, cbLowSurrogates, cbPrivateArea, cbCJKCompatIdeographs,
+    cbAlphabeticPresentForms, cbArabicPresentFormsA, cbVarSelectors, cbVerticalForms,
+    cbCombiHalfMarks, cbCJKCompatForms, cbSmallFormVariants, cbArabicPresentFormsB,
+    cbHalfwidthAndFullwidthForms, cbSpecials, cbLinearBSyllabary, cbLinearBIdeograms,
+    cbAegeanNums, cbAncientGreekNums, cbAncientSymbols, cbPhaistosDisc, cbLycian,
+    cbCarian, cbOldItalic, cbGothic, cbUgaritic, cbOldPersian, cbDeseret, cbShavian,
     cbOsmanya, cbCypriotSyllabary, cbImperialAramaic, cbPhoenician, cbLydian,
-    cbKharoshthi, cbOldSouthArabian, cbAvestan, cbInscriptionalParthian,
-    cbInscriptionalPahlavi, cbOldTurkic, cbRumiNumeralSymbols, cbBrahmi, cbKaithi,
-    cbCuneiform, cbCuneiformNumsAndPunctuation, cbEgyptianHieroglyphs, cbBamumSupplement,
-    cbKanaSupplement, cbByzantineMusicalSymbols, cbMusicalSymbols,
-    cbAncientGreekMusicalNotation, cbTaiXuanJingSymbols, cbCountingRodNumerals,
-    cbMathAlphanumSymbols, cbMahjongTiles, cbDominoTiles, cbPlayingCards,
-    cbEnclosedAlphanumSupplement, cbEnclosedIdeographicSupplement,
-    cbMiscSymbolsAndPictographs, cbEmoticons, cbTransportAndMapSymbols,
-    cbAlchemicalSymbols, cbCJKUniIdeographsExtB, cbCJKUniIdeographsExtC,
-    cbCJKUniIdeographsExtD, cbCJKCompatIdeographsSupplement, cbTags,
-    cbVarSelectorsSupplement, cbPrivateAreaA, cbPrivateAreaB, cbNonUnicode
+    cbMeroiticHieroglyphs, cbMeroiticCursive, cbKharoshthi, cbOldSouthArabian,
+    cbAvestan, cbInscriptionalParthian, cbInscriptionalPahlavi, cbOldTurkic,
+    cbRumiNumeralSymbols, cbBrahmi, cbKaithi, cbSoraSompeng, cbChakma, cbSharada,
+    cbTakri, cbCuneiform, cbCuneiformNumsAndPunctuation, cbEgyptianHieroglyphs,
+    cbBamumSupplement, cbMiao, cbKanaSupplement, cbByzantineMusicalSymbols,
+    cbMusicalSymbols, cbAncientGreekMusicalNotation, cbTaiXuanJingSymbols,
+    cbCountingRodNumerals, cbMathAlphanumSymbols, cbArabicMathAlphabeticSymbols,
+    cbMahjongTiles, cbDominoTiles, cbPlayingCards, cbEnclosedAlphanumSupplement,
+    cbEnclosedIdeographicSupplement, cbMiscSymbolsAndPictographs, cbEmoticons,
+    cbTransportAndMapSymbols, cbAlchemicalSymbols, cbCJKUniIdeographsExtB,
+    cbCJKUniIdeographsExtC, cbCJKUniIdeographsExtD, cbCJKCompatIdeographsSupplement,
+    cbTags, cbVarSelectorsSupplement, cbPrivateAreaA, cbPrivateAreaB, cbNonUnicode
   );
   TCharBlocks = set of TCharBlock;
 
@@ -182,6 +185,7 @@ const
     (Lo: $07C0; Hi: $07FF), // N'Ko
     (Lo: $0800; Hi: $083F), // Samaritan
     (Lo: $0840; Hi: $085F), // Mandaic
+    (Lo: $08A0; Hi: $08FF), // Arabic Extended-A
     (Lo: $0900; Hi: $097F), // Devanagari
     (Lo: $0980; Hi: $09FF), // Bengali
     (Lo: $0A00; Hi: $0A7F), // Gurmukhi
@@ -222,6 +226,7 @@ const
     (Lo: $1BC0; Hi: $1BFF), // Batak
     (Lo: $1C00; Hi: $1C4F), // Lepcha
     (Lo: $1C50; Hi: $1C7F), // Ol Chiki
+    (Lo: $1CC0; Hi: $1CCF), // Sundanese Supplement
     (Lo: $1CD0; Hi: $1CFF), // Vedic Extensions
     (Lo: $1D00; Hi: $1D7F), // Phonetic Extensions                                  
     (Lo: $1D80; Hi: $1DBF), // Phonetic Extensions Supplement                       
@@ -297,6 +302,7 @@ const
     (Lo: $AA00; Hi: $AA5F), // Cham                                                 
     (Lo: $AA60; Hi: $AA7F), // Myanmar Extended-A                                   
     (Lo: $AA80; Hi: $AADF), // Tai Viet
+    (Lo: $AAE0; Hi: $AAFF), // Meetei Mayek Extensions
     (Lo: $AB00; Hi: $AB2F), // Ethiopic Extended-A                                             
     (Lo: $ABC0; Hi: $ABFF), // Meetei Mayek                                         
     (Lo: $AC00; Hi: $D7AF), // Hangul Syllables                                     
@@ -334,7 +340,9 @@ const
     (Lo: $10800; Hi: $1083F), // Cypriot Syllabary                                  
     (Lo: $10840; Hi: $1085F), // Imperial Aramaic                                   
     (Lo: $10900; Hi: $1091F), // Phoenician                                         
-    (Lo: $10920; Hi: $1093F), // Lydian                                             
+    (Lo: $10920; Hi: $1093F), // Lydian
+    (Lo: $10980; Hi: $1099F), // Meroitic Hieroglyphs
+    (Lo: $109A0; Hi: $109FF), // Meroitic Cursive
     (Lo: $10A00; Hi: $10A5F), // Kharoshthi                                         
     (Lo: $10A60; Hi: $10A7F), // Old South Arabian                                  
     (Lo: $10B00; Hi: $10B3F), // Avestan
@@ -344,10 +352,15 @@ const
     (Lo: $10E60; Hi: $10E7F), // Rumi Numeral Symbols
     (Lo: $11000; Hi: $1107F), // Brahmi
     (Lo: $11080; Hi: $110CF), // Kaithi
+    (Lo: $110D0; Hi: $110FF), // Sora Sompeng
+    (Lo: $11100; Hi: $1114F), // Chakma
+    (Lo: $11180; Hi: $111DF), // Sharada
+    (Lo: $11680; Hi: $116CF), // Takri
     (Lo: $12000; Hi: $123FF), // Cuneiform
     (Lo: $12400; Hi: $1247F), // Cuneiform Numbers and Punctuation
     (Lo: $13000; Hi: $1342F), // Egyptian Hieroglyphs
     (Lo: $16800; Hi: $16A3F), // Bamum Supplement
+    (Lo: $16F00; Hi: $16F9F), // Miao
     (Lo: $1B000; Hi: $1B0FF), // Kana Supplement
     (Lo: $1D000; Hi: $1D0FF), // Byzantine Musical Symbols
     (Lo: $1D100; Hi: $1D1FF), // Musical Symbols
@@ -355,6 +368,7 @@ const
     (Lo: $1D300; Hi: $1D35F), // Tai Xuan Jing Symbols
     (Lo: $1D360; Hi: $1D37F), // Counting Rod Numerals
     (Lo: $1D400; Hi: $1D7FF), // Mathematical Alphanumeric Symbols
+    (Lo: $1EE00; Hi: $1EEFF), // Arabic Mathematical Alphabetic Symbols
     (Lo: $1F000; Hi: $1F02F), // Mahjong Tiles
     (Lo: $1F030; Hi: $1F09F), // Domino Tiles
     (Lo: $1F0A0; Hi: $1F0FF), // Playing Cards
@@ -378,20 +392,20 @@ const
     sBasicLatin, sLatin1Supplement, sLatinExtA, sLatinExtB, sIPAExtensions,
     sSpacingModLetters, sCombiDiacriticalMarks, sGreekAndCoptic, sCyrillic,
     sCyrillicSupplement, sArmenian, sHebrew, sArabic, sSyriac, sArabicSupplement,
-    sThaana, sNKo, sSamaritan, sMandaic, sDevanagari, sBengali, sGurmukhi,
-    sGujarati, sOriya, sTamil, sTelugu, sKannada, sMalayalam, sSinhala, sThai,
-    sLao, sTibetan, sMyanmar, sGeorgian, sHangulJamo, sEthiopic, sEthiopicSupplement,
-    sCherokee, sUniCanadianSyllabics, sOgham, sRunic, sTagalog, sHanunoo, sBuhid,
-    sTagbanwa, sKhmer, sMongolian, sUniCanadianSyllabicsExt, sLimbu, sTaiLe,
-    sNewTaiLue, sKhmerSymbols, sBuginese, sTaiTham, sBalinese, sSundanese, sBatak,
-    sLepcha, sOlChiki, sVedicExtensions, sPhoneticExt, sPhoneticExtSupplement,
-    sCombiDiacriticalMarksSupplement, sLatinExtAdditional, sGreekExt,
-    sGeneralPunctuation, sSuperscriptsAndSubscripts, sCurrencySymbols,
-    sCombiDiacriticalMarksForSymbols, sLetterlikeSymbols, sNumForms, sArrows,
-    sMathOperators, sMiscTechnical, sControlPictures, sOpticalCharRecognition,
-    sEnclosedAlphanums, sBoxDrawing, sBlockElements, sGeometricShapes, sMiscSymbols,
-    sDingbats, sMiscMathSymbolsA, sSupplementalArrowsA, sBraillePatterns,
-    sSupplementalArrowsB, sMiscMathSymbolsB, sSupplementalMathOperators,
+    sThaana, sNKo, sSamaritan, sMandaic, sArabicExtA, sDevanagari, sBengali,
+    sGurmukhi, sGujarati, sOriya, sTamil, sTelugu, sKannada, sMalayalam, sSinhala,
+    sThai, sLao, sTibetan, sMyanmar, sGeorgian, sHangulJamo, sEthiopic,
+    sEthiopicSupplement, sCherokee, sUniCanadianSyllabics, sOgham, sRunic,
+    sTagalog, sHanunoo, sBuhid, sTagbanwa, sKhmer, sMongolian, sUniCanadianSyllabicsExt,
+    sLimbu, sTaiLe, sNewTaiLue, sKhmerSymbols, sBuginese, sTaiTham, sBalinese,
+    sSundanese, sBatak, sLepcha, sOlChiki, sSundaneseSupplement, sVedicExtensions,
+    sPhoneticExt, sPhoneticExtSupplement, sCombiDiacriticalMarksSupplement,
+    sLatinExtAdditional, sGreekExt, sGeneralPunctuation, sSuperscriptsAndSubscripts,
+    sCurrencySymbols, sCombiDiacriticalMarksForSymbols, sLetterlikeSymbols,
+    sNumForms, sArrows, sMathOperators, sMiscTechnical, sControlPictures,
+    sOpticalCharRecognition, sEnclosedAlphanums, sBoxDrawing, sBlockElements,
+    sGeometricShapes, sMiscSymbols, sDingbats, sMiscMathSymbolsA, sSupplementalArrowsA,
+    sBraillePatterns, sSupplementalArrowsB, sMiscMathSymbolsB, sSupplementalMathOperators,
     sMiscSymbolsAndArrows, sGlagolitic, sLatinExtC, sCoptic, sGeorgianSupplement,
     sTifinagh, sEthiopicExt, sCyrillicExtA, sSupplementalPunctuation,
     sCJKRadicalsSupplement, sKangxiRadicals, sIdeographicDescChars,
@@ -401,24 +415,25 @@ const
     sYiSyllables, sYiRadicals, sLisu, sVai, sCyrillicExtB, sBamum, sModToneLetters,
     sLatinExtD, sSylotiNagri, sCommonIndicNumForms, sPhagsPa, sSaurashtra, sDevanagariExt,
     sKayahLi, sRejang, sHangulJamoExtA, sJavanese, sCham, sMyanmarExtA, sTaiViet,
-    sEthiopicExtA, sMeeteiMayek, sHangulSyllables, sHangulJamoExtB, sHighSurrogates,
-    sHighPrivateSurrogates, sLowSurrogates, sPrivateArea, sCJKCompatIdeographs,
-    sAlphabeticPresentForms, sArabicPresentFormsA, sVarSelectors, sVerticalForms,
-    sCombiHalfMarks, sCJKCompatForms, sSmallFormVariants, sArabicPresentFormsB,
-    sHalfwidthAndFullwidthForms, sSpecials, sLinearBSyllabary, sLinearBIdeograms,
-    sAegeanNums, sAncientGreekNums, sAncientSymbols, sPhaistosDisc, sLycian, sCarian,
-    sOldItalic, sGothic, sUgaritic, sOldPersian, sDeseret, sShavian, sOsmanya,
-    sCypriotSyllabary, sImperialAramaic, sPhoenician, sLydian, sKharoshthi,
-    sOldSouthArabian, sAvestan, sInscriptionalParthian, sInscriptionalPahlavi,
-    sOldTurkic, sRumiNumeralSymbols, sBrahmi, sKaithi, sCuneiform,
-    sCuneiformNumsAndPunctuation, sEgyptianHieroglyphs, sBamumSupplement,
+    sMeeteiMayekExt, sEthiopicExtA, sMeeteiMayek, sHangulSyllables, sHangulJamoExtB,
+    sHighSurrogates, sHighPrivateSurrogates, sLowSurrogates, sPrivateArea,
+    sCJKCompatIdeographs, sAlphabeticPresentForms, sArabicPresentFormsA,
+    sVarSelectors, sVerticalForms, sCombiHalfMarks, sCJKCompatForms, sSmallFormVariants,
+    sArabicPresentFormsB, sHalfwidthAndFullwidthForms, sSpecials, sLinearBSyllabary,
+    sLinearBIdeograms, sAegeanNums, sAncientGreekNums, sAncientSymbols, sPhaistosDisc,
+    sLycian, sCarian, sOldItalic, sGothic, sUgaritic, sOldPersian, sDeseret,
+    sShavian, sOsmanya, sCypriotSyllabary, sImperialAramaic, sPhoenician, sLydian,
+    sMeroiticHieroglyphs, sMeroiticCursive, sKharoshthi, sOldSouthArabian, sAvestan,
+    sInscriptionalParthian, sInscriptionalPahlavi, sOldTurkic, sRumiNumeralSymbols,
+    sBrahmi, sKaithi, sSoraSompeng, sChakma, sSharada, sTakri, sCuneiform,
+    sCuneiformNumsAndPunctuation, sEgyptianHieroglyphs, sBamumSupplement, sMiao,
     sKanaSupplement, sByzantineMusicalSymbols, sMusicalSymbols,
     sAncientGreekMusicalNotation, sTaiXuanJingSymbols, sCountingRodNumerals,
-    sMathAlphanumSymbols, sMahjongTiles, sDominoTiles, sPlayingCards,
-    sEnclosedAlphanumSupplement, sEnclosedIdeographicSupplement,
-    sMiscSymbolsAndPictographs, sEmoticons, sTransportAndMapSymbols,
-    sAlchemicalSymbols, sCJKUniIdeographsExtB, sCJKUniIdeographsExtC,
-    sCJKUniIdeographsExtD, sCJKCompatIdeographsSupplement, sTags,
-    sVarSelectorsSupplement, sPrivateAreaA, sPrivateAreaB, sNonUnicode
+    sMathAlphanumSymbols, sArabicMathAlphabeticSymbols, sMahjongTiles,
+    sDominoTiles, sPlayingCards, sEnclosedAlphanumSupplement,
+    sEnclosedIdeographicSupplement, sMiscSymbolsAndPictographs, sEmoticons,
+    sTransportAndMapSymbols, sAlchemicalSymbols, sCJKUniIdeographsExtB,
+    sCJKUniIdeographsExtC, sCJKUniIdeographsExtD, sCJKCompatIdeographsSupplement,
+    sTags, sVarSelectorsSupplement, sPrivateAreaA, sPrivateAreaB, sNonUnicode
   );
 
