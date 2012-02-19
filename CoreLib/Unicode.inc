@@ -374,7 +374,7 @@ const
     (Lo: $100000; Hi: $10FFFF) // Supplementary Private Use Area-B
   );
 
-  UnicodeBlockNames: array[TUnicodeBlock] of PLegacyChar = (
+  CharBlockNames: array[cbBasicLatin..cbNonUnicode] of PLegacyChar = (
     sBasicLatin, sLatin1Supplement, sLatinExtA, sLatinExtB, sIPAExtensions,
     sSpacingModLetters, sCombiDiacriticalMarks, sGreekAndCoptic, sCyrillic,
     sCyrillicSupplement, sArmenian, sHebrew, sArabic, sSyriac, sArabicSupplement,
@@ -419,6 +419,6 @@ const
     sMiscSymbolsAndPictographs, sEmoticons, sTransportAndMapSymbols,
     sAlchemicalSymbols, sCJKUniIdeographsExtB, sCJKUniIdeographsExtC,
     sCJKUniIdeographsExtD, sCJKCompatIdeographsSupplement, sTags,
-    sVarSelectorsSupplement, sPrivateAreaA, sPrivateAreaB
+    sVarSelectorsSupplement, sPrivateAreaA, sPrivateAreaB, sNonUnicode
   );
 

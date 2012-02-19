@@ -70,10 +70,12 @@ const
 //  sLittleEndian = '(Little-endian)';
 
 {$IFDEF Lite}
-  sInvalidLatin = 'Cannot convert %s string using %s character set';
+  sInvalidCharSet = 'Cannot convert string between code page %s and %hs character set';
+  sInvalidCharSet2 = 'Cannot convert %s string using %s character set';
   sInvalidCodePage = 'Cannot convert %hs string using code page %s';
+  sInvalidCodePage2 = 'Cannot convert string between code page %s and code page %s';
 {$ELSE}
-  sInvalidLatin = 'Cannot convert %s character using %s character set';
+  sInvalidCharSet = 'Cannot convert %s character using %s character set';
   sInvalidCodePage = 'Cannot convert %hs character using code page %s';
 {$ENDIF}
 
