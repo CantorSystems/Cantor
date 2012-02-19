@@ -89,7 +89,7 @@ type
     FObj: TObject;
     FIndex: Integer;
   public
-    constructor Create(Obj: TObject; Idx, Min, Max: Integer); 
+    constructor Create(Obj: TObject; Idx, Lo, Hi: Integer); 
   // properties
     property Obj: TObject read FObj;
     property Index: Integer read FIndex;

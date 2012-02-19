@@ -71,8 +71,6 @@ type
   PCoreChar     = PWideChar;
   PPCoreChar    = PPWideChar;
 
-{$I Unicode.inc}
-
 var
   Elipsis: LegacyChar = '…';
   WideElipsis: WideChar = WideChar(8230);
@@ -109,9 +107,11 @@ function MMX_Supported: Boolean;
 function AllocMem(Count: Cardinal): Pointer;
 procedure FreeMemAndNil(var P);
 procedure FreeAndNil(var Obj);
-{function ReleaseAndNil(var Obj): Integer;
-function ReleaseAndRef(var Obj; NewObj: TSharedObject): Integer;}
 
+procedure Exchange(var P1, P2: Pointer); overload;
+procedure Exchange(var P1, P2: Int64); overload;
+
+function SwapBytes(Source: LongWord): LongWord;
 function MulDiv(Multiplicand, Multiplier, Divisor: LongWord): LongWord;
 
 { String service }
@@ -161,9 +161,6 @@ function QuadStrNew(Str: PQuadChar; Length: Cardinal): PQuadChar; overload;
 function StrScan(Where: PLegacyChar; What: LegacyChar; Count: Cardinal): PLegacyChar;
 function WideStrScan(Where: PWideChar; What: WideChar; Count: Cardinal): PWideChar;
 function QuadStrScan(Where: PQuadChar; What: QuadChar; Count: Cardinal): PQuadChar;
-
-function FindCharBlock(Source: QuadChar; PrevBlock: TCharBlock = cbUnknown): TCharBlock;
-function TranslateCodePage(Source: Word): Word;
 
 { LocalFree finalization required }
 
@@ -238,6 +235,11 @@ asm
         MOV EDX, [EAX + 2]
         MOV EAX, [EAX]
    LOCK CMPXCHG8B [ECX]
+end;
+
+function SwapBytes(Source: LongWord): LongWord;
+asm
+        BSWAP EAX
 end;
 
 function MulDiv(Multiplicand, Multiplier, Divisor: LongWord): LongWord;
@@ -672,58 +674,6 @@ asm
 @@notfound:
         XOR EAX, EAX
         MOV EDI, EDX
-end;
-
-function FindCharBlock(Source: QuadChar; PrevBlock: TCharBlock): TCharBlock;
-var
-  Min, Max: TUnicodeBlock;
-begin
-  if PrevBlock in [Low(TUnicodeBlock)..High(TUnicodeBlock)] then
-  begin
-    if Source < UnicodeBlockRanges[PrevBlock].Min then
-    begin
-      Min := Low(TUnicodeBlock);
-      Max := Pred(PrevBlock);
-    end
-    else if Source > UnicodeBlockRanges[PrevBlock].Max then
-    begin
-      Min := Succ(PrevBlock);
-      Max := High(TUnicodeBlock);
-    end
-    else
-    begin
-      Result := PrevBlock;
-      Exit;
-    end;
-  end
-  else
-  begin
-    Min := Low(TUnicodeBlock);
-    Max := High(TUnicodeBlock);
-  end;
-  while Min <= Max do
-  begin
-    Result := TCharBlock((Ord(Min) + Ord(Max)) div 2);
-    if Source < UnicodeBlockRanges[Result].Min then
-      Max := Pred(Result)
-    else if Source > UnicodeBlockRanges[Result].Max then
-      Min := Succ(Result)
-    else
-      Exit;
-  end;
-  Result := cbNonUnicode;
-end;
-
-function TranslateCodePage(Source: Word): Word;
-begin
-  case Source of
-    CP_ACP:
-      Result := GetACP;
-    CP_OEMCP:
-      Result := GetOEMCP;
-  else
-    Result := Source;
-  end;
 end;
 
 { LocalFree finalization required }
