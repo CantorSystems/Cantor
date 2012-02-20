@@ -17,6 +17,18 @@ interface
 uses
   Windows, CoreUtils;
 
+type  
+  TFileAccess = set of (faShareRead, faShareWrite, faShareDelete, // ordered
+    faWrite, faKeep, faOverwrite, faDeleteOnClose, faSequential, faRandom,
+    faNoBuffering, faOverlapped, faWriteThrough);
+  TFileAttributes = set of (faReadOnly, faHidden, faSystem, faVolumeLabel,
+    faDirectory, faArchive, faNormal, faTemporary, faSparsed, faReparsePoint,
+    faCompressed, faOffline, faNonIndexable, faEncrypted, fa0x8000, faVirtual);
+
+const
+  faRead = [faShareRead];
+  faRewrite = [faWrite, faOverwrite, faShareRead];
+
 {$IFDEF Lite}
   {$I LiteStreams.inc}                       
 {$ELSE}
@@ -44,18 +56,6 @@ type
     property Size write SetSize;
   end;
 
-  TFileAccess = set of (faShareRead, faShareWrite, faShareDelete, // ordered
-    faWrite, faKeep, faOverwrite, faDeleteOnClose, faSequential, faRandom,
-    faNoBuffering, faOverlapped, faWriteThrough);
-  TFileAttributes = set of (faReadOnly, faHidden, faSystem, faVolumeLabel,
-    faDirectory, faArchive, faNormal, faTemporary, faSparsed, faReparsePoint,
-    faCompressed, faOffline, faNonIndexable, faEncrypted, fa0x8000, faVirtual);
-
-const
-  faRead = [faShareRead];
-  faRewrite = [faWrite, faOverwrite, faShareRead];
-
-type
   THandleStream = class(TWritableStream)
   private
     FHandle: THandle;

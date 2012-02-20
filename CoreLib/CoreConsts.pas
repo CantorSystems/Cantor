@@ -71,12 +71,12 @@ const
 
 {$IFDEF Lite}
   sInvalidCharSet = 'Cannot convert string between code page %s and %hs character set';
-  sInvalidCharSet2 = 'Cannot convert %s string using %s character set';
-  sInvalidCodePage = 'Cannot convert %hs string using code page %s';
+  sInvalidCharSet2 = 'Cannot convert %s string into %s character set';
+  sInvalidCodePage = 'Cannot convert %hs string into code page %s';
   sInvalidCodePage2 = 'Cannot convert string between code page %s and code page %s';
 {$ELSE}
-  sInvalidCharSet = 'Cannot convert %s character using %s character set';
-  sInvalidCodePage = 'Cannot convert %hs character using code page %s';
+  sInvalidCharSet = 'Cannot convert %s character into %s character set';
+  sInvalidCodePage = 'Cannot convert %hs character into code page %s';
 {$ENDIF}
 
   sNoCodePage = '%s has no assigned code page';

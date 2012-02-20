@@ -272,6 +272,43 @@ function UTF8FromUTF16(Dest: PLegacyChar; DestCount: Cardinal;
   SourceOptions: TEndianSource = []): Cardinal; overload;
 
 
+{function TryLatinFromLatin(Dest, Source: PLegacyChar; SourceCount: Cardinal;
+  DestOptions: TEncodeLatin = []; SourceOptions: TLatinSource = []): TStringInfo; overload;
+function TryLatinFromUTF32(Dest: PLegacyChar; Source: PQuadChar; SourceCount: Cardinal;
+  DestOptions: TEncodeLatin = []; SourceOptions: TEndianSource = []): TStringInfo; overload;
+function TryLatinFromUTF16(Dest: PLegacyChar; Source: PWideChar; SourceCount: Cardinal;
+  DestOptions: TEncodeLatin = []; SourceOptions: TEndianSource = []): TStringInfo; overload;
+function TryLatinFromUTF8(Dest, Source: PLegacyChar; SourceCount: Cardinal;
+  DestOptions: TEncodeLatin = []; SourceOptions: TLegacySource = []): TStringInfo; overload;
+
+function TryUTF32FromLatin(Dest: PQuadChar; Source: PLegacyChar; SourceCount: Cardinal;
+  DestOptions: TEncodeEndian = []; SourceOptions: TLatinSource = []): TStringInfo; overload;
+function TryUTF32FromUTF32(Dest, Source: PQuadChar; SourceCount: Cardinal;
+  DestOptions: TEncodeEndian = [];  SourceOptions: TEndianSource = []): TStringInfo; overload;
+function TryUTF32FromUTF16(Dest: PQuadChar; Source: PWideChar; SourceCount: Cardinal;
+  DestOptions: TEncodeEndian = []; SourceOptions: TEndianSource = []): TStringInfo; overload;
+function TryUTF32FromUTF8(Dest: PQuadChar; Source: PLegacyChar; SourceCount: Cardinal;
+  DestOptions: TEncodeEndian = [];  SourceOptions: TLegacySource = []): TStringInfo; overload;
+
+function TryUTF16FromLatin(Dest: PWideChar; Source: PLegacyChar; SourceCount: Cardinal;
+  DestOptions: TEncodeEndian = []; SourceOptions: TLatinSource = []): TStringInfo; overload;
+function TryUTF16FromUTF32(Dest: PWideChar; Source: PQuadChar; SourceCount: Cardinal;
+  DestOptions: TEncodeEndian = []; SourceOptions: TEndianSource = []): TStringInfo; overload;
+function TryUTF16FromUTF16(Dest, Source: PWideChar; SourceCount: Cardinal;
+  DestOptions: TEncodeEndian = []; SourceOptions: TEndianSource = []): TStringInfo; overload;
+function TryUTF16FromUTF8(Dest: PWideChar; Source: PLegacyChar; SourceCount: Cardinal;
+  DestOptions: TEncodeEndian = []; SourceOptions: TLegacySource = []): TStringInfo; overload;
+
+function TryUTF8FromLatin(Dest, Source: PLegacyChar; SourceCount: Cardinal;
+  DestOptions: TEncodeUTF8 = []; SourceOptions: TLatinSource = []): TStringInfo; overload;
+function TryUTF8FromUTF32(Dest: PLegacyChar; Source: PQuadChar; SourceCount: Cardinal;
+  DestOptions: TEncodeUTF8 = []; SourceOptions: TEndianSource = []): TStringInfo; overload;
+function TryUTF8FromUTF16(Dest: PLegacyChar; Source: PWideChar; SourceCount: Cardinal;
+  DestOptions: TEncodeUTF8 = []; SourceOptions: TEndianSource = []): TStringInfo; overload;
+function TryUTF8FromUTF8(Dest, Source: PLegacyChar; SourceCount: Cardinal;
+  DestOptions: TEncodeUTF8 = []; SourceOptions: TLegacySource = []): TStringInfo; overload;}
+
+
 // implementation
 
 { Core services }
@@ -808,3 +845,115 @@ begin
   Result := Info.Count;
 end;
 
+
+{function TryLatinFromLatin(Dest, Source: PLegacyChar; SourceCount: Cardinal;
+  DestOptions: TEncodeLatin; SourceOptions: TLatinSource): TStringInfo;
+begin
+  FillChar(Result, SizeOf(Result), 0);
+  TryLatinFromLatin(Result, Dest, Source, SourceCount, DestOptions, SourceOptions);
+end;
+
+function TryLatinFromUTF32(Dest: PLegacyChar; Source: PQuadChar; SourceCount: Cardinal;
+  DestOptions: TEncodeLatin; SourceOptions: TEndianSource): TStringInfo;
+begin
+  FillChar(Result, SizeOf(Result), 0);
+  TryLatinFromUTF32(Result, Dest, Source, SourceCount, DestOptions, SourceOptions);
+end;
+
+function TryLatinFromUTF16(Dest: PLegacyChar; Source: PWideChar; SourceCount: Cardinal;
+  DestOptions: TEncodeLatin; SourceOptions: TEndianSource): TStringInfo;
+begin
+  FillChar(Result, SizeOf(Result), 0);
+  TryLatinFromUTF16(Result, Dest, Source, SourceCount, DestOptions, SourceOptions);
+end;
+
+function TryLatinFromUTF8(Dest, Source: PLegacyChar; SourceCount: Cardinal;
+  DestOptions: TEncodeLatin; SourceOptions: TLegacySource): TStringInfo;
+begin
+  FillChar(Result, SizeOf(Result), 0);
+  TryLatinFromUTF8(Result, Dest, Source, SourceCount, DestOptions, SourceOptions);
+end;
+
+function TryUTF32FromLatin(Dest: PQuadChar; Source: PLegacyChar; SourceCount: Cardinal;
+  DestOptions: TEncodeEndian; SourceOptions: TLatinSource): TStringInfo;
+begin
+  FillChar(Result, SizeOf(Result), 0);
+  TryUTF32FromLatin(Result, Dest, Source, SourceCount, DestOptions, SourceOptions);
+end;
+
+function TryUTF32FromUTF32(Dest, Source: PQuadChar; SourceCount: Cardinal;
+  DestOptions: TEncodeEndian; SourceOptions: TEndianSource): TStringInfo;
+begin
+  FillChar(Result, SizeOf(Result), 0);
+  TryUTF32FromUTF32(Result, Dest, Source, SourceCount, DestOptions, SourceOptions);
+end;
+
+function TryUTF32FromUTF16(Dest: PQuadChar; Source: PWideChar; SourceCount: Cardinal;
+  DestOptions: TEncodeEndian; SourceOptions: TEndianSource): TStringInfo;
+begin
+  FillChar(Result, SizeOf(Result), 0);
+  TryUTF32FromUTF16(Result, Dest, Source, SourceCount, DestOptions, SourceOptions);
+end;
+
+function TryUTF32FromUTF8(Dest: PQuadChar; Source: PLegacyChar; SourceCount: Cardinal;
+  DestOptions: TEncodeEndian; SourceOptions: TLegacySource): TStringInfo;
+begin
+  FillChar(Result, SizeOf(Result), 0);
+  TryUTF32FromUTF8(Result, Dest, Source, SourceCount, DestOptions, SourceOptions);
+end;
+
+function TryUTF16FromLatin(Dest: PWideChar; Source: PLegacyChar; SourceCount: Cardinal;
+  DestOptions: TEncodeEndian; SourceOptions: TLatinSource): TStringInfo;
+begin
+  FillChar(Result, SizeOf(Result), 0);
+  TryUTF16FromLatin(Result, Dest, Source, SourceCount, DestOptions, SourceOptions);
+end;
+
+function TryUTF16FromUTF32(Dest: PWideChar; Source: PQuadChar; SourceCount: Cardinal;
+  DestOptions: TEncodeEndian; SourceOptions: TEndianSource): TStringInfo;
+begin
+  FillChar(Result, SizeOf(Result), 0);
+  TryUTF16FromUTF32(Result, Dest, Source, SourceCount, DestOptions, SourceOptions);
+end;
+
+function TryUTF16FromUTF16(Dest, Source: PWideChar; SourceCount: Cardinal;
+  DestOptions: TEncodeEndian; SourceOptions: TEndianSource): TStringInfo;
+begin
+  FillChar(Result, SizeOf(Result), 0);
+  TryUTF16FromUTF16(Result, Dest, Source, SourceCount, DestOptions, SourceOptions);
+end;
+
+function TryUTF16FromUTF8(Dest: PWideChar; Source: PLegacyChar; SourceCount: Cardinal;
+  DestOptions: TEncodeEndian; SourceOptions: TLegacySource): TStringInfo;
+begin
+  FillChar(Result, SizeOf(Result), 0);
+  TryUTF16FromUTF8(Result, Dest, Source, SourceCount, DestOptions, SourceOptions);
+end;
+
+function TryUTF8FromLatin(Dest, Source: PLegacyChar; SourceCount: Cardinal;
+  DestOptions: TEncodeUTF8; SourceOptions: TLatinSource): TStringInfo;
+begin
+  FillChar(Result, SizeOf(Result), 0);
+  TryUTF8FromLatin(Result, Dest, Source, SourceCount, DestOptions, SourceOptions);
+end;
+
+function TryUTF8FromUTF32(Dest: PLegacyChar; Source: PQuadChar; SourceCount: Cardinal;
+  DestOptions: TEncodeUTF8; SourceOptions: TEndianSource): TStringInfo;
+begin
+  FillChar(Result, SizeOf(Result), 0);
+  TryUTF8FromUTF32(Result, Dest, Source, SourceCount, DestOptions, SourceOptions);
+end;
+
+function TryUTF8FromUTF16(Dest: PLegacyChar; Source: PWideChar; SourceCount: Cardinal;
+  DestOptions: TEncodeUTF8; SourceOptions: TEndianSource): TStringInfo;
+begin
+  FillChar(Result, SizeOf(Result), 0);
+  TryUTF8FromUTF16(Result, Dest, Source, SourceCount, DestOptions, SourceOptions);
+end;
+
+function TryUTF8FromUTF8(Dest, Source: PLegacyChar; SourceCount: Cardinal;
+  DestOptions: TEncodeUTF8; SourceOptions: TLegacySource): TStringInfo;
+begin
+  FillChar(Result, SizeOf(Result), 0);
+  TryUTF8FromUTF8(Result, Dest, Source, SourceCount, DestOptions, SourceOptions);
+end;}
