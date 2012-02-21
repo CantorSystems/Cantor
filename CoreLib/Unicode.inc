@@ -43,10 +43,13 @@ const
 
   BOM_UTF8            = $BFBBEF;      // byte sequence is platform-dependent
 
-  BOM_UTF16_BE        = $FFFE;
-  BOM_UTF16_LE        = $FEFF;
-  BOM_UTF32_BE        = $FFFE0000;
-  BOM_UTF32_LE        = $0000FEFF;
+  BOM_UTF16           = $FEFF;        // platform-dependent
+
+  BOM_UTF16_BE        = WideChar($FFFE);
+  BOM_UTF16_LE        = WideChar($FEFF);
+
+  BOM_UTF32_BE        = QuadChar($FFFE0000);
+  BOM_UTF32_LE        = QuadChar($0000FEFF);
 
   Unknown_Latin       = #$1A;
 
@@ -79,7 +82,7 @@ const
 
 type
   TCharBlock = (
-    cbUnknown,
+    cbNonUnicode,
     cbBasicLatin,
     cbLatin1Supplement,
     cbLatinExtA,
@@ -299,8 +302,7 @@ type
     cbTags,
     cbVarSelectorsSupplement,
     cbPrivateAreaA,
-    cbPrivateAreaB,
-    cbNonUnicode
+    cbPrivateAreaB
   );
 
   TCharBlocks = set of TCharBlock;
@@ -564,7 +566,7 @@ const
     (Lo: $100000; Hi: $10FFFF) // Supplementary Private Use Area-B
   );
 
-  CharBlockNames: array[cbBasicLatin..cbNonUnicode] of PLegacyChar = (
+  UnicodeBlockNames: array[TUnicodeBlock] of PLegacyChar = (
     sBasicLatin,
     sLatin1Supplement,
     sLatinExtA,
@@ -784,7 +786,6 @@ const
     sTags,
     sVarSelectorsSupplement,
     sPrivateAreaA,
-    sPrivateAreaB,
-    sNonUnicode
+    sPrivateAreaB
   );
 

@@ -596,8 +596,7 @@ begin
 {$ENDIF}
 end;
 
-constructor Exception.Create(Msg: PWideChar; Count: Cardinal);
-{$IFDEF Compat}
+function LegacyString(Msg: PWideChar; Count: Cardinal): PLegacyChar;
 var
   L: Cardinal;
 begin
@@ -605,32 +604,36 @@ begin
     WideCharToMultiByte(CP_ACP, 0, Msg, Count, nil, 0, nil, nil);
   if L <> 0 then
   begin
-    GetMem(FDelphiMsg, L + 1 + SizeOf(Cardinal));
-    PCardinal(FDelphiMsg)^ := L;
-    Inc(FDelphiMsg, SizeOf(Cardinal));
+    GetMem(Result, L + 1 + SizeOf(Cardinal));
+    PCardinal(Result)^ := L;
+    Inc(Result, SizeOf(Cardinal));
   {$IFDEF Tricks} System. {$ENDIF}
-    WideCharToMultiByte(CP_ACP, 0, Msg, Count, FDelphiMsg, L, nil, nil);
-    FDelphiMsg[L] := #0;
+    WideCharToMultiByte(CP_ACP, 0, Msg, Count, Result, L, nil, nil);
+    Result[L] := #0;
   end;
-{$ELSE}
+end;
+
+constructor Exception.Create(Msg: PWideChar; Count: Cardinal);
 begin
-{$ENDIF}
   if Msg <> nil then
   begin
     GetMem(FMessage, (Count + 1) * SizeOf(WideChar));
     Move(Msg^, FMessage^, Count * SizeOf(WideChar));
     FMessage[Count] := WideChar(0);
     FOptions := [eoWideChar, eoFreeMessage];
+  {$IFDEF Compat}
+    FDelphiMsg := LegacyString(Msg, Count);
+  {$ENDIF}
   end;
   Include(FOptions, eoCanFree);
 end;
 
 constructor Exception.Create(Msg: PLegacyChar; CodePage: Word; const Args: array of const);
 begin
-{$IFDEF Compat}
-  Create(Msg, Args);
-{$ENDIF}
   FMessage := LegacyFormat(Msg, CodePage, Args);
+{$IFDEF Compat}
+  FDelphiMsg := LegacyString(FMessage, WideStrLen(FMessage));
+{$ENDIF}
   FOptions := [eoWideChar, eoFreeMessage, eoCanFree];
 end;
 

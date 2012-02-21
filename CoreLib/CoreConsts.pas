@@ -69,15 +69,13 @@ const
 //  sBigEndian = '(Big-endian)';
 //  sLittleEndian = '(Little-endian)';
 
-{$IFDEF Lite}
-  sInvalidCharSet = 'Cannot convert string between code page %s and %hs character set';
-  sInvalidCharSet2 = 'Cannot convert %s string into %s character set';
-  sInvalidCodePage = 'Cannot convert %hs string into code page %s';
-  sInvalidCodePage2 = 'Cannot convert string between code page %s and code page %s';
-{$ELSE}
-  sInvalidCharSet = 'Cannot convert %s character into %s character set';
-  sInvalidCodePage = 'Cannot convert %hs character into code page %s';
-{$ENDIF}
+  sInvalidCharSet = 'Cannot convert string between code page %s'#10'and %hs character set';
+  sInvalidCodePage = 'Cannot convert %hs string'#10'into code page %s';
+  sInvalidCharSet2 = 'Cannot convert %s string'#10'into %s character set';
+  sInvalidCodePage2 = 'Cannot convert string between code page %s'#10'and code page %s';
+
+  sInvalidCharSetChar = 'Cannot convert %hs character “%c”'#10'into %hs character set';
+  sInvalidCodePageChar = 'Cannot convert %hs character “%c”'#10'into code page %s';
 
   sNoCodePage = '%s has no assigned code page';
   sNonUnicode = '%s string contains characters outside of Unicode range'; // UTF-8, UTF-32
