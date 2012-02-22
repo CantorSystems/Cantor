@@ -10,8 +10,9 @@
         * Character blocks
         * TString.Language
         * TString.Length(Source, MaxLength)
-      * Latin -- Latin charset support (ISO-8859-1)
-      * UTF32 -- UTF-32 charset support
+      * Kolibri -- cross-compile as Kolibri UnicodeLib  
+      * Latin -- Latin character set support (ISO-8859-1)
+      * UTF32 -- UTF-32 character set support
 *)
 
 unit CoreStrings;
@@ -24,57 +25,8 @@ uses
 {$I Unicode.inc}
 
 type
-  TStringOption = (soAttachBuffer, soBigEndian, soDetectCharSet);
-  TStringOptions = set of TStringOption;
-
-const
-  soLatin1 = soBigEndian;
-
-type
-  TLegacyOptions = set of soAttachBuffer..soAttachBuffer;
-  TLatinOptions = set of soAttachBuffer..soLatin1;
-  TEndianOptions = set of soAttachBuffer..soBigEndian;
-
-  TLegacySource = set of soDetectCharSet..soDetectCharSet;
-  TLatinSource = set of soLatin1..soDetectCharSet;
-  TEndianSource = set of soBigEndian..soDetectCharSet;
-
-  TConvertOption = (coPunctuation, coKana, coCase, coTurkic, coNonSpace, coWidth,
-    coHanzi, coDiacritics, coComposition, coForceInvalid, coRangeBlocks,
-    coCompatibility, coBigEndian, coSurrogates);
-
-const
-  coLatin1 = coCompatibility;
-  coCESU8 = coSurrogates;
-  coEncodedZero = coBigEndian;
-  coModifiedUTF8 = [coCESU8, coEncodedZero];
-
-  coNFC = [];
-  coNFD = [coComposition];
-  coNFKC = [coCompatibility];
-  coNFKD = [coComposition, coCompatibility];
-
-type
-  TEncodeLegacy = set of coCase..coRangeBlocks;
-  TEncodeLatin = set of coCase..coLatin1;
-  TEncodeUTF32 = set of coComposition..coBigEndian;
-  TEncodeUTF16 = set of coComposition..coSurrogates;
-  TEncodeUTF8 = set of coComposition..coCESU8;
-  TUTF8Compliance = set of coEncodedZero..coCESU8;
-
   PLegacyStrInfo = ^TLegacyStrInfo;
   TLegacyStrInfo = record
-    Count: Cardinal;
-  {$IFNDEF Lite}
-    Blocks: TCharBlocks;
-  {$ENDIF}
-    case Byte of
-      0: (InvalidChar: QuadChar);
-      1: (InvalidCount: Cardinal);
-  end;
-
-  PDoubleByteStrInfo = ^TDoubleByteStrInfo;
-  TDoubleByteStrInfo = record
     Count: Cardinal;
   {$IFNDEF Lite}
     Blocks: TCharBlocks;
@@ -92,7 +44,7 @@ type
   {$ENDIF}
     case Byte of
       0: (InvalidChar: QuadChar);
-      1: (InvalidCount, CharCount, SurrogateCount: Cardinal);
+      1: (InvalidCount, SurrogateCount, CharCount: Cardinal);
   end;
 
 { Legacy Windows service }
@@ -108,6 +60,68 @@ type
   end;
 
 function GetCPInfoEx(CodePage, Flags: LongWord; var CPInfoEx: TCPInfoEx): BOOL; stdcall;
+
+{$IFDEF Kolibri}
+{$I Kolibri\CoreStrings.pas.inc}
+{$I Kolibri\CodePageNames.pas.inc}
+const
+  soLatin1 = soBigEndian;
+  coLatin1 = coBigEndian;
+
+type
+  TLatinOptions = set of soLatin1..soAttachBuffer;
+  TLatinSource = set of soDetectCharSet..soLatin1;
+  TEncodeLatin = set of coForceInvalid..coLatin1;
+{$ELSE}
+type
+{
+  soDetectCharSet:
+    * Latin source: try to decode source as UTF-8, continue as latin on fail
+    * Code page source: try to decode source as UTF-8, continue as code page on fail
+    * UTF-8 source: try to decode source as code page, continue as UTF-8 on fail
+    * UTF-16 and UTF-32: try to detect byte order
+}
+  TStringOption = (soDetectCharSet, soBigEndian, soAttachBuffer);
+
+const
+  soLatin1 = soBigEndian;
+
+type
+  TLegacyOptions = set of soAttachBuffer..soAttachBuffer;
+  TLatinOptions = set of soLatin1..soAttachBuffer;
+  TEndianOptions = set of soBigEndian..soAttachBuffer;
+
+  TLegacySource = set of soDetectCharSet..soDetectCharSet;
+  TLatinSource = set of soDetectCharSet..soLatin1;
+  TEndianSource = set of soDetectCharSet..soBigEndian;
+
+{
+  coForceInvalid -- replace invalid characters with:
+    * U+001A for code page (recommended by Unicode for single-byte character sets)
+    * U+FFFD for Unicode Transformation Formats (official Unicode replacement character)
+}
+  TConvertOption = (coPunctuation, coKana, coCase, coTurkic, coNonSpace, coWidth,
+    coHanzi, coDiacritics, coComposition, coForceInvalid, coRangeBlocks,
+    coCompatibility, coBigEndian, coSurrogates);
+
+const
+  coLatin1 = coCompatibility;
+  coCESU8 = coSurrogates;
+  coEncodedZero = coBigEndian;
+  coModifiedUTF8 = [coCESU8, coEncodedZero];  // UTF-8 compliance
+
+  coNFC = [];
+  coNFD = [coComposition];
+  coNFKC = [coCompatibility];
+  coNFKD = [coComposition, coCompatibility];
+
+type
+  TEncodeLegacy = set of coCase..coRangeBlocks;
+  TEncodeLatin = set of coCase..coLatin1;
+  TEncodeUTF32 = set of coComposition..coBigEndian;
+  TEncodeUTF16 = set of coComposition..coSurrogates;
+  TEncodeUTF8 = set of coComposition..coCESU8;
+{$ENDIF Kolibri}
 
 { Code page support }
 
@@ -182,8 +196,6 @@ type
   {$ENDIF}
   end;
 
-  TWideString = class;
-
   // mapping from 0 for EBCDIC compliance
   TSingleByteMap = array[LegacyChar] of WideChar;
 
@@ -204,6 +216,7 @@ type
     property WideMapHi: WideChar read FWideMapHi;
   end;
 
+{$IFNDEF Kolibri}
   TSingleByteMemCodePage = class(TMemoryCodePage)
   private
     FWideMap: PLegacyChar;
@@ -252,7 +265,9 @@ type
   {$WARNINGS ON}
     property WideMap: PLegacyChar read FWideMap;
   end;
+{$ENDIF Kolibri}
 
+type
   TLeadByte = #$80..#$FF;
   PTrailByteMap = ^TSingleByteMap;
   TDoubleByteMap = array[TLeadByte] of PTrailByteMap;
@@ -315,6 +330,9 @@ type
   end;
 
 { Strings }
+
+type
+  TStringOptions = set of TStringOption;
 
   TSubString = class(TSharedObject)
   private
@@ -475,6 +493,9 @@ type
     property Str: TCodePageString read FString;
   end;
 
+const
+  LeadBytes = [Low(TLeadByte)..High(TLeadByte)];
+
 { Core services }
 
 function LatinToLatin(var Info: TLegacyStrInfo; Source: PLegacyChar;
@@ -565,11 +586,16 @@ function UTF16ToUTF8(Source: PWideChar; Count: Cardinal; SourceOptions: TEndianS
 function UTF8ToUTF8(Source: PLegacyChar; Count: Cardinal; SourceOptions: TLegacySource;
   Dest: PLegacyChar; DestOptions: TEncodeUTF8 = []): Cardinal; overload;
 
-function EstimateUTF8(const Info: TUnicodeStrInfo; Options: TEncodeUTF8 = []): Cardinal;
-function EstimateUTF16(const Info: TUnicodeStrInfo; Options: TEncodeUTF16 = []): Cardinal;
+procedure UTF32SwapByteOrder(Source: PQuadChar; Count: Cardinal; Dest: PQuadChar);
+procedure UTF16SwapByteOrder(Source: PWideChar; Count: Cardinal; Dest: PQuadChar);
 
+{$IFNDEF Kolibri}
 function DetectUTF32(Source: QuadChar; Options: TEndianSource): TEndianSource;
 function DetectUTF16(Source: PWideChar; Options: TEndianSource): TEndianSource;
+{$ENDIF}
+
+function EstimateUTF8(const Info: TUnicodeStrInfo; Options: TEncodeUTF8 = []): Cardinal; overload;
+function EstimateUTF16(const Info: TUnicodeStrInfo; Options: TEncodeUTF16 = []): Cardinal; overload;
 
 function FindCharBlock(Source: QuadChar; PrevBlock: TCharBlock = cbNonUnicode): TCharBlock;
 function TranslateCodePage(Source: Word): Word;
@@ -582,6 +608,14 @@ function GetCPInfoEx(CodePage, Flags: LongWord; var CPInfoEx: TCPInfoEx): BOOL; 
   external kernel32 name 'GetCPInfoExW';
 
 { Core services }
+
+procedure UTF32SwapByteOrder(Source: PQuadChar; Count: Cardinal; Dest: PQuadChar);
+asm
+end;
+
+procedure UTF16SwapByteOrder(Source: PWideChar; Count: Cardinal; Dest: PQuadChar);
+asm
+end;
 
 function LatinToLatin(var Info: TLegacyStrInfo; Source: PLegacyChar; Count: Cardinal;
   SourceOptions: TLatinSource; Dest: PLegacyChar; DestOptions: TEncodeLatin): Boolean;
@@ -900,6 +934,135 @@ begin
     raise EConvert.Create(Source, csUTF8, Info, csUTF8);
 end;
 
+{$IFDEF Kolibri}
+function FromUTF8(Source: PLegacyChar; Count: Cardinal; SourceOptions: TLegacySource;
+  Dest: PLegacyChar; CodePage: Word; DestOptions: TEncodeLegacy; InvalidChar: PQuadChar): Cardinal;
+begin
+  // TODO
+end;
+
+function FromUTF16(Source: PWideChar; Count: Cardinal; SourceOptions: TEndianSource;
+  Dest: PLegacyChar; CodePage: Word; DestOptions: TEncodeLegacy; InvalidChar: PQuadChar): Cardinal;
+begin
+  // TODO
+end;
+
+{$IFDEF UTF32}
+function FromUTF32(Source: PQuadChar; Count: Cardinal; SourceOptions: TEndianSource;
+  Dest: PLegacyChar; CodePage: Word; DestOptions: TEncodeLegacy; InvalidChar: PQuadChar): Cardinal;
+begin
+  // TODO
+end;
+{$ENDIF}
+
+
+function ToUTF8(Source: PLegacyChar; Count: Cardinal; CodePage: Word; SourceOptions: TLegacySource;
+  Dest: PLegacyChar; DestOptions: TEncodeUTF8; InvalidChar: PQuadChar): Cardinal;
+begin
+  // TODO
+end;
+
+function ToUTF16(Source: PLegacyChar; Count: Cardinal; CodePage: Word; SourceOptions: TLegacySource;
+  Dest: PWideChar; DestOptions: TEncodeUTF16; InvalidChar: PQuadChar): Cardinal;
+begin
+  // TODO
+end;
+
+{$IFDEF UTF32}
+function ToUTF32(Source: PLegacyChar; Count: Cardinal; CodePage: Word; SourceOptions: TLegacySource;
+  Dest: PQuadChar; DestOptions: TEncodeUTF32; InvalidChar: PQuadChar): Cardinal;
+begin
+  // TODO
+end;
+{$ENDIF}
+
+function UTF16ToUTF16(Source: PWideChar; Count: Cardinal; SourceOptions: TEndianSource;
+  Dest: PWideChar; DestOptions: TEncodeUTF16; InvalidChar: PQuadChar): Cardinal;
+begin
+  // TODO
+end;
+
+function UTF8ToUTF16(Source: PLegacyChar; Count: Cardinal; SourceOptions: TLegacySource;
+  Dest: PWideChar; DestOptions: TEncodeUTF16; InvalidChar: PQuadChar): Cardinal;
+begin
+  // TODO
+end;
+
+function UTF16ToUTF8(Source: PWideChar; Count: Cardinal; SourceOptions: TEndianSource;
+  Dest: PLegacyChar; DestOptions: TEncodeUTF8; InvalidChar: PQuadChar): Cardinal;
+begin
+  // TODO
+end;
+
+function UTF8ToUTF8(Source: PLegacyChar; Count: Cardinal; SourceOptions: TLegacySource;
+  Dest: PLegacyChar; DestOptions: TEncodeUTF8; InvalidChar: PQuadChar): Cardinal;
+begin
+  // TODO
+end;
+
+{$IFDEF UTF32}
+function UTF32ToUTF8(Source: PQuadChar; Count: Cardinal; SourceOptions: TEndianSource;
+  Dest: PLegacyChar; DestOptions: TEncodeUTF8; InvalidChar: PQuadChar): Cardinal;
+begin
+  // TODO
+end;
+
+function UTF32ToUTF16(Source: PQuadChar; Count: Cardinal; SourceOptions: TEndianSource;
+  Dest: PWideChar; DestOptions: TEncodeUTF16; InvalidChar: PQuadChar): Cardinal;
+begin
+  // TODO
+end;
+
+function UTF8ToUTF32(Source: PLegacyChar; Count: Cardinal; SourceOptions: TLegacySource;
+  Dest: PQuadChar; DestOptions: TEncodeUTF32; InvalidChar: PQuadChar): Cardinal;
+begin
+  // TODO
+end;
+
+function UTF16ToUTF32(Source: PWideChar; Count: Cardinal; SourceOptions: TEndianSource;
+  Dest: PQuadChar; DestOptions: TEncodeUTF32; InvalidChar: PQuadChar): Cardinal;
+begin
+  // TODO
+end;
+
+function UTF32ToUTF32(Source: PQuadChar; Count: Cardinal; SourceOptions: TEndianSource;
+  Dest: PQuadChar; DestOptions: TEncodeUTF32; InvalidChar: PQuadChar): Cardinal;
+begin
+  // TODO
+end;
+{$ENDIF}
+
+function EstimateUTF8(Count, SurrogateCount: Cardinal; Options: TEncodeUTF8): Cardinal;
+begin
+  if coCESU8 in Options then
+    Result := (Count + SurrogateCount) * 3
+  else
+    Result := Count * 3 + SurrogateCount;
+end;
+
+function EstimateUTF16(Count, SurrogateCount: Cardinal; Options: TEncodeUTF16): Cardinal;
+begin
+  Result := Count;
+  if coSurrogates in Options then
+    Inc(Result, SurrogateCount);
+end;
+
+function EnumCodePages(Callback: TEnumCodePages): Word;
+begin
+  Result := 0;
+end;
+
+function GetCharSetDisplayName(CodePage: Word; Language: Byte): PLegacyChar;
+begin
+  Result := nil; // TODO
+end;
+
+function GetCharSetMIME(CodePage: Word; Language: Byte): PLegacyChar;
+begin
+  Result := nil; // TODO
+end;
+{$ENDIF Kolibri}
+
 function EstimateUTF8(const Info: TUnicodeStrInfo; Options: TEncodeUTF8): Cardinal;
 begin
   if coCESU8 in Options then
@@ -982,7 +1145,7 @@ begin
       Result := Options - [soBigEndian];
       Exit;
     end;
-  end;
+  end;                                 
 
   Result := Options;
 end;
@@ -1307,8 +1470,11 @@ var
   T: LongWord;
   W: WideChar;
 begin
-  FNumber := Info.CodePage;
-  FName := WideStrNew(Info.CodePageName);
+  with Info do
+  begin
+    FNumber := CodePage;
+    FName := WideStrNew(CodePageName);
+  end;
 
   // Fast core
   T := $03020100;
@@ -1375,6 +1541,11 @@ end;
 
 { TSingleByteMemCodePage }
 
+{$IFDEF Kolibri}
+constructor TRawCodePage.Create(const RawMap: TRawMap);
+begin
+end;
+{$ELSE}
 constructor TSingleByteMemCodePage.Create(const Info: TCPInfoEx);
 var
   C: LegacyChar;
@@ -1397,6 +1568,7 @@ begin
     FWideMapHi := WideChar(0);
   end;
 end;
+{$ENDIF}
 
 destructor TSingleByteMemCodePage.Destroy;
 begin
@@ -1419,7 +1591,7 @@ function TSingleByteMemCodePage.FromLatin(var Info: TLegacyStrInfo;
   Source: PLegacyChar; Count: Cardinal; SourceOptions: TLatinSource;
   Dest: PLegacyChar; DestOptions: TEncodeLegacy): Boolean;
 var
-  I: Integer;
+  I: Cardinal;
   C, D: LegacyChar;
   Uni: TLegacyStrInfo;
 {$IFNDEF Lite}
@@ -1446,18 +1618,12 @@ begin
     begin
       C := Source[I];
 
-      if C in [#0..#$7F] then
-        if WideChar(C) >= FWideMapLo then
-          D := FWideMap[Word(C) - Word(FWideMapLo)]
-        else
+      D := #0;
+      if (C in [#0..#$7F]) or (soLatin1 in SourceOptions) then
+        if WideChar(C) < FWideMapLo then
           D := C
-      else
-        if (C in [#$A0..#$FF]) and (soLatin1 in SourceOptions) and
-          (WideChar(C) >= FWideMapLo) and (WideChar(C) <= FWideMapHi)
-        then
-          D := FWideMap[Word(C) - Word(FWideMapLo)]
-        else
-          D := #0;
+        else if WideChar(C) <= FWideMapHi then
+          D := FWideMap[Word(C) - Word(FWideMapLo)];
 
       if (D = #0) and (C <> #0) then
         if coForceInvalid in DestOptions then
@@ -1467,7 +1633,7 @@ begin
         end
         else
         begin
-          Info.InvalidChar := QuadChar(Source[I]);
+          Info.InvalidChar := QuadChar(C);
           Result := False;
           Exit;
         end;
@@ -1477,7 +1643,7 @@ begin
     {$IFNDEF Lite}
       if coRangeBlocks in DestOptions then
       begin
-        Block := FindCharBlock(QuadChar(D), Block);
+        Block := FindCharBlock(QuadChar(C), Block);
         Include(Info.Blocks, Block);
       end;
     {$ENDIF}
@@ -1491,7 +1657,7 @@ function TSingleByteMemCodePage.ToLatin(var Info: TLegacyStrInfo;
   Source: PLegacyChar; Count: Cardinal; SourceOptions: TLegacySource;
   Dest: PLegacyChar; DestOptions: TEncodeLatin): Boolean;
 var
-  I: Integer;
+  I: Cardinal;
   C: LegacyChar;
   W: WideChar;
   Uni: TLegacyStrInfo;
@@ -1564,7 +1730,7 @@ function TSingleByteMemCodePage.FromUTF32(var Info: TLegacyStrInfo;
   Source: PQuadChar; Count: Cardinal; SourceOptions: TEndianSource;
   Dest: PLegacyChar; DestOptions: TEncodeLegacy): Boolean;
 var
-  I: Integer;
+  I: Cardinal;
   C: LegacyChar;
   Q: QuadChar;
 {$IFNDEF Lite}
@@ -1583,7 +1749,11 @@ begin
     begin
       Q := Source[I];
       if soBigEndian in SourceOptions then
-        Q := SwapBytes(Q);
+      asm
+        MOV EAX, Q
+        BSWAP EAX
+        MOV Q, EAX
+      end;
 
       if Q = Unknown_UTF32 then
         C := Unknown_Latin
@@ -1625,7 +1795,7 @@ function TSingleByteMemCodePage.ToUTF32(var Info: TUnicodeStrInfo;
   Source: PLegacyChar; Count: Cardinal; SourceOptions: TLegacySource;
   Dest: PQuadChar; DestOptions: TEncodeUTF32): Boolean;
 var
-  I: Integer;
+  I: Cardinal;
   C: LegacyChar;
   Q: QuadChar;
   Uni: TUnicodeStrInfo;
@@ -1652,26 +1822,24 @@ begin
     for I := 0 to Count - 1 do
     begin
       C := Source[I];
-      if C = #0 then
+      if C <> #0 then
       begin
-        Dest[I] := 0;
-        Inc(Info.Count);
-        Continue;
-      end;
-
-      Q := QuadChar(FSingleByteMap[C]);
-      if Q = 0 then
-        if coForceInvalid in DestOptions then
-        begin
-          Q := Unknown_UTF32;
-          Inc(Info.InvalidCount);
-        end
-        else
-        begin
-          Info.InvalidChar := Q;
-          Result := False;
-          Exit;
-        end;
+        Q := QuadChar(FSingleByteMap[C]);
+        if Q = 0 then
+          if coForceInvalid in DestOptions then
+          begin
+            Q := Unknown_UTF32;
+            Inc(Info.InvalidCount);
+          end
+          else
+          begin
+            Info.InvalidChar := Q;
+            Result := False;
+            Exit;
+          end;
+      end
+      else
+        Q := 0;
 
     {$IFNDEF Lite}
       if coRangeBlocks in DestOptions then
@@ -1680,10 +1848,20 @@ begin
         Include(Info.Blocks, Block);
       end;
     {$ENDIF}
+
       if coBigEndian in DestOptions then
-        Q := SwapBytes(Q);
+      asm
+        MOV EAX, Q
+        BSWAP EAX
+        MOV Q, EAX
+      end;
+
       Dest[I] := Q;
-      Inc(Info.Count);
+      with Info do
+      begin
+        Inc(Count);
+        Inc(CharCount);
+      end;
     end;
   end;
 
@@ -1755,16 +1933,16 @@ begin
       end;
     end;
 
-    Dest^ := C;
-    Inc(Dest);
-    Inc(Info.Count);
   {$IFNDEF Lite}
     if coRangeBlocks in DestOptions then
     begin
-      Block := FindCharBlock(QuadChar(C), Block);
+      Block := FindCharBlock(QuadChar(W), Block);
       Include(Info.Blocks, Block);
     end;
   {$ENDIF}
+    Dest^ := C;
+    Inc(Dest);
+    Inc(Info.Count);
     Inc(I);
   end;
 
@@ -1775,7 +1953,7 @@ function TSingleByteMemCodePage.ToUTF16(var Info: TUnicodeStrInfo;
   Source: PLegacyChar; Count: Cardinal; SourceOptions: TLegacySource;
   Dest: PWideChar; DestOptions: TEncodeUTF16): Boolean;
 var
-  I: Integer;
+  I: Cardinal;
   C: LegacyChar;
   W: WideChar;
   Uni: TUnicodeStrInfo;
@@ -1802,26 +1980,24 @@ begin
     for I := 0 to Count - 1 do
     begin
       C := Source[I];
-      if C = #0 then
+      if C <> #0 then
       begin
-        Dest[I] := WideChar(0);
-        Inc(Info.Count);
-        Continue;
-      end;
-
-      W := FSingleByteMap[C];
-      if W = WideChar(0) then
-        if coForceInvalid in DestOptions then
-        begin
-          W := Unknown_UTF16;
-          Inc(Info.InvalidCount);
-        end
-        else
-        begin
-          Info.InvalidChar := QuadChar(W);
-          Result := False;
-          Exit;
-        end;
+        W := FSingleByteMap[C];
+        if W = WideChar(0) then
+          if coForceInvalid in DestOptions then
+          begin
+            W := Unknown_UTF16;
+            Inc(Info.InvalidCount);
+          end
+          else
+          begin
+            Info.InvalidChar := QuadChar(W);
+            Result := False;
+            Exit;
+          end;
+      end
+      else
+        W := WideChar(0);
 
     {$IFNDEF Lite}
       if coRangeBlocks in DestOptions then
@@ -1833,7 +2009,11 @@ begin
       if coBigEndian in DestOptions then
         W := WideChar(Swap(Word(W)));
       Dest[I] := W;
-      Inc(Info.Count);
+      with Info do
+      begin
+        Inc(Count);
+        Inc(CharCount);
+      end;
     end;
   end;
 
@@ -1863,7 +2043,7 @@ var
 {$IFNDEF Lite}
   Block: TCharBlock;
 {$ENDIF}
-  C, L: Char;
+  C, L: LegacyChar;
   I: Word;
   P: PTrailByteMap;
   T: LongWord;
@@ -1934,11 +2114,7 @@ begin
       begin
         W := P[C];
         if W >= FWideMapLo then
-          with FWideMap[Word(W) - Word(FWideMapLo)] do
-          begin
-            LeadByte := L;
-            TrailByte := C;
-          end;
+          Word(FWideMap[Word(W) - Word(FWideMapLo)]) := Byte(L) or (Byte(C) shl 8);
       end;
     end
     else
@@ -1969,15 +2145,169 @@ end;
 function TDoubleByteMemCodePage.FromLatin(var Info: TLegacyStrInfo;
   Source: PLegacyChar; Count: Cardinal; SourceOptions: TLatinSource;
   Dest: PLegacyChar; DestOptions: TEncodeLegacy): Boolean;
+var
+  I: Cardinal;
+  C: LegacyChar;
+  D: DoubleByteChar;
+  Uni: TLegacyStrInfo;
+{$IFNDEF Lite}
+  Block: TCharBlock;
+{$ENDIF}
 begin
-  // TODO
+  if Count <> 0 then
+  begin
+    if soDetectCharSet in SourceOptions then
+    begin
+      Uni := Info;
+      if FromUTF8(Uni, Source, Count, [], Dest, DestOptions) then
+      begin
+        Info := Uni;
+        Result := True;
+        Exit;
+      end;
+    end;
+
+  {$IFNDEF Lite}
+    Block := cbNonUnicode;
+  {$ENDIF}
+    for I := 0 to Count - 1 do
+    begin
+      C := Source[I];
+
+      Word(D) := 0;
+      if (C in [#0..#$7F]) or (soLatin1 in SourceOptions) then
+        if WideChar(C) < FWideMapLo then
+          Word(D) := Word(C)
+        else if WideChar(C) >= FWideMapLo then
+          D := FWideMap[Word(C) - Word(FWideMapLo)];
+
+      if (Word(D) = 0) and (C <> #0) then
+        if coForceInvalid in DestOptions then
+        begin
+          Word(D) := Word(Unknown_Latin);
+          Inc(Info.InvalidCount);
+        end
+        else
+        begin
+          Info.InvalidChar := QuadChar(C);
+          Result := False;
+          Exit;
+        end;
+
+    {$IFNDEF Lite}
+      if coRangeBlocks in DestOptions then
+      begin
+        Block := FindCharBlock(QuadChar(C), Block);
+        Include(Info.Blocks, Block);
+      end;
+    {$ENDIF}
+
+      if D.TrailByte <> #0 then
+      begin
+        PWord(Dest)^ := Word(D);
+        Inc(Dest, 2);
+        with Info do
+        begin
+          Inc(Count, 2);
+          Inc(DoubleByteCount);
+        end;
+      end
+      else
+      begin
+        Dest^ := D.SingleByte;
+        Inc(Dest);
+        Inc(Info.Count);
+      end;
+    end;
+  end;
+
+  Result := True;
 end;
 
 function TDoubleByteMemCodePage.ToLatin(var Info: TLegacyStrInfo;
   Source: PLegacyChar; Count: Cardinal; SourceOptions: TLegacySource;
   Dest: PLegacyChar; DestOptions: TEncodeLatin): Boolean;
+var
+  I: Cardinal;
+  C: LegacyChar;
+  W: WideChar;
+  Uni: TLegacyStrInfo;
+  T: PTrailByteMap;
+{$IFNDEF Lite}
+  Block: TCharBlock;
+{$ENDIF}
 begin
-  // TODO
+  if Count <> 0 then
+  begin
+    if soDetectCharSet in SourceOptions then
+    begin
+      Uni := Info;
+      if UTF8ToLatin(Uni, Source, Count, [], Dest, DestOptions) then
+      begin
+        Info := Uni;
+        Result := True;
+        Exit;
+      end;
+    end;
+
+  {$IFNDEF Lite}
+    Block := cbNonUnicode;
+  {$ENDIF}
+    I := 0;
+    while I <> Count do
+    begin
+      C := Source[I];
+      Inc(I);
+
+      W := WideChar(0);
+      if C in LeadBytes then
+      begin
+        T := FDoubleByteMap[C];
+        if T <> nil then
+        begin
+          C := Source[I];
+          Inc(I);
+          W := T[C];
+        end;
+      end;
+
+      if W = WideChar(0) then
+        W := FSingleByteMap[C];
+
+      case W of
+        WideChar(1)..WideChar($7F):
+          C := LegacyChar(W);
+        WideChar($80)..WideChar($FF):
+          if coLatin1 in DestOptions then
+            C := LegacyChar(W);
+      else
+        if coForceInvalid in DestOptions then
+        begin
+          C := Unknown_Latin;
+          Inc(Info.InvalidCount);
+        end
+        else
+        begin
+          Info.InvalidChar := QuadChar(C);
+          Result := False;
+          Exit;
+        end;
+      end;
+
+      Dest^ := C;
+      Inc(Dest);
+      Inc(Info.Count);
+    {$IFNDEF Lite}
+      if coRangeBlocks in DestOptions then
+      begin
+        Block := FindCharBlock(QuadChar(C), Block);
+        Include(Info.Blocks, Block);
+      end;
+    {$ENDIF}
+    end;
+  end;
+
+  Result := True;
 end;
 {$ENDIF}
 
@@ -1985,30 +2315,337 @@ end;
 function TDoubleByteMemCodePage.FromUTF32(var Info: TLegacyStrInfo;
   Source: PQuadChar; Count: Cardinal; SourceOptions: TEndianSource;
   Dest: PLegacyChar; DestOptions: TEncodeLegacy): Boolean;
+var
+  I: Cardinal;
+  D: DoubleByteChar;
+  Q: QuadChar;
+{$IFNDEF Lite}
+  Block: TCharBlock;
+{$ENDIF}
 begin
-  // TODO
+  if Count <> 0 then
+  begin
+    if soDetectCharSet in SourceOptions then
+      SourceOptions := DetectUTF32(Source[0], SourceOptions);
+
+  {$IFNDEF Lite}
+    Block := cbNonUnicode;
+  {$ENDIF}
+    for I := 0 to Count - 1 do
+    begin
+      Q := Source[I];
+      if soBigEndian in SourceOptions then
+      asm
+        MOV EAX, Q
+        BSWAP EAX
+        MOV Q, EAX
+      end;
+
+      if Q = Unknown_UTF32 then
+        Word(D) := Word(Unknown_Latin)
+      else if Q < QuadChar(FWideMapLo) then
+        Word(D) := Word(Q)
+      else if Q <= QuadChar(FWideMapHi) then
+      begin
+        D := FWideMap[Q - QuadChar(FWideMapLo)];
+        if Word(D) = 0 then
+          if coForceInvalid in DestOptions then
+          begin
+            Word(D) := Word(Unknown_Latin);
+            Inc(Info.InvalidCount);
+          end
+          else
+          begin
+            Info.InvalidChar := Q;
+            Result := False;
+            Exit;
+          end;
+      end;
+
+      if D.TrailByte <> #0 then
+      begin
+        PWord(Dest)^ := Word(D);
+        Inc(Dest, 2);
+        with Info do
+        begin
+          Inc(Count, 2);
+          Inc(DoubleByteCount);
+        end;
+      end
+      else
+      begin
+        Dest^ := D.SingleByte;
+        Inc(Dest);
+        Inc(Info.Count);
+      end;
+    {$IFNDEF Lite}
+      if coRangeBlocks in DestOptions then
+      begin
+        Block := FindCharBlock(Q, Block);
+        Include(Info.Blocks, Block);
+      end;
+    {$ENDIF}
+    end;
+  end;
+
+  Result := True;
 end;
 
 function TDoubleByteMemCodePage.ToUTF32(var Info: TUnicodeStrInfo;
   Source: PLegacyChar; Count: Cardinal; SourceOptions: TLegacySource;
   Dest: PQuadChar; DestOptions: TEncodeUTF32): Boolean;
+var
+  I: Cardinal;
+  C: LegacyChar;
+  T: PTrailByteMap;
+  Q: QuadChar;
+  Uni: TUnicodeStrInfo;
+{$IFNDEF Lite}
+  Block: TCharBlock;
+{$ENDIF}
 begin
-  // TODO
+  if Count <> 0 then
+  begin
+    if soDetectCharSet in SourceOptions then
+    begin
+      Uni := Info;
+      if UTF8ToUTF32(Uni, Source, Count, [], Dest, DestOptions) then
+      begin
+        Info := Uni;
+        Result := True;
+        Exit;
+      end;
+    end;
+
+  {$IFNDEF Lite}
+    Block := cbNonUnicode;
+  {$ENDIF}
+    I := 0;
+    while I <> Count do
+    begin
+      C := Source[I];
+      Inc(I);
+
+      Q := 0;
+      if C in LeadBytes then
+      begin
+        T := FDoubleByteMap[C];
+        if T <> nil then
+        begin
+          C := Source[I];
+          Inc(I);
+          Q := QuadChar(T[C]);
+        end;
+      end;
+
+      if Q = 0 then
+        Q := QuadChar(FSingleByteMap[C]);
+
+      if Q = 0 then
+        if coForceInvalid in DestOptions then
+        begin
+          Q := Unknown_UTF32;
+          Inc(Info.InvalidCount);
+        end
+        else
+        begin
+          Info.InvalidChar := Q;
+          Result := False;
+          Exit;
+        end;
+
+    {$IFNDEF Lite}
+      if coRangeBlocks in DestOptions then
+      begin
+        Block := FindCharBlock(Q, Block);
+        Include(Info.Blocks, Block);
+      end;
+    {$ENDIF}
+
+      if coBigEndian in DestOptions then
+      asm
+        MOV EAX, Q
+        BSWAP EAX
+        MOV Q, EAX
+      end;
+
+      Dest[0] := Q;
+      Inc(PLegacyChar(Dest), SizeOf(QuadChar));
+      with Info do
+      begin
+        Inc(Count);
+        Inc(CharCount);
+      end;
+    end;
+  end;
+
+  Result := True;
 end;
 {$ENDIF}
 
 function TDoubleByteMemCodePage.FromUTF16(var Info: TLegacyStrInfo;
   Source: PWideChar; Count: Cardinal; SourceOptions: TEndianSource;
   Dest: PLegacyChar; DestOptions: TEncodeLegacy): Boolean;
+var
+  I: Cardinal;
+  C: LegacyChar;
+  W, L: WideChar;
+  Q: QuadChar;
+{$IFNDEF Lite}
+  Block: TCharBlock;
+{$ENDIF}
 begin
-  // TODO
+  if soDetectCharSet in SourceOptions then
+    SourceOptions := DetectUTF16(Source, SourceOptions);
+
+{$IFNDEF Lite}
+  Block := cbNonUnicode;
+{$ENDIF}
+  I := 0;
+  while I <> Count do
+  begin
+    W := Source[I];
+    if soBigEndian in SourceOptions then
+      W := WideChar(Swap(Word(W)));
+
+    if W = Unknown_UTF16 then
+      C := Unknown_Latin
+    else if W < FWideMapLo then
+      C := LegacyChar(W)
+    else if W <= FWideMapHi then
+    begin
+//      C := FWideMap[Word(W) - Word(FWideMapLo)];
+      if C = #0 then
+      begin
+        Q := QuadChar(W);
+        case Word(W) of
+          Low(THighSurrogates)..High(THighSurrogates):
+          begin
+            L := Source[I + 1];
+            case Word(L) of
+              Low(TLowSurrogates)..High(TLowSurrogates):
+              begin
+                Inc(I);
+                Q := $10000 + (Word(W) - Low(THighSurrogates)) * $400 +
+                     Word(L) - Low(TLowSurrogates);
+              end;
+            end;
+          end;
+        end;
+
+        if coForceInvalid in DestOptions then
+        begin
+          C := Unknown_Latin;
+          Inc(Info.InvalidCount);
+        end
+        else
+        begin
+          Info.InvalidChar := Q;
+          Result := False;
+          Exit;
+        end;
+      end;
+    end;
+
+  {$IFNDEF Lite}
+    if coRangeBlocks in DestOptions then
+    begin
+      Block := FindCharBlock(QuadChar(W), Block);
+      Include(Info.Blocks, Block);
+    end;
+  {$ENDIF}
+    Dest^ := C;
+    Inc(Dest);
+    Inc(Info.Count);
+    Inc(I);
+  end;
+
+  Result := True;
 end;
 
 function TDoubleByteMemCodePage.ToUTF16(var Info: TUnicodeStrInfo;
   Source: PLegacyChar; Count: Cardinal; SourceOptions: TLegacySource;
   Dest: PWideChar; DestOptions: TEncodeUTF16): Boolean;
+var
+  I: Cardinal;
+  C: LegacyChar;
+  T: PTrailByteMap;
+  W: WideChar;
+  Uni: TUnicodeStrInfo;
+{$IFNDEF Lite}
+  Block: TCharBlock;
+{$ENDIF}
 begin
-  // TODO
+  if Count <> 0 then
+  begin
+    if soDetectCharSet in SourceOptions then
+    begin
+      Uni := Info;
+      if UTF8ToUTF16(Uni, Source, Count, [], Dest, DestOptions) then
+      begin
+        Info := Uni;
+        Result := True;
+        Exit;
+      end;
+    end;
+
+  {$IFNDEF Lite}
+    Block := cbNonUnicode;
+  {$ENDIF}
+    I := 0;
+    while I <> Count do
+    begin
+      C := Source[I];
+      Inc(I);
+
+      W := WideChar(0);
+      if C in LeadBytes then
+      begin
+        T := FDoubleByteMap[C];
+        if T <> nil then
+        begin
+          C := Source[I];
+          Inc(I);
+          W := T[C];
+        end;
+      end;
+
+      if W = WideChar(0) then
+        W := FSingleByteMap[C];
+
+      if W = WideChar(0) then
+        if coForceInvalid in DestOptions then
+        begin
+          W := Unknown_UTF16;
+          Inc(Info.InvalidCount);
+        end
+        else
+        begin
+          Info.InvalidChar := QuadChar(C);
+          Result := False;
+          Exit;
+        end;
+
+    {$IFNDEF Lite}
+      if coRangeBlocks in DestOptions then
+      begin
+        Block := FindCharBlock(QuadChar(W), Block);
+        Include(Info.Blocks, Block);
+      end;
+    {$ENDIF}
+      if coBigEndian in DestOptions then
+        W := WideChar(Swap(Word(W)));
+      Dest^ := W;
+      Inc(Dest);
+      with Info do
+      begin
+        Inc(Count);
+        Inc(CharCount);
+      end;
+    end;
+  end;
+
+  Result := True;
 end;
 
 function TDoubleByteMemCodePage.FromUTF8(var Info: TLegacyStrInfo;
