@@ -62,8 +62,8 @@ type
 function GetCPInfoEx(CodePage, Flags: LongWord; var CPInfoEx: TCPInfoEx): BOOL; stdcall;
 
 {$IFDEF Kolibri}
-{$I Kolibri\CoreStrings.pas.inc}
-{$I Kolibri\CodePageNames.pas.inc}
+{$I ..\Kolibri\UnicodeLib\CoreStrings.pas.inc}
+{$I ..\Kolibri\UnicodeLib\CodePageNames.pas.inc}
 const
   soLatin1 = soBigEndian;
   coLatin1 = coBigEndian;
