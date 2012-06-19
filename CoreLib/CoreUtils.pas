@@ -162,6 +162,10 @@ function StrScan(Where: PLegacyChar; What: LegacyChar; Count: Cardinal): PLegacy
 function WideStrScan(Where: PWideChar; What: WideChar; Count: Cardinal): PWideChar;
 function QuadStrScan(Where: PQuadChar; What: QuadChar; Count: Cardinal): PQuadChar;
 
+function StrRevScan(Where: PLegacyChar; What: LegacyChar; Count: Cardinal): PLegacyChar;
+function WideStrRevScan(Where: PWideChar; What: WideChar; Count: Cardinal): PWideChar;
+function QuadStrRevScan(Where: PQuadChar; What: QuadChar; Count: Cardinal): PQuadChar;
+
 { LocalFree finalization required }
 
 function SysErrorMessage(ErrorCode: LongWord): PWideChar;
@@ -641,8 +645,8 @@ asm
         MOV EDI, EDX
         RET
 @@notfound:
-        XOR EAX, EAX
         MOV EDI, EDX
+        XOR EAX, EAX
 end;
 
 function WideStrScan(Where: PWideChar; What: WideChar; Count: Cardinal): PWideChar;
@@ -657,8 +661,8 @@ asm
         MOV EDI, EDX
         RET
 @@notfound:
-        XOR EAX, EAX
         MOV EDI, EDX
+        XOR EAX, EAX
 end;
 
 function QuadStrScan(Where: PQuadChar; What: QuadChar; Count: Cardinal): PQuadChar;
@@ -672,8 +676,81 @@ asm
         MOV EDI, EDX
         RET
 @@notfound:
-        XOR EAX, EAX
         MOV EDI, EDX
+        XOR EAX, EAX
+end;
+
+function StrRevScan(Where: PLegacyChar; What: LegacyChar; Count: Cardinal): PLegacyChar;
+asm
+        TEST ECX, ECX
+        JZ @@null
+        ADD EAX, ECX
+
+        XCHG EAX, EDX
+        XCHG EDI, EDX
+        STD
+        REPNE SCASB
+        CLD
+        JNE @@notfound
+        MOV EAX, EDI
+        INC EAX
+        MOV EDI, EDX
+        RET
+@@notfound:
+        MOV EDI, EDX
+@@null:
+        XOR EAX, EAX
+end;
+
+function WideStrRevScan(Where: PWideChar; What: WideChar; Count: Cardinal): PWideChar;
+asm
+        TEST ECX, ECX
+        JZ @@null
+        PUSH ECX
+        SHL ECX, 1
+        ADD EAX, ECX
+        POP ECX
+
+        XCHG EAX, EDX
+        XCHG EDI, EDX
+        STD
+        REPNE SCASW
+        CLD
+        JNE @@notfound
+        MOV EAX, EDI
+        INC EAX
+        INC EAX
+        MOV EDI, EDX
+        RET
+@@notfound:
+        MOV EDI, EDX
+@@null:
+        XOR EAX, EAX
+end;
+
+function QuadStrRevScan(Where: PQuadChar; What: QuadChar; Count: Cardinal): PQuadChar;
+asm
+        TEST ECX, ECX
+        JZ @@null
+        PUSH ECX
+        SHL ECX, 2
+        ADD EAX, ECX
+        POP ECX
+
+        XCHG EAX, EDX
+        XCHG EDI, EDX
+        STD
+        REPNE SCASD
+        CLD
+        JNE @@notfound
+        MOV EAX, EDI
+        ADD EAX, SizeOf(QuadChar);
+        MOV EDI, EDX
+        RET
+@@notfound:
+        MOV EDI, EDX
+@@null:
+        XOR EAX, EAX
 end;
 
 { LocalFree finalization required }

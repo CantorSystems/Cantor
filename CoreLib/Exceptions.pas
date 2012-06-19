@@ -610,7 +610,9 @@ begin
   {$IFDEF Tricks} System. {$ENDIF}
     WideCharToMultiByte(CP_ACP, 0, Msg, Count, Result, L, nil, nil);
     Result[L] := #0;
-  end;
+  end
+  else
+    Result := nil;
 end;
 
 constructor Exception.Create(Msg: PWideChar; Count: Cardinal);
