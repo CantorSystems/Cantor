@@ -182,8 +182,9 @@ function WideFormatBuf(Fmt: PWideChar; const Args: array of const;
 function DecodeLegacy(Source: PLegacyChar; CodePage: Word): PWideChar; overload;
 function DecodeLegacy(Source: PLegacyChar; Count: Cardinal; CodePage: Word): PWideChar; overload;
 
-function EncodeLegacy(Source: PWideChar; CodePage: Word): PLegacyChar; overload;
-function EncodeLegacy(Source: PWideChar; Count: Cardinal; CodePage: Word): PLegacyChar; overload;
+function EncodeLegacy(Source: PWideChar; CodePage: Word; UseDefaultChar: Boolean = True): PLegacyChar; overload;
+function EncodeLegacy(Source: PWideChar; Count: Cardinal; CodePage: Word;
+  UseDefaultChar: Boolean = True): PLegacyChar; overload;
 
 function Format(Fmt: PLegacyChar; const Args: array of const): PLegacyChar;
 function WideFormat(Fmt: PWideChar; const Args: array of const): PWideChar;
@@ -849,18 +850,20 @@ begin
     Result := nil;
 end;
 
-function EncodeLegacy(Source: PWideChar; CodePage: Word): PLegacyChar;
+function EncodeLegacy(Source: PWideChar; CodePage: Word; UseDefaultChar: Boolean): PLegacyChar;
 begin
-  Result := EncodeLegacy(Source, WideStrLen(Source), CodePage);
+  Result := EncodeLegacy(Source, WideStrLen(Source), CodePage, UseDefaultChar);
 end;
 
-function EncodeLegacy(Source: PWideChar; Count: Cardinal; CodePage: Word): PLegacyChar;
+function EncodeLegacy(Source: PWideChar; Count: Cardinal; CodePage: Word;
+  UseDefaultChar: Boolean): PLegacyChar;
 var
   L: Cardinal;
+  DefaultCharUsed: Bool;
 begin
   L := {$IFDEF Tricks} System. {$ENDIF}
-    WideCharToMultiByte(CodePage, 0, Source, Count, nil, 0, nil, nil);
-  if L <> 0 then
+    WideCharToMultiByte(CodePage, 0, Source, Count, nil, 0, nil, @DefaultCharUsed);
+  if (L <> 0) and (not UseDefaultChar or not DefaultCharUsed) then
   begin
     GetMem(Result, L + 1);
   {$IFDEF Tricks} System. {$ENDIF}

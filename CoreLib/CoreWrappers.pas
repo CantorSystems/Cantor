@@ -266,7 +266,7 @@ var
 begin
   if faWrite in Access then
   begin
-    ReadWrite := GENERIC_WRITE;
+    ReadWrite := GENERIC_READ or GENERIC_WRITE;
     if faOverwrite in Access then
       Creation := CREATE_ALWAYS
     else if faKeep in Access then
@@ -453,8 +453,14 @@ function TFileStreamMapping.Open(FileName: PWideChar; Options: TCreateFileMappin
 const
   MapOptions: array[Boolean] of TFileAccess = (faRead, faRewrite);
 begin
-  Result := FStream.Open(FileName, MapOptions[maWrite in Options]) and
-    Open(FStream.Handle, Options, Size, MappingName);
+  if FStream.Open(FileName, MapOptions[maWrite in Options] + [faRandom]) then
+  begin
+    if maWrite in Options then
+      FStream.Size := Size;
+    Result := Open(FStream.Handle, Options, Size, MappingName);
+  end
+  else
+    Result := False;
 end;
 
 { TConsole }
