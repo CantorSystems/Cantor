@@ -10,6 +10,7 @@
         * Character blocks
         * TString.Language
         * TString.Length(Source, MaxLength)
+      * Kolibri -- cross-compile as Kolibri UnicodeLib  
       * Latin -- Latin character set support (ISO-8859-1)
       * UTF32 -- UTF-32 character set support
 *)
@@ -60,6 +61,18 @@ type
 
 function GetCPInfoEx(CodePage, Flags: LongWord; var CPInfoEx: TCPInfoEx): BOOL; stdcall;
 
+{$IFDEF Kolibri}
+{$I ..\Kolibri\UnicodeLib\CoreStrings.pas.inc}
+{$I ..\Kolibri\UnicodeLib\CodePageNames.pas.inc}
+const
+  soLatin1 = soBigEndian;
+  coLatin1 = coBigEndian;
+
+type
+  TLatinOptions = set of soLatin1..soAttachBuffer;
+  TLatinSource = set of soDetectCharSet..soLatin1;
+  TEncodeLatin = set of coForceInvalid..coLatin1;
+{$ELSE}
 type
 {
   soDetectCharSet:
@@ -108,6 +121,7 @@ type
   TEncodeUTF32 = set of coComposition..coBigEndian;
   TEncodeUTF16 = set of coComposition..coSurrogates;
   TEncodeUTF8 = set of coComposition..coCESU8;
+{$ENDIF Kolibri}
 
 { Code page support }
 
@@ -202,6 +216,7 @@ type
     property WideMapHi: WideChar read FWideMapHi;
   end;
 
+{$IFNDEF Kolibri}
   TSingleByteMemCodePage = class(TMemoryCodePage)
   private
     FWideMap: PLegacyChar;
@@ -250,6 +265,7 @@ type
   {$WARNINGS ON}
     property WideMap: PLegacyChar read FWideMap;
   end;
+{$ENDIF Kolibri}
 
 type
   TLeadByte = #$80..#$FF;
@@ -482,41 +498,57 @@ const
 
 { Core services }
 
-function LatinToLatin(var Info: TLegacyStrInfo; Source: PLegacyChar; Count: Cardinal;
-  SourceOptions: TLatinSource; Dest: PLegacyChar; DestOptions: TEncodeLatin = []): Boolean; overload;
-function UTF32ToLatin(var Info: TLegacyStrInfo; Source: PQuadChar; Count: Cardinal;
-  SourceOptions: TEndianSource; Dest: PLegacyChar; DestOptions: TEncodeLatin = []): Boolean; overload;
-function UTF16ToLatin(var Info: TLegacyStrInfo; Source: PWideChar; Count: Cardinal;
-  SourceOptions: TEndianSource; Dest: PLegacyChar; DestOptions: TEncodeLatin = []): Boolean; overload;
-function UTF8ToLatin(var Info: TLegacyStrInfo; Source: PLegacyChar; Count: Cardinal;
-  SourceOptions: TLegacySource; Dest: PLegacyChar; DestOptions: TEncodeLatin = []): Boolean; overload;
+function LatinToLatin(var Info: TLegacyStrInfo; Source: PLegacyChar;
+  Count: Cardinal; SourceOptions: TLatinSource; Dest: PLegacyChar;
+  DestOptions: TEncodeLatin = []): Boolean; overload;
+function UTF32ToLatin(var Info: TLegacyStrInfo; Source: PQuadChar;
+  Count: Cardinal; SourceOptions: TEndianSource; Dest: PLegacyChar;
+  DestOptions: TEncodeLatin = []): Boolean; overload;
+function UTF16ToLatin(var Info: TLegacyStrInfo; Source: PWideChar;
+  Count: Cardinal; SourceOptions: TEndianSource; Dest: PLegacyChar;
+  DestOptions: TEncodeLatin = []): Boolean; overload;
+function UTF8ToLatin(var Info: TLegacyStrInfo; Source: PLegacyChar;
+  Count: Cardinal; SourceOptions: TLegacySource; Dest: PLegacyChar;
+  DestOptions: TEncodeLatin = []): Boolean; overload;
 
-function LatinToUTF32(var Info: TUnicodeStrInfo; Source: PLegacyChar; Count: Cardinal;
-  SourceOptions: TLatinSource; Dest: PQuadChar; DestOptions: TEncodeUTF32 = []): Boolean; overload;
-function UTF32ToUTF32(var Info: TUnicodeStrInfo; Source: PQuadChar; Count: Cardinal;
-  SourceOptions: TEndianSource; Dest: PQuadChar; DestOptions: TEncodeUTF32 = []): Boolean; overload;
-function UTF16ToUTF32(var Info: TUnicodeStrInfo; Source: PWideChar; Count: Cardinal;
-  SourceOptions: TEndianSource; Dest: PQuadChar; DestOptions: TEncodeUTF32 = []): Boolean; overload;
-function UTF8ToUTF32(var Info: TUnicodeStrInfo; Source: PLegacyChar; Count: Cardinal;
-  SourceOptions: TLegacySource; Dest: PQuadChar; DestOptions: TEncodeUTF32 = []): Boolean; overload;
+function LatinToUTF32(var Info: TUnicodeStrInfo; Source: PLegacyChar;
+  Count: Cardinal; SourceOptions: TLatinSource; Dest: PQuadChar;
+  DestOptions: TEncodeUTF32 = []): Boolean; overload;
+function UTF32ToUTF32(var Info: TUnicodeStrInfo; Source: PQuadChar;
+  Count: Cardinal; SourceOptions: TEndianSource; Dest: PQuadChar;
+  DestOptions: TEncodeUTF32 = []): Boolean; overload;
+function UTF16ToUTF32(var Info: TUnicodeStrInfo; Source: PWideChar;
+  Count: Cardinal; SourceOptions: TEndianSource; Dest: PQuadChar;
+  DestOptions: TEncodeUTF32 = []): Boolean; overload;
+function UTF8ToUTF32(var Info: TUnicodeStrInfo; Source: PLegacyChar;
+  Count: Cardinal; SourceOptions: TLegacySource; Dest: PQuadChar;
+  DestOptions: TEncodeUTF32 = []): Boolean; overload;
 
-function LatinToUTF16(var Info: TUnicodeStrInfo; Source: PLegacyChar; Count: Cardinal;
-  SourceOptions: TLatinSource; Dest: PWideChar; DestOptions: TEncodeUTF16 = []): Boolean; overload;
-function UTF32ToUTF16(var Info: TUnicodeStrInfo; Source: PQuadChar; Count: Cardinal;
-  SourceOptions: TEndianSource; Dest: PWideChar; DestOptions: TEncodeUTF16 = []): Boolean; overload;
-function UTF16ToUTF16(var Info: TUnicodeStrInfo; Source: PWideChar; Count: Cardinal;
-  SourceOptions: TEndianSource; Dest: PWideChar; DestOptions: TEncodeUTF16 = []): Boolean; overload;
-function UTF8ToUTF16(var Info: TUnicodeStrInfo; Source: PLegacyChar; Count: Cardinal;
-  SourceOptions: TLegacySource; Dest: PWideChar; DestOptions: TEncodeUTF16 = []): Boolean; overload;
+function LatinToUTF16(var Info: TUnicodeStrInfo; Source: PLegacyChar;
+  Count: Cardinal; SourceOptions: TLatinSource; Dest: PWideChar;
+  DestOptions: TEncodeUTF16 = []): Boolean; overload;
+function UTF32ToUTF16(var Info: TUnicodeStrInfo; Source: PQuadChar;
+  Count: Cardinal; SourceOptions: TEndianSource; Dest: PWideChar;
+  DestOptions: TEncodeUTF16 = []): Boolean; overload;
+function UTF16ToUTF16(var Info: TUnicodeStrInfo; Source: PWideChar;
+  Count: Cardinal; SourceOptions: TEndianSource; Dest: PWideChar;
+  DestOptions: TEncodeUTF16 = []): Boolean; overload;
+function UTF8ToUTF16(var Info: TUnicodeStrInfo; Source: PLegacyChar;
+  Count: Cardinal; SourceOptions: TLegacySource; Dest: PWideChar;
+  DestOptions: TEncodeUTF16 = []): Boolean; overload;
 
-function LatinToUTF8(var Info: TUnicodeStrInfo; Source: PLegacyChar; Count: Cardinal;
-  SourceOptions: TLatinSource; Dest: PLegacyChar; DestOptions: TEncodeUTF8 = []): Boolean; overload;
-function UTF32ToUTF8(var Info: TUnicodeStrInfo; Source: PQuadChar; Count: Cardinal;
-  SourceOptions: TEndianSource; Dest: PLegacyChar; DestOptions: TEncodeUTF8 = []): Boolean; overload;
-function UTF16ToUTF8(var Info: TUnicodeStrInfo; Source: PWideChar; Count: Cardinal;
-  SourceOptions: TEndianSource; Dest: PLegacyChar; DestOptions: TEncodeUTF8 = []): Boolean; overload;
-function UTF8ToUTF8(var Info: TUnicodeStrInfo; Source: PLegacyChar; Count: Cardinal;
-  SourceOptions: TLegacySource; Dest: PLegacyChar; DestOptions: TEncodeUTF8 = []): Boolean; overload;
+function LatinToUTF8(var Info: TUnicodeStrInfo; Source: PLegacyChar;
+  Count: Cardinal; SourceOptions: TLatinSource; Dest: PLegacyChar;
+  DestOptions: TEncodeUTF8 = []): Boolean; overload;
+function UTF32ToUTF8(var Info: TUnicodeStrInfo; Source: PQuadChar;
+  Count: Cardinal; SourceOptions: TEndianSource; Dest: PLegacyChar;
+  DestOptions: TEncodeUTF8 = []): Boolean; overload;
+function UTF16ToUTF8(var Info: TUnicodeStrInfo; Source: PWideChar;
+  Count: Cardinal; SourceOptions: TEndianSource; Dest: PLegacyChar;
+  DestOptions: TEncodeUTF8 = []): Boolean; overload;
+function UTF8ToUTF8(var Info: TUnicodeStrInfo; Source: PLegacyChar;
+  Count: Cardinal; SourceOptions: TLegacySource; Dest: PLegacyChar;
+  DestOptions: TEncodeUTF8 = []): Boolean; overload;
 
 function LatinToLatin(Source: PLegacyChar; Count: Cardinal; SourceOptions: TLatinSource;
   Dest: PLegacyChar; DestOptions: TEncodeLatin = []): Cardinal; overload;
@@ -557,8 +589,10 @@ function UTF8ToUTF8(Source: PLegacyChar; Count: Cardinal; SourceOptions: TLegacy
 procedure UTF32SwapByteOrder(Source: PQuadChar; Count: Cardinal; Dest: PQuadChar);
 procedure UTF16SwapByteOrder(Source: PWideChar; Count: Cardinal; Dest: PQuadChar);
 
+{$IFNDEF Kolibri}
 function DetectUTF32(Source: QuadChar; Options: TEndianSource): TEndianSource;
 function DetectUTF16(Source: PWideChar; Options: TEndianSource): TEndianSource;
+{$ENDIF}
 
 function EstimateUTF8(const Info: TUnicodeStrInfo; Options: TEncodeUTF8 = []): Cardinal; overload;
 function EstimateUTF16(const Info: TUnicodeStrInfo; Options: TEncodeUTF16 = []): Cardinal; overload;
@@ -900,7 +934,8 @@ begin
     raise EConvert.Create(Source, csUTF8, Info, csUTF8);
 end;
 
-{function FromUTF8(Source: PLegacyChar; Count: Cardinal; SourceOptions: TLegacySource;
+{$IFDEF Kolibri}
+function FromUTF8(Source: PLegacyChar; Count: Cardinal; SourceOptions: TLegacySource;
   Dest: PLegacyChar; CodePage: Word; DestOptions: TEncodeLegacy; InvalidChar: PQuadChar): Cardinal;
 begin
   // TODO
@@ -910,7 +945,7 @@ function FromUTF16(Source: PWideChar; Count: Cardinal; SourceOptions: TEndianSou
   Dest: PLegacyChar; CodePage: Word; DestOptions: TEncodeLegacy; InvalidChar: PQuadChar): Cardinal;
 begin
   // TODO
-end;}
+end;
 
 {$IFDEF UTF32}
 function FromUTF32(Source: PQuadChar; Count: Cardinal; SourceOptions: TEndianSource;
@@ -920,7 +955,8 @@ begin
 end;
 {$ENDIF}
 
-{function ToUTF8(Source: PLegacyChar; Count: Cardinal; CodePage: Word; SourceOptions: TLegacySource;
+
+function ToUTF8(Source: PLegacyChar; Count: Cardinal; CodePage: Word; SourceOptions: TLegacySource;
   Dest: PLegacyChar; DestOptions: TEncodeUTF8; InvalidChar: PQuadChar): Cardinal;
 begin
   // TODO
@@ -930,39 +966,102 @@ function ToUTF16(Source: PLegacyChar; Count: Cardinal; CodePage: Word; SourceOpt
   Dest: PWideChar; DestOptions: TEncodeUTF16; InvalidChar: PQuadChar): Cardinal;
 begin
   // TODO
-end;}
+end;
+
+{$IFDEF UTF32}
+function ToUTF32(Source: PLegacyChar; Count: Cardinal; CodePage: Word; SourceOptions: TLegacySource;
+  Dest: PQuadChar; DestOptions: TEncodeUTF32; InvalidChar: PQuadChar): Cardinal;
+begin
+  // TODO
+end;
+{$ENDIF}
+
+function UTF16ToUTF16(Source: PWideChar; Count: Cardinal; SourceOptions: TEndianSource;
+  Dest: PWideChar; DestOptions: TEncodeUTF16; InvalidChar: PQuadChar): Cardinal;
+begin
+  // TODO
+end;
+
+function UTF8ToUTF16(Source: PLegacyChar; Count: Cardinal; SourceOptions: TLegacySource;
+  Dest: PWideChar; DestOptions: TEncodeUTF16; InvalidChar: PQuadChar): Cardinal;
+begin
+  // TODO
+end;
+
+function UTF16ToUTF8(Source: PWideChar; Count: Cardinal; SourceOptions: TEndianSource;
+  Dest: PLegacyChar; DestOptions: TEncodeUTF8; InvalidChar: PQuadChar): Cardinal;
+begin
+  // TODO
+end;
+
+function UTF8ToUTF8(Source: PLegacyChar; Count: Cardinal; SourceOptions: TLegacySource;
+  Dest: PLegacyChar; DestOptions: TEncodeUTF8; InvalidChar: PQuadChar): Cardinal;
+begin
+  // TODO
+end;
 
 {$IFDEF UTF32}
 function UTF32ToUTF8(Source: PQuadChar; Count: Cardinal; SourceOptions: TEndianSource;
-  Dest: PLegacyChar; DestOptions: TEncodeUTF8): Cardinal;
+  Dest: PLegacyChar; DestOptions: TEncodeUTF8; InvalidChar: PQuadChar): Cardinal;
 begin
   // TODO
 end;
 
 function UTF32ToUTF16(Source: PQuadChar; Count: Cardinal; SourceOptions: TEndianSource;
-  Dest: PWideChar; DestOptions: TEncodeUTF16): Cardinal;
+  Dest: PWideChar; DestOptions: TEncodeUTF16; InvalidChar: PQuadChar): Cardinal;
 begin
   // TODO
 end;
 
 function UTF8ToUTF32(Source: PLegacyChar; Count: Cardinal; SourceOptions: TLegacySource;
-  Dest: PQuadChar; DestOptions: TEncodeUTF32): Cardinal;
+  Dest: PQuadChar; DestOptions: TEncodeUTF32; InvalidChar: PQuadChar): Cardinal;
 begin
   // TODO
 end;
 
 function UTF16ToUTF32(Source: PWideChar; Count: Cardinal; SourceOptions: TEndianSource;
-  Dest: PQuadChar; DestOptions: TEncodeUTF32): Cardinal;
+  Dest: PQuadChar; DestOptions: TEncodeUTF32; InvalidChar: PQuadChar): Cardinal;
 begin
   // TODO
 end;
 
 function UTF32ToUTF32(Source: PQuadChar; Count: Cardinal; SourceOptions: TEndianSource;
-  Dest: PQuadChar; DestOptions: TEncodeUTF32): Cardinal;
+  Dest: PQuadChar; DestOptions: TEncodeUTF32; InvalidChar: PQuadChar): Cardinal;
 begin
   // TODO
 end;
 {$ENDIF}
+
+function EstimateUTF8(Count, SurrogateCount: Cardinal; Options: TEncodeUTF8): Cardinal;
+begin
+  if coCESU8 in Options then
+    Result := (Count + SurrogateCount) * 3
+  else
+    Result := Count * 3 + SurrogateCount;
+end;
+
+function EstimateUTF16(Count, SurrogateCount: Cardinal; Options: TEncodeUTF16): Cardinal;
+begin
+  Result := Count;
+  if coSurrogates in Options then
+    Inc(Result, SurrogateCount);
+end;
+
+function EnumCodePages(Callback: TEnumCodePages): Word;
+begin
+  Result := 0;
+end;
+
+function GetCharSetDisplayName(CodePage: Word; Language: Byte): PLegacyChar;
+begin
+  Result := nil; // TODO
+end;
+
+function GetCharSetMIME(CodePage: Word; Language: Byte): PLegacyChar;
+begin
+  Result := nil; // TODO
+end;
+{$ENDIF Kolibri}
 
 function EstimateUTF8(const Info: TUnicodeStrInfo; Options: TEncodeUTF8): Cardinal;
 begin
@@ -1442,6 +1541,11 @@ end;
 
 { TSingleByteMemCodePage }
 
+{$IFDEF Kolibri}
+constructor TRawCodePage.Create(const RawMap: TRawMap);
+begin
+end;
+{$ELSE}
 constructor TSingleByteMemCodePage.Create(const Info: TCPInfoEx);
 var
   C: LegacyChar;
@@ -1464,6 +1568,7 @@ begin
     FWideMapHi := WideChar(0);
   end;
 end;
+{$ENDIF}
 
 destructor TSingleByteMemCodePage.Destroy;
 begin

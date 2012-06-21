@@ -50,7 +50,7 @@ type
     property AfterUpdate: TNotifyEvent read FAfterUpdate write FAfterUpdate;
   end;
 
-  TSharedObject = class(TMutableObject, IInterface)
+  TSharedObject = class(TMutableObject {$IFDEF Interfaces}, IInterface {$ENDIF})
   private
     FRefCount: Integer;
   protected

@@ -26,6 +26,8 @@
 
 //function StrLen_JOH_IA32_7_d(const Str: PChar): Cardinal;
 asm
+  TEST EAX, EAX
+  JZ @@0        // by Freeman
   cmp   byte ptr [eax], 0
   je    @@0
   cmp   byte ptr [eax+1], 0
