@@ -673,7 +673,7 @@ asm
         REPNE SCASD
         JNE @@notfound
         MOV EAX, EDI
-        SUB EAX, SizeOf(QuadChar);
+        SUB EAX, SizeOf(QuadChar)
         MOV EDI, EDX
         RET
 @@notfound:
@@ -745,7 +745,7 @@ asm
         CLD
         JNE @@notfound
         MOV EAX, EDI
-        ADD EAX, SizeOf(QuadChar);
+        ADD EAX, SizeOf(QuadChar)
         MOV EDI, EDX
         RET
 @@notfound:

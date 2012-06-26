@@ -7,6 +7,10 @@
 
     Conditional defines:
       * Interfaces -- IInterface implementation
+      * Lite -- no BeforeUpdate and AfterUpdate events of TMutableObject
+
+    TODO:
+      * Ref/Release semantics for containers
 *)
 
 unit CoreClasses;
@@ -26,7 +30,9 @@ type
   private
     FObjectState: TObjectState;
     FUpdateCount: Integer;
+  {$IFNDEF Lite}
     FBeforeUpdate, FAfterUpdate: TNotifyEvent;
+  {$ENDIF}
   protected
     procedure DoBeforeUpdate; virtual;
     procedure DoAfterUpdate; virtual;
@@ -46,8 +52,10 @@ type
   // properties
     property ObjectState: TObjectState read FObjectState;
   // events
+  {$IFNDEF Lite}
     property BeforeUpdate: TNotifyEvent read FBeforeUpdate write FBeforeUpdate;
     property AfterUpdate: TNotifyEvent read FAfterUpdate write FAfterUpdate;
+  {$ENDIF}
   end;
 
   TSharedObject = class(TMutableObject {$IFDEF Interfaces}, IInterface {$ENDIF})
@@ -67,6 +75,7 @@ type
     procedure Unlock; virtual;
     function TryLock: Boolean; virtual;
 
+    function IsShared: Boolean;
     function Ref: TSharedObject;
     procedure Release(AndFree: Boolean = True);
   end;
@@ -89,15 +98,62 @@ type
     FObj: TObject;
     FIndex: Integer;
   public
-    constructor Create(Obj: TObject; Idx, Lo, Hi: Integer); 
+    constructor Create(Obj: TObject; Idx, Lo, Hi: Integer);
   // properties
     property Obj: TObject read FObj;
     property Index: Integer read FIndex;
   end;
 
+  TEnumerableItem = class(TSharedObject)
+  private
+  //  { placeholder }  FOwner: TEnumerable;
+  public
+    destructor Destroy; override;
+    procedure Extract; virtual;
+
+    procedure EndConsistentRead; override;
+    function TryConsistentRead: Boolean; override;
+
+    procedure EndUpdate; override;
+    function TryUpdate: Boolean; override;
+
+    procedure Unlock; override;
+    function TryLock: Boolean; override;
+  end;
+
+  TEnumerable = class(TSharedObject) // TODO: container interfaces
+  protected // but not private
+    FCount: Cardinal;
+  public
+    procedure Clear; virtual; abstract;
+    // properties
+    property Count: Cardinal read FCount;
+  end;
+
+  TListItem = class(TEnumerableItem)
+  private
+  //  { placeholder }  FPrior, FNext: TListItem;
+  public
+    procedure Append(Item: TListItem);
+    procedure Prepend(Item: TListItem);
+
+    procedure Extract; override;
+  end;
+
+  TList = class(TEnumerable)
+  private
+  //  { placeholder }  FFirst, FLast: TListItem;
+    procedure Deliver(Item: TListItem);
+  public
+    procedure Append(Item: TListItem);
+    procedure Prepend(Item: TListItem);
+
+    procedure Clear; override;
+  end;
+
 { Core services }
 
-procedure ReleaseAndNil(var Obj);
+procedure ReleaseAndNil(var Obj; AndFree: Boolean = True);
 
 implementation
 
@@ -106,11 +162,11 @@ uses
 
 { Core services }
 
-procedure ReleaseAndNil(var Obj);
+procedure ReleaseAndNil(var Obj; AndFree: Boolean);
 asm
-        XOR EDX, EDX
-        XCHG [EAX], EDX  // XCHG enforces LOCK
-        MOV EAX, EDX
+        XOR ECX, ECX
+        XCHG [EAX], ECX  // XCHG enforces LOCK
+        MOV EAX, ECX
         JMP TSharedObject.Release
 end;
 
@@ -160,20 +216,24 @@ end;
 
 procedure TMutableObject.DoBeforeUpdate;
 begin
+{$IFNDEF Lite}
   if Assigned(FBeforeUpdate) then
     if FObjectState = osLive then
       FBeforeUpdate(Self)
     else
       FBeforeUpdate(nil);
+{$ENDIF}
 end;
 
 procedure TMutableObject.DoAfterUpdate;
 begin
+{$IFNDEF Lite}
   if Assigned(FAfterUpdate) then
     if FObjectState = osLive then
       FAfterUpdate(Self)
     else
       FAfterUpdate(nil);
+{$ENDIF}
 end;
 
 function TMutableObject.TryConsistentRead: Boolean;
@@ -284,6 +344,14 @@ asm
         JNS EndUpdate
 end;
 
+function TSharedObject.IsShared: Boolean;
+asm
+        XOR EDX, EDX
+   LOCK CMP [EAX].FRefCount, EDX
+        SETNZ DL
+        MOV EAX, EDX
+end;
+
 function TSharedObject.Ref: TSharedObject;
 asm
         TEST EAX, EAX
@@ -342,5 +410,214 @@ begin
     Result := E_NOINTERFACE;
 end;
 {$ENDIF}
+
+type
+  TListCast = class;
+
+  TListItemCast = class(TListItem)
+    FOwner: TListCast;
+    FPrior, FNext: TListItemCast;
+  end;
+
+  TListCast = class(TList)
+    FFirst, FLast: TListItemCast;
+  end;
+
+{ TEnumerableItem }
+
+destructor TEnumerableItem.Destroy;
+begin
+  Extract;
+  inherited;
+end;
+
+procedure TEnumerableItem.Extract;
+begin
+  BeginUpdate;
+  try
+    if TListItemCast(Self).FOwner <> nil then
+      Dec(TListItemCast(Self).FOwner.FCount);
+    ReleaseAndNil(TListItemCast(Self).FOwner);
+  finally
+    EndUpdate;
+  end;
+end;
+
+procedure TEnumerableItem.EndConsistentRead;
+begin
+  inherited;
+  if TListItemCast(Self).FOwner <> nil then
+    TListItemCast(Self).FOwner.EndConsistentRead;
+end;
+
+function TEnumerableItem.TryConsistentRead: Boolean;
+begin
+  Result := ((TListItemCast(Self).FOwner = nil) or TListItemCast(Self).FOwner.TryConsistentRead) and
+    inherited TryConsistentRead;
+end;
+
+procedure TEnumerableItem.EndUpdate;
+begin
+  inherited;
+  if TListItemCast(Self).FOwner <> nil then
+    TListItemCast(Self).FOwner.EndUpdate;
+end;
+
+function TEnumerableItem.TryUpdate: Boolean;
+begin
+  Result := ((TListItemCast(Self).FOwner = nil) or TListItemCast(Self).FOwner.TryUpdate) and
+    inherited TryUpdate;
+end;
+
+procedure TEnumerableItem.Unlock;
+begin
+  inherited;
+  if TListItemCast(Self).FOwner <> nil then
+    TListItemCast(Self).FOwner.Unlock;
+end;
+
+function TEnumerableItem.TryLock: Boolean;
+begin
+  Result := ((TListItemCast(Self).FOwner = nil) or TListItemCast(Self).FOwner.TryLock) and
+    inherited TryLock;
+end;
+
+{ TListItem }
+
+procedure TListItem.Append(Item: TListItem);
+begin
+  BeginUpdate;
+  try
+    if Item <> nil then
+    begin
+      Item.BeginUpdate;
+      try
+        Item.Extract;
+        TListItemCast(Item).FOwner := TListCast(TListItemCast(Self).FOwner.Ref);
+        TListItemCast(Item).FPrior := TListItemCast(Self.Ref);
+        TListItemCast(Item).FNext :=  TListItemCast(TListItemCast(Self).FNext.Ref);
+        TListItemCast(Self).FNext := TListItemCast(Item.Ref);
+        if TListItemCast(Self).FOwner <> nil then
+          with TListItemCast(Self).FOwner do
+          begin
+            Inc(FCount);
+            if FLast = Self then
+              FLast := TListItemCast(Item);
+          end;
+      finally
+        Item.EndUpdate;
+      end;
+    end;
+  finally
+    EndUpdate;
+  end;
+end;
+
+procedure TListItem.Prepend(Item: TListItem);
+begin
+  BeginUpdate;
+  try
+    if Item <> nil then
+    begin
+      Item.BeginUpdate;
+      try
+        Item.Extract;
+        TListItemCast(Item).FOwner := TListCast(TListItemCast(Self).FOwner.Ref);
+        TListItemCast(Item).FNext := TListItemCast(Self.Ref);
+        TListItemCast(Item).FPrior :=  TListItemCast(TListItemCast(Self).FPrior.Ref);
+        TListItemCast(Self).FPrior := TListItemCast(Item.Ref);
+        if TListItemCast(Self).FOwner <> nil then
+          with TListItemCast(Self).FOwner do
+          begin
+            Inc(FCount);
+            if FFirst = Self then
+              FFirst := TListItemCast(Item);
+          end;
+      finally
+        Item.EndUpdate;
+      end;
+    end;
+  finally
+    EndUpdate;
+  end;
+end;
+
+procedure TListItem.Extract;
+begin
+  BeginUpdate;
+  try
+    if TListItemCast(Self).FOwner <> nil then
+      with TListItemCast(Self).FOwner do
+      begin
+        if FFirst = Self then
+          FFirst := TListItemCast(Self).FNext;
+        if FLast = Self then
+          FLast := TListItemCast(Self).FPrior;
+      end;
+    if TListItemCast(Self).FPrior <> nil then
+    begin
+      TListItemCast(Self).FPrior.FNext.Release;
+      TListItemCast(Self).FPrior.FNext := TListItemCast(Self).FNext;
+    end;
+    if TListItemCast(Self).FNext <> nil then
+    begin
+      TListItemCast(Self).FNext.FPrior.Release;
+      TListItemCast(Self).FNext.FPrior := TListItemCast(Self).FPrior;
+    end;
+    inherited;
+  finally
+    EndUpdate;
+  end;
+end;
+
+{ TList }
+
+procedure TList.Deliver(Item: TListItem);
+begin
+  if Item <> nil then
+  begin
+    BeginUpdate;
+    try
+      Item.BeginUpdate;
+      try
+        Item.Extract;
+        TListItemCast(Item).FOwner := TListCast(Self.Ref);
+        TListCast(Self).FFirst := TListItemCast(Item);
+        TListCast(Self).FLast := TListItemCast(Item);
+      finally
+        Item.EndUpdate;
+      end;
+    finally
+      EndUpdate;
+    end;
+  end;
+end;
+
+procedure TList.Append(Item: TListItem);
+begin
+  if TListCast(Self).FLast <> nil then
+    TListCast(Self).FLast.Append(Item)
+  else
+    Deliver(Item);
+end;
+
+procedure TList.Prepend(Item: TListItem);
+begin
+  if TListCast(Self).FFirst <> nil then
+    TListCast(Self).FFirst.Prepend(Item)
+  else
+    Deliver(Item);
+end;
+
+procedure TList.Clear;
+begin
+  BeginUpdate;
+  try
+    while TListCast(Self).FFirst <> nil do
+      TListCast(Self).FFirst.Release;
+  finally
+    EndUpdate;
+  end;
+end;
 
 end.
