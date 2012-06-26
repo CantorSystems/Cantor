@@ -900,70 +900,6 @@ begin
     raise EConvert.Create(Source, csUTF8, Info, csUTF8);
 end;
 
-{function FromUTF8(Source: PLegacyChar; Count: Cardinal; SourceOptions: TLegacySource;
-  Dest: PLegacyChar; CodePage: Word; DestOptions: TEncodeLegacy; InvalidChar: PQuadChar): Cardinal;
-begin
-  // TODO
-end;
-
-function FromUTF16(Source: PWideChar; Count: Cardinal; SourceOptions: TEndianSource;
-  Dest: PLegacyChar; CodePage: Word; DestOptions: TEncodeLegacy; InvalidChar: PQuadChar): Cardinal;
-begin
-  // TODO
-end;}
-
-{$IFDEF UTF32}
-function FromUTF32(Source: PQuadChar; Count: Cardinal; SourceOptions: TEndianSource;
-  Dest: PLegacyChar; CodePage: Word; DestOptions: TEncodeLegacy; InvalidChar: PQuadChar): Cardinal;
-begin
-  // TODO
-end;
-{$ENDIF}
-
-{function ToUTF8(Source: PLegacyChar; Count: Cardinal; CodePage: Word; SourceOptions: TLegacySource;
-  Dest: PLegacyChar; DestOptions: TEncodeUTF8; InvalidChar: PQuadChar): Cardinal;
-begin
-  // TODO
-end;
-
-function ToUTF16(Source: PLegacyChar; Count: Cardinal; CodePage: Word; SourceOptions: TLegacySource;
-  Dest: PWideChar; DestOptions: TEncodeUTF16; InvalidChar: PQuadChar): Cardinal;
-begin
-  // TODO
-end;}
-
-{$IFDEF UTF32}
-function UTF32ToUTF8(Source: PQuadChar; Count: Cardinal; SourceOptions: TEndianSource;
-  Dest: PLegacyChar; DestOptions: TEncodeUTF8): Cardinal;
-begin
-  // TODO
-end;
-
-function UTF32ToUTF16(Source: PQuadChar; Count: Cardinal; SourceOptions: TEndianSource;
-  Dest: PWideChar; DestOptions: TEncodeUTF16): Cardinal;
-begin
-  // TODO
-end;
-
-function UTF8ToUTF32(Source: PLegacyChar; Count: Cardinal; SourceOptions: TLegacySource;
-  Dest: PQuadChar; DestOptions: TEncodeUTF32): Cardinal;
-begin
-  // TODO
-end;
-
-function UTF16ToUTF32(Source: PWideChar; Count: Cardinal; SourceOptions: TEndianSource;
-  Dest: PQuadChar; DestOptions: TEncodeUTF32): Cardinal;
-begin
-  // TODO
-end;
-
-function UTF32ToUTF32(Source: PQuadChar; Count: Cardinal; SourceOptions: TEndianSource;
-  Dest: PQuadChar; DestOptions: TEncodeUTF32): Cardinal;
-begin
-  // TODO
-end;
-{$ENDIF}
-
 function EstimateUTF8(const Info: TUnicodeStrInfo; Options: TEncodeUTF8): Cardinal;
 begin
   if coCESU8 in Options then
