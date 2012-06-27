@@ -9,6 +9,7 @@
       * Compat -- use IDE friendly and SysUtils compatible exceptions
                   with additional message (DelphiMsg)
       * Interfaces -- interface support
+      * Lite -- raise EAbstract on abstract method call
 *)
 
 unit Exceptions;
@@ -341,6 +342,10 @@ begin
   ExceptClsProc := @GetExceptionClass;
   ExceptObjProc := @GetExceptionObject;
 
+{$IFNDEF Lite}
+  AbstractErrorProc := AbstractErrorHandler; 
+{$ENDIF}
+
 {$IFOPT C+}
   AssertErrorProc := @AssertErrorHandler;
 {$ENDIF}
@@ -354,6 +359,10 @@ begin
 
 {$IFOPT C+}
   AssertErrorProc := nil;
+{$ENDIF}
+
+{$IFNDEF Lite}
+  AbstractErrorProc := nil; 
 {$ENDIF}
 
   ErrorProc := nil;
