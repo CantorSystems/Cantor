@@ -8,7 +8,7 @@
     - object, data and string list based on linked list container
     - abstract binary tree (enumerable)
     - balanced tree based on red-black tree algorithm
-    - namespace based on balanced tree 
+    - namespace based on balanced tree
 
   Copyright (c) 2007 Freeman
 
@@ -211,7 +211,7 @@ type
     function Depth: Integer;
     function Extract: PBinaryTree;
     function ForEach(Action: TForEach; Data: Pointer): PContainer; virtual;
-    function Level: Integer;  
+    function Level: Integer;
     function Root: PBinaryTree;
   // properties
     property Left: PBinaryTree read FLeft;
@@ -615,7 +615,7 @@ end;
 function TText.Text(Strings: PStrings; const LineBreak: CoreString;
   TxtLength: PInteger): CoreString;
 var
-  Data: TTextData;  
+  Data: TTextData;
 begin
 {$IFDEF TRICKS}
   FStringField := LongWord(GetString(Strings)) - LongWord(Strings);

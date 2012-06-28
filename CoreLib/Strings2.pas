@@ -2461,7 +2461,7 @@ begin
         2: Result := TDoubleByteCharSet.Create(Info);
       else
         //raise EString.Create; // TODO: Not impemented yet
-      end;  
+      end;
       FItems.Append(Result);
     end;
   end;

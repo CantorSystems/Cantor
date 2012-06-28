@@ -171,7 +171,7 @@ const
     (ClassId: EInvalidOp; Ident: sInvalidOp),
     (ClassId: EZeroDivide; Ident: sZeroDivide),
     (ClassId: EOverflow; Ident: sOverflow),
-    (ClassId: EUnderflow; Ident: sUnderflow),             
+    (ClassId: EUnderflow; Ident: sUnderflow),
     (ClassId: EInvalidCast; Ident: sInvalidCast),
     (ClassId: EAccessViolation; Ident: nil),
     (ClassId: EPrivilege; Ident: sPrivilege),
@@ -343,7 +343,7 @@ begin
   ExceptObjProc := @GetExceptionObject;
 
 {$IFNDEF Lite}
-  AbstractErrorProc := AbstractErrorHandler; 
+  AbstractErrorProc := AbstractErrorHandler;
 {$ENDIF}
 
 {$IFOPT C+}
@@ -362,7 +362,7 @@ begin
 {$ENDIF}
 
 {$IFNDEF Lite}
-  AbstractErrorProc := nil; 
+  AbstractErrorProc := nil;
 {$ENDIF}
 
   ErrorProc := nil;

@@ -72,8 +72,8 @@ type
   PPCoreChar    = PPWideChar;
 
 var
-  Elipsis: LegacyChar = '…';
-  WideElipsis: WideChar = WideChar(8230);
+  Ellipsis: LegacyChar = '…';
+  WideEllipsis: WideChar = WideChar(8230);
 
 const
   PathDelimiter = WideChar('\'); // platform;

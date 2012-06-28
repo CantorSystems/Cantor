@@ -1150,7 +1150,7 @@ begin
           Continue;
         end;
       end;
-      
+
     if siForceInvalid in Options then
     begin
       (Dest + Result)^ := UnknownUTF16[BigEndian];

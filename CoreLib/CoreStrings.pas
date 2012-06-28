@@ -1,12 +1,12 @@
 (*
     The Unified Environment Core Library
 
-    Core string and character set implementation 
+    Core string and character set implementation
 
     Copyright (c) 2012 The Unified Environment Laboratory
 
     Conditional defines:
-      * Lite -- strip support of:
+      * Lite -- removes support of:
         * Character blocks
         * TString.Language
         * TString.Length(Source, MaxLength)
@@ -63,9 +63,9 @@ function GetCPInfoEx(CodePage, Flags: LongWord; var CPInfoEx: TCPInfoEx): BOOL; 
 type
 {
   soDetectCharSet:
-    * Latin source: try to decode source as UTF-8, continue as latin on fail
-    * Code page source: try to decode source as UTF-8, continue as code page on fail
-    * UTF-8 source: try to decode source as code page, continue as UTF-8 on fail
+    * Latin source: try to decode source as UTF-8, continue as latin if fails
+    * Code page source: try to decode source as UTF-8, continue as code page if fails
+    * UTF-8 source: try to decode source as code page, continue as UTF-8 if fails
     * UTF-16 and UTF-32: try to detect byte order
 }
   TStringOption = (soDetectCharSet, soBigEndian, soAttachBuffer);
@@ -457,7 +457,7 @@ type
       const Info; DestSite: TCharSet); overload;
     constructor Create(Source: Pointer; SourceSite: TCharSet;
       const Info: TLegacyStrInfo; DestSite: TCodePage); overload;
-    constructor Create(Source: Pointer; SourceSite: TCodePage; 
+    constructor Create(Source: Pointer; SourceSite: TCodePage;
       const Info; DestSite: TCharSet); overload;
     constructor Create(Source: Pointer; SourceSite: TCodePage;
       const Info: TLegacyStrInfo; DestSite: TCodePage); overload;
@@ -982,7 +982,7 @@ begin
       Result := Options - [soBigEndian];
       Exit;
     end;
-  end;                                 
+  end;
 
   Result := Options;
 end;
@@ -1141,7 +1141,7 @@ begin
   FSource := Source;
 end;
 
-constructor EConvert.Create(Source: Pointer; SourceSite: TCodePage; 
+constructor EConvert.Create(Source: Pointer; SourceSite: TCodePage;
   const Info: TLegacyStrInfo; DestSite: TCodePage);
 begin
 {$IFNDEF Lite}
@@ -1596,7 +1596,7 @@ begin
         if C = #0 then
           if coForceInvalid in DestOptions then
           begin
-            C := Unknown_Latin;                        
+            C := Unknown_Latin;
             Inc(Info.InvalidCount);
           end
           else

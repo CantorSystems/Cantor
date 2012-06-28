@@ -14,7 +14,7 @@
       * Extension -> Ext
       * ticExtensions -> ticExt
       * Mathematical -> Math
-      * Miscellaneous -> Misc    
+      * Miscellaneous -> Misc
       * Modifier -> Mod
       * Number(s) -> Num(s)
       * Presentation -> Present

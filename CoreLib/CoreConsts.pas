@@ -51,11 +51,11 @@ const
   sAssertionFailed = 'Assertion failed';
 {$ENDIF}
 
-  sConsistentRead = 'consistent read';
-  sSyncUpdate = 'syncronized update';
-  sExclusiveLock = 'exclusive lock';
-  sDestroy = 'destroy';
-  sSharingViolation = 'Sharing violation while trying to %s of %s object';
+  sConsistentRead = 'consistent reading';
+  sSyncUpdate = 'syncronized updating';
+  sExclusiveLock = 'exclusive locking';
+  sDestroy = 'destruction';
+  sSharingViolation = 'Sharing violation while trying to perform %s on a %s object';
 
   sIndexOutOfBounds = 'Index out of bounds %i..%i on %hs[%i]';
 

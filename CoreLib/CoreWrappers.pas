@@ -17,7 +17,7 @@ interface
 uses
   Windows, CoreUtils;
 
-type  
+type
   TFileAccess = set of (faShareRead, faShareWrite, faShareDelete, // ordered
     faWrite, faKeep, faOverwrite, faDeleteOnClose, faSequential, faRandom,
     faNoBuffering, faOverlapped, faWriteThrough);
@@ -30,7 +30,7 @@ const
   faRewrite = [faWrite, faOverwrite, faShareRead];
 
 {$IFDEF Lite}
-  {$I LiteStreams.inc}                       
+  {$I LiteStreams.inc}
 {$ELSE}
 type
   TReadableStream = class
@@ -129,7 +129,7 @@ type
   // properties
     property Stream: TFileStream read FStream;
   end;
-                                             
+
   TConsole = class(TObject)
   private
     FInput, FOutput: THandle;
@@ -492,7 +492,7 @@ var
 begin
   WriteLn;
   WriteLn(Prompt, Count, 0);
-  WriteLn(@Elipsis, SizeOf(Elipsis), 0);
+  WriteLn(@Ellipsis, SizeOf(Ellipsis), 0);
 {$IFDEF Tricks} System. {$ENDIF}
   ReadFile(FInput, Dummy, SizeOf(Dummy), BytesRead, nil);
   WriteLn(LineBreaks - 1);
@@ -542,7 +542,7 @@ var
 begin
   WriteLn;
   WriteLn(Prompt, Count, 0);
-  WriteLn(@WideElipsis, 1, 0);
+  WriteLn(@WideEllipsis, 1, 0);
   ReadConsoleW(FInput, @Dummy, Length(Dummy), Read, nil);
   WriteLn(LineBreaks - 1);
 end;

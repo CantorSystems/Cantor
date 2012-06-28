@@ -39,4 +39,4 @@ type
 
   TReadableStream = THandleStream;
   TWritableStream = THandleStream;
-  
+

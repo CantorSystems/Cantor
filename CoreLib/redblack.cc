@@ -24,23 +24,23 @@ class TRedBlackTree
 				TRedBlackTree * ret;
 				while (ret->Parent != NULL)
 					ret = ret->Parent;
-				return ret;				
+				return ret;
 			};
 		TRedBlackTree *	DoFind(TRedBlackTree * P, T * pKey, int * pExact) // спорный момент
 			{
   				*pExact = Compare(P->KeyData, *pKey);
-  				if (*pExact < 0) 
+  				if (*pExact < 0)
   				{
     				if (P->FLeft() != NULL )
       					return DoFind(P->FLeft());
   				}
-  				else 
-					if (*pExact > 0) 
+  				else
+					if (*pExact > 0)
   					{
-    					if ( P->FRight() != NULL) 
+    					if ( P->FRight() != NULL)
       						return DoFind(P->FRight());
 					};
-  				return P;				
+  				return P;
 			}
 		TRedBlackTree *	Find(const T Key, int & Exact)
 			{
@@ -56,7 +56,7 @@ class TRedBlackTree
 				pNode->FRight() = pTempNode->FLeft();
 				if (pTempNode->FLeft() != NULL)
 					pTempNode->FLeft()->FParent() = pNode;
-				if (pTempNode != NULL) 
+				if (pTempNode != NULL)
 					pTempNode->FParent() = pNode->FParent();
 				if (pNode->FParent() != NULL)
 				{
@@ -70,7 +70,7 @@ class TRedBlackTree
 				pTempNode->FLeft() = pNode;
 				if (pNode != NULL)
 					pNode->FParent() = pTempNode;
-			};			
+			};
 		void	RotateRight(TRedBlackTree * pNode)
 			{
 				TRedBlackTree * pTempNode = pNode->FLeft();
@@ -140,7 +140,7 @@ class TRedBlackTree
 								pNode->FParent()->FParent()->FSetRed(true);
 								RotateRight(pNode->FParent()->FParent());
 							}
-						}							
+						}
 					}
 				}
 };

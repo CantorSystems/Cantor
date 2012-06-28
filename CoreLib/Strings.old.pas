@@ -75,7 +75,7 @@ type
   end;
 
   UTF16Char = packed record
-    case Word of                                 
+    case Word of
       0: (BasicChar: WideChar);
       1: (Surrogates: UTF16Surrogates);
   end;
@@ -293,7 +293,7 @@ type
 
     class function Length(Str: Pointer): Cardinal; virtual;
     class function MaxCharBytes: Byte; virtual; abstract;
-    
+
     function NextChar(Str: Pointer; Count: Cardinal): Pointer; virtual; abstract;
     function PrevChar(Start, Current: Pointer): Pointer; virtual; abstract;
   end;
@@ -555,7 +555,7 @@ const
   E_CANNOT_CONVERT_TO_MULTIBYTE = 7;
   E_CANNOT_CONVERT_TO_UTF16     = 8;
   E_CANNOT_CONVERT_TO_CODEPAGE  = 9;
-    
+
 type
   PStringData = ^TStringData;
   TStringData = object
@@ -2137,7 +2137,7 @@ end;
 
 constructor TSingleByteCharSet.Create(CodePage: Cardinal; DefaultUnicodeChar: WideChar);
 var
-  SourceMap: array[Low(TSingleByteMap)..High(TSingleByteMap)] of Char; 
+  SourceMap: array[Low(TSingleByteMap)..High(TSingleByteMap)] of Char;
   I: Low(TSingleByteMap)..High(TSingleByteMap);
   W: WideChar;
   J: Cardinal;
@@ -3185,7 +3185,7 @@ begin
       end;
       Result := T;
     end
-  else 
+  else
     AssignData(@BOM, ByteCount, DefaulTCharacterSet, 0, False);}
 end;
 
