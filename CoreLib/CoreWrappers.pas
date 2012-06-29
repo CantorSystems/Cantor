@@ -21,6 +21,7 @@ type
   TFileAccess = set of (faShareRead, faShareWrite, faShareDelete, // ordered
     faWrite, faKeep, faOverwrite, faDeleteOnClose, faSequential, faRandom,
     faNoBuffering, faOverlapped, faWriteThrough);
+
   TFileAttributes = set of (faReadOnly, faHidden, faSystem, faVolumeLabel,
     faDirectory, faArchive, faNormal, faTemporary, faSparsed, faReparsePoint,
     faCompressed, faOffline, faNonIndexable, faEncrypted, fa0x8000, faVirtual);
@@ -65,11 +66,11 @@ type
     procedure SetPosition(Value: QuadWord); override;
     procedure SetSize(Value: QuadWord); override;
   public
-    constructor Create(FileName: PWideChar; Access: TFileAccess;
+    constructor Create(FileName: PCoreChar; Access: TFileAccess;
       Attributes: TFileAttributes = [faNormal]); overload;
     destructor Destroy; override;
 
-    function Open(FileName: PWideChar; Access: TFileAccess;
+    function Open(FileName: PCoreChar; Access: TFileAccess;
       Attributes: TFileAttributes = [faNormal]): Boolean; overload;
 
     function Seek(Offset: QuadWord; Origin: LongWord): QuadWord;
@@ -99,15 +100,15 @@ type
     function AssignHandle(Value: THandle): Boolean;
   public
     constructor Create(hFile: THandle; Options: TCreateFileMapping;
-      Size: QuadWord = 0; MappingName: PWideChar = nil); overload;
-    constructor Create(MappingName: PWideChar; Options: TOpenFileMapping;
+      Size: QuadWord = 0; MappingName: PCoreChar = nil); overload;
+    constructor Create(MappingName: PCoreChar; Options: TOpenFileMapping;
       InheritHandle: Boolean = True); overload;
 
     destructor Destroy; override;
 
     function Open(hFile: THandle; Options: TCreateFileMapping;
-      Size: QuadWord = 0; MappingName: PWideChar = nil): Boolean; overload;
-    function Open(MappingName: PWideChar; Options: TOpenFileMapping;
+      Size: QuadWord = 0; MappingName: PCoreChar = nil): Boolean; overload;
+    function Open(MappingName: PCoreChar; Options: TOpenFileMapping;
       InheritHandle: Boolean = True): Boolean; overload;
 
     function MapView(Access: TMapViewAccess; Offset: QuadWord = 0;
@@ -121,11 +122,11 @@ type
   private
     FStream: TFileStream;
   public
-    constructor Create(FileName: PWideChar; Options: TCreateFileMapping;
-      Size: QuadWord = 0; MappingName: PWideChar = nil); overload;
+    constructor Create(FileName: PCoreChar; Options: TCreateFileMapping;
+      Size: QuadWord = 0; MappingName: PCoreChar = nil); overload;
     destructor Destroy; override;
-    function Open(FileName: PWideChar; Options: TCreateFileMapping;
-      Size: QuadWord = 0; MappingName: PWideChar = nil): Boolean; overload;
+    function Open(FileName: PCoreChar; Options: TCreateFileMapping;
+      Size: QuadWord = 0; MappingName: PCoreChar = nil): Boolean; overload;
   // properties
     property Stream: TFileStream read FStream;
   end;
@@ -159,12 +160,12 @@ type
   private
     procedure SetTextAttribute(Value: Word);
   public
-    procedure ReadLn(Prompt: PWideChar; LineBreaks: Integer = 1); overload;
-    procedure ReadLn(Prompt: PWideChar; Count: LongWord; LineBreaks: Integer); overload;
+    procedure ReadLn(Prompt: PCoreChar; LineBreaks: Integer = 1); overload;
+    procedure ReadLn(Prompt: PCoreChar; Count: LongWord; LineBreaks: Integer); overload;
 
     procedure WriteLn(LineBreaks: Integer = 1); overload;
-    procedure WriteLn(Text: PWideChar; LineBreaks: Integer = 1); overload;
-    procedure WriteLn(Text: PWideChar; Count: LongWord; LineBreaks: Integer); overload;
+    procedure WriteLn(Text: PCoreChar; LineBreaks: Integer = 1); overload;
+    procedure WriteLn(Text: PCoreChar; Count: LongWord; LineBreaks: Integer); overload;
   // properties
     property TextAttribute: Word write SetTextAttribute;
   end;
@@ -225,7 +226,7 @@ end;
 
 { THandleStream }
 
-constructor THandleStream.Create(FileName: PWideChar; Access: TFileAccess;
+constructor THandleStream.Create(FileName: PCoreChar; Access: TFileAccess;
   Attributes: TFileAttributes);
 begin
   if not Open(FileName, Access, Attributes) then
@@ -256,7 +257,7 @@ begin
     QuadRec(Count).Lo, QuadRec(Count).Hi);
 end;
 
-function THandleStream.Open(FileName: PWideChar; Access: TFileAccess;
+function THandleStream.Open(FileName: PCoreChar; Access: TFileAccess;
   Attributes: TFileAttributes): Boolean;
 const
   SharingMask = FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE;
@@ -340,13 +341,13 @@ end;
 { TFileMapping }
 
 constructor TFileMapping.Create(hFile: THandle; Options: TCreateFileMapping;
-  Size: QuadWord; MappingName: PWideChar);
+  Size: QuadWord; MappingName: PCoreChar);
 begin
   if not Open(hFile, Options, Size, MappingName) then
     RaiseLastPlatformError;
 end;
 
-constructor TFileMapping.Create(MappingName: PWideChar; Options: TOpenFileMapping;
+constructor TFileMapping.Create(MappingName: PCoreChar; Options: TOpenFileMapping;
   InheritHandle: Boolean);
 begin
   if not Open(MappingName, Options, InheritHandle) then
@@ -383,7 +384,7 @@ begin
 end;
 
 function TFileMapping.Open(hFile: THandle; Options: TCreateFileMapping;
-  Size: QuadWord; MappingName: PWideChar): Boolean;
+  Size: QuadWord; MappingName: PCoreChar): Boolean;
 var
   // maWrite, maCopy, maExecute, maImage, maReserve, maNoCache
   Access: LongWord;
@@ -412,7 +413,7 @@ begin
     QuadRec(Size).Hi, QuadRec(Size).Lo, MappingName));
 end;
 
-function TFileMapping.Open(MappingName: PWideChar; Options: TOpenFileMapping;
+function TFileMapping.Open(MappingName: PCoreChar; Options: TOpenFileMapping;
   InheritHandle: Boolean): Boolean;
 var
   Access: LongWord;
@@ -434,8 +435,8 @@ end;
 
 { TFileStreamMapping }
 
-constructor TFileStreamMapping.Create(FileName: PWideChar; Options: TCreateFileMapping;
-  Size: QuadWord; MappingName: PWideChar);
+constructor TFileStreamMapping.Create(FileName: PCoreChar; Options: TCreateFileMapping;
+  Size: QuadWord; MappingName: PCoreChar);
 begin
   FStream := TFileStream.Create;
   if not Open(FileName, Options, Size, MappingName) then
@@ -448,8 +449,8 @@ begin
   inherited;
 end;
 
-function TFileStreamMapping.Open(FileName: PWideChar; Options: TCreateFileMapping;
-  Size: QuadWord; MappingName: PWideChar): Boolean;
+function TFileStreamMapping.Open(FileName: PCoreChar; Options: TCreateFileMapping;
+  Size: QuadWord; MappingName: PCoreChar): Boolean;
 const
   MapOptions: array[Boolean] of TFileAccess = (faRead, faRewrite);
 begin
@@ -530,14 +531,14 @@ end;
 
 { TScreenConsole }
 
-procedure TScreenConsole.ReadLn(Prompt: PWideChar; LineBreaks: Integer);
+procedure TScreenConsole.ReadLn(Prompt: PCoreChar; LineBreaks: Integer);
 begin
   ReadLn(Prompt, WideStrLen(Prompt), LineBreaks);
 end;
 
-procedure TScreenConsole.ReadLn(Prompt: PWideChar; Count: LongWord; LineBreaks: Integer);
+procedure TScreenConsole.ReadLn(Prompt: PCoreChar; Count: LongWord; LineBreaks: Integer);
 var
-  Dummy: array[0..$FF] of WideChar; // preventing flood
+  Dummy: array[0..$FF] of CoreChar; // preventing flood
   Read: LongWord;
 begin
   WriteLn;
@@ -561,12 +562,12 @@ begin
     WriteConsoleW(FOutput, @WideLF, 1, Written, nil);
 end;
 
-procedure TScreenConsole.WriteLn(Text: PWideChar; LineBreaks: Integer);
+procedure TScreenConsole.WriteLn(Text: PCoreChar; LineBreaks: Integer);
 begin
   WriteLn(Text, WideStrLen(Text), LineBreaks);
 end;
 
-procedure TScreenConsole.WriteLn(Text: PWideChar; Count: LongWord; LineBreaks: Integer);
+procedure TScreenConsole.WriteLn(Text: PCoreChar; Count: LongWord; LineBreaks: Integer);
 var
   Written: LongWord;
 begin

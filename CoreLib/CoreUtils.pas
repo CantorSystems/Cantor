@@ -51,7 +51,7 @@ type
   end;
 
   PByteArray = ^TByteArray;
-  TByteArray = array[0..MaxInt div SizeOf(Byte) - 1] of Byte;
+  TByteArray = array[0..MaxInt - 1] of Byte;
 
   PWordArray = ^TWordArray;
   TWordArray = array[0..MaxInt div SizeOf(Word) - 1] of Word;
@@ -72,7 +72,7 @@ type
   PPCoreChar    = PPWideChar;
 
 var
-  Ellipsis: LegacyChar = '…';
+  Ellipsis: array[0..2] of LegacyChar = '...'; // not only for European languages
   WideEllipsis: WideChar = WideChar(8230);
 
 const
