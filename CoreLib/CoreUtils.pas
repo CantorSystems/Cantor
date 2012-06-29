@@ -67,7 +67,7 @@ type
   PLegacyChar   = PAnsiChar;
   PPLegacyChar  = PPAnsiChar;
 
-  CoreChar      = WideChar;  // new API, Unicode only
+  CoreChar      = WideChar;  // TODO: non-Unicode
   PCoreChar     = PWideChar;
   PPCoreChar    = PPWideChar;
 
@@ -94,7 +94,7 @@ var
 var
   PlatformIsWindowsXP: Boolean;
 
-function IsPlatformUnicode(MinVersion: Word = $500): Boolean;
+function IsPlatformUnicode: Boolean;
 function IsPlatformUnicodeEx(MinVersion: Word = $500): Boolean;
 
 {$IFNDEF Tricks}
@@ -255,26 +255,24 @@ end;
 
 { Platform support }
 
-function IsPlatformUnicode(MinVersion: Word): Boolean;
+function IsPlatformUnicode: Boolean;
 asm
-        PUSH EAX
         CALL GetVersion
         MOV EDX, EAX
         XOR EAX, EAX
-        POP ECX
         TEST EDX, $80000000
-        JZ @@NT
-        RET
-@@NT:
-        XCHG DL, DH
-        CMP DX, CX
-        SETNB AL
+        SETZ AL
 end;
 
 function IsPlatformUnicodeEx(MinVersion: Word): Boolean;
 asm
+        PUSH EAX
         CALL IsPlatformUnicode
-        CMP DX, $501
+        POP ECX
+        XCHG DL, DH
+        CMP EDX, ECX
+        SETNB AL
+        CMP EDX, $501
         SETNB PlatformIsWindowsXP
 end;
 

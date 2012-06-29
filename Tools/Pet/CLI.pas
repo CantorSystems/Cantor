@@ -116,6 +116,9 @@ begin
   FreeMem(FAppFileName);
   with FConsole do
   begin
+  {$IFDEF Compat}
+    CodePage := GetOEMCP;
+  {$ENDIF}
     ReadLn(sPressEnterToExit);
     Free;
   end;

@@ -18,9 +18,9 @@ const
   sTitle = 'PE Tool %s';
 
   sCat =
-    '        /\_/\' + sLineBreak +
-    '   ____/ o o \' + sLineBreak +
-    ' /~____ ==;==/' + sLineBreak +
+          #9'/\_/\'#10 +
+    '   ____/ o o \'#10 +
+    ' /~____ ==;==/'#10 +
     '(______)__m_m)';
 
 implementation

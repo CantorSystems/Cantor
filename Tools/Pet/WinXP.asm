@@ -15,7 +15,7 @@ start:
   INT 21h
   MOV AX, 4C00h
   INT 21h
-  
+
 MsgLen    db TermChar - Message
 Message   db 'This program requires Windows XP'
 TermChar  db '$'

@@ -46,6 +46,8 @@ type
       1: (InvalidCount, SurrogateCount, CharCount: Cardinal);
   end;
 
+  TCoreStringInfo = TUnicodeStrInfo; // TODO: non-Unicode
+
 { Legacy Windows service }
 
 type
@@ -432,6 +434,8 @@ type
     property Data: PQuadChar read FData write SetData;
     property Options: TEndianOptions read FOptions;
   end;
+
+  TCoreString = TWideString; // TODO: non-Unicode
 
   TCharSet = (csLatin, csLatin1, csUTF8, csUTF16, csUTF32);
 

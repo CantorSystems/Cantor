@@ -7,12 +7,13 @@
       * Compat -- use Delphi IDE friendly exceptions
       * CustomStub -- get Windows requirement message from custom stub (planning)
       * ForceMMX -- allow MMX with FastCode
+      * HX -- no Unicode support check for HX DOS Extender compatibility
       * Tricks  -- use tricky lite System unit
 
     Search path:  ..\..\CoreLib
 *)
 
-program Ono;
+program Pet;
 
 {$APPTYPE CONSOLE}
 
@@ -27,7 +28,7 @@ uses
 
 const
   sMMX = 'This program requires MMX';
-  sPlatformRequired = 'This program requires Windows 2000';
+  sPlatformRequired = 'This program requires Windows NT';
 
 begin
 {$IFDEF Tricks}
@@ -45,6 +46,7 @@ begin
   end;
 {$ENDIF}
 
+{$IFNDEF HX}
   if not IsPlatformUnicode then
   begin
   {$IFDEF CustomStub}
@@ -54,6 +56,7 @@ begin
   {$ENDIF}
     Exit;
   end;
+{$ENDIF}
 
   with TApplication.Create(GetCommandLineW) do
   try
@@ -67,4 +70,5 @@ begin
     Free;
   end;
 end.
- 
+
+

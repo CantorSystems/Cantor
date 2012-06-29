@@ -240,13 +240,14 @@ end;
 
 function THandleStream.GetPosition: QuadWord;
 begin
-  // GetFileSizeEx available since Windows 2000
+  // SetFilePointerEx available since Windows 2000
   if not SetFilePointerEx(FHandle, 0, @Result, FILE_CURRENT) then
     Result := -1;
 end;
 
 function THandleStream.GetSize: QuadWord;
 begin
+  // GetFileSizeEx available since Windows 2000
   if not GetFileSizeEx(FHandle, Result) then
     Result := -1;
 end;
