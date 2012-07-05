@@ -29,6 +29,8 @@ type
   PQuadWord = {type} PInt64;
 {$ENDIF}
 
+  Positive = 0..MaxInt;
+
   WordRec = packed record
     case Integer of
       0: (Lo, Hi: Byte);

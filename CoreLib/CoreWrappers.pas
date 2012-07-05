@@ -183,6 +183,59 @@ type
     property Value: QuadWord read GetValue;
   end;
 
+  TVersionFlags = set of (verDebug, verPreRelease, verPatched, verPrivateBuild, verInfoInferred, verSpecialBuild);
+  TVersionOS = set of (osDOS, os2_16, os2_32, osNT, osWin16, osPM16, osPM32, osWin32);
+  TVersionFileType = (ftUnknown, ftApplication, ftDLL, ftDriver, ftFont, ftVxD, ftStaticLib);
+  TVersionDriverType = (drvUnknown, drvPrinter, drvKeyboard, drvLanguage, drvDisplay,
+    drvMouse, drvNetwork, drvSystem, drvIFS, drvSound, drvComm, drvIME, drvVersionedPrinter);
+  TVersionFontType = (fntUnknown, fntRaster, fntVector, fntTrueType);
+
+  TVersion = packed record
+    Minor, Major, Build, Release: Word; // platform
+  end;
+
+  TFixedVersionInfo = record
+    FileVersion, ProductVersion: TVersion;
+    Flags: TVersionFlags;
+    OS: TVersionOS;
+  {$IFNDEF Lite}
+    TimeStamp: QuadWord;
+  {$ENDIF}
+  case FileType: TVersionFileType of
+    ftDriver: (DriverType: TVersionDriverType);
+    ftFont: (FontType: TVersionFontType);
+  end;
+
+  TTranslation = packed record
+    Locale, CodePage: Word; // platform
+  end;
+
+  PTranslationArray = ^TTranslationArray;
+  TTranslationArray = array[0..MaxInt div SizeOf(TTranslation) - 1] of TTranslation;
+
+  TVersionInfo = class
+  private
+    FData: Pointer;
+    FTranslations: PTranslationArray;
+  public
+    constructor Create(FileName: PCoreChar); overload;
+    destructor Destroy; override;
+    function Open(FileName: PCoreChar): Boolean;
+
+    function FixedInfo: TFixedVersionInfo; overload;
+    function FixedInfo(var Info: TFixedVersionInfo): Boolean; overload;
+
+    function TranslationCount: Positive;
+
+    function StringInfo(TranslationIndex: Positive; Ident: PLegacyChar;
+      var Info: PCoreChar; var Length: Cardinal): Boolean; overload;
+    function StringInfo(TranslationIndex: Positive; Ident: PLegacyChar): PCoreChar; overload;
+
+  // properties
+    property Data: Pointer read FData;
+    property Translations: PTranslationArray read FTranslations;
+  end;
+
 { Absent in Windows.pas }
 
 function GetFileSizeEx(hFile: THandle; var lpFileSize: QuadWord): LongBool; stdcall;
@@ -192,7 +245,7 @@ function SetFilePointerEx(hFile: THandle; liDistanceToMove: QuadWord;
 implementation
 
 uses
-  Exceptions;
+  Exceptions, CoreConsts;
 
 { Absent in Windows.pas }
 
@@ -598,6 +651,96 @@ end;
 function TPerformanceCounter.MillisecondsBetween(Value1, Value2: QuadWord): Double;
 begin
   Result := (Value2 - Value1) / FFrequency;
+end;
+
+{ TVersionInfo }
+
+constructor TVersionInfo.Create(FileName: PCoreChar);
+begin
+  if not Open(FileName) then
+    RaiseLastPlatformError;
+end;
+
+destructor TVersionInfo.Destroy;
+begin
+  FreeMem(FData);
+end;
+
+function TVersionInfo.Open(FileName: PCoreChar): Boolean;
+var
+  DataSize, Dummy: LongWord;
+begin
+  DataSize := GetFileVersionInfoSizeW(FileName, Dummy);
+  if DataSize <> 0 then
+  begin
+    GetMem(FData, DataSize);
+    Result := GetFileVersionInfoW(FileName, 0, DataSize, FData);
+  end
+  else
+    Result := False;
+end;
+
+function TVersionInfo.FixedInfo: TFixedVersionInfo;
+begin
+  if not FixedInfo(Result) then
+    RaiseLastPlatformError;
+end;
+
+function TVersionInfo.FixedInfo(var Info: TFixedVersionInfo): Boolean;
+var
+  P: PVSFixedFileInfo;
+  Size: LongWord;
+begin
+  if VerQueryValueW(FData, '\', Pointer(P), Size) and (Size <> 0) then
+  begin
+    with Info, P^ do
+    begin
+      QuadWord(FileVersion) := PQuadWord(@dwFileVersionMS)^;
+      QuadWord(ProductVersion) := PQuadWord(@dwProductVersionMS)^;
+      Byte(Flags) := dwFileFlags and dwFileFlagsMask;
+      Byte(OS) := (1 shl (dwFileOS and $FFFF - 1)) or (1 shl (dwFileOS shr 16 - 1 + 4));
+      Byte(FileType) := dwFileType;
+      Byte(DriverType) := dwFileSubtype;
+    {$IFNDEF Lite}
+      QuadWord(TimeStamp) := PQuadWord(@dwFileDateMS)^;
+    {$ENDIF}
+    end;
+    Result := True;
+  end
+  else
+    Result := False;
+end;
+
+function TVersionInfo.TranslationCount: Positive;
+begin
+  if VerQueryValueW(FData, '\VarFileInfo\Translation', Pointer(FTranslations), Cardinal(Result)) then
+    Result :=  Result div SizeOf(TTranslation)
+  else
+    Result := 0;
+end;
+
+function TVersionInfo.StringInfo(TranslationIndex: Positive;
+  Ident: PLegacyChar; var Info: PCoreChar; var Length: Cardinal): Boolean;
+var
+  W: PWideChar;
+begin
+  with FTranslations[TranslationIndex] do
+    W := LegacyFormat('\StringFileInfo\%04X%04X\%hs', CP_LEGACY, [Locale, CodePage, Ident]);
+  try
+    Result := VerQueryValueW(FData, W, Pointer(Info), Length);
+    if Result then
+      Length := Length div SizeOf(WideChar); // TODO: non-Unicode
+  finally
+    FreeMem(W);
+  end;
+end;
+
+function TVersionInfo.StringInfo(TranslationIndex: Positive; Ident: PLegacyChar): PCoreChar;
+var
+  L: Cardinal;
+begin
+  if not StringInfo(TranslationIndex, Ident, Result, L) then
+    Result := nil;
 end;
 
 end.
