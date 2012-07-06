@@ -19,7 +19,7 @@ unit CoreStrings;
 interface
 
 uses
-  Windows, CoreUtils, CoreClasses, Exceptions, CoreConsts;
+  Windows, Exceptions, CoreUtils, CoreClasses, CoreConsts;
 
 {$I Unicode.inc}
 
@@ -320,21 +320,76 @@ type
 type
   TStringOptions = set of TStringOption;
 
-  TSubString = class(TSharedObject)
+  TSubstring = class(TIndexed)
   private
-    FCount: Cardinal;
   {$IFNDEF Lite}
-  //  { placeholder }  FLanguage: Word;
+    FLanguage: Word;
   {$ENDIF}
   //  { placeholder }  FData: Pointer;
   //  { placeholder }  FOptions: TStringOptions;
   public
-    function ByteCount: Cardinal; overload; virtual; abstract;
-  // properties
-    property Count: Cardinal read FCount;
+    class function ByteCount(Count: Cardinal): Cardinal; overload; virtual; abstract;
+    function ByteCount: Cardinal; overload; virtual;
+
+    class function Length(Source: Pointer): Cardinal; overload; virtual; abstract;
+  {$IFNDEF Lite}
+    class function Length(Source: Pointer; MaxLength: Cardinal): Cardinal; overload; virtual; abstract;
+    property Language: Word read FLanguage write FLanguage;
+  {$ENDIF}
   end;
 
-  TString = class(TSubString)
+  TLegacySubstring = class(TSubstring)
+  private
+    FData: PLegacyChar;
+  public
+  // properties
+    property Data: PLegacyChar read FData;
+  end;
+
+  TLatinSubstring = class(TLegacySubstring)
+  private
+    FOptions: TLatinOptions;
+  public
+  // properties
+    property Options: TLatinOptions read FOptions;
+  end;
+
+  TCodePageSubstring = class(TLegacySubstring)
+  private
+    FOptions: TLegacyOptions;
+  public
+  // properties
+    property Options: TLegacyOptions read FOptions;
+  end;
+
+  TUTF8Substring = class(TLegacySubstring)
+  private
+    FOptions: TLegacyOptions;
+  public
+  // properties
+    property Options: TLegacyOptions read FOptions;
+  end;
+
+  TWideSubstring = class(TSubstring)
+  private
+    FData: PWideChar;
+    FOptions: TEndianOptions;
+  public
+  // properties
+    property Data: PWideChar read FData;
+    property Options: TEndianOptions read FOptions;
+  end;
+
+  TQuadSubstring = class(TSubstring)
+  private
+    FData: PQuadChar;
+    FOptions: TEndianOptions;
+  public
+    property Data: PQuadChar read FData;
+    property Options: TEndianOptions read FOptions;
+  end;
+
+  TString = class(TSubstring)
   private
     procedure SetCount(Value: Cardinal);
   public
@@ -346,23 +401,9 @@ type
   end;
 
   TMemoryString = class(TString)
-  private
-  {$IFNDEF Lite}
-    FLanguage: Word;
-  {$ENDIF}
   public
     constructor Create(Source: Pointer; Options: TStringOptions = []); overload;
-
     procedure Assign(Value: Pointer; Count: Cardinal; Options: TStringOptions = []); override;
-
-    class function ByteCount(Count: Cardinal): Cardinal; overload; virtual; abstract;
-    function ByteCount: Cardinal; overload; override;
-
-    class function Length(Source: Pointer): Cardinal; overload; virtual; abstract;
-  {$IFNDEF Lite}
-    class function Length(Source: Pointer; MaxLength: Cardinal): Cardinal; overload; virtual; abstract;
-    property Language: Word read FLanguage write FLanguage;
-  {$ENDIF}
   end;
 
   TLegacyString = class(TMemoryString)
@@ -1073,7 +1114,7 @@ begin
   if Block <> cbNonUnicode then
   begin
     Create(sInvalidCodePageChar, CP_LEGACY, [UnicodeBlockNames[Block],
-      WideChar(TLegacyStrInfo(Info).InvalidChar), DestSite.Name]);
+      WideChar(TLegacyStrInfo(Info).InvalidChar), DestSite.Number, DestSite.Name]);
     Result := True;
   end
   else
@@ -1110,7 +1151,7 @@ begin
 {$IFNDEF Lite}
   if not CatchInvalidChar(TLegacyStrInfo(Info), DestSite) then
 {$ENDIF}
-    Create(sInvalidCharSet, CP_LEGACY, [SourceSite.Name, CharSets[DestSite]]);
+    Create(sInvalidCharSet, CP_LEGACY, [SourceSite.Number, SourceSite.Name, CharSets[DestSite]]);
 
   FDestSite.CharSet := DestSite; // SiteType filled with 0 = stCharSet
   if DestSite < csUTF8 then
@@ -1132,7 +1173,7 @@ begin
 {$IFNDEF Lite}
   if not CatchInvalidChar(Info, DestSite) then
 {$ENDIF}
-    Create(sInvalidCodePage, CP_LEGACY, [CharSets[SourceSite], DestSite.Name]);
+    Create(sInvalidCodePage, CP_LEGACY, [CharSets[SourceSite], DestSite.Number, DestSite.Name]);
 
   with FDestSite do
   begin
@@ -1151,7 +1192,7 @@ begin
 {$IFNDEF Lite}
   if not CatchInvalidChar(Info, DestSite) then
 {$ENDIF}
-    Create(sInvalidCodePage2, CP_LEGACY, [SourceSite.Name, DestSite.Name]);
+    Create(sInvalidCodePage2, CP_LEGACY, [SourceSite.Number, SourceSite.Name, DestSite.Number, DestSite.Name]);
 
   with FDestSite do
   begin
@@ -1307,14 +1348,35 @@ var
   Block: TCharBlock;
 {$ENDIF}
   C: LegacyChar;
-  I: Cardinal;
+  I, Head, Tail: Cardinal;
   T: LongWord;
   W: WideChar;
+  Y: PWideChar;
 begin
   with Info do
   begin
     FNumber := CodePage;
-    FName := WideStrNew(CodePageName);
+
+    for I := Low(CodePageName) to High(CodePageName) do
+      case CodePageName[I] of
+        WideChar(0)..WideChar(32), WideChar('0')..WideChar('9'):;
+        WideChar('('):
+          begin
+            Y := @CodePageName[I];
+            Tail := WideStrLen(Y, Length(CodePageName) - I);
+            if CodePageName[Tail + I - 1] = WideChar(')') then
+            begin
+              Inc(Y);
+              Dec(Tail, 2);
+            end;
+            FName := WideStrNew(Y, Tail);
+            Break;
+          end;
+      else
+        Y := @CodePageName[I];
+        FName := WideStrNew(Y, WideStrLen(Y, Length(CodePageName) - I));
+        Break;
+      end;
   end;
 
   // Fast core
@@ -2497,6 +2559,13 @@ begin
   // TODO
 end;
 
+{ TSubstring }
+
+function TSubstring.ByteCount: Cardinal;
+begin
+  Result := ByteCount(FCount);
+end;
+
 { TString }
 
 constructor TString.Create(Source: Pointer; Count: Cardinal; Options: TStringOptions);
@@ -2514,11 +2583,6 @@ end;
 constructor TMemoryString.Create(Source: Pointer; Options: TStringOptions);
 begin
   Assign(Source, Length(Source), Options);
-end;
-
-function TMemoryString.ByteCount: Cardinal;
-begin
-  Result := ByteCount(FCount);
 end;
 
 procedure TMemoryString.Assign(Value: Pointer; Count: Cardinal;

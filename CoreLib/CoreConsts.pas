@@ -57,7 +57,7 @@ const
   sDestroy = 'destruction';
   sSharingViolation = 'Sharing violation while trying to perform %s on a %s object';
 
-  sIndexOutOfBounds = 'Index out of bounds %i..%i on %hs[%i]';
+  sIndexOutOfBounds = 'Index out of bounds %u..%u on %hs[%u]';
 
   sLatin = '7-bit ASCII';
   sLatin1 = 'Latin-1 (ISO 8859-1)';
@@ -69,13 +69,13 @@ const
 //  sBigEndian = '(Big-endian)';
 //  sLittleEndian = '(Little-endian)';
 
-  sInvalidCharSet = 'Cannot convert string between code page %s'#10'and %hs character set';
-  sInvalidCodePage = 'Cannot convert %hs string'#10'into code page %s';
+  sInvalidCharSet = 'Cannot convert string between code page %u (%s)'#10'and %hs character set';
+  sInvalidCodePage = 'Cannot convert %hs string'#10'into code page %u (%s)';
   sInvalidCharSet2 = 'Cannot convert %s string'#10'into %s character set';
-  sInvalidCodePage2 = 'Cannot convert string between code page %s'#10'and code page %s';
+  sInvalidCodePage2 = 'Cannot convert string between code page %u (%s)'#10'and code page %u (%s)';
 
   sInvalidCharSetChar = 'Cannot convert %hs character “%c”'#10'into %hs character set';
-  sInvalidCodePageChar = 'Cannot convert %hs character “%c”'#10'into code page %s';
+  sInvalidCodePageChar = 'Cannot convert %hs character “%c”'#10'into code page %u (%s)';
 
   sNoCodePage = '%s has no assigned code page';
   sNonUnicode = '%s string contains characters outside of Unicode range'; // UTF-8, UTF-32
