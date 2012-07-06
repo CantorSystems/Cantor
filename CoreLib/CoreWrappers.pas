@@ -225,11 +225,11 @@ type
     function FixedInfo: TFixedVersionInfo; overload;
     function FixedInfo(var Info: TFixedVersionInfo): Boolean; overload;
 
-    function TranslationCount: Positive;
+    function TranslationCount: LongWord;
 
-    function StringInfo(TranslationIndex: Positive; Ident: PLegacyChar;
-      var Info: PCoreChar; var Length: Cardinal): Boolean; overload;
-    function StringInfo(TranslationIndex: Positive; Ident: PLegacyChar): PCoreChar; overload;
+    function StringInfo(TranslationIndex: LongWord; Ident: PLegacyChar;
+      var Info: PCoreChar; var Length: LongWord): Boolean; overload;
+    function StringInfo(TranslationIndex: LongWord; Ident: PLegacyChar): PCoreChar; overload;
 
   // properties
     property Data: Pointer read FData;
@@ -711,16 +711,16 @@ begin
     Result := False;
 end;
 
-function TVersionInfo.TranslationCount: Positive;
+function TVersionInfo.TranslationCount: LongWord;
 begin
-  if VerQueryValueW(FData, '\VarFileInfo\Translation', Pointer(FTranslations), Cardinal(Result)) then
+  if VerQueryValueW(FData, '\VarFileInfo\Translation', Pointer(FTranslations), Result) then
     Result :=  Result div SizeOf(TTranslation)
   else
     Result := 0;
 end;
 
-function TVersionInfo.StringInfo(TranslationIndex: Positive;
-  Ident: PLegacyChar; var Info: PCoreChar; var Length: Cardinal): Boolean;
+function TVersionInfo.StringInfo(TranslationIndex: LongWord;
+  Ident: PLegacyChar; var Info: PCoreChar; var Length: LongWord): Boolean;
 var
   W: PWideChar;
 begin
@@ -735,9 +735,9 @@ begin
   end;
 end;
 
-function TVersionInfo.StringInfo(TranslationIndex: Positive; Ident: PLegacyChar): PCoreChar;
+function TVersionInfo.StringInfo(TranslationIndex: LongWord; Ident: PLegacyChar): PCoreChar;
 var
-  L: Cardinal;
+  L: LongWord;
 begin
   if not StringInfo(TranslationIndex, Ident, Result, L) then
     Result := nil;

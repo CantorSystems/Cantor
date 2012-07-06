@@ -29,8 +29,6 @@ type
   PQuadWord = {type} PInt64;
 {$ENDIF}
 
-  Positive = 0..MaxInt;
-
   WordRec = packed record
     case Integer of
       0: (Lo, Hi: Byte);
@@ -178,7 +176,7 @@ function FormatBuf(Fmt: PLegacyChar; const Args: array of const;
   Buf: PLegacyChar): Cardinal;
 function WideFormatBuf(Fmt: PWideChar; const Args: array of const;
   Buf: PWideChar): Cardinal;
-
+                                        
 { FreeMem finalization required }
 
 function DecodeLegacy(Source: PLegacyChar; CodePage: Word): PWideChar; overload;
@@ -272,9 +270,9 @@ asm
         CALL IsPlatformUnicode
         POP ECX
         XCHG DL, DH
-        CMP EDX, ECX
+        CMP DX, CX
         SETNB AL
-        CMP EDX, $501
+        CMP DX, $501
         SETNB PlatformIsWindowsXP
 end;
 
