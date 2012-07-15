@@ -52,12 +52,18 @@ const
 {$ENDIF}
 
   sConsistentRead = 'consistent reading';
-  sSyncUpdate = 'syncronized updating';
+  sSyncUpdate = 'synchronized updating';
   sExclusiveLock = 'exclusive locking';
   sDestroy = 'destruction';
   sSharingViolation = 'Sharing violation while trying to perform %s on a %s object';
+//  'Sharing violation at %s attempt of a %s object' TODO
 
   sIndexOutOfBounds = 'Index out of bounds %u..%u on %hs[%u]';
+
+  sUnsupportedCodePage = 'Code page %u (%s) is not yet supported';
+
+  sWhitespaceNo = ' no';
+  sInvalidCodePageClass = 'Code page %u (%s) has%hs lead bytes'#10'that is not valid for %hs';
 
   sLatin = '7-bit ASCII';
   sLatin1 = 'Latin-1 (ISO 8859-1)';
