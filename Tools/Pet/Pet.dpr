@@ -24,7 +24,8 @@ uses
   Windows,
   Exceptions,
   CoreUtils,
-  CLI in 'CLI.pas';
+  CLI in 'CLI.pas',
+  PetConsts in 'PetConsts.pas';
 
 const
   sMMX = 'This program requires MMX';
@@ -45,7 +46,7 @@ begin
     Exit;
   end;
 {$ENDIF}
-
+                     
 {$IFNDEF HX}
   if not IsPlatformUnicode then
   begin
@@ -59,16 +60,14 @@ begin
 {$ENDIF}
 
   with TApplication.Create(GetCommandLineW) do
-  try
+  begin
     try
       Run;
     except
       on E: Exception do
         ShowException(E);
     end;
-  finally
-    Free;
+    Destroy;
   end;
 end.
-
-
+ 

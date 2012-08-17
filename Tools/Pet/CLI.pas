@@ -18,10 +18,10 @@ type
   private
     FConsole: TStreamConsole;
     FAppFileName, FSourceFileName: PWideChar;
+    procedure Help;
   public
     constructor Create(CommandLine: PWideChar);
     destructor Destroy; override;
-    procedure Help;
     procedure Run;
   end;
 
@@ -98,14 +98,18 @@ end;
 
 constructor TApplication.Create(CommandLine: PWideChar);
 var
-  Buf: array[Byte] of LegacyChar;
   Quoted: Boolean;
+  Buf: array[Byte] of LegacyChar;
 begin
   FConsole := TStreamConsole.Create;
-{$IFDEF Compat}
-  FConsole.CodePage := GetACP;
-{$ENDIF}
-  FConsole.WriteLn(@Buf, FormatBuf(sTitle, [sVersion], Buf), 2);
+  with FConsole do
+  begin
+  {$IFDEF Compat}
+    CodePage := GetACP;
+  {$ENDIF}
+    WriteLn(@Buf, FormatBuf(sTitle, [sVersion], Buf), 2);
+  end;
+
   FAppFileName := ParamStr(CommandLine, Quoted);
   FSourceFileName := ParamStr(CommandLine, Quoted);
 end;
@@ -114,12 +118,13 @@ destructor TApplication.Destroy;
 begin
   FreeMem(FSourceFileName);
   FreeMem(FAppFileName);
+
   with FConsole do
   begin
+    ReadLn(sPressEnterToExit);
   {$IFDEF Compat}
     CodePage := GetOEMCP;
   {$ENDIF}
-    ReadLn(sPressEnterToExit);
     Free;
   end;
 end;
@@ -136,9 +141,10 @@ begin
   if FSourceFileName <> nil then
   begin
     // TODO
-  end
-  else
-    Help;
+    Exit;
+  end;
+
+  Help;
 end;
 
 end.
