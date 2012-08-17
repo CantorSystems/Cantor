@@ -58,14 +58,15 @@ const
   sSharingViolation = 'Sharing violation while trying to perform %s on a %s object';
 //  'Sharing violation at %s attempt of a %s object' TODO
 
-  sIndexOutOfBounds = 'Index out of bounds %u..%u on %hs[%u]';
+  sIndexOutOfBounds = 'Index out of bounds %u..%u on %s[%u]';
+  sRangeOutOfBounds = 'Range out of bounds %u..%u on %s[%u..%u]';
 
   sUnsupportedCodePage = 'Code page %u (%s) is not yet supported';
 
   sWhitespaceNo = ' no';
   sInvalidCodePageClass = 'Code page %u (%s) has%hs lead bytes'#10'that is not valid for %hs';
 
-  sLatin = '7-bit ASCII';
+//  sLatin = '7-bit ASCII';
   sLatin1 = 'Latin-1 (ISO 8859-1)';
 
   sUTF8 = 'UTF-8';
@@ -75,18 +76,30 @@ const
 //  sBigEndian = '(Big-endian)';
 //  sLittleEndian = '(Little-endian)';
 
-  sInvalidCharSet = 'Cannot convert string between code page %u (%s)'#10'and %hs character set';
-  sInvalidCodePage = 'Cannot convert %hs string'#10'into code page %u (%s)';
-  sInvalidCharSet2 = 'Cannot convert %s string'#10'into %s character set';
-  sInvalidCodePage2 = 'Cannot convert string between code page %u (%s)'#10'and code page %u (%s)';
+  sInvalidCharSetToCharSet = 'Cannot convert %s string'#10'into %s character set';
+  sInvalidCharSetToCodePage = 'Cannot convert %hs string'#10'into code page %u (%s)';
+  sInvalidCodePageToCharSet = 'Cannot convert string between code page %u (%s)'#10'and %hs character set';
+  sInvalidCodePageToCodePage = 'Cannot convert string between code page %u (%s)'#10'and code page %u (%s)';
 
-  sInvalidCharSetChar = 'Cannot convert %hs character “%c”'#10'into %hs character set';
-  sInvalidCodePageChar = 'Cannot convert %hs character “%c”'#10'into code page %u (%s)';
+  sInvalidCharSetChar = 'Cannot convert %hs character “%lc” (U+%04X)'#10'into %hs character set';
+  sInvalidCodePageChar = 'Cannot convert %hs character “%lc” (U+%04X)'#10'into code page %u (%s)';
+
+  sNonUnicodeCharSet = '%s string contains characters outside of Unicode range';
+  sNonUnicodeCodePage = 'Source string encoded with code page %u (%s)'#10'contains characters outside of Unicode range'; 
+
+  sOutsideOfBMP = 'outside of Basic Multilingual Plane (BMP)'#10'but surrogate pairs are not allowed here';
+  sSurrogates = '%s string contains characters %s';
+  sSurrogateChar = '%s character (U+%05X) lies %s';
+
+  sSecond = '2nd';
+  sThird  = '3rd';
+  sFourth = '4th';
+  sFifth  = '5th';
+
+  sBadUTF8 = 'Bad UTF-8 sequence starting with byte $%02X';
+  sBrokenUTF8 = 'Broken %u-byte UTF-8 sequence at %s byte';
 
   sNoCodePage = '%s has no assigned code page';
-  sNonUnicode = '%s string contains characters outside of Unicode range'; // UTF-8, UTF-32
-  sSurrogates = '%s string contains characters outside of Basic Multilingual Plane'#10 +
-    'but surrogate pairs are not allowed here'; // UTF-8, UTF-16, UTF-32
 
   sBasicLatin                      = 'Basic Latin';
   sLatin1Supplement                = 'Latin-1 Supplement';

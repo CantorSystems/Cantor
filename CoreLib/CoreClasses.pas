@@ -80,30 +80,6 @@ type
     procedure Release(AndFree: Boolean = True);
   end;
 
-  TSharingViolation = (svConsistentRead, svSyncUpdate, svExclusiveLock, svDestroy);
-
-  ESharingViolation = class(Exception)
-  private
-    FObj: TObject;
-    FOperation: TSharingViolation;
-  public
-    constructor Create(Obj: TObject; Op: TSharingViolation);
-  // properties
-    property Obj: TObject read FObj;
-    property Operation: TSharingViolation read FOperation;
-  end;
-
-  EIndex = class(Exception)
-  private
-    FObj: TObject;
-    FIndex: Cardinal;
-  public
-    constructor Create(Obj: TObject; Idx, Lo, Hi: Cardinal);
-  // properties
-    property Obj: TObject read FObj;
-    property Index: Cardinal read FIndex;
-  end;
-
 {$IFDEF Interfaces}
   TCoreObject = TSharedObject;
 {$ELSE}
@@ -215,6 +191,49 @@ type
   TCollection = class(TObjects)
   end;
 
+{ Exceptions }
+
+  TSharingViolation = (svConsistentRead, svSyncUpdate, svExclusiveLock, svDestroy);
+
+  ESharingViolation = class(Exception)
+  private
+    FObj: TObject;
+    FOperation: TSharingViolation;
+  public
+    constructor Create(Obj: TObject; Op: TSharingViolation);
+  // properties
+    property Obj: TObject read FObj;
+    property Operation: TSharingViolation read FOperation;
+  end;
+
+  EContainer = class(Exception)
+  private
+    FContainer: TObject;
+  public
+  // properties
+    property Container: TObject read FContainer;
+  end;
+
+  EIndex = class(EContainer)
+  private
+    FRangeMin, FRangeMax, FIndex: Cardinal;
+  public
+    constructor Create(Container: TObject; Index, RangeMin, RangeMax: Cardinal); overload; // because of ERange.Create
+  // properties
+    property Index: Cardinal read FIndex;
+    property RangeMax: Cardinal read FRangeMax;
+    property RangeMin: Cardinal read FRangeMin;
+  end;
+
+  ERange = class(EIndex)
+  private
+    FCount: Cardinal;
+  public
+    constructor Create(Container: TObject; Index, Count, RangeMin, RangeMax: Cardinal);
+  // properties
+    property Count: Cardinal read FCount;
+  end;
+
 { Core services }
 
 procedure ReleaseAndNil(var Obj; AndFree: Boolean = True);
@@ -250,14 +269,31 @@ end;
 
 { EIndex }
 
-constructor EIndex.Create(Obj: TObject; Idx, Lo, Hi: Cardinal);
+constructor EIndex.Create(Container: TObject; Index, RangeMin, RangeMax: Cardinal);
 var
   ClassName: TClassName;
 begin
-  FriendlyClassName(ClassName, Obj);
-  inherited Create(sIndexOutOfBounds, [Lo, Hi, @ClassName, Idx]);
-  FObj := Obj;
-  FIndex := Idx;
+  FriendlyClassName(ClassName, Container);
+  inherited Create(sIndexOutOfBounds, [RangeMin, RangeMax, @ClassName, Index]);
+  FContainer := Container;
+  FRangeMin := RangeMin;
+  FRangeMax := RangeMax;
+  FIndex := Index;
+end;
+
+{ ERange }
+
+constructor ERange.Create(Container: TObject; Index, Count, RangeMin, RangeMax: Cardinal);
+var
+  ClassName: TClassName;
+begin
+  FriendlyClassName(ClassName, Container);
+  inherited Create(sRangeOutOfBounds, [RangeMin, RangeMax, @ClassName, Index, Count]);
+  FContainer := Container;
+  FRangeMin := RangeMin;
+  FRangeMax := RangeMax;
+  FIndex := Index;
+  FCount := Count;
 end;
 
 { TMutableObject }

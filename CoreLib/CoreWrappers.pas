@@ -183,7 +183,8 @@ type
     property Value: QuadWord read GetValue;
   end;
 
-  TVersionFlags = set of (verDebug, verPreRelease, verPatched, verPrivateBuild, verInfoInferred, verSpecialBuild);
+  TVersionFlags = set of (verDebug, verPreRelease, verPatched, verPrivateBuild,
+    verInfoInferred, verSpecialBuild);
   TVersionOS = set of (osDOS, os2_16, os2_32, osNT, osWin16, osPM16, osPM32, osWin32);
   TVersionFileType = (ftUnknown, ftApplication, ftDLL, ftDriver, ftFont, ftVxD, ftStaticLib);
   TVersionDriverType = (drvUnknown, drvPrinter, drvKeyboard, drvLanguage, drvDisplay,
