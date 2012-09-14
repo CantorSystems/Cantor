@@ -92,7 +92,13 @@ function GetCPInfoEx(CodePage, Flags: LongWord; var CPInfoEx: TCPInfoEx): BOOL; 
 
 type
   TCodePage = class;
-  
+
+  TInvalidUTF8 = packed record
+  case Integer of
+    0: (StartingByte: Byte);         // Bad UTF-8 sequence starting with byte $%02X
+    1: (ByteCount, ByteIndex: Byte); // Broken %u-byte UTF-8 sequence at %s byte
+  end;
+
   PStringInfo = ^TStringInfo;
   TStringInfo = record
     Count, CharCount: Cardinal;
@@ -103,7 +109,7 @@ type
     case Byte of
       0: (Latin1Count: Cardinal;
           InvalidChar: QuadChar);
-      1: (DoubleByteCount: Cardinal);
+      1: (DoubleByteCount: Cardinal; InvalidUTF8: TInvalidUTF8);
       2: (SurrogateCount, InvalidCount: Cardinal);
   end;
 
@@ -269,7 +275,7 @@ type
     procedure CheckRange(Index: Integer; Count: Cardinal);
   public
     class function ByteCount(Count: Cardinal): Cardinal; overload; virtual; abstract;
-    function ByteCount: Cardinal; overload; virtual;
+    function ByteCount: Cardinal; overload; 
 
     class function Length(Source: Pointer): Cardinal; overload; virtual; abstract;
   {$IFNDEF Lite}
@@ -314,9 +320,11 @@ type
 
   TString = class(TSubstring)
   private
+  //  { placeholder }  FData: Pointer;
+  //  { placeholder }  FOptions: TStringOptions;
     procedure SetCount(Value: Cardinal);
   protected
-    procedure AcceptRange(Index: Integer; Count: Cardinal);
+    function AcceptRange(var Index: Integer; Count: Cardinal): Boolean;
 
     procedure DoAssign(Value: Pointer; Count: Cardinal; Index: Integer; Options: TStringOptions); overload;
 
@@ -334,8 +342,11 @@ type
     function DoAssign(var Info: TStringInfo; Source: PQuadChar; Count: Cardinal; SourceOptions: TEndianSource;
       Index: Integer; DestOptions: TEncodeOptions): Cardinal; overload; virtual; abstract;
     function DoAssign(Source: PQuadChar; Count: Cardinal; SourceOptions: TEndianSource;
-      Index: Integer; DestOptions: TEncodeOptions): Cardinal; overload; 
+      Index: Integer; DestOptions: TEncodeOptions): Cardinal; overload;
   {$ENDIF}
+
+    procedure DoClear; override;
+    procedure DoSetCount(Value: Cardinal);
   public
     constructor Create(var Info: TStringInfo; Source: PLegacyChar; Count: Cardinal; CodePage: TCodePage = nil;
       SourceOptions: TLegacySource = []; Index: Integer = 0; DestOptions: TEncodeOptions = []); overload;
@@ -566,17 +577,6 @@ type
   // properties
     property BrokenByte: Byte read FBrokenByte;
     property SequenceBytes: Byte read FSequenceBytes;
-  end;
-
-  TCodePageString = TObject; // TODO
-
-  ENoCodePage = class(EString)
-  private
-    FString: TCodePageString;
-  public
-    constructor Create(Str: TCodePageString);
-  // properties
-    property Str: TCodePageString read FString;
   end;
 
 const
@@ -880,8 +880,7 @@ end;
 
 constructor ECodePage.Create(var Info: TCPInfoEx);
 begin
-  with Info do
-    inherited Create(sUnsupportedCodePage, CP_LEGACY, [CodePage, ExtractCodePageName(Info).Str]);
+  Create(sUnsupportedCodePage, CP_LEGACY, [Info.CodePage, ExtractCodePageName(Info).Str]);
 end;
 
 constructor ECodePage.Create(var Info: TCPInfoEx; CodePage: TObject);
@@ -891,9 +890,8 @@ var
   ClassName: TClassName;
 begin
   FriendlyClassName(ClassName, CodePage);
-  with Info do
-    inherited Create(sInvalidCodePageClass, CP_LEGACY, [CodePage, ExtractCodePageName(Info).Str,
-      HasNo[LeadByte[0] = 0], ClassName]);
+  Create(sInvalidCodePageClass, CP_LEGACY, [Info.CodePage, ExtractCodePageName(Info).Str,
+    HasNo[Info.LeadByte[0] = 0], ClassName]);
 end;
 
 { EConvert }
@@ -1003,16 +1001,6 @@ begin
   inherited Create(sBrokenUTF8, [SequenceBytes, Bytes[BrokenByte]]);
   FSequenceBytes := SequenceBytes;
   FBrokenByte := BrokenByte;
-end;
-
-{ ENoCodePage }
-
-constructor ENoCodePage.Create(Str: TCodePageString);
-var
-  ClassName: TClassName;
-begin
-  FriendlyClassName(ClassName, Str);
-  inherited Create(sNoCodePage, [@ClassName]);
 end;
 
 { TCodePage }
@@ -2266,8 +2254,16 @@ end;
 { TSubstring }
 
 procedure TSubstring.CheckRange(Index: Integer; Count: Cardinal);
+var
+  Offset: Cardinal;
 begin
-  // TODO
+  if Index < 0 then
+    Offset := FCount - Cardinal(-Index) - 1
+  else
+    Offset := Index;
+
+  if (Offset >= FCount) or (Offset + Count >= FCount) then
+    raise ERange.Create(Self, Index, Count, 0, FCount - 1);
 end;
 
 function TSubstring.ByteCount: Cardinal;
@@ -2321,33 +2317,66 @@ begin
   DoAssign(Source, Count, SourceOptions, Index, DestOptions);
 end;
 
-procedure TString.AcceptRange(Index: Integer; Count: Cardinal);
+function TString.AcceptRange(var Index: Integer; Count: Cardinal): Boolean;
 begin
-  // TODO
+  if Index < 0 then
+    Cardinal(Index) := FCount - Cardinal(-Index) - 1;
+  Inc(Count, Cardinal(Index));
+  if Count > FCount then
+    DoSetCount(Count);
+end;
+
+procedure TString.DoClear;
+begin
+  if not (soAttachBuffer in TLegacyString(Self).FOptions) then
+    FreeMem(TLegacyString(Self).FData);
+  TLegacyString(Self).FData := nil;
+  FCount := 0;
+end;
+
+procedure TString.DoSetCount(Value: Cardinal);
+var
+  Buf: PLegacyChar;
+  Cnt: Cardinal;
+begin
+  if soAttachBuffer in TLegacyString(Self).FOptions then
+  begin
+    if Value < FCount then
+      Cnt := Value
+    else
+      Cnt := FCount;
+
+    GetMem(Buf, ByteCount(Value + 1));
+    Move(TLegacyString(Self).FData^, Buf^, ByteCount(Cnt));
+    TLegacyString(Self).FData := Buf;
+    Exclude(TLegacyString(Self).FOptions, soAttachBuffer);
+  end
+  else
+    ReallocMem(TLegacyString(Self).FData, ByteCount(Value + 1));
+
+  FCount := Value;
 end;
 
 procedure TString.DoAssign(Value: Pointer; Count: Cardinal; Index: Integer;
   Options: TStringOptions);
 var
-  Bytes, Zero: Cardinal;
+  Cnt, Idx: Cardinal;
 begin
-{  if soAttachBuffer in Options then
+  if (soAttachBuffer in Options) and (Index = 0) then
   begin
-    if not (soAttachBuffer in TLatinString(Self).FOptions) then
+    if not (soAttachBuffer in TLegacyString(Self).FOptions) then
       FreeMem(TLegacyString(Self).FData);
     TLegacyString(Self).FData := Value;
+    FCount := Count;
+    TLegacyString(Self).FOptions := Options;
   end
   else
   begin
-    Bytes := ByteCount(Count);
-    Zero := ByteCount(1);
-    ReallocMem(TLegacyString(Self).FData, Bytes + Zero);
-    if Value <> nil then
-      Move(Value^, TLegacyString(Self).FData^, Bytes);
-    FillChar(TLegacyString(Self).FData[Bytes], Zero, 0);
+    if AcceptRange(Index, Count) then
+      FillChar(TLegacyString(Self).FData[ByteCount(Cardinal(Index) + Count)], ByteCount(1), 0);
+    Move(Value^, TLegacyString(Self).FData[ByteCount(Index)], ByteCount(Count));
+    TLegacyString(Self).FOptions := Options - [soAttachBuffer];
   end;
-  FCount := Count;
-  TLatinString(Self).FOptions := Options;}
 end;
 
 function TString.DoAssign(Source: PLegacyChar; Count: Cardinal; CodePage: TCodePage;
@@ -2475,7 +2504,12 @@ end;
 
 procedure TString.SetCount(Value: Cardinal);
 begin
-  // TODO
+  BeginUpdate;
+  try
+    DoSetCount(Value);
+  finally
+    EndUpdate;
+  end;
 end;
 
 { TLegacyString }
@@ -2519,8 +2553,7 @@ end;
 
 procedure TLegacyString.SetData(Value: PLegacyChar);
 begin
-  if FData <> Value then
-    Assign(Value, StrLen(Value));
+  Assign(Value, StrLen(Value), FCodePage);
 end;
 
 { TEndianString }
@@ -2528,7 +2561,14 @@ end;
 {$IFNDEF Lite}
 procedure TEndianString.SwapByteOrder;
 begin
-  // TODO
+  BeginUpdate;
+  try
+    DoSwapByteOrder;
+    with TWideString(Self) do
+      Byte(FOptions) := Byte(FOptions) xor Byte(soBigEndian);
+  finally
+    EndUpdate;
+  end;
 end;
 {$ENDIF}
 
@@ -2578,8 +2618,7 @@ end;
 
 procedure TWideString.SetData(Value: PWideChar);
 begin
-  if FData <> Value then
-    Assign(Value, WideStrLen(Value));
+  Assign(Value, WideStrLen(Value));
 end;
 
 { TQuadString }
@@ -2626,8 +2665,7 @@ end;
 
 procedure TQuadString.SetData(Value: PQuadChar);
 begin
-  if FData <> Value then
-    Assign(Value, QuadStrLen(Value));
+  Assign(Value, QuadStrLen(Value));
 end;
 
 end.

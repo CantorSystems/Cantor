@@ -99,8 +99,6 @@ const
   sBadUTF8 = 'Bad UTF-8 sequence starting with byte $%02X';
   sBrokenUTF8 = 'Broken %u-byte UTF-8 sequence at %s byte';
 
-  sNoCodePage = '%s has no assigned code page';
-
   sBasicLatin                      = 'Basic Latin';
   sLatin1Supplement                = 'Latin-1 Supplement';
   sLatinExtA                       = 'Latin Extended-A';

@@ -197,12 +197,12 @@ type
 
   ESharingViolation = class(Exception)
   private
-    FObj: TObject;
+    FObj: TMutableObject;
     FOperation: TSharingViolation;
   public
-    constructor Create(Obj: TObject; Op: TSharingViolation);
+    constructor Create(Obj: TMutableObject; Op: TSharingViolation);
   // properties
-    property Obj: TObject read FObj;
+    property Obj: TMutableObject read FObj;
     property Operation: TSharingViolation read FOperation;
   end;
 
@@ -255,7 +255,7 @@ end;
 
 { ESharingViolation }
 
-constructor ESharingViolation.Create(Obj: TObject; Op: TSharingViolation);
+constructor ESharingViolation.Create(Obj: TMutableObject; Op: TSharingViolation);
 const
   Operations: array[TSharingViolation] of PLegacyChar =
     (sConsistentRead, sSyncUpdate, sExclusiveLock, sDestroy);
