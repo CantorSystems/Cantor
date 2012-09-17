@@ -72,6 +72,7 @@ const
   sUTF8 = 'UTF-8';
   sUTF16 = 'UTF-16';
   sUTF32 = 'UTF-32';
+  sCESU8 = 'CESU-8';
 
 //  sBigEndian = '(Big-endian)';
 //  sLittleEndian = '(Little-endian)';
@@ -85,7 +86,7 @@ const
   sInvalidCodePageChar = 'Cannot convert %hs character “%lc” (U+%04X)'#10'into code page %u (%s)';
 
   sNonUnicodeCharSet = '%s string contains characters outside of Unicode range';
-  sNonUnicodeCodePage = 'Source string encoded with code page %u (%s)'#10'contains characters outside of Unicode range'; 
+  sNonUnicodeCodePage = 'Source string encoded with code page %u (%s)'#10'contains characters outside of Unicode range';
 
   sOutsideOfBMP = 'outside of Basic Multilingual Plane (BMP)'#10'but surrogate pairs are not allowed here';
   sSurrogates = '%s string contains characters %s';
@@ -98,6 +99,9 @@ const
 
   sBadUTF8 = 'Bad UTF-8 sequence starting with byte $%02X';
   sBrokenUTF8 = 'Broken %u-byte UTF-8 sequence at %s byte';
+
+  sBadSurrogate = 'Bad %s surrogate pair starting with low surrogate (U+%04X)'; // UTF-16 or CESU-8
+  sBrokenSurrogate = 'Broken %s surrogate pair: high surrogate (U+%04X)'#10'is not continued by it''s low counterpart'; // --"--
 
   sBasicLatin                      = 'Basic Latin';
   sLatin1Supplement                = 'Latin-1 Supplement';

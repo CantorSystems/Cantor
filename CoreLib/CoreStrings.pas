@@ -90,14 +90,19 @@ function GetCPInfoEx(CodePage, Flags: LongWord; var CPInfoEx: TCPInfoEx): BOOL; 
 
 { Code page support }
 
-type
-  TCodePage = class;
+const
+  InvalidUTFMask = $80000000;
 
-  TInvalidUTF8 = packed record
-  case Integer of
-    0: (StartingByte: Byte);         // Bad UTF-8 sequence starting with byte $%02X
-    1: (ByteCount, ByteIndex: Byte); // Broken %u-byte UTF-8 sequence at %s byte
+type
+  TInvalidUTF = packed record // platform
+    case Byte of
+      0: (StartingByte: Byte);               // Bad UTF-8 sequence starting with byte $%02X
+      1: (BrokenSequence, BrokenByte: Byte); // Broken %u-byte UTF-8 sequence at %s byte
+      2: (Surrogate: WideChar;
+          UTF: (utfNone, utf8, utf16));
   end;
+
+  TCodePage = class;
 
   PStringInfo = ^TStringInfo;
   TStringInfo = record
@@ -107,10 +112,11 @@ type
     Blocks: TCharBlocks;
   {$ENDIF}
     case Byte of
-      0: (Latin1Count: Cardinal;
-          InvalidChar: QuadChar);
-      1: (DoubleByteCount: Cardinal; InvalidUTF8: TInvalidUTF8);
-      2: (SurrogateCount, InvalidCount: Cardinal);
+      0: (InvalidCount, Latin1Count: Cardinal);
+      1: (InvalidChar: QuadChar;
+          DoubleByteCount: Cardinal);
+      2: (InvalidUTF: TInvalidUTF;
+          SurrogateCount: Cardinal);
   end;
 
   TCodePage = class
@@ -387,8 +393,8 @@ type
 
   TLegacyString = class(TString)
   private
-    FData: PLegacyChar;
-    FOptions: TLegacyOptions;
+    FData: PLegacyChar;        { hold }
+    FOptions: TLegacyOptions;  { hold }
     FCodePage: TCodePage;
     procedure SetData(Value: PLegacyChar);
   protected
@@ -424,8 +430,8 @@ type
 
   TWideString = class(TEndianString)
   private
-    FData: PWideChar;
-    FOptions: TEndianOptions;
+    FData: PWideChar;          { hold }
+    FOptions: TEndianOptions;  { hold }
     procedure SetData(Value: PWideChar);
   protected
     function DoAssign(var Info: TStringInfo; Source: PLegacyChar; Count: Cardinal; CodePage: TCodePage;
@@ -452,8 +458,8 @@ type
 
   TQuadString = class(TEndianString)
   private
-    FData: PQuadChar;
-    FOptions: TEndianOptions;
+    FData: PQuadChar;          { hold }
+    FOptions: TEndianOptions;  { hold }
     procedure SetData(Value: PQuadChar);
   protected
     function DoAssign(var Info: TStringInfo; Source: PLegacyChar; Count: Cardinal; CodePage: TCodePage;
@@ -553,30 +559,13 @@ type
     property SourceSite: TConvertSite read FSourceSite;
   end;
 
-  ESurrogates = class(EChar)
-  public
-    constructor Create(InvalidChar: QuadChar);
-  end;
-
-  EUTF8 = class(EString);
-
-  EBadUTF8 = class(EUTF8)
+  EUTF = class(EString)
   private
-    FInvalidByte: Byte;
+    FInfo: TInvalidUTF;
   public
-    constructor Create(InvalidByte: Byte);
+    constructor Create(const Info: TInvalidUTF);
   // properties
-    property InvalidByte: Byte read FInvalidByte;
-  end;
-
-  EBrokenUTF8 = class(EUTF8)
-  private
-    FSequenceBytes, FBrokenByte: Byte;
-  public
-    constructor Create(SequenceBytes, BrokenByte: Byte);
-  // properties
-    property BrokenByte: Byte read FBrokenByte;
-    property SequenceBytes: Byte read FSequenceBytes;
+    property Info: TInvalidUTF read FInfo;
   end;
 
 const
@@ -597,6 +586,9 @@ function FindCharBlock(Source: QuadChar; PrevBlock: TCharBlock = cbNonUnicode): 
 function TranslateCodePage(Source: Word): Word;
 
 function PlatformCodePage(CodePage: Word = CP_ACP): TCodePage;
+
+function FromUTF8(var Info: TStringInfo; Source: PLegacyChar; Count: Cardinal;
+  Dest: PWideChar; DestOptions: TEncodeUTF16 = []): Cardinal;
 
 implementation
 
@@ -876,6 +868,148 @@ begin
     raise ECodePage.Create(Info);
 end;
 
+function FromUTF8(var Info: TStringInfo; Source: PLegacyChar; Count: Cardinal;
+  Dest: PWideChar; DestOptions: TEncodeUTF16): Cardinal;
+var
+  Index: Cardinal;
+
+function GetChar: QuadChar; // Fast code: copy-paste as closure
+var
+  FirstByte, Bytes, B, C: Byte;
+begin
+  FirstByte := Byte(Source[Index]);
+  Inc(Index);
+
+  if FirstByte and $80 <> 0 then
+  begin
+    if FirstByte and $40 <> 0 then
+    begin
+      if FirstByte and $20 = 0 then
+      begin
+        Result := FirstByte and $1F;
+        Bytes := 1;
+      end
+      else if FirstByte and $10 = 0 then
+      begin
+        Result := FirstByte and $0F;
+        Bytes := 2;
+      end
+      else if FirstByte and $08 = 0 then
+      begin
+        Result := FirstByte and $07;
+        Bytes := 3;
+      end
+      else
+      begin
+        Result := 0; // to avoid warning
+        Bytes := 0;
+      end;
+
+      B := Bytes;
+
+      while (B <> 0) and (Index < Count) do
+      begin
+        C := Byte(Source[Index]);
+        if C and $C0 = $80 then
+        begin
+          Result := (Result shl 6) or (C and $3F);
+          Inc(Index);
+          Dec(B);
+        end
+        else
+          Break; // broken sequence
+      end;
+
+      if B <> 0 then // broken sequence or unexpected end of string
+      begin
+        with Info.InvalidUTF do
+        begin
+          BrokenSequence := Bytes + 1;
+          BrokenByte := Bytes - B + 2;
+        end;
+        Exit;
+      end;
+    end;
+
+    Info.InvalidUTF.StartingByte := FirstByte;
+    Result := 0;
+  end
+  else
+    Result := QuadChar(FirstByte);
+end;
+
+var
+  Q, T: QuadChar;
+begin
+  Index := 0;
+
+  while Index < Count do
+  begin
+    Q := GetChar;
+    
+    case Q of
+      Low(THighSurrogates)..High(THighSurrogates):
+        if coSurrogates in DestOptions then
+          // TODO
+        else
+    end;
+  end;
+      //Low(TLowSurrogates)..High(TLowSurrogates):
+{    case of
+
+
+        if Q <= High(TUnicodeBMP) then
+              if T = 0 then
+              begin
+                T := Q;
+                Continue;
+              end;
+            Low(TLowSurrogates)..High(TLowSurrogates):
+              if T <> 0 then
+              begin
+                if BigEndian then
+                  PLongWord(Dest + Result)^ := Swap(T) or (Swap(Q) shl 16)
+                else
+                  PLongWord(Dest + Result)^ := T or (Q shl 16);
+                Inc(Result, 2);
+                T := 0;
+                Continue;
+              end;
+          else
+            if BigEndian then
+              Dest[Result] := WideChar(Swap(Q))
+            else
+              Dest[Result] := WideChar(Q);
+            Inc(Result);
+            Continue;
+          end
+        else if (T = 0) and (Q <= High(TUnicodePUA)) then
+        begin
+          Dec(Q, Low(TUnicodeSMP));
+          if BigEndian then
+            PLongWord(Dest + Result)^ :=
+              Swap(Q div $400 + Low(THighSurrogates)) or
+              (Swap(Q mod $400 + Low(TLowSurrogates)) shl 16)
+          else
+            PLongWord(Dest + Result)^ :=
+              (Q div $400 + Low(THighSurrogates)) or
+              ((Q mod $400 + Low(TLowSurrogates)) shl 16);
+          Inc(Result, 2);
+          Continue;
+        end;
+      end;
+
+    if siForceInvalid in Options then
+    begin
+      (Dest + Result)^ := UnknownUTF16[BigEndian];
+      Inc(Result);
+      T := 0;
+    end
+    else
+      raise Exception.Create; // TODO: cannot encode UTF-16
+  end;}
+end;
+
 { ECodePage }
 
 constructor ECodePage.Create(var Info: TCPInfoEx);
@@ -977,30 +1111,26 @@ begin
   FDestSite.CodePage := DestSite;
 end;
 
-{ ESurrogates }
+{ EUTF }
 
-constructor ESurrogates.Create(InvalidChar: QuadChar);
-begin
-  // TODO
-end;
-
-{ EBadUTF8 }
-
-constructor EBadUTF8.Create(InvalidByte: Byte);
-begin
-  inherited Create(sBadUTF8, [InvalidByte]);
-  FInvalidByte := InvalidByte;
-end;
-
-{ EBrokenUTF8 }
-
-constructor EBrokenUTF8.Create(SequenceBytes, BrokenByte: Byte);
+constructor EUTF.Create(const Info: TInvalidUTF);
 const
   Bytes: array[2..5] of PLegacyChar = (sSecond, sThird, sFourth, sFifth);
+  UTFs: array[utf8..utf16] of PLegacyChar = (sCESU8, sUTF16);
 begin
-  inherited Create(sBrokenUTF8, [SequenceBytes, Bytes[BrokenByte]]);
-  FSequenceBytes := SequenceBytes;
-  FBrokenByte := BrokenByte;
+  if Info.UTF = utfNone then
+    if Info.BrokenByte <> 0 then
+      inherited Create(sBrokenUTF8, [Info.BrokenSequence, Bytes[Info.BrokenByte]])
+    else
+      inherited Create(sBadUTF8, [Info.StartingByte])
+  else
+    case Info.Surrogate of
+      WideChar(Low(THighSurrogates))..WideChar(High(THighSurrogates)):
+        inherited Create(sBrokenSurrogate, [UTFs[Info.UTF], Info.Surrogate]);
+    else
+      inherited Create(sBadSurrogate, [UTFs[Info.UTF], Info.Surrogate]);
+    end;
+  FInfo := Info;
 end;
 
 { TCodePage }
@@ -1014,7 +1144,10 @@ begin
   if (FromLegacy(Info, Source, Count, CodePage, SourceOptions, Dest, DestOptions
     {$IFNDEF Lite} - [coRangeBlocks] {$ENDIF}) = 0) and (Info.InvalidChar <> 0)
   then
-    raise EConvert.Create(Info.InvalidChar, TCharSet(soLatin1 in SourceOptions), Self);
+    if Info.InvalidChar and InvalidUTFMask <> 0 then
+      raise EUTF.Create(Info.InvalidUTF)
+    else
+      raise EConvert.Create(Info.InvalidChar, TCharSet(soLatin1 in SourceOptions), Self);
   Result := Info.Count;
 end;
 
@@ -1027,7 +1160,10 @@ begin
   if (ToLegacy(Info, Source, Count, SourceOptions, Dest, DestOptions
     {$IFNDEF Lite} - [coRangeBlocks] {$ENDIF}) = 0) and (Info.InvalidChar <> 0)
   then
-    raise EConvert.Create(Info.InvalidChar, Self, TCharSet(coLatin1 in DestOptions));
+    if Info.InvalidChar and InvalidUTFMask <> 0 then
+      raise EUTF.Create(Info.InvalidUTF)
+    else
+      raise EConvert.Create(Info.InvalidChar, Self, TCharSet(coLatin1 in DestOptions));
   Result := Info.Count;
 end;
 
@@ -1040,7 +1176,10 @@ begin
   if (FromUTF16(Info, Source, Count, SourceOptions, Dest, DestOptions
     {$IFNDEF Lite} - [coRangeBlocks] {$ENDIF}) = 0) and (Info.InvalidChar <> 0)
   then
-    raise EConvert.Create(Info.InvalidChar, csUTF16, Self);
+    if Info.InvalidChar and InvalidUTFMask <> 0 then
+      raise EUTF.Create(Info.InvalidUTF)
+    else
+      raise EConvert.Create(Info.InvalidChar, csUTF16, Self);
   Result := Info.Count;
 end;
 
@@ -1053,7 +1192,10 @@ begin
   if (ToUTF16(Info, Source, Count, SourceOptions, Dest, DestOptions
     {$IFNDEF Lite} - [coRangeBlocks] {$ENDIF}) = 0) and (Info.InvalidChar <> 0)
   then
-    raise EConvert.Create(Info.InvalidChar, Self, csUTF16);
+    if Info.InvalidChar and InvalidUTFMask <> 0 then
+      raise EUTF.Create(Info.InvalidUTF)
+    else
+      raise EConvert.Create(Info.InvalidChar, Self, csUTF16);
   Result := Info.Count;
 end;
 
@@ -1067,7 +1209,10 @@ begin
   if (FromUTF32(Info, Source, Count, SourceOptions, Dest, DestOptions
     {$IFNDEF Lite} - [coRangeBlocks] {$ENDIF}) = 0) and (Info.InvalidChar <> 0)
   then
-    raise EConvert.Create(Info.InvalidChar, csUTF32, Self);
+    if Info.InvalidChar and InvalidUTFMask <> 0 then
+      raise EUTF.Create(Info.InvalidUTF)
+    else
+      raise EConvert.Create(Info.InvalidChar, csUTF32, Self);
   Result := Info.Count;
 end;
 
@@ -1080,7 +1225,10 @@ begin
   if (ToUTF32(Info, Source, Count, SourceOptions, Dest, DestOptions
     {$IFNDEF Lite} - [coRangeBlocks] {$ENDIF}) = 0) and (Info.InvalidChar <> 0)
   then
-    raise EConvert.Create(Info.InvalidChar, Self, csUTF32);
+    if Info.InvalidChar and InvalidUTFMask <> 0 then
+      raise EUTF.Create(Info.InvalidUTF)
+    else
+      raise EConvert.Create(Info.InvalidChar, Self, csUTF32);
   Result := Info.Count;
 end;
 {$ENDIF}
@@ -1225,17 +1373,17 @@ var
 {$ENDIF}
 begin
   if Count <> 0 then
-  begin  // TODO
-    {if soDetectCharSet in SourceOptions then
+  begin
+    if soDetectCharSet in SourceOptions then
     begin
-      Uni := Info;
-      Result := FromUTF8(Uni, Source, Count, [], Dest, DestOptions);
+{      Uni := Info;
+      Result := FromUTF8(Uni, Source, Count, Dest, DestOptions);
       if Result <> 0 then
       begin
         Info := Uni;
         Exit;
-      end;
-    end;}
+      end}
+    end;
 
   {$IFNDEF Lite}
     Block := cbNonUnicode;
@@ -2387,7 +2535,9 @@ begin
   FillChar(Info, SizeOf(Info), 0);
   Result := DoAssign(Info, Source, Count, CodePage, SourceOptions, Index, DestOptions);
   if (Result = 0) and not (coForceInvalid in DestOptions) and (Info.InvalidChar <> 0) then
-    if CodePage <> nil then
+    if Info.InvalidChar and InvalidUTFMask <> 0 then
+      raise EUTF.Create(Info.InvalidUTF)
+    else if CodePage <> nil then
       if Info.CodePage <> nil then
         raise EConvert.Create(Info.InvalidChar, CodePage, Info.CodePage)
       else
@@ -2407,7 +2557,9 @@ begin
   FillChar(Info, SizeOf(Info), 0);
   Result := DoAssign(Info, Source, Count, SourceOptions, Index, DestOptions);
   if (Result = 0) and not (coForceInvalid in DestOptions) and (Info.InvalidChar <> 0) then
-    if Info.CodePage <> nil then
+    if Info.InvalidChar and InvalidUTFMask <> 0 then
+      raise EUTF.Create(Info.InvalidUTF)
+    else if Info.CodePage <> nil then
       raise EConvert.Create(Info.InvalidChar, csUTF16, Info.CodePage)
     else
       raise EConvert.Create(Info.InvalidChar, csUTF16, TCharSet(coLatin1 in DestOptions));
@@ -2422,7 +2574,9 @@ begin
   FillChar(Info, SizeOf(Info), 0);
   Result := DoAssign(Info, Source, Count, SourceOptions, Index, DestOptions);
   if (Result = 0) and not (coForceInvalid in DestOptions) and (Info.InvalidChar <> 0) then
-    if Info.CodePage <> nil then
+    if Info.InvalidChar and InvalidUTFMask <> 0 then
+      raise EUTF.Create(Info.InvalidUTF)
+    else if Info.CodePage <> nil then
       raise EConvert.Create(Info.InvalidChar, csUTF32, Info.CodePage)
     else
       raise EConvert.Create(Info.InvalidChar, csUTF32, TCharSet(coLatin1 in DestOptions));
