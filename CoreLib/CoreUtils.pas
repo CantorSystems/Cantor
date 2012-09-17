@@ -78,7 +78,7 @@ var
 const
   PathDelimiter = WideChar('\'); // platform;
 
-  CRLF: array[0..Length(sLineBreak) - 1] of LegacyChar = sLineBreak;
+  CRLF: array[0..1] of LegacyChar = #13#10;
   WideCRLF: array[0..1] of WideChar = (WideChar(13), WideChar(10));
 
   WideLF: WideChar = WideChar(10);
