@@ -807,7 +807,8 @@ begin
   begin
     for I := Low(CodePageName) to High(CodePageName) do
       case CodePageName[I] of
-        CoreChar(0)..CoreChar(32), CoreChar('0')..CoreChar('9'):;
+        CoreChar(0)..CoreChar(32), CoreChar('0')..CoreChar('9'):
+          ; 
         CoreChar('('):
           begin
             with Result do
@@ -870,10 +871,11 @@ end;
 
 function FromUTF8(var Info: TStringInfo; Source: PLegacyChar; Count: Cardinal;
   Dest: PWideChar; DestOptions: TEncodeUTF16): Cardinal;
+
 var
   Index: Cardinal;
 
-function GetChar: QuadChar; // Fast code: copy-paste as closure
+function GetChar: QuadChar; // Fast core: closure
 var
   FirstByte, Bytes, B, C: Byte;
 begin
@@ -922,17 +924,12 @@ begin
 
       if B <> 0 then // broken sequence or unexpected end of string
       begin
-        with Info.InvalidUTF do
-        begin
-          BrokenSequence := Bytes + 1;
-          BrokenByte := Bytes - B + 2;
-        end;
+        Result := (Bytes + 1) or (Byte(Bytes - B + 2) shl 8) or InvalidUTFMask; // Fast core
         Exit;
       end;
     end;
 
-    Info.InvalidUTF.StartingByte := FirstByte;
-    Result := 0;
+    Result := FirstByte or InvalidUTFMask; // Fast core
   end
   else
     Result := QuadChar(FirstByte);
@@ -940,74 +937,109 @@ end;
 
 var
   Q, T: QuadChar;
+{$IFNDEF Lite}
+  Block: TCharBlock;
+{$ENDIF}
 begin
+  Result := 0;
   Index := 0;
+  T := 0;
+{$IFNDEF Lite}
+  Block := cbNonUnicode;
+{$ENDIF}
 
   while Index < Count do
   begin
-    Q := GetChar;
-    
-    case Q of
-      Low(THighSurrogates)..High(THighSurrogates):
-        if coSurrogates in DestOptions then
-          // TODO
-        else
-    end;
-  end;
-      //Low(TLowSurrogates)..High(TLowSurrogates):
-{    case of
+    if T <> 0 then
+      Q := T
+    else
+      Q := GetChar;
 
+    if Q and InvalidUTFMask = 0 then
+      case Q of
+        Low(THighSurrogates)..High(THighSurrogates):
+          if coSurrogates in DestOptions then
+          begin
+            T := GetChar;
+            if T and InvalidUTFMask = 0 then
+              case T of
+                Low(TLowSurrogates)..High(TLowSurrogates):
+                  begin
+                    if coBigEndian in DestOptions then // Fast core
+                      PLongWord(Dest)^ := Swap(Q) or (Swap(T) shl 16)
+                    else
+                      PLongWord(Dest)^ := Q or (T shl 16);
 
-        if Q <= High(TUnicodeBMP) then
-              if T = 0 then
-              begin
-                T := Q;
-                Continue;
+                    Inc(Dest, 2);
+                    Inc(Result, 2);
+
+                    with Info do
+                    begin
+                      Inc(CharCount);
+                      Inc(SurrogateCount);
+                    {$IFNDEF Lite}
+                      if coRangeBlocks in DestOptions then
+                      begin
+                        Block := FindCharBlock(
+                          (Q - Low(THighSurrogates)) shl 10 + Low(TUnicodeSMP) +
+                          T - Low(TLowSurrogates), Block);
+                        Include(Blocks, Block);
+                      end;
+                    {$ENDIF}
+                    end;
+
+                    T := 0; // surrogate pair flushed
+                    Continue;
+                  end;
+              else
+                Q := Q or (Byte(utf8) shl 16) or InvalidUTFMask; // Fast core
               end;
-            Low(TLowSurrogates)..High(TLowSurrogates):
-              if T <> 0 then
-              begin
-                if BigEndian then
-                  PLongWord(Dest + Result)^ := Swap(T) or (Swap(Q) shl 16)
-                else
-                  PLongWord(Dest + Result)^ := T or (Q shl 16);
-                Inc(Result, 2);
-                T := 0;
-                Continue;
-              end;
-          else
-            if BigEndian then
-              Dest[Result] := WideChar(Swap(Q))
-            else
-              Dest[Result] := WideChar(Q);
-            Inc(Result);
-            Continue;
-          end
-        else if (T = 0) and (Q <= High(TUnicodePUA)) then
+          end;
+        Low(TLowSurrogates)..High(TLowSurrogates):
+          Q := Q or (Byte(utf8) shl 16) or InvalidUTFMask; // Fast core
+      else
+      {$IFNDEF Lite}
+        if coRangeBlocks in DestOptions then
         begin
-          Dec(Q, Low(TUnicodeSMP));
-          if BigEndian then
-            PLongWord(Dest + Result)^ :=
-              Swap(Q div $400 + Low(THighSurrogates)) or
-              (Swap(Q mod $400 + Low(TLowSurrogates)) shl 16)
-          else
-            PLongWord(Dest + Result)^ :=
-              (Q div $400 + Low(THighSurrogates)) or
-              ((Q mod $400 + Low(TLowSurrogates)) shl 16);
-          Inc(Result, 2);
-          Continue;
+          Block := FindCharBlock(Q, Block);
+          Include(Info.Blocks, Block);
         end;
+      {$ENDIF}
       end;
 
-    if siForceInvalid in Options then
-    begin
-      (Dest + Result)^ := UnknownUTF16[BigEndian];
-      Inc(Result);
-      T := 0;
-    end
+    if Q and InvalidUTFMask <> 0 then
+      if coForceInvalid in DestOptions then
+      begin
+        Q := QuadChar(Unknown_UTF16);
+        Inc(Info.InvalidCount);
+      {$IFNDEF Lite}
+        if coRangeBlocks in DestOptions then
+          Include(Info.Blocks, cbSpecials); // Fast core
+      {$ENDIF}
+      end
+      else
+      begin
+        with Info do
+        begin
+          InvalidChar := Q;
+          Inc(Count, Result);
+        end;
+
+        Result := 0;
+        Exit;
+      end;
+
+    if coBigEndian in DestOptions then
+      Dest^ := WideChar(Swap(Q))
     else
-      raise Exception.Create; // TODO: cannot encode UTF-16
-  end;}
+      Dest^ := WideChar(Q);
+
+    Inc(Dest);
+    Inc(Result);
+    Inc(Info.CharCount);
+  end;
+
+  Inc(Info.Count, Result);
 end;
 
 { ECodePage }

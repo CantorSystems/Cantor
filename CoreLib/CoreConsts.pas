@@ -98,10 +98,11 @@ const
   sFifth  = '5th';
 
   sBadUTF8 = 'Bad UTF-8 sequence starting with byte $%02X';
-  sBrokenUTF8 = 'Broken %u-byte UTF-8 sequence at %s byte';
+  sBrokenUTF8 = 'Broken %u-byte UTF-8 sequence or unexpected end of string';
 
   sBadSurrogate = 'Bad %s surrogate pair starting with low surrogate (U+%04X)'; // UTF-16 or CESU-8
-  sBrokenSurrogate = 'Broken %s surrogate pair: high surrogate (U+%04X)'#10'is not continued by it''s low counterpart'; // --"--
+  sBrokenSurrogate = 'Broken %s surrogate pair or unexpected end of string:'#10 +
+    'high surrogate (U+%04X) is not continued by a low surrogate'; // --"--
 
   sBasicLatin                      = 'Basic Latin';
   sLatin1Supplement                = 'Latin-1 Supplement';
