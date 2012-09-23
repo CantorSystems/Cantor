@@ -11,35 +11,35 @@ unit CLI;
 interface
 
 uses
-  CoreWrappers;
+  CoreUtils, CoreWrappers;
 
 type
   TApplication = class
   private
     FConsole: TStreamConsole;
-    FAppFileName, FSourceFileName: PWideChar;
+    FAppFileName, FSourceFileName: PCoreChar;
     procedure Help;
   public
-    constructor Create(CommandLine: PWideChar);
+    constructor Create(CommandLine: PCoreChar);
     destructor Destroy; override;
     procedure Run;
   end;
 
 { Helper functions }
 
-function ChangeFileExt(FileName, Ext: PWideChar): PWideChar;
-function ParamStr(var CommandLine: PWideChar; var Quoted: Boolean): PWideChar;
+function ChangeFileExt(FileName, Ext: PCoreChar): PCoreChar;
+function ParamStr(var CommandLine: PCoreChar; var Quoted: Boolean): PCoreChar;
 
 implementation
 
 uses
-  Windows, CoreUtils, CoreClasses, CoreStrings, PetConsts;
+  Windows, CoreClasses, CoreStrings, PetConsts;
 
 { Helper functions }
 
-function ChangeFileExt(FileName, Ext: PWideChar): PWideChar;
+function ChangeFileExt(FileName, Ext: PCoreChar): PCoreChar;
 var
-  P: PWideChar;
+  P: PCoreChar;
   D, E, L: Cardinal;
 begin
   if FileName <> nil then
@@ -51,28 +51,28 @@ begin
     else
       D := L;
     E := WideStrLen(Ext);
-    GetMem(Result, (D + E + 1) * SizeOf(WideChar));
-    Move(FileName^, Result^, D * SizeOf(WideChar));
-    Move(Ext^, Result[D], (E + 1) * SizeOf(WideChar));
+    GetMem(Result, (D + E + 1) * SizeOf(CoreChar));
+    Move(FileName^, Result^, D * SizeOf(CoreChar));
+    Move(Ext^, Result[D], (E + 1) * SizeOf(CoreChar));
   end
   else
     Result := nil;
 end;
 
-function ParamStr(var CommandLine: PWideChar; var Quoted: Boolean): PWideChar;
+function ParamStr(var CommandLine: PCoreChar; var Quoted: Boolean): PCoreChar;
 var
-  P: PWideChar;
+  P: PCoreChar;
   L: Cardinal;
 begin
   if CommandLine <> nil then
   begin
-    while (CommandLine^ = WideChar(32)) or (CommandLine^ = WideChar(9)) do
+    while (CommandLine^ = CoreChar(32)) or (CommandLine^ = CoreChar(9)) do
       Inc(CommandLine);
-    if CommandLine^ = WideChar('"') then
+    if CommandLine^ = CoreChar('"') then
     begin
       Inc(CommandLine);
       L := WideStrLen(CommandLine);
-      P := WideStrScan(CommandLine, WideChar('"'), L);
+      P := WideStrScan(CommandLine, CoreChar('"'), L);
       if P <> nil then
         L := P - CommandLine;
       Quoted := True;
@@ -80,14 +80,14 @@ begin
     else
     begin
       P := CommandLine;
-      while (P^ <> WideChar(32)) and (P^ <> WideChar(9)) and (P^ <> WideChar(0)) do
+      while (P^ <> CoreChar(32)) and (P^ <> CoreChar(9)) and (P^ <> CoreChar(0)) do
         Inc(P);
       L := P - CommandLine;
       Quoted := False;
     end;
     Result := WideStrNew(CommandLine, L);
     CommandLine := P;
-    if P^ <> WideChar(0) then
+    if P^ <> CoreChar(0) then
       Inc(CommandLine);
   end
   else
@@ -96,7 +96,7 @@ end;
 
 { TApplication }
 
-constructor TApplication.Create(CommandLine: PWideChar);
+constructor TApplication.Create(CommandLine: PCoreChar);
 var
   Quoted: Boolean;
   Buf: array[Byte] of LegacyChar;
@@ -136,7 +136,7 @@ end;
 
 procedure TApplication.Run;
 var
-  DestFileName: PWideChar;
+  DestFileName: PCoreChar;
 begin
   if FSourceFileName <> nil then
   begin
