@@ -123,7 +123,7 @@ type
   protected // but not private
     FCount: Cardinal;
   protected
-  //  DoClear override not needed, Count will be changed (also automatically) in the descedants
+  //  DoClear override not needed, Count will be changed (also automatically) in the descendants
   public
   // properties
     property Count: Cardinal read FCount;
@@ -863,7 +863,7 @@ begin
   BeginUpdate;
   try
     Result := DoExtract(Index);
-    Dec(FCount); // here is for compatibility with TEnumerableItem descedants
+    Dec(FCount); // here is for compatibility with TEnumerableItem descendants
   finally
     EndUpdate;
   end;
