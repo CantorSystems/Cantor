@@ -350,7 +350,6 @@ asm
         MOV EDX, EAX
         INC EDX
    LOCK XADD [ECX].FUpdateCount, EDX
-@@exit:
 end;
 
 procedure TMutableObject.BeginConsistentRead;
