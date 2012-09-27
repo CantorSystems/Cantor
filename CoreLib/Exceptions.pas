@@ -672,7 +672,7 @@ end;
 constructor EPlatform.Create(ErrorCode: LongWord);
 {$IFDEF Compat}
 var
-  W: PWideChar;
+  W: PCoreChar;
 begin
   W := SysErrorMessage(ErrorCode);
   try

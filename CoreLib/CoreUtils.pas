@@ -168,7 +168,7 @@ function QuadStrRevScan(Where: PQuadChar; What: QuadChar; Count: Cardinal): PQua
 
 { LocalFree finalization required }
 
-function SysErrorMessage(ErrorCode: LongWord): PWideChar;
+function SysErrorMessage(ErrorCode: LongWord): PCoreChar;
 
 { Legacy Windows service }
 
@@ -754,7 +754,7 @@ end;
 
 { LocalFree finalization required }
 
-function SysErrorMessage(ErrorCode: LongWord): PWideChar;
+function SysErrorMessage(ErrorCode: LongWord): PCoreChar;
 var
   L: Cardinal;
 begin
