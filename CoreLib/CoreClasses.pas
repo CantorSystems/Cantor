@@ -111,6 +111,7 @@ type
   protected
     procedure DoClear; virtual; abstract;
   public
+    destructor Destroy; override;
     procedure Clear;
   end;
 
@@ -120,8 +121,8 @@ type
   end;
 
   TEnumerable = class(TContainer)
-  protected // but not private
-    FCount: Cardinal;
+  protected
+    FCount: Cardinal; // not private for CoreStrings and other
   protected
   //  DoClear override not needed, Count will be changed (also automatically) in the descendants
   public
@@ -514,32 +515,32 @@ type
   TListCast = class;
 
   TListItemCast = class(TListItem)
-    FOwner: TListCast;
-    FPrior, FNext: TListItemCast;
+    Owner: TListCast;
+    Prior, Next: TListItemCast;
   end;
 
   TListCast = class(TList)
-    FFirst, FLast: TListItemCast;
+    First, Last: TListItemCast;
   end;
 
   PObjectArray = ^TObjectArray;
   TObjectArray = array[0..MaxInt div SizeOf(TObject) - 1] of TObject;
 
   TObjectsCast = class(TObjects)
-    FItems: PObjectArray;
+    Items: PObjectArray;
   end;
 
   TCollectionCast = class;
 
   TCollectionItemCast = class(TCollectionItem)
-    FOwner: TCollectionCast;
+    Owner: TCollectionCast;
   end;
 
   PCollectionItems = ^TCollectionItems;
   TCollectionItems = array[0..MaxInt div SizeOf(TCollectionItem) - 1] of TCollectionItemCast;
 
   TCollectionCast = class(TCollection)
-    FItems: PCollectionItems;
+    Items: PCollectionItems;
   end;
 
 { TContainedItem }
@@ -552,7 +553,7 @@ end;
 
 procedure TContainedItem.DoExtract;
 begin
-  ReleaseAndNil(TListItemCast(Self).FOwner, False); // upper link
+  ReleaseAndNil(TListItemCast(Self).Owner, False); // upper link
 end;
 
 procedure TContainedItem.Extract;
@@ -568,26 +569,26 @@ end;
 procedure TContainedItem.EndConsistentRead;
 begin
   inherited;
-  if TListItemCast(Self).FOwner <> nil then
-    TListItemCast(Self).FOwner.EndConsistentRead;
+  if TListItemCast(Self).Owner <> nil then
+    TListItemCast(Self).Owner.EndConsistentRead;
 end;
 
 function TContainedItem.TryConsistentRead: Boolean;
 begin
-  Result := ((TListItemCast(Self).FOwner = nil) or TListItemCast(Self).FOwner.TryConsistentRead) and
+  Result := ((TListItemCast(Self).Owner = nil) or TListItemCast(Self).Owner.TryConsistentRead) and
     inherited TryConsistentRead;
 end;
 
 procedure TContainedItem.EndUpdate;
 begin
   inherited;
-  if TListItemCast(Self).FOwner <> nil then
-    TListItemCast(Self).FOwner.EndUpdate;
+  if TListItemCast(Self).Owner <> nil then
+    TListItemCast(Self).Owner.EndUpdate;
 end;
 
 function TContainedItem.TryUpdate: Boolean;
 begin
-  Result := ((TListItemCast(Self).FOwner = nil) or TListItemCast(Self).FOwner.TryUpdate) and
+  Result := ((TListItemCast(Self).Owner = nil) or TListItemCast(Self).Owner.TryUpdate) and
     inherited TryUpdate;
 end;
 
@@ -595,18 +596,24 @@ end;
 procedure TContainedItem.Unlock;
 begin
   inherited;
-  if TListItemCast(Self).FOwner <> nil then
-    TListItemCast(Self).FOwner.Unlock;
+  if TListItemCast(Self).Owner <> nil then
+    TListItemCast(Self).Owner.Unlock;
 end;
 
 function TContainedItem.TryLock: Boolean;
 begin
-  Result := ((TListItemCast(Self).FOwner = nil) or TListItemCast(Self).FOwner.TryLock) and
+  Result := ((TListItemCast(Self).Owner = nil) or TListItemCast(Self).Owner.TryLock) and
     inherited TryLock;
 end;
 {$ENDIF}
 
 { TContainer }
+
+destructor TContainer.Destroy;
+begin
+  DoClear;
+  inherited;
+end;
 
 procedure TContainer.Clear;
 begin
@@ -622,9 +629,8 @@ end;
 
 procedure TEnumerableItem.DoExtract;
 begin
-  with TListItemCast(Self) do
-    if FOwner <> nil then
-      Dec(FOwner.FCount);
+  if TListItemCast(Self).Owner <> nil then
+    Dec(TListItemCast(Self).Owner.FCount);
   inherited;
 end;
 
@@ -649,19 +655,20 @@ begin
         Item.DoExtract;
         with TListItemCast(Item) do
         begin
-          FOwner := TListItemCast(Self).FOwner;
-          FPrior := TListItemCast(Self);
-          FNext := TListItemCast(Self).FNext;
+          Owner := TListItemCast(Self).Owner;
+          Prior := TListItemCast(Self);
+          Next := TListItemCast(Self).Next;
         end;
+
         with TListItemCast(Self) do
         begin
-          FNext := TListItemCast(Item);
-          if FOwner <> nil then
-            with FOwner do
+          Next := TListItemCast(Item);
+          if Owner <> nil then
+            with Owner do
             begin
               Inc(FCount);
-              if FLast = Self then
-                FLast := TListItemCast(Item);
+              if Last = Self then
+                Last := TListItemCast(Item);
             end;
         end;
       finally
@@ -684,19 +691,20 @@ begin
         Item.DoExtract;
         with TListItemCast(Item) do
         begin
-          FOwner := TListItemCast(Self).FOwner;
-          FPrior := TListItemCast(Self).FPrior;
-          FNext := TListItemCast(Self);
+          Owner := TListItemCast(Self).Owner;
+          Prior := TListItemCast(Self).Prior;
+          Next := TListItemCast(Self);
         end;
+
         with TListItemCast(Self) do
         begin
-          FPrior := TListItemCast(Item);
-          if FOwner <> nil then
-            with FOwner do
+          Prior := TListItemCast(Item);
+          if Owner <> nil then
+            with Owner do
             begin
               Inc(FCount);
-              if FFirst = Self then
-                FFirst := TListItemCast(Item);
+              if First = Self then
+                First := TListItemCast(Item);
             end;
         end;
       finally
@@ -712,19 +720,23 @@ procedure TListItem.DoExtract;
 begin
   with TListItemCast(Self) do
   begin
-    if FOwner <> nil then
-      with FOwner do
+    if Owner <> nil then
+      with Owner do
       begin
-        if FFirst = Self then
-          FFirst := FNext;
-        if FLast = Self then
-          FLast := FPrior;
+        if First = Self then
+          First := Next;
+          
+        if Last = Self then
+          Last := Prior;
       end;
-    if FPrior <> nil then
-      FPrior.FNext := FNext;
-    if FNext <> nil then
-      FNext.FPrior := FPrior;
+
+    if Prior <> nil then
+      Prior.Next := Next;
+
+    if Next <> nil then
+      Next.Prior := Prior;
   end;
+
   inherited;
 end;
 
@@ -741,12 +753,13 @@ begin
         with TListItemCast(Item) do
         begin
           DoExtract;
-          FOwner := TListCast(Self);
+          Owner := TListCast(Self);
         end;
+
         with TListCast(Self) do
         begin
-          FFirst := TListItemCast(Item);
-          FLast := TListItemCast(Item);
+          First := TListItemCast(Item);
+          Last := TListItemCast(Item);
         end;
       finally
         Item.EndUpdate;
@@ -759,16 +772,16 @@ end;
 
 procedure TList.DoClear;
 begin
-  while TListCast(Self).FFirst <> nil do
-    TListCast(Self).FFirst.Free;
+  while TListCast(Self).First <> nil do
+    TListCast(Self).First.Free;
 end;
 
 procedure TList.Append(Item: TListItem);
 begin
   BeginUpdate;
   try
-    if TListCast(Self).FLast <> nil then
-      TListCast(Self).FLast.Append(Item)
+    if TListCast(Self).Last <> nil then
+      TListCast(Self).Last.Append(Item)
     else
       Grab(Item);
   finally
@@ -780,8 +793,8 @@ procedure TList.Prepend(Item: TListItem);
 begin
   BeginUpdate;
   try
-    if TListCast(Self).FFirst <> nil then
-      TListCast(Self).FFirst.Prepend(Item)
+    if TListCast(Self).First <> nil then
+      TListCast(Self).First.Prepend(Item)
     else
       Grab(Item);
   finally
@@ -806,10 +819,10 @@ function TObjects.DoExtract(Index: Cardinal): TObject;
 begin
   with TObjectsCast(Self) do
   begin
-    Result := FItems[Index];
+    Result := Items[Index];
     if Index < FCount - 1 then
-      Move(FItems[Index + 1], FItems[Index], (Count - Index - 1) * SizeOf(TObject));
-    FItems[FCount - 1] := nil;
+      Move(Items[Index + 1], Items[Index], (Count - Index - 1) * SizeOf(TObject));
+    Items[FCount - 1] := nil;
   end;
 end;
 
@@ -817,9 +830,7 @@ procedure TObjects.DoSetCapacity(Value: Cardinal);
 begin
   with TObjectsCast(Self) do
   begin
-    ReallocMem(FItems, Value * SizeOf(TObject));
-    if Value > FCapacity then
-      FillChar(FItems[FCapacity], (Value - FCapacity) * SizeOf(TObject), 0);
+    ReallocMem(Items, Value * SizeOf(TObject));
     FCapacity := Value;
   end;
 
@@ -833,7 +844,7 @@ begin
   try
     if FCount = FCapacity then
       DoSetCapacity(FCapacity + FDelta);
-    TObjectsCast(Self).FItems[FCount] := Item;
+    TObjectsCast(Self).Items[FCount] := Item;
     Result := FCount;
     Inc(FCount);
   finally
@@ -849,7 +860,7 @@ begin
   BeginUpdate;
   try
     with TObjectsCast(Self) do
-      CoreUtils.Exchange(Pointer(FItems[Index1]), Pointer(FItems[Index2]));
+      CoreUtils.Exchange(Pointer(Items[Index1]), Pointer(Items[Index2]));
   finally
     EndUpdate;
   end;
@@ -873,7 +884,7 @@ var
   I: Integer;
 begin
   for I := 0 to FCount - 1 do
-    if TObjectsCast(Self).FItems[I] = Item then
+    if TObjectsCast(Self).Items[I] = Item then
     begin
       Result := I;
       Exit;
@@ -892,8 +903,8 @@ begin
       DoSetCapacity(FCapacity + FDelta);
     with TObjectsCast(Self) do
     begin
-      Move(FItems[Index], FItems[Index + 1], (FCount - Index) * SizeOf(TObject));
-      FItems[Index] := Item;
+      Move(Items[Index], Items[Index + 1], (FCount - Index) * SizeOf(TObject));
+      Items[Index] := Item;
     end;
     Inc(FCount);
   finally
@@ -922,7 +933,7 @@ begin
     try
       if Value > FCapacity then
         DoSetCapacity(Value + (Value + FDelta - 1) mod FDelta);
-      FillChar(TObjectsCast(Self).FItems[FCount], Value - FCount, 0);
+      FillChar(TObjectsCast(Self).Items[FCount], Value - FCount, 0);
       FCount := Value;
     finally
       EndUpdate;
@@ -937,7 +948,7 @@ var
   I: Integer;
 begin
   for I := FCount - 1 downto Value - 1 do
-    TObjectsCast(Self).FItems[I].Free;
+    TObjectsCast(Self).Items[I].Free;
   inherited;
 end;
 
@@ -946,8 +957,8 @@ end;
 procedure TCollectionItem.DoExtract;
 begin
   with TCollectionItemCast(Self) do
-    if FOwner <> nil then
-      FOwner.DoExtract(FOwner.IndexOf(Self));
+    if Owner <> nil then
+      Owner.DoExtract(Owner.IndexOf(Self));
   inherited;
 end;
 
