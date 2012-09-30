@@ -41,9 +41,9 @@ type
     procedure AfterConstruction; override;
     procedure BeforeDestruction; override;
 
-    procedure BeginConsistentRead;
-    procedure EndConsistentRead; virtual;
-    function TryConsistentRead: Boolean; virtual;
+    procedure BeginRead;
+    procedure EndRead; virtual;
+    function TryRead: Boolean; virtual;
 
     procedure BeginUpdate;
     procedure EndUpdate; virtual;
@@ -95,8 +95,8 @@ type
     destructor Destroy; override;
     procedure Extract;
 
-    procedure EndConsistentRead; override;
-    function TryConsistentRead: Boolean; override;
+    procedure EndRead; override;
+    function TryRead: Boolean; override;
 
     procedure EndUpdate; override;
     function TryUpdate: Boolean; override;
@@ -337,7 +337,7 @@ begin
 {$ENDIF}
 end;
 
-function TMutableObject.TryConsistentRead: Boolean;
+function TMutableObject.TryRead: Boolean;
 asm
         MOV ECX, EAX
         XOR EAX, EAX
@@ -353,13 +353,13 @@ asm
    LOCK XADD [ECX].FUpdateCount, EDX
 end;
 
-procedure TMutableObject.BeginConsistentRead;
+procedure TMutableObject.BeginRead;
 begin
-  if not TryConsistentRead then
+  if not TryRead then
     raise ESharingViolation.Create(Self, svConsistentRead);
 end;
 
-procedure TMutableObject.EndConsistentRead;
+procedure TMutableObject.EndRead;
 asm
         XOR EDX, EDX
         INC EDX
@@ -566,17 +566,17 @@ begin
   end;
 end;
 
-procedure TContainedItem.EndConsistentRead;
+procedure TContainedItem.EndRead;
 begin
   inherited;
   if TListItemCast(Self).Owner <> nil then
-    TListItemCast(Self).Owner.EndConsistentRead;
+    TListItemCast(Self).Owner.EndRead;
 end;
 
-function TContainedItem.TryConsistentRead: Boolean;
+function TContainedItem.TryRead: Boolean;
 begin
-  Result := ((TListItemCast(Self).Owner = nil) or TListItemCast(Self).Owner.TryConsistentRead) and
-    inherited TryConsistentRead;
+  Result := ((TListItemCast(Self).Owner = nil) or TListItemCast(Self).Owner.TryRead) and
+    inherited TryRead;
 end;
 
 procedure TContainedItem.EndUpdate;
