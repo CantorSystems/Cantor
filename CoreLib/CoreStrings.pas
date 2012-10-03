@@ -923,10 +923,9 @@ begin
       end;
 
       if B <> 0 then // broken sequence or unexpected end of string
-      begin
         Result := (Bytes + 1) or (Byte(Bytes - B + 2) shl 8) or InvalidUTFMask; // Fast core
-        Exit;
-      end;
+
+      Exit;
     end;
 
     Result := FirstByte or InvalidUTFMask; // Fast core
@@ -937,6 +936,7 @@ end;
 
 var
   Q, T: QuadChar;
+  W: Word;
 {$IFNDEF Lite}
   Block: TCharBlock;
 {$ENDIF}
@@ -995,8 +995,37 @@ begin
                 Q := Q or (Byte(utf8) shl 16) or InvalidUTFMask; // Fast core
               end;
           end;
+
         Low(TLowSurrogates)..High(TLowSurrogates):
           Q := Q or (Byte(utf8) shl 16) or InvalidUTFMask; // Fast core
+
+        Low(TUnicodeSMP)..High(TUnicodePUA):
+          if coSurrogates in DestOptions then
+          begin
+            W := Q - Low(TUnicodeSMP);
+
+            if coBigEndian in DestOptions then // Fast core
+              PLongWord(Dest)^ :=
+                Word(Swap(Low(THighSurrogates) + W shr 10)) or
+                Word(Swap((Low(TLowSurrogates) + W and $3FF) shl 16))
+            else
+              PLongWord(Dest)^ :=
+                Word(Low(THighSurrogates) + W shr 10) or
+                Word((Low(TLowSurrogates) + W and $3FF) shl 16);
+
+            Inc(Dest, 2);
+            Inc(Result, 2);
+            Inc(Info.CharCount);
+          {$IFNDEF Lite}
+            if coRangeBlocks in DestOptions then
+            begin
+              Block := FindCharBlock(Q, Block);
+              Include(Info.Blocks, Block);
+            end;
+          {$ENDIF}
+
+            Continue;
+          end;
       else
       {$IFNDEF Lite}
         if coRangeBlocks in DestOptions then
@@ -1007,7 +1036,7 @@ begin
       {$ENDIF}
       end;
 
-    if Q and InvalidUTFMask <> 0 then
+    if Q > High(TUnicodeBMP) then // both InvalidUTFMask and higher Unicode
       if coForceInvalid in DestOptions then
       begin
         Q := QuadChar(Unknown_UTF16);
