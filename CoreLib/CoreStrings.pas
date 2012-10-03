@@ -22,7 +22,7 @@ unit CoreStrings;
 interface
 
 uses
-  Windows, Exceptions, CoreUtils, CoreClasses, CoreConsts;
+  Windows, CoreUtils, CoreExceptions, CoreClasses, CoreConsts;
 
 {$I Unicode.inc}
 
@@ -504,6 +504,28 @@ type
 
   TCoreString = TWideString; // TODO: non-Unicode
 
+  TSharedSubstring = class(TSubstring)
+  private
+    FData: Pointer;            { hold }
+    FOptions: TStringOptions;  { hold }
+  public
+
+  // properties
+    property Data: Pointer read FData {write SetData}; // TODO
+    property Options: TStringOptions read FOptions;
+  end;
+
+  TSharedString = class(TString)
+  private
+    FData: Pointer;            { hold }
+    FOptions: TStringOptions;  { hold }
+  public
+
+  // properties
+    property Data: Pointer read FData {write SetData}; // TODO
+    property Options: TStringOptions read FOptions;
+  end;
+
 { Exceptions }
 
   ECodePage = class(Exception)
@@ -547,8 +569,10 @@ type
   EConvert = class(EChar)
   private
     FSourceSite, FDestSite: TConvertSite;
+  {$IFNDEF Lite}
     function CatchInvalidChar(InvalidChar: QuadChar; DestSite: TCharSet): Boolean; overload;
     function CatchInvalidChar(InvalidChar: QuadChar; DestSite: TCodePage): Boolean; overload;
+  {$ENDIF}
   public
     constructor Create(InvalidChar: QuadChar; SourceSite, DestSite: TCharSet); overload;
     constructor Create(InvalidChar: QuadChar; SourceSite: TCodePage; DestSite: TCharSet); overload;
@@ -963,7 +987,7 @@ begin
             T := GetChar;
             if T and InvalidUTFMask = 0 then
               case T of
-                Low(TLowSurrogates)..High(TLowSurrogates):
+                Low(TLowSurrogates)..High(TLowSurrogates): // CESU-8
                   begin
                     if coBigEndian in DestOptions then // Fast core
                       PLongWord(Dest)^ := Swap(Q) or (Swap(T) shl 16)
@@ -1094,6 +1118,7 @@ end;
 const
   CharSets: array [TCharSet] of PLegacyChar = (sUTF8, sLatin1, sUTF16, sUTF32); // UTF-8 by default
 
+{$IFNDEF Lite}
 function EConvert.CatchInvalidChar(InvalidChar: QuadChar; DestSite: TCharSet): Boolean;
 begin
   FBlock := FindCharBlock(InvalidChar);
@@ -1119,6 +1144,7 @@ begin
   else
     Result := False;
 end;
+{$ENDIF}
 
 constructor EConvert.Create(InvalidChar: QuadChar; SourceSite, DestSite: TCharSet);
 begin

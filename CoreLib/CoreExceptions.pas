@@ -12,7 +12,7 @@
       * Lite -- raise EAbstract on abstract method call
 *)
 
-unit Exceptions;
+unit CoreExceptions;
 
 {$WARN SYMBOL_PLATFORM OFF}
 

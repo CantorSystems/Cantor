@@ -18,7 +18,7 @@ unit CoreClasses;
 interface
 
 uses
-  Exceptions, CoreUtils;
+  CoreUtils, CoreExceptions;
 
 type
   TMutableObject = class;
@@ -569,6 +569,7 @@ end;
 procedure TContainedItem.EndRead;
 begin
   inherited;
+
   if TListItemCast(Self).Owner <> nil then
     TListItemCast(Self).Owner.EndRead;
 end;
@@ -582,6 +583,7 @@ end;
 procedure TContainedItem.EndUpdate;
 begin
   inherited;
+
   if TListItemCast(Self).Owner <> nil then
     TListItemCast(Self).Owner.EndUpdate;
 end;
@@ -596,6 +598,7 @@ end;
 procedure TContainedItem.Unlock;
 begin
   inherited;
+
   if TListItemCast(Self).Owner <> nil then
     TListItemCast(Self).Owner.Unlock;
 end;
@@ -631,6 +634,7 @@ procedure TEnumerableItem.DoExtract;
 begin
   if TListItemCast(Self).Owner <> nil then
     Dec(TListItemCast(Self).Owner.FCount);
+
   inherited;
 end;
 
@@ -949,6 +953,7 @@ var
 begin
   for I := FCount - 1 downto Value - 1 do
     TObjectsCast(Self).Items[I].Free;
+
   inherited;
 end;
 
@@ -959,6 +964,7 @@ begin
   with TCollectionItemCast(Self) do
     if Owner <> nil then
       Owner.DoExtract(Owner.IndexOf(Self));
+
   inherited;
 end;
 

@@ -246,7 +246,7 @@ function SetFilePointerEx(hFile: THandle; liDistanceToMove: QuadWord;
 implementation
 
 uses
-  Exceptions, CoreConsts;
+  CoreExceptions, CoreConsts;
 
 { Absent in Windows.pas }
 

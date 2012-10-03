@@ -22,8 +22,9 @@ uses
   {$IFDEF ForceMMX} ShareMM, {$ELSE} HeapMM, {$ENDIF}
 {$ENDIF}
   Windows,
-  Exceptions,
   CoreUtils,
+  CoreExceptions,
+  ExeImages in 'ExeImages.pas',
   CLI in 'CLI.pas',
   PetConsts in 'PetConsts.pas';
 
