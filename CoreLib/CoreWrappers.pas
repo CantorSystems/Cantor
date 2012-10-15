@@ -146,6 +146,10 @@ type
     function GetCodePage: Word;
     procedure SetCodePage(Value: Word);
   public
+  {$IFDEF Compat}
+    constructor Create(ErrorOutput: Boolean = False);
+    destructor Destroy; override;
+  {$ENDIF}
     procedure ReadLn(Prompt: PLegacyChar; LineBreaks: Integer = 1); overload;
     procedure ReadLn(Prompt: PLegacyChar; Count: LongWord; LineBreaks: Integer); overload;
 
@@ -530,6 +534,20 @@ begin
 end;
 
 { TStreamConsole }
+
+{$IFDEF Compat}
+constructor TStreamConsole.Create;
+begin
+  inherited;
+  SetCodePage(GetACP); // SysUtils-compatible exceptions are ANSI
+end;
+
+destructor TStreamConsole.Destroy;
+begin
+  SetCodePage(GetOEMCP); // restore OEM code page for caller like cmd or FAR
+  inherited;
+end;
+{$ENDIF}
 
 function TStreamConsole.GetCodePage: Word;
 begin

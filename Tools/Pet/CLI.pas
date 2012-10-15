@@ -102,13 +102,7 @@ var
   Buf: array[Byte] of LegacyChar;
 begin
   FConsole := TStreamConsole.Create;
-  with FConsole do
-  begin
-  {$IFDEF Compat}
-    CodePage := GetACP;
-  {$ENDIF}
-    WriteLn(@Buf, FormatBuf(sTitle, [sVersion], Buf), 2);
-  end;
+  FConsole.WriteLn(@Buf, FormatBuf(sTitle, [sVersion], Buf), 2);
 
   FAppFileName := ParamStr(CommandLine, Quoted);
   FSourceFileName := ParamStr(CommandLine, Quoted);
@@ -122,9 +116,6 @@ begin
   with FConsole do
   begin
     ReadLn(sPressEnterToExit);
-  {$IFDEF Compat}
-    CodePage := GetOEMCP;
-  {$ENDIF}
     Free;
   end;
 end;
