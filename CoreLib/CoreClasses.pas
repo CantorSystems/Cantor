@@ -420,14 +420,18 @@ asm
         MOV EDX, -2
    LOCK XADD [EAX].FRefCount, EDX
         JNS @@rollback
+        PUSH EAX
         CALL TryUpdate
         TEST EAX, EAX
         JNZ @@exit
 @@rollback:
+        POP EAX
         MOV EDX, 2
    LOCK XADD [EAX].FRefCount, EDX
         XOR EAX, EAX
+        RET
 @@exit:
+        POP EDX
 end;
 
 procedure TSharedObject.Lock;
