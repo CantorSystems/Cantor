@@ -280,12 +280,12 @@ type
   protected
     procedure CheckRange(Index: Integer; Count: Cardinal);
   public
-    class function ByteCount(Count: Cardinal): Cardinal; overload; virtual; abstract;
-    function ByteCount: Cardinal; overload; 
+    {class} function ByteCount(Count: Cardinal): Cardinal; overload; virtual; abstract;
+    function ByteCount: Cardinal; overload;
 
-    class function Length(Source: Pointer): Cardinal; overload; virtual; abstract;
+    {class} function Length(Source: Pointer): Cardinal; overload; virtual; abstract;
   {$IFNDEF Lite}
-    class function Length(Source: Pointer; MaxLength: Cardinal): Cardinal; overload; virtual; abstract;
+    {class} function Length(Source: Pointer; MaxLength: Cardinal): Cardinal; overload; virtual; abstract;
   // properties
     property Language: Word read FLanguage write FLanguage;
   {$ENDIF}
@@ -407,10 +407,10 @@ type
       SourceOptions: TEndianSource; Index: Integer; DestOptions: TEncodeOptions): Cardinal; override;
   {$ENDIF}
   public
-    class function ByteCount(Count: Cardinal): Cardinal; override;
-    class function Length(Source: Pointer): Cardinal; overload; override;
+    {class} function ByteCount(Count: Cardinal): Cardinal; override;
+    {class} function Length(Source: Pointer): Cardinal; overload; override;
   {$IFNDEF Lite}
-    class function Length(Source: Pointer; MaxLength: Cardinal): Cardinal; overload; override;
+    {class} function Length(Source: Pointer; MaxLength: Cardinal): Cardinal; overload; override;
   {$ENDIF}
   // properties
     property Data: PLegacyChar read FData write SetData;    
@@ -446,10 +446,10 @@ type
     procedure DoSwapByteOrder; override;
   {$ENDIF}
   public
-    class function ByteCount(Count: Cardinal): Cardinal; override;
-    class function Length(Source: Pointer): Cardinal; overload; override;
+    {class} function ByteCount(Count: Cardinal): Cardinal; override;
+    {class} function Length(Source: Pointer): Cardinal; overload; override;
   {$IFNDEF Lite}
-    class function Length(Source: Pointer; MaxLength: Cardinal): Cardinal; overload; override;
+    {class} function Length(Source: Pointer; MaxLength: Cardinal): Cardinal; overload; override;
   {$ENDIF}
   // properties
     property Data: PWideChar read FData write SetData;
@@ -490,11 +490,11 @@ type
       Index: Integer = 0; DestOptions: TEncodeOptions = []): Cardinal; overload;
   {$ENDIF}
 
-    class function ByteCount(Count: Cardinal): Cardinal; override;
+    {class} function ByteCount(Count: Cardinal): Cardinal; override;
 
-    class function Length(Source: Pointer): Cardinal; overload; override;
+    {class} function Length(Source: Pointer): Cardinal; overload; override;
   {$IFNDEF Lite}
-    class function Length(Source: Pointer; MaxLength: Cardinal): Cardinal; overload; override;
+    {class} function Length(Source: Pointer; MaxLength: Cardinal): Cardinal; overload; override;
   {$ENDIF}
 
   // properties
@@ -504,27 +504,62 @@ type
 
   TCoreString = TWideString; // TODO: non-Unicode
 
-  TSharedSubstring = class(TSubstring)
-  private
-    FData: Pointer;            { hold }
-    FOptions: TStringOptions;  { hold }
-  public
-
-  // properties
-    property Data: Pointer read FData {write SetData}; // TODO
-    property Options: TStringOptions read FOptions;
-  end;
-
   TSharedString = class(TString)
   private
     FData: Pointer;            { hold }
     FOptions: TStringOptions;  { hold }
+    FCodePage: TCodePage;      { hold to TLegacyString }
+    FParent: TString; // use soAttachBuffer to share other shared string
+    function GetAsLegacyChar: PLegacyChar;
+    function GetAsWideChar: PWideChar;
+    procedure SetAsLegacyChar(Value: PLegacyChar);
+    procedure SetAsWideChar(Value: PWideChar);
+  {$IFDEF UTF32}
+    function GetAsQuadChar: PQuadChar;
+    procedure SetAsQuadChar(Value: PQuadChar);
+  {$ENDIF}
+  protected
+    procedure DoClear; override;
   public
+    {class} function ByteCount(Count: Cardinal): Cardinal; override;
+
+    {class} function Length(Source: Pointer): Cardinal; overload; override;
+  {$IFNDEF Lite}
+    {class} function Length(Source: Pointer; MaxLength: Cardinal): Cardinal; overload; override;
+  {$ENDIF}
 
   // properties
-    property Data: Pointer read FData {write SetData}; // TODO
+    property AsCoreChar: PWideChar read GetAsWideChar write SetAsWideChar; // TODO: Unicode
+    property AsLegacyChar: PLegacyChar read GetAsLegacyChar write SetAsLegacyChar;
+    property AsWideChar: PWideChar read GetAsWideChar write SetAsWideChar;
+  {$IFDEF UTF32}
+    property AsQuadChar: PQuadChar read GetAsQuadChar write SetAsQuadChar;
+  {$ENDIF}
+
+    property Data: Pointer read FData; // TODO
     property Options: TStringOptions read FOptions;
+    property Parent: TString read FParent;
   end;
+
+{  TFileName = class(TSharedString)
+  private
+    FExcludeTrailingPathDelimiter, FIncludeTrailingPathDelimiter: TSubString;
+    FPathDelimiter: LegacyChar;
+    FName
+    FPath
+    FDrive
+    FResource
+    FExt
+    procedure SetPathDelimiter(Value: LegacyChar);
+  public
+    procedure Expand;
+    function IsAbsolute: Boolean;
+    function IsLong: Boolean;
+    function IsUNC: Boolean;
+//    procedure RelativeTo(
+  // properties
+    property PathDelimiter: LegacyChar read FPathDelimiter write SetPathDelimiter;
+  end;}
 
 { Exceptions }
 
@@ -2755,18 +2790,18 @@ end;
 
 { TLegacyString }
 
-class function TLegacyString.ByteCount(Count: Cardinal): Cardinal;
+{class} function TLegacyString.ByteCount(Count: Cardinal): Cardinal;
 begin
   Result := Count;
 end;
 
-class function TLegacyString.Length(Source: Pointer): Cardinal;
+{class} function TLegacyString.Length(Source: Pointer): Cardinal;
 begin
   Result := StrLen(Source);
 end;
 
 {$IFNDEF Lite}
-class function TLegacyString.Length(Source: Pointer; MaxLength: Cardinal): Cardinal;
+{class} function TLegacyString.Length(Source: Pointer; MaxLength: Cardinal): Cardinal;
 begin
   Result := StrLen(Source, MaxLength);
 end;
@@ -2815,18 +2850,18 @@ end;
 
 { TWideString }
 
-class function TWideString.ByteCount(Count: Cardinal): Cardinal;
+{class} function TWideString.ByteCount(Count: Cardinal): Cardinal;
 begin
   Result := Count * SizeOf(WideChar);
 end;
 
-class function TWideString.Length(Source: Pointer): Cardinal;
+{class} function TWideString.Length(Source: Pointer): Cardinal;
 begin
   Result := WideStrLen(Source);
 end;
 
 {$IFNDEF Lite}
-class function TWideString.Length(Source: Pointer; MaxLength: Cardinal): Cardinal;
+{class} function TWideString.Length(Source: Pointer; MaxLength: Cardinal): Cardinal;
 begin
   Result := WideStrLen(Source, MaxLength);
 end;
@@ -2864,18 +2899,18 @@ end;
 
 { TQuadString }
 
-class function TQuadString.ByteCount(Count: Cardinal): Cardinal;
+{class} function TQuadString.ByteCount(Count: Cardinal): Cardinal;
 begin
   Result := Count * SizeOf(QuadChar);
 end;
 
-class function TQuadString.Length(Source: Pointer): Cardinal;
+{class} function TQuadString.Length(Source: Pointer): Cardinal;
 begin
   Result := QuadStrLen(Source);
 end;
 
 {$IFNDEF Lite}
-class function TQuadString.Length(Source: Pointer; MaxLength: Cardinal): Cardinal;
+{class} function TQuadString.Length(Source: Pointer; MaxLength: Cardinal): Cardinal;
 begin
   Result := QuadStrLen(Source, MaxLength);
 end;
@@ -2908,6 +2943,73 @@ procedure TQuadString.SetData(Value: PQuadChar);
 begin
   Assign(Value, QuadStrLen(Value));
 end;
+
+ { TSharedString }
+
+{class} function TSharedString.ByteCount(Count: Cardinal): Cardinal;
+begin
+  if FParent <> nil then
+    Result := FParent.ByteCount(Count)
+  else
+    Result := 0;
+end;
+
+{class} function TSharedString.Length(Source: Pointer): Cardinal;
+begin
+  if FParent <> nil then
+    Result := FParent.Length(Source)
+  else
+    Result := 0;
+end;
+
+{$IFNDEF Lite}
+{class} function TSharedString.Length(Source: Pointer; MaxLength: Cardinal): Cardinal;
+begin
+  if FParent <> nil then
+    Result := FParent.Length(Source, MaxLength)
+  else
+    Result := 0;
+end;
+{$ENDIF}
+
+procedure TSharedString.DoClear;
+begin
+  ReleaseAndNil(FParent);
+  FData := nil;
+  FCount := 0;
+end;
+
+function TSharedString.GetAsLegacyChar: PLegacyChar;
+begin
+  Result := FData; // TODO
+end;
+
+function TSharedString.GetAsWideChar: PWideChar;
+begin
+  Result := FData; // TODO
+end;
+
+procedure TSharedString.SetAsLegacyChar(Value: PLegacyChar);
+begin
+  // TODO
+end;
+
+procedure TSharedString.SetAsWideChar(Value: PWideChar);
+begin
+  // TODO
+end;
+
+{$IFDEF UTF32}
+function TSharedString.GetAsQuadChar: PQuadChar;
+begin
+  Result := FData; // TODO
+end;
+
+procedure TSharedString.SetAsQuadChar(Value: PQuadChar);
+begin
+  // TODO
+end;
+{$ENDIF}
 
 end.
 
