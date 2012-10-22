@@ -438,7 +438,7 @@ procedure TSharedObject.Lock;
 begin
   if not TryLock then
     raise ESharingViolation.Create(Self,
-      TSharingViolation(Byte(svExclusiveLock) + Byte(FObjectState <> osLife)));
+      TSharingViolation(Byte(svExclusiveLock) + Byte(FObjectState > osLife)));
 end;
 
 procedure TSharedObject.Unlock;
