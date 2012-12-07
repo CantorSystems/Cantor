@@ -1,7 +1,6 @@
-public static class Platform override
+override public class Platform static of
 
-  // experimental group syntax
-  final const is
+  final const of
     target = 'PE';
     assembler = 'x86';
     public IsUnicode = true;

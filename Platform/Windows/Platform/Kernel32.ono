@@ -1,4 +1,4 @@
-public static class Kernel32 inner packed stdcall
+override public class Kernel32 static stdcall with inner aligned of
 
   public class Heap handle; // no finalization
 

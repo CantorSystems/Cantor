@@ -1,22 +1,22 @@
 //@@ru-SU:cp866
-public static class Platform override inner packed
+override public class Platform static with inner aligned of
 
-  final const is // experimental group syntax
+  final const of
     target = 'MENUET01';
     assembler = 'x86';
   end;
 
-  public class Bound
+  public class Bound of
     public var word(16) Org, Size;
   end;
 
 // public class WindowType = (FixedSize, OwnerDraw, Sizeable, SkinnedSizeable, SkinnedFixedSize);
 
-  public class Color
+  public class Color of
     public var byte Blue, Green Red, Style;
   end;
 
-  public class Rect
+  public class Rect of
     public var word(16) Y, X; // !!!
     public out NoDriver = Y.AsInteger; // TODO: for GetVideoModeError
   end;

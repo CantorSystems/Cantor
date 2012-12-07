@@ -1,8 +1,8 @@
-public class Core
+public class Core of
 
-  public class List(out item; type)
+  public class List(out item; type) of
 
-    public class item from type
+    public class item from type of
       public out this:this Owner;
       public out this Next;
 
@@ -22,24 +22,22 @@ public class Core
 
   public List(type) = List(Item, type);
 
-  public class Class
+  public class Class of
 
-    public class Property
+    public class Property of
 
-      public class Signature
+      public class Signature of
         public Parameters = List(Class); // :Core:Class:Property:Parameters:Item
 
         public out string Name;
         public out Parameters Parameters;
 
-
         public out List(Class) Parameters;  // :Core:Class:Property:Signature[0]:Item
       end;
 
-
     end;
 
-    public class Parameter
+    public class Parameter of
     end;
 
     public out string Name;
