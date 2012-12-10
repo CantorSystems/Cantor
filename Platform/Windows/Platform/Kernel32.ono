@@ -1,11 +1,11 @@
-override public class Kernel32 static stdcall with inner aligned of
+override public class Kernel32 static stdcall with inner align of
 
   public class Heap handle; // no finalization
 
   public out Heap GetProcessHeap;
-  public out ref raw HeapAlloc(Heap; word flags, bytes);
-  public out ref raw HeapReAlloc(Heap; word flags; ref raw mem; word bytes);
-  public out bool HeapFree(Heap; word flags; ref raw mem);
+  public out ref raw HeapAlloc(Heap heap; word flags, bytes);
+  public out ref raw HeapReAlloc(Heap heap; word flags; ref raw mem; word bytes);
+  public out bool HeapFree(Heap heap; word flags; ref raw mem);
 
   public class Thread handle;
 

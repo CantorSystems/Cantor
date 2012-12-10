@@ -1,5 +1,5 @@
 //@@ru-SU:cp866
-override public class Platform static with inner aligned of
+override public class Platform static with inner align of
 
   final const of
     target = 'MENUET01';
