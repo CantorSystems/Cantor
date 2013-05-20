@@ -1,8 +1,6 @@
 (*
     The Unified Environment Core Library
 
-    The Unified Environment Core Library
-
     Core library string messages
 
     Copyright (c) 2008-2012 The Unified Environment Laboratory
