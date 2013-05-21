@@ -42,19 +42,13 @@ const
   sModuleAccessViolation = 'Access violation at address %p in module “%ws”.'#10'%hs of address %p';
 
   sAbstractError    = 'Abstract method call'; // instead of meaningless "Abstract Error"
+  sNotImplemented   = 'Not implemented yet';
   sGeneralFault     = 'General fault %#02X';  // e. g. 0x0F for 15
 
 {$IFOPT C+}
   sAssertError = '%s (%s, line %d)';
   sAssertionFailed = 'Assertion failed';
 {$ENDIF}
-
-  sConsistentRead = 'consistent reading';
-  sSyncUpdate = 'synchronized updating';
-  sExclusiveLock = 'exclusive locking';
-  sDestroy = 'destruction';
-  sSharingViolation = 'Sharing violation while trying to perform %s on a %s object';
-//  'Sharing violation at %s attempt of a %s object' TODO
 
   sIndexOutOfBounds = 'Index %s[%d] out of bounds %d..%d';
   sRangeOutOfBounds = 'Range %s[%d..%d] out of bounds %d..%d';

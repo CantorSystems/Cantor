@@ -773,7 +773,7 @@ begin
         Result := TSingleByteCodePage.Create(Info);
         Exit;
       end;
-    2:
+{    2:
       begin
         Result := TDoubleByteCodePage.Create(Info);
         Exit;
@@ -786,7 +786,7 @@ begin
 
       Result := TDoubleByteCodePage.Create(Info);
       Exit;
-    end;
+    end;}
   end;
 
   with Info do

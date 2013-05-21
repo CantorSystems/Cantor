@@ -81,6 +81,21 @@ type
   PCoreChar     = PWideChar;
   PPCoreChar    = PPWideChar;
 
+  PLegacyStringRec = ^TLegacyStringRec;
+  TLegacyStringRec = record
+    Str: PLegacyChar;
+    Count: Integer;
+  end;
+
+  PWideStringRec = ^TWideStringRec;
+  TWideStringRec = record
+    Str: PWideChar;
+    Count: Integer;
+  end;
+
+  PCoreStringRec = PWideStringRec; // TODO: non-Unicode
+  TCoreStringRec = TWideStringRec;
+
 var
   Ellipsis: array[0..2] of LegacyChar = '...'; // non-Unicode, not only for European languages
   WideEllipsis: WideChar = WideChar(8230);
@@ -178,6 +193,11 @@ function QuadStrRScan(Where: PQuadChar; What: QuadChar; Count: Integer): PQuadCh
 
 procedure SwapQuadCharBytes(Source: PQuadChar; Count: Integer; Dest: PQuadChar);
 procedure SwapWideCharBytes(Source: PWideChar; Count: Integer; Dest: PWideChar);
+
+{ Command line parameters }
+
+function ParamStr(CommandLine: PLegacyChar): TLegacyStringRec;
+function WideParamStr(CommandLine: PWideChar): TWideStringRec;
 
 { LocalFree finalization required }
 
@@ -816,6 +836,76 @@ asm
 @@complete:
         POP EBX
 @@exit:
+end;
+
+{ Command line parameters }
+
+function ParamStr(CommandLine: PLegacyChar): TLegacyStringRec;
+var
+  P: PLegacyChar;
+  L: Integer;
+begin
+  if CommandLine <> nil then
+  begin
+    while (CommandLine^ in [#9, #32]) do
+      Inc(CommandLine);
+    if CommandLine^ = '"' then
+    begin
+      Inc(CommandLine);
+      L := StrLen(CommandLine);
+      P := StrScan(CommandLine, '"', L); // TODO: MBCS
+      if P <> nil then
+        L := P - CommandLine;
+    end
+    else
+    begin
+      P := CommandLine;
+      while not (P^ in [#32, #9, #0]) do
+        Inc(P);
+      L := P - CommandLine;
+    end;
+    with Result do
+    begin
+      Str := CommandLine;
+      Count := L;
+    end;
+  end
+  else
+    FillChar(Result, SizeOf(Result), 0);
+end;
+
+function WideParamStr(CommandLine: PWideChar): TWideStringRec;
+var
+  P: PWideChar;
+  L: Integer;
+begin
+  if CommandLine <> nil then
+  begin
+    while (CommandLine^ = WideChar(32)) or (CommandLine^ = WideChar(9)) do
+      Inc(CommandLine);
+    if CommandLine^ = WideChar('"') then
+    begin
+      Inc(CommandLine);
+      L := WideStrLen(CommandLine);
+      P := WideStrScan(CommandLine, CoreChar('"'), L);
+      if P <> nil then
+        L := P - CommandLine;
+    end
+    else
+    begin
+      P := CommandLine;
+      while (P^ <> WideChar(32)) and (P^ <> WideChar(9)) and (P^ <> WideChar(0)) do
+        Inc(P);
+      L := P - CommandLine;
+    end;
+    with Result do
+    begin
+      Str := CommandLine;
+      Count := L;
+    end;
+  end
+  else
+    FillChar(Result, SizeOf(Result), 0);
 end;
 
 { LocalFree finalization required }

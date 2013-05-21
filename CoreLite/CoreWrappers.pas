@@ -170,7 +170,7 @@ type
     procedure ReadLn(Prompt: PWideChar; LineBreaks: Integer = 1); overload;
     procedure ReadLn(Prompt: PWideChar; Count, LineBreaks: Integer); overload;
 
-    procedure WriteLn(LineBreaks: CoreInt = 1); overload;
+    procedure WriteLn(LineBreaks: Integer = 1); overload;
 
     procedure WriteLn(Text: PLegacyChar; LineBreaks: Integer = 1); overload;
     procedure WriteLn(Text: PLegacyChar; Count, LineBreaks: Integer); overload;
@@ -562,12 +562,12 @@ end;
 
 destructor TStreamConsole.Destroy;
 begin
-  SetCodePage(GetOEMCP); // restore OEM code page for caller like cmd or FAR
+  SetCodePage(GetOEMCP); // restore OEM code page for the caller like cmd or FAR
   inherited;
 end;
 {$ENDIF}
 
-procedure TStreamConsole.ReadLn(Prompt: PLegacyChar; LineBreaks: CoreInt);
+procedure TStreamConsole.ReadLn(Prompt: PLegacyChar; LineBreaks: Integer);
 begin
   ReadLn(Prompt, StrLen(Prompt), LineBreaks);
 end;
@@ -585,9 +585,9 @@ begin
   WriteLn(LineBreaks - 1);
 end;
 
-procedure TStreamConsole.WriteLn(LineBreaks: CoreInt);
+procedure TStreamConsole.WriteLn(LineBreaks: Integer);
 var
-  I: CoreInt;
+  I: Integer;
   BytesWritten: LongWord;
 begin
   for I := 0 to LineBreaks - 1 do
@@ -595,7 +595,7 @@ begin
     WriteFile(FOutput, LF, SizeOf(LF), BytesWritten, nil);
 end;
 
-procedure TStreamConsole.WriteLn(Text: PLegacyChar; LineBreaks: CoreInt);
+procedure TStreamConsole.WriteLn(Text: PLegacyChar; LineBreaks: Integer);
 begin
   WriteLn(Text, StrLen(Text), LineBreaks);
 end;
@@ -611,7 +611,7 @@ end;
 
 { TScreenConsole }
 
-procedure TScreenConsole.ReadLn(Prompt: PLegacyChar; LineBreaks: CoreInt);
+procedure TScreenConsole.ReadLn(Prompt: PLegacyChar; LineBreaks: Integer);
 begin
   ReadLn(Prompt, StrLen(Prompt), LineBreaks);
 end;
@@ -628,7 +628,7 @@ begin
   WriteLn(LineBreaks - 1);
 end;
 
-procedure TScreenConsole.ReadLn(Prompt: PWideChar; LineBreaks: CoreInt);
+procedure TScreenConsole.ReadLn(Prompt: PWideChar; LineBreaks: Integer);
 begin
   ReadLn(Prompt, WideStrLen(Prompt), LineBreaks);
 end;
@@ -650,16 +650,16 @@ begin
   SetConsoleTextAttribute(FOutput, Value);
 end;
 
-procedure TScreenConsole.WriteLn(LineBreaks: CoreInt);
+procedure TScreenConsole.WriteLn(LineBreaks: Integer);
 var
-  I: CoreInt;
+  I: Integer;
   Written: LongWord;
 begin
   for I := 0 to LineBreaks - 1 do
     WriteConsoleW(FOutput, @WideLF, 1, Written, nil);  // TODO: Unicode
 end;
 
-procedure TScreenConsole.WriteLn(Text: PLegacyChar; LineBreaks: CoreInt);
+procedure TScreenConsole.WriteLn(Text: PLegacyChar; LineBreaks: Integer);
 begin
   WriteLn(Text, StrLen(Text), LineBreaks);
 end;
@@ -672,7 +672,7 @@ begin
   WriteLn(LineBreaks);
 end;
 
-procedure TScreenConsole.WriteLn(Text: PWideChar; LineBreaks: CoreInt);
+procedure TScreenConsole.WriteLn(Text: PWideChar; LineBreaks: Integer);
 begin
   WriteLn(Text, WideStrLen(Text), LineBreaks);
 end;
