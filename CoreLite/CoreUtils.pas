@@ -176,6 +176,9 @@ function StrRScan(Where: PLegacyChar; What: LegacyChar; Count: Integer): PLegacy
 function WideStrRScan(Where: PWideChar; What: WideChar; Count: Integer): PWideChar;
 function QuadStrRScan(Where: PQuadChar; What: QuadChar; Count: Integer): PQuadChar;
 
+procedure SwapQuadCharBytes(Source: PQuadChar; Count: Integer; Dest: PQuadChar);
+procedure SwapWideCharBytes(Source: PWideChar; Count: Integer; Dest: PWideChar);
+
 { LocalFree finalization required }
 
 function SysErrorMessage(ErrorCode: LongWord): PCoreChar;
@@ -763,6 +766,58 @@ asm
         XOR EAX, EAX
 end;
 
+procedure SwapQuadCharBytes(Source: PQuadChar; Count: Integer; Dest: PQuadChar);
+asm
+        TEST EDX, EDX
+        JZ @@exit
+
+        XCHG ECX, EDX
+        PUSH EBX
+
+@@repeat:
+        MOV EBX, [EAX]
+        BSWAP EBX
+        MOV [EDX], EBX
+        ADD EAX, SizeOf(QuadChar)
+        ADD EDX, SizeOf(QuadChar)
+        LOOP @@repeat
+
+        POP EBX
+@@exit:
+end;
+
+procedure SwapWideCharBytes(Source: PWideChar; Count: Integer; Dest: PWideChar);
+asm
+        TEST EDX, EDX
+        JZ @@exit
+
+        XCHG ECX, EDX
+        PUSH EBX
+
+        PUSH ECX
+        SHR ECX, 1
+@@repeat2:
+        MOV EBX, [EAX]
+        XCHG BL, BH
+        ROL BX, 16
+        XCHG BL, BH
+        ROL BX, 16
+        MOV [EDX], EBX
+        ADD EAX, SizeOf(LongWord)
+        ADD EDX, SizeOf(LongWord)
+        LOOP @@repeat2
+
+        POP ECX
+        AND ECX, 1
+        JZ @@complete
+        MOV BX, [EAX]
+        XCHG BL, BH
+        MOV [EDX], BX
+@@complete:
+        POP EBX
+@@exit:
+end;
+
 { LocalFree finalization required }
 
 function SysErrorMessage(ErrorCode: LongWord): PCoreChar;
@@ -950,16 +1005,13 @@ begin
   P := PPointer(PLegacyChar(Source) + vmtClassName)^;
   Result := PByte(P)^; // Length(P^);
   Inc(P);
-  if Result <> 0 then
-    if (Result > 1) and (P^ in ['T', 't']) then
-    begin
-      Inc(P);
-      Dec(Result);
-      Move(P^, Dest, Result);
-      Dest[Result] := #0;
-    end
-    else // Fast core
-      PWord(@Dest)^ := PByte(P)^;
+  if (Result > 1) and (P^ in ['T', 't']) then
+  begin
+    Inc(P);
+    Dec(Result);
+  end;
+  Move(P^, Dest, Result);
+  Dest[Result] := #0;
 end;
 
 function FriendlyClassName(var Dest: TClassName; Source: TObject): Byte;

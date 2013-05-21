@@ -53,7 +53,8 @@ type
 }
   TConvertOption = (coPunctuation, coKana, coCase, coTurkic, coNonSpace, coWidth,
     coHanzi, coDiacritics, coComposition, coCompatibility,
-    coContinuous, coForceInvalid, coRangeBlocks, coBigEndian, coSurrogates);
+    coContinuous, coForceInvalid, {$IFNDEF Lite} coRangeBlocks, {$ENDIF}
+    coBigEndian, coSurrogates);
 
 const
   coLatin1 = coBigEndian; // only without coCESU8
@@ -275,10 +276,8 @@ type
   {$IFNDEF Lite}
     FLanguage: Word;
   {$ENDIF}
-  //  { placeholder }  FData: Pointer;
-  //  { placeholder }  FOptions: TStringOptions;
-  protected
-    procedure CheckRange(Index, Count: Integer);
+  { placeholder } // FData: Pointer;
+  { placeholder } // FOptions: TStringOptions;
   public
     {class} function ByteCount(Count: Integer): Integer; overload; virtual; abstract;
     function ByteCount: Integer; overload;
@@ -292,9 +291,9 @@ type
 
   TLegacySubstring = class(TSubstring)
   private
-    FData: PLegacyChar;
-    FOptions: TLegacyOptions;
-    FCodePage: TCodePage;
+  { hold } FData: PLegacyChar;
+  { hold } FOptions: TLegacyOptions;
+  { hold to TLegacyString } FCodePage: TCodePage;
   public
     property CodePage: TCodePage read FCodePage;
     property Data: PLegacyChar read FData;
@@ -303,8 +302,8 @@ type
 
   TWideSubstring = class(TSubstring)
   private
-    FData: PWideChar;
-    FOptions: TEndianOptions;
+  { hold } FData: PWideChar;
+  { hold } FOptions: TEndianOptions;
   public
     property Data: PWideChar read FData;
     property Options: TEndianOptions read FOptions;
@@ -312,8 +311,8 @@ type
 
   TQuadSubstring = class(TSubstring)
   private
-    FData: PQuadChar;
-    FOptions: TEndianOptions;
+  { hold } FData: PQuadChar;
+  { hold } FOptions: TEndianOptions;
   public
     property Data: PQuadChar read FData;
     property Options: TEndianOptions read FOptions;
@@ -323,30 +322,34 @@ type
 
   TString = class(TSubstring)
   private
-  //  { placeholder }  FData: Pointer;
-  //  { placeholder }  FOptions: TStringOptions;
+  { placeholder } // FData: Pointer;
+  { placeholder } // FOptions: TStringOptions;
     procedure SetCount(Value: Integer);
+  protected
+    procedure Insert(Source: Pointer; Count: Integer; SourceOptions: TStringOptions; DestIndex: Integer); overload;
   public
     procedure AcceptRange(var Index, Count: Integer);
     procedure Clear; override;
 
-    procedure Assign(Value: Pointer; Count, Index: Integer; Options: TStringOptions = []); overload;
+  // Format still without Count parameter due to Windows implementation uses ASCIIZ
+    procedure Format(Source: Pointer; const Args: array of const); overload; virtual; abstract;
+    procedure Format(const Args: array of const); overload;
 
-    function Assign(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; CodePage: TCodePage = nil;
-      SourceOptions: TLegacySource = []; Index: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload; virtual; abstract;
-    function Assign(Source: PLegacyChar; Count: Integer; CodePage: TCodePage = nil;
-      SourceOptions: TLegacySource = []; Index: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload;
+    function Insert(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; CodePage: TCodePage = nil;
+      SourceOptions: TLegacySource = []; DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload; virtual; abstract;
+    function Insert(Source: PLegacyChar; Count: Integer; CodePage: TCodePage = nil;
+      SourceOptions: TLegacySource = []; DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload;
 
-    function Assign(var Info: TStringInfo; Source: PWideChar; Count: Integer; SourceOptions: TEndianSource = [];
-      Index: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload; virtual; abstract;
-    function Assign(Source: PWideChar; Count: Integer; SourceOptions: TEndianSource = [];
-      Index: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload;
+    function Insert(var Info: TStringInfo; Source: PWideChar; Count: Integer; SourceOptions: TEndianSource = [];
+      DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload; virtual; abstract;
+    function Insert(Source: PWideChar; Count: Integer; SourceOptions: TEndianSource = [];
+      DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload;
 
   {$IFDEF UTF32}
-    function Assign(var Info: TStringInfo; Source: PQuadChar; Count: Integer; SourceOptions: TEndianSource = [];
-      Index: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload; virtual; abstract;
-    function Assign(Source: PQuadChar; Count: Integer; SourceOptions: TEndianSource = [];
-      Index: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload;
+    function Insert(var Info: TStringInfo; Source: PQuadChar; Count: Integer; SourceOptions: TEndianSource = [];
+      DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload; virtual; abstract;
+    function Insert(Source: PQuadChar; Count: Integer; SourceOptions: TEndianSource = [];
+      DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload;
   {$ENDIF}
 
     property Count write SetCount;
@@ -359,19 +362,22 @@ type
     FCodePage: TCodePage;
     procedure SetData(Value: PLegacyChar);
   public
-    function Assign(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; CodePage: TCodePage = nil;
-      SourceOptions: TLegacySource = []; Index: Integer = 0; DestOptions: TEncodeOptions = []): Integer; override;
-    function Assign(var Info: TStringInfo; Source: PWideChar; Count: Integer; SourceOptions: TEndianSource = [];
-      Index: Integer = 0; DestOptions: TEncodeOptions = []): Integer; override;
-  {$IFDEF UTF32}
-    function Assign(var Info: TStringInfo; Source: PQuadChar; Count: Integer; SourceOptions: TEndianSource = [];
-      Index: Integer = 0; DestOptions: TEncodeOptions = []): Integer; override;
-  {$ENDIF}
     {class} function ByteCount(Count: Integer): Integer; override;
     {class} function Length(Source: Pointer): Integer; override;
   {$IFNDEF Lite}
     {class} function Length(Source: Pointer; MaxLength: Integer): Integer; override;
   {$ENDIF}
+    procedure Format(Source: Pointer; const Args: array of const); override;
+
+    function Insert(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; CodePage: TCodePage = nil;
+      SourceOptions: TLegacySource = []; DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; override;
+    function Insert(var Info: TStringInfo; Source: PWideChar; Count: Integer; SourceOptions: TEndianSource = [];
+      DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; override;
+  {$IFDEF UTF32}
+    function Insert(var Info: TStringInfo; Source: PQuadChar; Count: Integer; SourceOptions: TEndianSource = [];
+      DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; override;
+  {$ENDIF}
+
     property Data: PLegacyChar read FData write SetData;
     property Options: TLegacyOptions read FOptions;
   end;
@@ -391,20 +397,23 @@ type
   { hold } FOptions: TEndianOptions;
     procedure SetData(Value: PWideChar);
   public
-    function Assign(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; CodePage: TCodePage = nil;
-      SourceOptions: TLegacySource = []; Index: Integer = 0; DestOptions: TEncodeOptions = []): Integer; override;
-    function Assign(var Info: TStringInfo; Source: PWideChar; Count: Integer; SourceOptions: TEndianSource = [];
-      Index: Integer = 0; DestOptions: TEncodeOptions = []): Integer; override;
-  {$IFDEF UTF32}
-    function Assign(var Info: TStringInfo; Source: PQuadChar; Count: Integer; SourceOptions: TEndianSource = [];
-      Index: Integer = 0; DestOptions: TEncodeOptions = []): Integer; override;
-  {$ENDIF}
     {class} function ByteCount(Count: Integer): Integer; override;
     {class} function Length(Source: Pointer): Integer; override;
   {$IFNDEF Lite}
     {class} function Length(Source: Pointer; MaxLength: Integer): Integer; override;
     procedure SwapByteOrder; override;
   {$ENDIF}
+    procedure Format(Source: Pointer; const Args: array of const); override;
+
+    function Insert(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; CodePage: TCodePage = nil;
+      SourceOptions: TLegacySource = []; DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; override;
+    function Insert(var Info: TStringInfo; Source: PWideChar; Count: Integer; SourceOptions: TEndianSource = [];
+      DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; override;
+  {$IFDEF UTF32}
+    function Insert(var Info: TStringInfo; Source: PQuadChar; Count: Integer; SourceOptions: TEndianSource = [];
+      DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; override;
+  {$ENDIF}
+
     property Data: PWideChar read FData write SetData;
     property Options: TEndianOptions read FOptions;
   end;
@@ -415,22 +424,25 @@ type
   { hold } FOptions: TEndianOptions;
     procedure SetData(Value: PQuadChar);
   public
-    function Assign(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; CodePage: TCodePage = nil;
-      SourceOptions: TLegacySource = []; Index: Integer = 0; DestOptions: TEncodeOptions = []): Integer; override;
-    function Assign(var Info: TStringInfo; Source: PWideChar; Count: Integer; SourceOptions: TEndianSource = [];
-      Index: Integer = 0; DestOptions: TEncodeOptions = []): Integer; override;
-  {$IFNDEF UTF32}
-    function Assign(var Info: TStringInfo; Source: PQuadChar; Count: Integer; SourceOptions: TEndianSource = [];
-      Index: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload;
-    function Assign(Source: PQuadChar; Count: Integer; SourceOptions: TEndianSource = [];
-      Index: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload;
-  {$ENDIF}
     {class} function ByteCount(Count: Integer): Integer; override;
     {class} function Length(Source: Pointer): Integer; override;
   {$IFNDEF Lite}
     {class} function Length(Source: Pointer; MaxLength: Integer): Integer; override;
     procedure SwapByteOrder; override;
   {$ENDIF}
+    procedure Format(Source: Pointer; const Args: array of const); override;
+
+    function Insert(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; CodePage: TCodePage = nil;
+      SourceOptions: TLegacySource = []; DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; override;
+    function Insert(var Info: TStringInfo; Source: PWideChar; Count: Integer; SourceOptions: TEndianSource = [];
+      DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; override;
+  {$IFNDEF UTF32}
+    function Insert(var Info: TStringInfo; Source: PQuadChar; Count: Integer; SourceOptions: TEndianSource = [];
+      DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload;
+    function Insert(Source: PQuadChar; Count: Integer; SourceOptions: TEndianSource = [];
+      DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload;
+  {$ENDIF}
+
     property Data: PQuadChar read FData write SetData;
     property Options: TEndianOptions read FOptions;
   end;
@@ -441,7 +453,7 @@ type
   private
   { hold } FData: Pointer;
   { hold } FOptions: TStringOptions;
-  { hold to TLegacyString } FCodePage: TCodePage;      
+  { hold to TLegacyString } FCodePage: TCodePage;
     FParent: TString; // use soAttachBuffer to share other shared string
     function GetAsLegacyChar: PLegacyChar;
     function GetAsWideChar: PWideChar;
@@ -465,6 +477,7 @@ type
   {$IFDEF UTF32}
     property AsQuadChar: PQuadChar read GetAsQuadChar write SetAsQuadChar;
   {$ENDIF}
+    property CodePage: TCodePage read FCodePage;
     property Data: Pointer read FData;
     property Options: TStringOptions read FOptions;
     property Parent: TString read FParent;
@@ -539,9 +552,6 @@ const
 
 { Core services }
 
-procedure SwapQuadCharBytes(Source: PQuadChar; Count: Integer; Dest: PQuadChar);
-procedure SwapWideCharBytes(Source: PWideChar; Count: Integer; Dest: PWideChar);
-
 function DetectUTF16(Source: PWideChar; Options: TEndianSource): TEndianSource;
 function DetectUTF32(Source: QuadChar; Options: TEndianSource): TEndianSource;
 
@@ -564,58 +574,6 @@ function GetCPInfoEx(CodePage, Flags: LongWord; var CPInfoEx: TCPInfoEx): BOOL; 
   external kernel32 name 'GetCPInfoExW';
 
 { Core services }
-
-procedure SwapQuadCharBytes(Source: PQuadChar; Count: Integer; Dest: PQuadChar);
-asm
-        TEST EDX, EDX
-        JZ @@exit
-
-        XCHG ECX, EDX
-        PUSH EBX
-
-@@repeat:
-        MOV EBX, [EAX]
-        BSWAP EBX
-        MOV [EDX], EBX
-        ADD EAX, SizeOf(QuadChar)
-        ADD EDX, SizeOf(QuadChar)
-        LOOP @@repeat
-
-        POP EBX
-@@exit:
-end;
-
-procedure SwapWideCharBytes(Source: PWideChar; Count: Integer; Dest: PWideChar);
-asm
-        TEST EDX, EDX
-        JZ @@exit
-
-        XCHG ECX, EDX
-        PUSH EBX
-
-        PUSH ECX
-        SHR ECX, 1
-@@repeat2:
-        MOV EBX, [EAX]
-        XCHG BL, BH
-        ROL BX, 16
-        XCHG BL, BH
-        ROL BX, 16
-        MOV [EDX], EBX
-        ADD EAX, SizeOf(LongWord)
-        ADD EDX, SizeOf(LongWord)
-        LOOP @@repeat2
-
-        POP ECX
-        AND ECX, 1
-        JZ @@complete
-        MOV BX, [EAX]
-        XCHG BL, BH
-        MOV [EDX], BX
-@@complete:
-        POP EBX
-@@exit:
-end;
 
 function DetectUTF16(Source: PWideChar; Options: TEndianSource): TEndianSource;
 var
@@ -1406,10 +1364,6 @@ function TSingleByteCodePage.FromLegacy(var Info: TStringInfo; Source: PLegacyCh
   Count: Integer; CodePage: TCodePage; SourceOptions: TLegacySource;
   Dest: PLegacyChar; DestOptions: TEncodeLegacy): Integer;
 var
-  Cnt, I, Idx, W: Integer;
-  C, D: LegacyChar;
-  Inf: TStringInfo;
-  Buf: TWideCharBuf;
 {$IFNDEF Lite}
   Block: TCharBlock;
 {$ENDIF}
@@ -1420,10 +1374,6 @@ end;
 function TSingleByteCodePage.ToLegacy(var Info: TStringInfo; Source: PLegacyChar; Count: Integer;
   SourceOptions: TLegacySource; Dest: PLegacyChar; DestOptions: TEncodeLegacy): Integer;
 var
-  I: Integer;
-  C: LegacyChar;
-  W: WideChar;
-  Uni: TStringInfo;
 {$IFNDEF Lite}
   Block: TCharBlock;
 {$ENDIF}
@@ -1737,10 +1687,6 @@ end;
 function TDoubleByteCodePage.FromLegacy(var Info: TStringInfo; Source: PLegacyChar; Count: Integer;
   CodePage: TCodePage; SourceOptions: TLegacySource; Dest: PLegacyChar; DestOptions: TEncodeLegacy): Integer;
 var
-  I: Integer;
-  C: LegacyChar;
-  D: DoubleByteChar;
-  Uni: TStringInfo;
 {$IFNDEF Lite}
   Block: TCharBlock;
 {$ENDIF}
@@ -1751,11 +1697,6 @@ end;
 function TDoubleByteCodePage.ToLegacy(var Info: TStringInfo; Source: PLegacyChar; Count: Integer;
   SourceOptions: TLegacySource; Dest: PLegacyChar; DestOptions: TEncodeLegacy): Integer;
 var
-  I: Integer;
-  C: LegacyChar;
-  W: WideChar;
-  Uni: TStringInfo;
-  T: PTrailByteMap;
 {$IFNDEF Lite}
   Block: TCharBlock;
 {$ENDIF}
@@ -1766,10 +1707,6 @@ end;
 function TDoubleByteCodePage.FromUTF16(var Info: TStringInfo; Source: PWideChar; Count: Integer;
   SourceOptions: TEndianSource; Dest: PLegacyChar; DestOptions: TEncodeLegacy): Integer;
 var
-  I: Integer;
-  C: LegacyChar;
-  W, L: WideChar;
-  Q: QuadChar;
 {$IFNDEF Lite}
   Block: TCharBlock;
 {$ENDIF}
@@ -1780,11 +1717,6 @@ end;
 function TDoubleByteCodePage.ToUTF16(var Info: TStringInfo; Source: PLegacyChar; Count: Integer;
   SourceOptions: TLegacySource; Dest: PWideChar; DestOptions: TEncodeUTF16): Integer;
 var
-  I: Integer;
-  C: LegacyChar;
-  T: PTrailByteMap;
-  W: WideChar;
-  Uni: TStringInfo;
 {$IFNDEF Lite}
   Block: TCharBlock;
 {$ENDIF}
@@ -1796,9 +1728,6 @@ end;
 function TDoubleByteCodePage.FromUTF32(var Info: TStringInfo; Source: PQuadChar; Count: Integer;
   SourceOptions: TEndianSource; Dest: PLegacyChar; DestOptions: TEncodeLegacy): Integer;
 var
-  I: Integer;
-  D: DoubleByteChar;
-  Q: QuadChar;
 {$IFNDEF Lite}
   Block: TCharBlock;
 {$ENDIF}
@@ -1809,11 +1738,6 @@ end;
 function TDoubleByteCodePage.ToUTF32(var Info: TStringInfo; Source: PLegacyChar; Count: Integer;
   SourceOptions: TLegacySource; Dest: PQuadChar; DestOptions: TEncodeUTF32): Integer;
 var
-  I: Integer;
-  C: LegacyChar;
-  T: PTrailByteMap;
-  Q: QuadChar;
-  Uni: TStringInfo;
 {$IFNDEF Lite}
   Block: TCharBlock;
 {$ENDIF}
@@ -1829,19 +1753,6 @@ begin
   Result := ByteCount(FCount);
 end;
 
-procedure TSubstring.CheckRange(Index, Count: Integer);
-var
-  Offset: Integer;
-begin
-  if Index < 0 then
-    Offset := FCount + Index - 1
-  else
-    Offset := Index;
-
-  if (Offset >= FCount) or (Offset + Count >= FCount) then
-    raise ERange.Create(Self, Index, Count, 0, FCount - 1);
-end;
-
 { TString }
 
 procedure TString.AcceptRange(var Index, Count: Integer);
@@ -1853,34 +1764,49 @@ begin
     SetCount(Count);
 end;
 
-procedure TString.Assign(Value: Pointer; Count: Integer; Index: Integer;
-  Options: TStringOptions);
-var
-  Cnt, Idx: Integer;
+procedure TString.Clear;
 begin
-  if (soAttachBuffer in Options) and (Index = 0) then
+  with TLegacyString(Self) do
+  begin
+    if not (soAttachBuffer in FOptions) then
+      FreeMem(FData);
+    FData := nil;
+  end;
+  FCount := 0;
+end;
+
+procedure TString.Format(const Args: array of const);
+begin
+  Format(TLegacyString(Self).FData, Args);
+end;
+
+procedure TString.Insert(Source: Pointer; Count: Integer;
+  SourceOptions: TStringOptions; DestIndex: Integer);
+begin
+  if (soAttachBuffer in SourceOptions) and (DestIndex = 0) then
   begin
     if not (soAttachBuffer in TLegacyString(Self).FOptions) then
       FreeMem(TLegacyString(Self).FData);
-    TLegacyString(Self).FData := Value;
+    TLegacyString(Self).FData := Source;
     FCount := Count;
-    TLegacyString(Self).FOptions := Options;
+    TLegacyString(Self).FOptions := SourceOptions;
   end
   else
   begin
-    AcceptRange(Index, Count);
-    Move(Value^, TLegacyString(Self).FData[ByteCount(Index)], ByteCount(Count));
-    TLegacyString(Self).FOptions := Options - [soAttachBuffer];
+    AcceptRange(DestIndex, Count);
+    Move(Source^, TLegacyString(Self).FData[ByteCount(DestIndex)], ByteCount(Count));
+    TLegacyString(Self).FOptions := SourceOptions - [soAttachBuffer];
   end;
 end;
 
-function TString.Assign(Source: PLegacyChar; Count: Integer; CodePage: TCodePage;
-  SourceOptions: TLegacySource; Index: Integer; DestOptions: TEncodeOptions): Integer;
+function TString.Insert(Source: PLegacyChar; Count: Integer; CodePage: TCodePage;
+  SourceOptions: TLegacySource; DestIndex: Integer; DestOptions: TEncodeOptions): Integer;
 var
   Info: TStringInfo;
 begin
   FillChar(Info, SizeOf(Info), 0);
-  Result := Assign(Info, Source, Count, CodePage, SourceOptions, Index, DestOptions);
+  Result := Insert(Info, Source, Count, CodePage, SourceOptions, DestIndex, DestOptions
+    {$IFNDEF Lite} - [coRangeBlocks] {$ENDIF} );
   if (Result = 0) and not (coForceInvalid in DestOptions) and (Info.InvalidChar <> 0) then
     if Info.InvalidChar and InvalidUTFMask <> 0 then
       raise EUTF.Create(Info.InvalidUTF)
@@ -1896,13 +1822,14 @@ begin
         raise EConvert.Create(Info.InvalidChar, TCharSet(soLatin1 in SourceOptions), TCharSet(coLatin1 in DestOptions));
 end;
 
-function TString.Assign(Source: PWideChar; Count: Integer; SourceOptions: TEndianSource;
-  Index: Integer; DestOptions: TEncodeOptions): Integer;
+function TString.Insert(Source: PWideChar; Count: Integer; SourceOptions: TEndianSource;
+  DestIndex: Integer; DestOptions: TEncodeOptions): Integer;
 var
   Info: TStringInfo;
 begin
   FillChar(Info, SizeOf(Info), 0);
-  Result := Assign(Info, Source, Count, SourceOptions, Index, DestOptions);
+  Result := Insert(Info, Source, Count, SourceOptions, DestIndex, DestOptions
+    {$IFNDEF Lite} - [coRangeBlocks] {$ENDIF} );
   if (Result = 0) and not (coForceInvalid in DestOptions) and (Info.InvalidChar <> 0) then
     if Info.InvalidChar and InvalidUTFMask <> 0 then
       raise EUTF.Create(Info.InvalidUTF)
@@ -1912,14 +1839,15 @@ begin
       raise EConvert.Create(Info.InvalidChar, csUTF16, TCharSet(coLatin1 in DestOptions));
 end;
 
-function {$IFDEF UTF32} TString {$ELSE} TQuadString {$ENDIF} .Assign(
+function {$IFDEF UTF32} TString {$ELSE} TQuadString {$ENDIF} .Insert(
   Source: PQuadChar; Count: Integer; SourceOptions: TEndianSource;
-  Index: Integer; DestOptions: TEncodeOptions): Integer;
+  DestIndex: Integer; DestOptions: TEncodeOptions): Integer;
 var
   Info: TStringInfo;
 begin
   FillChar(Info, SizeOf(Info), 0);
-  Result := Assign(Info, Source, Count, SourceOptions, Index, DestOptions);
+  Result := Insert(Info, Source, Count, SourceOptions, DestIndex, DestOptions
+    {$IFNDEF Lite} - [coRangeBlocks] {$ENDIF} );
   if (Result = 0) and not (coForceInvalid in DestOptions) and (Info.InvalidChar <> 0) then
     if Info.InvalidChar and InvalidUTFMask <> 0 then
       raise EUTF.Create(Info.InvalidUTF)
@@ -1927,17 +1855,6 @@ begin
       raise EConvert.Create(Info.InvalidChar, csUTF32, Info.CodePage)
     else
       raise EConvert.Create(Info.InvalidChar, csUTF32, TCharSet(coLatin1 in DestOptions));
-end;
-
-procedure TString.Clear;
-begin
-  with TLegacyString(Self) do
-  begin
-    if not (soAttachBuffer in FOptions) then
-      FreeMem(FData);
-    FData := nil;
-  end;
-  FCount := 0;
 end;
 
 procedure TString.SetCount(Value: Integer);
@@ -1960,6 +1877,7 @@ begin
   else
     ReallocMem(TLegacyString(Self).FData, ByteCount(Value + 1));
 
+  FillChar(TLegacyString(Self).FData[Value], ByteCount(1), 0);
   FCount := Value;
 end;
 
@@ -1983,21 +1901,27 @@ begin
 end;
 {$ENDIF}
 
-function TLegacyString.Assign(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; CodePage: TCodePage;
-  SourceOptions: TLegacySource; Index: Integer; DestOptions: TEncodeOptions): Integer;
+procedure TLegacyString.Format(Source: Pointer; const Args: array of const);
+begin
+  SetCount(StrLen(Source) + EstimateArgs(Args));
+  SetCount(FormatBuf(Source, Args, FData));
+end;
+
+function TLegacyString.Insert(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; CodePage: TCodePage;
+  SourceOptions: TLegacySource; DestIndex: Integer; DestOptions: TEncodeOptions): Integer;
 begin
   Result := 0; // TODO
 end;
 
-function TLegacyString.Assign(var Info: TStringInfo; Source: PWideChar; Count: Integer;
-  SourceOptions: TEndianSource; Index: Integer; DestOptions: TEncodeOptions): Integer;
+function TLegacyString.Insert(var Info: TStringInfo; Source: PWideChar; Count: Integer;
+  SourceOptions: TEndianSource; DestIndex: Integer; DestOptions: TEncodeOptions): Integer;
 begin
   Result := 0; // TODO
 end;
 
 {$IFDEF UTF32}
-function TLegacyString.Assign(var Info: TStringInfo; Source: PQuadChar; Count: Integer;
-  SourceOptions: TEndianSource; Index: Integer; DestOptions: TEncodeOptions): Integer;
+function TLegacyString.Insert(var Info: TStringInfo; Source: PQuadChar; Count: Integer;
+  SourceOptions: TEndianSource; DestIndex: Integer; DestOptions: TEncodeOptions): Integer;
 begin
   Result := 0; // TODO
 end;
@@ -2005,7 +1929,7 @@ end;
 
 procedure TLegacyString.SetData(Value: PLegacyChar);
 begin
-  Assign(Value, StrLen(Value), FCodePage);
+  Insert(Value, StrLen(Value), FCodePage);
 end;
 
 { TWideString }
@@ -2033,21 +1957,27 @@ begin
 end;
 {$ENDIF}
 
-function TWideString.Assign(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; CodePage: TCodePage;
-  SourceOptions: TLegacySource; Index: Integer; DestOptions: TEncodeOptions): Integer;
+procedure TWideString.Format(Source: Pointer; const Args: array of const);
+begin
+  SetCount(StrLen(Source) + EstimateArgs(Args));
+  SetCount(WideFormatBuf(Source, Args, FData));
+end;
+
+function TWideString.Insert(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; CodePage: TCodePage;
+  SourceOptions: TLegacySource; DestIndex: Integer; DestOptions: TEncodeOptions): Integer;
 begin
   Result := 0; // TODO
 end;
 
-function TWideString.Assign(var Info: TStringInfo; Source: PWideChar; Count: Integer;
-  SourceOptions: TEndianSource; Index: Integer; DestOptions: TEncodeOptions): Integer;
+function TWideString.Insert(var Info: TStringInfo; Source: PWideChar; Count: Integer;
+  SourceOptions: TEndianSource; DestIndex: Integer; DestOptions: TEncodeOptions): Integer;
 begin
   Result := 0; // TODO
 end;
 
 {$IFDEF UTF32}
-function TWideString.DoAssign(var Info: TStringInfo; Source: PQuadChar; Count: Integer;
-  SourceOptions: TEndianSource; Index: Integer; DestOptions: TEncodeOptions): Integer;
+function TWideString.Insert(var Info: TStringInfo; Source: PQuadChar; Count: Integer;
+  SourceOptions: TEndianSource; DestIndex: Integer; DestOptions: TEncodeOptions): Integer;
 begin
   Result := 0; // TODO
 end;
@@ -2055,7 +1985,7 @@ end;
 
 procedure TWideString.SetData(Value: PWideChar);
 begin
-  Assign(Value, WideStrLen(Value));
+  Insert(Value, WideStrLen(Value));
 end;
 
 { TQuadString }
@@ -2083,27 +2013,33 @@ begin
 end;
 {$ENDIF}
 
-function TQuadString.Assign(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; CodePage: TCodePage;
-  SourceOptions: TLegacySource; Index: Integer; DestOptions: TEncodeOptions): Integer;
+procedure TQuadString.Format(Source: Pointer; const Args: array of const);
+begin
+  SetCount(StrLen(Source) + EstimateArgs(Args));
+  // TODO SetCount(QuadFormatBuf(Source, Args, FData));
+end;
+
+function TQuadString.Insert(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; CodePage: TCodePage;
+  SourceOptions: TLegacySource; DestIndex: Integer; DestOptions: TEncodeOptions): Integer;
 begin
   Result := 0; // TODO
 end;
 
-function TQuadString.Assign(var Info: TStringInfo; Source: PWideChar; Count: Integer;
-  SourceOptions: TEndianSource; Index: Integer; DestOptions: TEncodeOptions): Integer;
+function TQuadString.Insert(var Info: TStringInfo; Source: PWideChar; Count: Integer;
+  SourceOptions: TEndianSource; DestIndex: Integer; DestOptions: TEncodeOptions): Integer;
 begin
   Result := 0; // TODO
 end;
 
-function TQuadString.Assign(var Info: TStringInfo; Source: PQuadChar; Count: Integer;
-  SourceOptions: TEndianSource; Index: Integer; DestOptions: TEncodeOptions): Integer;
+function TQuadString.Insert(var Info: TStringInfo; Source: PQuadChar; Count: Integer;
+  SourceOptions: TEndianSource; DestIndex: Integer; DestOptions: TEncodeOptions): Integer;
 begin
   Result := 0; // TODO
 end;
 
 procedure TQuadString.SetData(Value: PQuadChar);
 begin
-  Assign(Value, QuadStrLen(Value));
+  Insert(Value, QuadStrLen(Value));
 end;
 
  { TSharedString }

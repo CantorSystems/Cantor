@@ -42,7 +42,7 @@ type
     function GetSize: QuadWord; virtual; abstract;
     procedure SetPosition(Value: QuadWord); virtual; abstract;
   public
-    function Read(var Data; Count: LongWord): CoreWord; virtual; abstract;
+    function Read(var Data; Count: LongWord): LongWord; virtual; abstract;
     procedure ReadBuffer(var Data; Count: LongWord);
 
     property Position: QuadWord read GetPosition write SetPosition;
@@ -237,11 +237,11 @@ type
     function FixedInfo: TFixedVersionInfo; overload;
     function FixedInfo(var Info: TFixedVersionInfo): Boolean; overload;
 
-    function TranslationCount: LongWord;
-
     function StringInfo(TranslationIndex: LongWord; Ident: PLegacyChar;
       var Info: PCoreChar; var Length: LongWord): Boolean; overload;
     function StringInfo(TranslationIndex: LongWord; Ident: PLegacyChar): PCoreChar; overload;
+
+    function TranslationCount: CoreWord;
 
     property Data: Pointer read FData;
     property Translations: PTranslationArray read FTranslations;
@@ -767,14 +767,6 @@ begin
     Result := False;
 end;
 
-function TVersionInfo.TranslationCount: LongWord;
-begin
-  if VerQueryValueW(FData, '\VarFileInfo\Translation', Pointer(FTranslations), Result) then
-    Result :=  Result div SizeOf(TTranslation)
-  else
-    Result := 0;
-end;
-
 function TVersionInfo.StringInfo(TranslationIndex: LongWord;
   Ident: PLegacyChar; var Info: PCoreChar; var Length: LongWord): Boolean;
 var
@@ -797,6 +789,14 @@ var
 begin
   if not StringInfo(TranslationIndex, Ident, Result, L) then
     Result := nil;
+end;
+
+function TVersionInfo.TranslationCount: CoreWord;
+begin
+  if VerQueryValueW(FData, '\VarFileInfo\Translation', Pointer(FTranslations), Result) then
+    Result :=  Result div SizeOf(TTranslation)
+  else
+    Result := 0;
 end;
 
 end.

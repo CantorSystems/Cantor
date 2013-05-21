@@ -16,7 +16,7 @@ uses
 type
   TContainedItem = class
   private
-  //  { placeholder }  FOwner: TContainer;
+  { placeholder } // FOwner: TContainer;
   public
     destructor Destroy; override;
     procedure Extract; virtual; abstract;
@@ -48,7 +48,7 @@ type
 
   TListItem = class(TEnumerableItem)
   private
-  //  { placeholder }  FPrior, FNext: TListItem;
+  { placeholder } // FPrior, FNext: TListItem;
   public
     procedure Append(Item: TListItem);
     procedure Extract; override;
@@ -57,7 +57,7 @@ type
 
   TList = class(TEnumerable)
   private
-  //  { placeholder }  FFirst, FLast: TListItem;
+  { placeholder } // FFirst, FLast: TListItem;
     procedure Grab(Item: TListItem);
   public
     procedure Append(Item: TListItem);
@@ -65,11 +65,40 @@ type
     procedure Prepend(Item: TListItem);
   end;
 
+  TBalancedTreeItem = class(TEnumerableItem)
+  private
+  { placeholder } // FParent, FLeft, FRight: TBalancedTreeItem;
+  protected
+    function ParentOf(Item: TBalancedTreeItem): TBalancedTreeItem;
+  public
+    function Compare(Item: TBalancedTreeItem): Integer; virtual; abstract;
+    procedure Extract; override;
+    function Find(Item: TBalancedTreeItem): TBalancedTreeItem;
+    function Insert(Item: TBalancedTreeItem; DupFree: Boolean = True): Boolean;
+    function Root: TBalancedTreeItem;
+  end;
+
+  TBalancedTree = class(TEnumerable)
+  private
+  { placeholder } // FRoot: TBalancedTreeItem;
+  public
+    procedure Clear; override;
+    function Find(Item: TBalancedTreeItem): TBalancedTreeItem;
+    function Insert(Item: TBalancedTreeItem; DupFree: Boolean = True): Boolean;
+  end;
+
+  TRedBlackTreeItem = class(TBalancedTreeItem)
+  { placeholder } // FRed: Boolean;
+  protected
+  end;
+
+  TRedBlackTree = TBalancedTree;
+
   TObjects = class(TIndexed)
   private
     FCapacity, FDelta: Integer;
     FOwnsObjects: Boolean;
-  //  { placeholder }  FItems: PObjectArray;
+  { placeholder } // FItems: PObjectArray;
     procedure SetCapacity(Value: Integer);
     procedure SetCount(Value: Integer);
   public
@@ -94,35 +123,6 @@ type
 
   TCollection = TObjects;
 
-  TBalancedTreeItem = class(TEnumerableItem)
-  private
-  //  { placeholder }  FParent, FLeft, FRight: TBalancedTreeItem;
-  protected
-    function ParentOf(Item: TBalancedTreeItem): TBalancedTreeItem;
-  public
-    function Compare(Item: TBalancedTreeItem): Integer; virtual; abstract;
-    procedure Extract; override;
-    function Find(Item: TBalancedTreeItem): TBalancedTreeItem;
-    function Insert(Item: TBalancedTreeItem; DupFree: Boolean = True): Boolean;
-    function Root: TBalancedTreeItem;
-  end;
-
-  TBalancedTree = class(TEnumerable)
-  private
-  //  { placeholder }  FRoot: TBalancedTreeItem;
-  public
-    procedure Clear; override;
-    function Find(Item: TBalancedTreeItem): TBalancedTreeItem;
-    function Insert(Item: TBalancedTreeItem; DupFree: Boolean = True): Boolean;
-  end;
-
-  TRedBlackTreeItem = class(TBalancedTreeItem)
-  //  { placeholder }  FRed: Boolean;
-  protected
-  end;
-
-  TRedBlackTree = TBalancedTree;
-
 { Exceptions }
 
   EContainer = class(Exception)         
@@ -134,20 +134,20 @@ type
 
   EIndex = class(EContainer)
   private
-    FRangeMin, FRangeMax, FIndex: Integer;
+    FLowBound, FHighBound, FIndex: Integer;
   public
-    constructor Create(Container: TObject; Index, RangeMin, RangeMax: Integer); overload; // because of ERange.Create
+    constructor Create(Container: TObject; Index, LowBound, HighBound: Integer); overload; // because of ERange.Create
 
     property Index: Integer read FIndex;
-    property RangeMax: Integer read FRangeMax;
-    property RangeMin: Integer read FRangeMin;
+    property HighBound: Integer read FHighBound;
+    property LowBound: Integer read FLowBound;
   end;
 
   ERange = class(EIndex)
   private
     FCount: Integer;
   public
-    constructor Create(Container: TObject; Index, Count, RangeMin, RangeMax: Integer);
+    constructor Create(Container: TObject; Index, Count, LowBound, HighBound: Integer);
     property Count: Integer read FCount;
   end;
 
@@ -166,26 +166,6 @@ type
 
   TListCast = class(TList)
     First, Last: TListItemCast;
-  end;
-
-  PObjectArray = ^TObjectArray;
-  TObjectArray = array[0..MaxInt div SizeOf(TObject) - 1] of TObject;
-
-  TObjectsCast = class(TObjects)
-    Items: PObjectArray;
-  end;
-
-  TCollectionCast = class;
-
-  TCollectionItemCast = class(TCollectionItem)
-    Owner: TCollectionCast;
-  end;
-
-  PCollectionItems = ^TCollectionItems;
-  TCollectionItems = array[0..MaxInt div SizeOf(TCollectionItem) - 1] of TCollectionItemCast;
-
-  TCollectionCast = class(TCollection)
-    Items: PCollectionItems;
   end;
 
   TBalancedTreeCast = class;
@@ -211,31 +191,51 @@ type
     Root: TRedBlackTreeItemCast;
   end;
 
+  PObjectArray = ^TObjectArray;
+  TObjectArray = array[0..MaxInt div SizeOf(TObject) - 1] of TObject;
+
+  TObjectsCast = class(TObjects)
+    Items: PObjectArray;
+  end;
+
+  TCollectionCast = class;
+
+  TCollectionItemCast = class(TCollectionItem)
+    Owner: TCollectionCast;
+  end;
+
+  PCollectionItems = ^TCollectionItems;
+  TCollectionItems = array[0..MaxInt div SizeOf(TCollectionItem) - 1] of TCollectionItemCast;
+
+  TCollectionCast = class(TCollection)
+    Items: PCollectionItems;
+  end;
+
 { EIndex }
 
-constructor EIndex.Create(Container: TObject; Index, RangeMin, RangeMax: Integer);
+constructor EIndex.Create(Container: TObject; Index, LowBound, HighBound: Integer);
 var
   ClassName: TClassName;
 begin
   FriendlyClassName(ClassName, Container);
-  inherited Create(sIndexOutOfBounds, [RangeMin, RangeMax, @ClassName, Index]);
+  inherited Create(sIndexOutOfBounds, [@ClassName, Index, LowBound, HighBound]);
   FContainer := Container;
-  FRangeMin := RangeMin;
-  FRangeMax := RangeMax;
+  FLowBound := LowBound;
+  FHighBound := HighBound;
   FIndex := Index;
 end;
 
 { ERange }
 
-constructor ERange.Create(Container: TObject; Index, Count, RangeMin, RangeMax: Integer);
+constructor ERange.Create(Container: TObject; Index, Count, LowBound, HighBound: Integer);
 var
   ClassName: TClassName;
 begin
   FriendlyClassName(ClassName, Container);
-  inherited Create(sRangeOutOfBounds, [RangeMin, RangeMax, @ClassName, Index, Count]);
+  inherited Create(sRangeOutOfBounds, [@ClassName, Index, Index + Count, LowBound, HighBound]);
   FContainer := Container;
-  FRangeMin := RangeMin;
-  FRangeMax := RangeMax;
+  FLowBound := LowBound;
+  FHighBound := HighBound;
   FIndex := Index;
   FCount := Count;
 end;
@@ -405,6 +405,113 @@ begin
       Grab(Item);
 end;
 
+{ TBalancedTreeItem }
+
+procedure TBalancedTreeItem.Extract;
+begin
+  inherited;
+end;
+
+function TBalancedTreeItem.Find(Item: TBalancedTreeItem): TBalancedTreeItem;
+var
+  Cmp: Integer;
+begin
+  Result := Root;
+  while Result <> nil do
+  begin
+    Cmp := Result.Compare(Item);
+    if Cmp < 0 then
+      Result := TBalancedTreeItemCast(Result).Left
+    else if Cmp > 0 then
+      Result := TBalancedTreeItemCast(Result).Right
+    else
+      Break;
+  end;
+end;
+
+function TBalancedTreeItem.Insert(Item: TBalancedTreeItem; DupFree: Boolean): Boolean;
+var
+  Cmp: Integer;
+  P: TBalancedTreeItemCast;
+begin
+  if P <> nil then
+  begin
+    P := TBalancedTreeItemCast(Root);
+
+{    while P <> nil do
+    begin
+      Cmp := P.Compare(Item);
+      if Cmp < 0 then
+        Result := TBalancedTreeItemCast(Result).Left
+      else if Cmp > 0 then
+        Result := TBalancedTreeItemCast(Result).Right
+      else
+        Break;
+    end;}
+
+    Result := True;
+  end
+  else
+    Result := False;
+end;
+
+function TBalancedTreeItem.ParentOf(Item: TBalancedTreeItem): TBalancedTreeItem;
+begin
+
+end;
+
+function TBalancedTreeItem.Root: TBalancedTreeItem;
+begin
+  with TBalancedTreeItemCast(Self) do
+    if Owner <> nil then
+      Result := Owner.Root
+    else
+    begin
+      Result := Self;
+      while Parent <> nil do
+        Result := Parent;
+    end;
+end;
+
+{ TBalancedTree }
+
+procedure TBalancedTree.Clear;
+
+procedure ClearItem(Item: TBalancedTreeItemCast);
+begin
+end;
+
+begin // TODO: Fast clear
+  with TBalancedTreeCast(Self) do
+    if Root <> nil then
+      Root.Extract;
+end;
+
+function TBalancedTree.Find(Item: TBalancedTreeItem): TBalancedTreeItem;
+begin
+  with TBalancedTreeCast(Self) do
+    if Root <> nil then
+      Result := Root.Find(Item)
+    else
+      Result := nil;
+end;
+
+function TBalancedTree.Insert(Item: TBalancedTreeItem; DupFree: Boolean): Boolean;
+begin
+  with TBalancedTreeCast(Self) do
+    if Root <> nil then
+      Result := Root.Insert(Item, DupFree)
+    else if Item <> nil then
+    begin
+      Root := TBalancedTreeItemCast(Item);
+      Root.Owner := TBalancedTreeCast(Self);
+      Inc(FCount);
+      Result := True;
+    end
+    else
+      Result := False;
+end;
+
 { TObjects }
 
 constructor TObjects.Create(Initial, Delta: Integer; OwnsObjects: Boolean);
@@ -486,6 +593,7 @@ var
 begin
   if Value < FCount then
   begin
+    CheckIndex(Value);
     if FOwnsObjects then
       for I := FCount - 1 downto Value do
         TObjectsCast(Self).Items[I].Free;
@@ -515,113 +623,6 @@ begin
     if Owner <> nil then
       Owner.Extract(Owner.IndexOf(Self));
   inherited;
-end;
-
-{ TBalancedTreeItem }
-
-procedure TBalancedTreeItem.Extract;
-begin
-  inherited;
-end;
-
-function TBalancedTreeItem.Find(Item: TBalancedTreeItem): TBalancedTreeItem;
-var
-  Cmp: Integer;
-begin
-  Result := Root;
-  while Result <> nil do
-  begin
-    Cmp := Result.Compare(Item);
-    if Cmp < 0 then
-      Result := TBalancedTreeItemCast(Result).Left
-    else if Cmp > 0 then
-      Result := TBalancedTreeItemCast(Result).Right
-    else
-      Break;
-  end;
-end;
-
-function TBalancedTreeItem.Insert(Item: TBalancedTreeItem; DupFree: Boolean): Boolean;
-var
-  Cmp: Integer;
-  P: TBalancedTreeItemCast;
-begin
-  if P <> nil then
-  begin
-    P := TBalancedTreeItemCast(Root);
-
-{    while P <> nil do
-    begin
-      Cmp := P.Compare(Item);
-      if Cmp < 0 then
-        Result := TBalancedTreeItemCast(Result).Left
-      else if Cmp > 0 then
-        Result := TBalancedTreeItemCast(Result).Right
-      else
-        Break;
-    end;}
-
-    Result := True;
-  end
-  else
-    Result := False;
-end;
-
-function TBalancedTreeItem.ParentOf(Item: TBalancedTreeItem): TBalancedTreeItem;
-begin
-
-end;
-
-function TBalancedTreeItem.Root: TBalancedTreeItem;
-begin
-  with TBalancedTreeItemCast(Result) do
-    if Owner <> nil then
-      Result := Owner.Root
-    else
-    begin
-      Result := Self;
-      while Parent <> nil do
-        Result := Parent;
-    end;
-end;
-
-{ TBalancedTree }
-
-procedure TBalancedTree.Clear;
-
-procedure ClearItem(Item: TBalancedTreeItemCast);
-begin
-end;
-
-begin // TODO: Fast clear
-  with TBalancedTreeCast(Self) do
-    if Root <> nil then
-      Root.Extract;
-end;
-
-function TBalancedTree.Find(Item: TBalancedTreeItem): TBalancedTreeItem;
-begin
-  with TBalancedTreeCast(Self) do
-    if Root <> nil then
-      Result := Root.Find(Item)
-    else
-      Result := nil;
-end;
-
-function TBalancedTree.Insert(Item: TBalancedTreeItem; DupFree: Boolean): Boolean;
-begin
-  with TBalancedTreeCast(Self) do
-    if Root <> nil then
-      Result := Root.Insert(Item, DupFree)
-    else if Item <> nil then
-    begin
-      Root := TBalancedTreeItemCast(Item);
-      Root.Owner := TBalancedTreeCast(Self);
-      Inc(FCount);
-      Result := True;
-    end
-    else
-      Result := False;
 end;
 
 end.

@@ -56,8 +56,8 @@ const
   sSharingViolation = 'Sharing violation while trying to perform %s on a %s object';
 //  'Sharing violation at %s attempt of a %s object' TODO
 
-  sIndexOutOfBounds = 'Index out of bounds %d..%d on %s[%d]';
-  sRangeOutOfBounds = 'Range out of bounds %d..%d on %s[%d..%d]';
+  sIndexOutOfBounds = 'Index %s[%d] out of bounds %d..%d';
+  sRangeOutOfBounds = 'Range %s[%d..%d] out of bounds %d..%d';
 
   sUnsupportedCodePage = 'Code page %u (%s) is not yet supported';
 
