@@ -215,10 +215,10 @@ function WideFormatBuf(Fmt: PWideChar; const Args: array of const;
 function DecodeLegacy(Source: PLegacyChar; CodePage: Word): PWideChar; overload;
 function DecodeLegacy(Source: PLegacyChar; Count: Integer; CodePage: Word): PWideChar; overload;
 
-function EncodeLegacy(Source: PWideChar; CodePage: Word;
-  UseDefaultChar: Boolean = True): PLegacyChar; overload;
-function EncodeLegacy(Source: PWideChar; Count: Integer; CodePage: Word;
-  UseDefaultChar: Boolean = True): PLegacyChar; overload;
+function EncodeLegacy(Source: PWideChar; CodePage: Word{;
+  UseDefaultChar: Boolean = True}): PLegacyChar; overload;
+function EncodeLegacy(Source: PWideChar; Count: Integer; CodePage: Word{;
+  UseDefaultChar: Boolean = True}): PLegacyChar; overload;
 
 function Format(Fmt: PLegacyChar; const Args: array of const): PLegacyChar;
 function WideFormat(Fmt: PWideChar; const Args: array of const): PWideChar;
@@ -1004,20 +1004,20 @@ begin
     Result := nil;
 end;
 
-function EncodeLegacy(Source: PWideChar; CodePage: Word; UseDefaultChar: Boolean): PLegacyChar;
+function EncodeLegacy(Source: PWideChar; CodePage: Word{; UseDefaultChar: Boolean}): PLegacyChar;
 begin
-  Result := EncodeLegacy(Source, WideStrLen(Source), CodePage, UseDefaultChar);
+  Result := EncodeLegacy(Source, WideStrLen(Source), CodePage{, UseDefaultChar});
 end;
 
-function EncodeLegacy(Source: PWideChar; Count: Integer; CodePage: Word;
-  UseDefaultChar: Boolean): PLegacyChar;
+function EncodeLegacy(Source: PWideChar; Count: Integer; CodePage: Word{;
+  UseDefaultChar: Boolean}): PLegacyChar;
 var
   L: Integer;
   DefaultCharUsed: Bool;
 begin
   L := {$IFDEF Tricks} System. {$ENDIF}
     WideCharToMultiByte(CodePage, 0, Source, Count, nil, 0, nil, @DefaultCharUsed);
-  if (L <> 0) and (not UseDefaultChar or not DefaultCharUsed) then
+  if (L <> 0) and ({not UseDefaultChar or} not DefaultCharUsed) then
   begin
     GetMem(Result, L + 1);
   {$IFDEF Tricks} System. {$ENDIF}
@@ -1040,41 +1040,6 @@ begin
   ReallocMem(Result, (WideFormatBuf(Fmt, Args, Result) + 1) * SizeOf(WideChar));
 end;
 
-{function LatinFormat(Fmt: PLegacyChar; const Args: array of const): PWideChar;
-var
-  I, L: Integer;
-  T: LongWord;
-  W, Z: PWideChar;
-begin
-  L := StrLen(Fmt);
-  Inc(L);
-  if L <> 0 then
-  begin
-    GetMem(W, L * SizeOf(WideChar));
-    try
-      Z := W;
-      for I := 0 to L div 4 - 1 do // Fast core
-      begin
-        T := PLongWordArray(Fmt)[I];
-        PLongWord(Z)^ := (T and $FF) or (((T and $FF00) shr 8) shl 16);
-        Inc(Z, 2);
-        T := T shr 16;
-        PLongWord(Z)^ := (T and $FF) or (((T and $FF00) shr 8) shl 16);
-        Inc(Z, 2);
-      end;
-      for I := L and not 3 to L - 1 do
-      begin
-        Z^ := WideChar(Fmt[I]);
-        Inc(Z);
-      end;
-      Result := WideFormat(W, Args);
-    finally
-      FreeMem(W);
-    end;
-  end
-  else
-    Result := nil;
-end;}
 
 function LegacyFormat(Fmt: PLegacyChar; CodePage: Word; const Args: array of const): PWideChar;
 var
