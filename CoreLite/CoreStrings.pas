@@ -326,9 +326,9 @@ type
   { placeholder } // FOptions: TStringOptions;
     procedure SetCount(Value: Integer);
   protected
-    procedure Insert(Source: Pointer; Count: Integer; SourceOptions: TStringOptions; DestIndex: Integer); overload;
+    procedure CheckIndex(Index: Integer); override;
+    procedure DoInsert(Source: Pointer; Count: Integer; SourceOptions: TStringOptions; DestIndex: Integer); overload;
   public
-    procedure AcceptRange(var Index, Count: Integer);
     procedure Clear; override;
 
   // Format still without Count parameter due to Windows implementation uses ASCIIZ
@@ -338,7 +338,7 @@ type
     function Insert(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; CodePage: TCodePage = nil;
       SourceOptions: TLegacySource = []; DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload; virtual; abstract;
     function Insert(Source: PLegacyChar; Count: Integer; CodePage: TCodePage = nil;
-      SourceOptions: TLegacySource = []; DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload;
+      SourceOptions: TLegacySource = []; DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload; 
 
     function Insert(var Info: TStringInfo; Source: PWideChar; Count: Integer; SourceOptions: TEndianSource = [];
       DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload; virtual; abstract;
@@ -567,8 +567,8 @@ type
 
 function FromUTF8(var Info: TStringInfo; Source: PLegacyChar; Count: Integer;
   var SourceIndex: Integer; Dest: PWideChar; DestOptions: TEncodeUTF16 = []): Integer;
-function IsUTF8(Source: PLegacyChar; Count: Integer; Threshold: Integer = 1;
-  DestOptions: TEncodeUTF16 = []): Boolean;
+function IsUTF8(Source: PLegacyChar; Count: Integer; DestOptions: TEncodeUTF16 = [];
+  Threshold: Integer = 1): Boolean;
 
 implementation
 
@@ -944,12 +944,13 @@ begin
     Info.CodePage := nil;}
 end;
 
-function IsUTF8(Source: PLegacyChar; Count, Threshold: Integer;
-  DestOptions: TEncodeUTF16): Boolean;
+function IsUTF8(Source: PLegacyChar; Count: Integer; DestOptions: TEncodeUTF16;
+  Threshold: Integer): Boolean;
 var
   Info: TStringInfo;
   Buf: array[0..$3FF] of WideChar;
-  Cnt, Idx, L: Integer;
+  Cnt, Idx: Integer;
+  Opt: TEncodeUTF16;
 begin
   FillChar(Info, SizeOf(Info), 0);
 
@@ -958,11 +959,14 @@ begin
   else
     Cnt := Length(Buf);
 
-  Include(DestOptions, coContinuous);
+  Opt := DestOptions + [coContinuous];
 
   repeat
     if Count < Cnt then
+    begin
       Cnt := Count;
+      Opt := DestOptions;
+    end;
 
     Idx := 0;
     FromUTF8(Info, Source, Cnt, Idx, Buf, DestOptions);
@@ -1683,15 +1687,6 @@ end;
 
 { TString }
 
-procedure TString.AcceptRange(var Index, Count: Integer);
-begin
-  if Index < 0 then
-    Index := FCount + Index - 1;
-  Inc(Count, Index);
-  if Count > FCount then
-    SetCount(Count);
-end;
-
 procedure TString.Clear;
 begin
   with TLegacyString(Self) do
@@ -1703,13 +1698,18 @@ begin
   FCount := 0;
 end;
 
-procedure TString.Format(const Args: array of const);
+procedure TString.CheckIndex(Index: Integer);
 begin
-  Format(TLegacyString(Self).FData, Args);
+  if (TLegacyString(Self).FData = nil) and (Index <> 0) then
+    raise EIndex.Create(Self, Index)
+  else
+    inherited;
 end;
 
-procedure TString.Insert(Source: Pointer; Count: Integer;
+procedure TString.DoInsert(Source: Pointer; Count: Integer;
   SourceOptions: TStringOptions; DestIndex: Integer);
+var
+  Cnt: Integer;
 begin
   if (soAttachBuffer in SourceOptions) and (DestIndex = 0) then
   begin
@@ -1721,7 +1721,9 @@ begin
   end
   else
   begin
-    AcceptRange(DestIndex, Count);
+    Cnt := DestIndex + Count;
+    if Cnt > FCount then
+      SetCount(Cnt);
     Move(Source^, TLegacyString(Self).FData[ByteCount(DestIndex)], ByteCount(Count));
     TLegacyString(Self).FOptions := SourceOptions - [soAttachBuffer];
   end;
@@ -1732,22 +1734,37 @@ function TString.Insert(Source: PLegacyChar; Count: Integer; CodePage: TCodePage
 var
   Info: TStringInfo;
 begin
-  FillChar(Info, SizeOf(Info), 0);
-  Result := Insert(Info, Source, Count, CodePage, SourceOptions, DestIndex, DestOptions
-    {$IFNDEF Lite} - [coRangeBlocks] {$ENDIF} );
-  if (Result = 0) and not (coForceInvalid in DestOptions) and (Info.InvalidChar <> 0) then
-    if Info.InvalidChar and InvalidUTFMask <> 0 then
-      raise EUTF.Create(Info.InvalidUTF)
-    else if CodePage <> nil then
-      if Info.CodePage <> nil then
-        raise EConvert.Create(Info.InvalidChar, CodePage, Info.CodePage)
+  if (TLegacyString(Self).FData = nil) and not (coForceInvalid in DestOptions) and
+    (ByteCount(1) = SizeOf(LegacyChar)) then
+  begin
+    DoInsert(Source, Count, SourceOptions, DestIndex);
+    TLegacyString(Self).FCodePage := CodePage;
+    Result := Count;
+  end
+  else
+  begin
+    FillChar(Info, SizeOf(Info), 0);
+    Result := Insert(Info, Source, Count, CodePage, SourceOptions, DestIndex, DestOptions
+      {$IFNDEF Lite} - [coRangeBlocks] {$ENDIF} );
+    if (Result = 0) and not (coForceInvalid in DestOptions) and (Info.InvalidChar <> 0) then
+      if Info.InvalidChar and InvalidUTFMask <> 0 then
+        raise EUTF.Create(Info.InvalidUTF)
+      else if CodePage <> nil then
+        if Info.CodePage <> nil then
+          raise EConvert.Create(Info.InvalidChar, CodePage, Info.CodePage)
+        else
+          raise EConvert.Create(Info.InvalidChar, CodePage, TCharSet(coLatin1 in DestOptions))
       else
-        raise EConvert.Create(Info.InvalidChar, CodePage, TCharSet(coLatin1 in DestOptions))
-    else
-      if Info.CodePage <> nil then
-        raise EConvert.Create(Info.InvalidChar, TCharSet(soLatin1 in SourceOptions), Info.CodePage)
-      else
-        raise EConvert.Create(Info.InvalidChar, TCharSet(soLatin1 in SourceOptions), TCharSet(coLatin1 in DestOptions));
+        if Info.CodePage <> nil then
+          raise EConvert.Create(Info.InvalidChar, TCharSet(soLatin1 in SourceOptions), Info.CodePage)
+        else
+          raise EConvert.Create(Info.InvalidChar, TCharSet(soLatin1 in SourceOptions), TCharSet(coLatin1 in DestOptions));
+  end;
+end;
+
+procedure TString.Format(const Args: array of const);
+begin
+  Format(TLegacyString(Self).FData, Args);
 end;
 
 function TString.Insert(Source: PWideChar; Count: Integer; SourceOptions: TEndianSource;
@@ -1755,16 +1772,25 @@ function TString.Insert(Source: PWideChar; Count: Integer; SourceOptions: TEndia
 var
   Info: TStringInfo;
 begin
-  FillChar(Info, SizeOf(Info), 0);
-  Result := Insert(Info, Source, Count, SourceOptions, DestIndex, DestOptions
-    {$IFNDEF Lite} - [coRangeBlocks] {$ENDIF} );
-  if (Result = 0) and not (coForceInvalid in DestOptions) and (Info.InvalidChar <> 0) then
-    if Info.InvalidChar and InvalidUTFMask <> 0 then
-      raise EUTF.Create(Info.InvalidUTF)
-    else if Info.CodePage <> nil then
-      raise EConvert.Create(Info.InvalidChar, csUTF16, Info.CodePage)
-    else
-      raise EConvert.Create(Info.InvalidChar, csUTF16, TCharSet(coLatin1 in DestOptions));
+  if (TWideString(Self).FData = nil) and not (coForceInvalid in DestOptions) and
+    (ByteCount(1) = SizeOf(WideChar)) then
+  begin
+    DoInsert(Source, Count, SourceOptions, DestIndex);
+    Result := Count;
+  end
+  else
+  begin
+    FillChar(Info, SizeOf(Info), 0);
+    Result := Insert(Info, Source, Count, SourceOptions, DestIndex, DestOptions
+      {$IFNDEF Lite} - [coRangeBlocks] {$ENDIF} );
+    if (Result = 0) and not (coForceInvalid in DestOptions) and (Info.InvalidChar <> 0) then
+      if Info.InvalidChar and InvalidUTFMask <> 0 then
+        raise EUTF.Create(Info.InvalidUTF)
+      else if Info.CodePage <> nil then
+        raise EConvert.Create(Info.InvalidChar, csUTF16, Info.CodePage)
+      else
+        raise EConvert.Create(Info.InvalidChar, csUTF16, TCharSet(coLatin1 in DestOptions));
+  end;
 end;
 
 function {$IFDEF UTF32} TString {$ELSE} TQuadString {$ENDIF} .Insert(
@@ -1773,16 +1799,25 @@ function {$IFDEF UTF32} TString {$ELSE} TQuadString {$ENDIF} .Insert(
 var
   Info: TStringInfo;
 begin
-  FillChar(Info, SizeOf(Info), 0);
-  Result := Insert(Info, Source, Count, SourceOptions, DestIndex, DestOptions
-    {$IFNDEF Lite} - [coRangeBlocks] {$ENDIF} );
-  if (Result = 0) and not (coForceInvalid in DestOptions) and (Info.InvalidChar <> 0) then
-    if Info.InvalidChar and InvalidUTFMask <> 0 then
-      raise EUTF.Create(Info.InvalidUTF)
-    else if Info.CodePage <> nil then
-      raise EConvert.Create(Info.InvalidChar, csUTF32, Info.CodePage)
-    else
-      raise EConvert.Create(Info.InvalidChar, csUTF32, TCharSet(coLatin1 in DestOptions));
+  if (TQuadString(Self).FData = nil) and not (coForceInvalid in DestOptions) and
+    (ByteCount(1) = SizeOf(QuadChar)) then
+  begin
+    DoInsert(Source, Count, SourceOptions, DestIndex);
+    Result := Count;
+  end
+  else
+  begin
+    FillChar(Info, SizeOf(Info), 0);
+    Result := Insert(Info, Source, Count, SourceOptions, DestIndex, DestOptions
+      {$IFNDEF Lite} - [coRangeBlocks] {$ENDIF} );
+    if (Result = 0) and not (coForceInvalid in DestOptions) and (Info.InvalidChar <> 0) then
+      if Info.InvalidChar and InvalidUTFMask <> 0 then
+        raise EUTF.Create(Info.InvalidUTF)
+      else if Info.CodePage <> nil then
+        raise EConvert.Create(Info.InvalidChar, csUTF32, Info.CodePage)
+      else
+        raise EConvert.Create(Info.InvalidChar, csUTF32, TCharSet(coLatin1 in DestOptions));
+  end;
 end;
 
 procedure TString.SetCount(Value: Integer);
@@ -1796,7 +1831,6 @@ begin
       Cnt := Value
     else
       Cnt := FCount;
-
     GetMem(Buf, ByteCount(Value + 1));
     Move(TLegacyString(Self).FData^, Buf^, ByteCount(Cnt));
     TLegacyString(Self).FData := Buf;
@@ -1839,6 +1873,37 @@ function TLegacyString.Insert(var Info: TStringInfo; Source: PLegacyChar; Count:
   SourceOptions: TLegacySource; DestIndex: Integer; DestOptions: TEncodeOptions): Integer;
 begin
   Result := 0; // TODO
+{  if FData <> nil then
+  begin
+    CheckIndex(DestIndex);
+  end
+  else
+  begin
+    if DestIndex <> 0 then
+      raise EIndex.Create(Self, DestIndex);
+
+
+  end;
+
+
+   and (soDetectCharSet in FOptions) then
+  begin
+    if IsUTF8(FData, FCount, DestOptions) then
+    begin
+      FCodePage := nil;
+      Exclude(FOptions, soLatin1);
+    end;
+    Exclude(FOptions, soDetectCharSet);
+  end;
+
+  if (Source <> nil) and (soDetectCharSet in SourceOptions) then
+  begin
+    if IsUTF8(Source, Count, DestOptions) then
+    begin
+      CodePage := nil;
+      Exclude(SourceOptions, soLatin1);
+    end;
+  end;}
 end;
 
 function TLegacyString.Insert(var Info: TStringInfo; Source: PWideChar; Count: Integer;
