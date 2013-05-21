@@ -54,8 +54,16 @@ type
     property Options: TExceptionOptions read FOptions;
   end;
 
+  EAbstract = class(Exception)
+  private
+    FCallee: TObject;
+    procedure MethodCall;
+  public
+    constructor Create(Callee: TObject);
+    property Callee: TObject read FCallee;
+  end;
+
   EAbort = class(Exception);
-  EAbstract = class(Exception);
   EInvalidCast = class(Exception);
 {$IFOPT C+}
   EAssertionFailed = class(Exception);
@@ -139,11 +147,6 @@ uses
 var
   OutOfMemory: EOutOfMemory;
   InvalidPointer: EInvalidPointer;
-
-procedure AbstractErrorHandler;
-begin
-  raise EAbstract.Create(sAbstractError);
-end;
 
 {$IFOPT C+}
 procedure AssertErrorHandler(Message, FileName: PLegacyChar;
@@ -341,7 +344,7 @@ begin
   ExceptObjProc := @GetExceptionObject;
 
 {$IFNDEF Lite}
-  AbstractErrorProc := AbstractErrorHandler;
+  @AbstractErrorProc := @EAbstract.MethodCall;
 {$ENDIF}
 
 {$IFOPT C+}
@@ -664,6 +667,22 @@ procedure Exception.FreeInstance;
 begin
   if eoCanFree in FOptions then
     inherited FreeInstance;
+end;
+
+{ EAbstract }
+
+constructor EAbstract.Create(Callee: TObject);
+var
+  ClassName: TClassName;
+begin
+  FriendlyClassName(ClassName, Callee);
+  inherited Create(sAbstractMethodCall, [ClassName]);
+  FCallee := Callee;
+end;
+
+procedure EAbstract.MethodCall;
+begin
+  raise EAbstract.Create(Self);
 end;
 
 { EPlatform }

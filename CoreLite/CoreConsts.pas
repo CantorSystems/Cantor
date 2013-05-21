@@ -41,17 +41,18 @@ const
   sAccessViolation = 'Access violation at address %p. %hs of address %p';
   sModuleAccessViolation = 'Access violation at address %p in module “%ws”.'#10'%hs of address %p';
 
-  sAbstractError    = 'Abstract method call'; // instead of meaningless "Abstract Error"
-  sNotImplemented   = 'Not implemented yet';
-  sGeneralFault     = 'General fault %#02X';  // e. g. 0x0F for 15
+  sAbstractMethodCall = '%hs class abstract method call';
+  sNotImplemented     = 'Not implemented yet';
+  sGeneralFault       = 'General fault %#02X';  // e. g. 0x0F for 15
 
 {$IFOPT C+}
   sAssertError = '%s (%s, line %d)';
   sAssertionFailed = 'Assertion failed';
 {$ENDIF}
 
-  sIndexOutOfBounds = 'Index %s[%d] out of bounds %d..%d';
-  sRangeOutOfBounds = 'Range %s[%d..%d] out of bounds %d..%d';
+  sIndexOutOfBounds = 'Index %hs[%d] out of bounds %d..%d';
+  sIndexOfNull      = 'Index %hs[%d] where container is null';
+  sRangeOutOfBounds = 'Range %hs[%d..%d] out of bounds %d..%d';
 
   sUnsupportedCodePage = 'Code page %u (%s) is not yet supported';
 
