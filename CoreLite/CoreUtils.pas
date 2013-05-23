@@ -1040,7 +1040,6 @@ begin
   ReallocMem(Result, (WideFormatBuf(Fmt, Args, Result) + 1) * SizeOf(WideChar));
 end;
 
-
 function LegacyFormat(Fmt: PLegacyChar; CodePage: Word; const Args: array of const): PWideChar;
 var
   W: PWideChar;

@@ -533,11 +533,9 @@ end;
 { TConsole }
 
 constructor TConsole.Create(ErrorOutput: Boolean);
-const
-  Outputs: array[Boolean] of LongWord = (STD_OUTPUT_HANDLE, STD_ERROR_HANDLE);
 begin
   FInput := {$IFDEF Tricks} System. {$ENDIF} GetStdHandle(STD_INPUT_HANDLE);
-  FOutput := {$IFDEF Tricks} System. {$ENDIF} GetStdHandle(Outputs[ErrorOutput]);
+  FOutput := {$IFDEF Tricks} System. {$ENDIF} GetStdHandle(STD_OUTPUT_HANDLE - Byte(ErrorOutput));
 end;
 
 function TConsole.GetCodePage: Word;
