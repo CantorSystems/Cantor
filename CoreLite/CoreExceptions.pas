@@ -57,7 +57,9 @@ type
   EAbstract = class(Exception)
   private
     FCallee: TObject;
+  {$IFNDEF Lite}
     procedure MethodCall;
+  {$ENDIF}
   public
     constructor Create(Callee: TObject);
     property Callee: TObject read FCallee;
@@ -680,10 +682,12 @@ begin
   FCallee := Callee;
 end;
 
+{$IFNDEF Lite}
 procedure EAbstract.MethodCall;
 begin
   raise EAbstract.Create(Self);
 end;
+{$ENDIF}
 
 { EPlatform }
 

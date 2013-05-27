@@ -81,20 +81,22 @@ type
   PCoreChar     = PWideChar;
   PPCoreChar    = PPWideChar;
 
-  PLegacyStringRec = ^TLegacyStringRec;
-  TLegacyStringRec = record
-    Str: PLegacyChar;
-    Count: Integer;
+  PLegacyParamRec = ^TLegacyParamRec;
+  TLegacyParamRec = record
+    NextParam, Param: PLegacyChar;
+    Length: Integer;
+    Quoted: Boolean;
   end;
 
-  PWideStringRec = ^TWideStringRec;
-  TWideStringRec = record
-    Str: PWideChar;
-    Count: Integer;
+  PWideParamRec = ^TWideParamRec;
+  TWideParamRec = record
+    NextParam, Param: PWideChar;
+    Length: Integer;
+    Quoted: Boolean;
   end;
 
-  PCoreStringRec = PWideStringRec; // TODO: non-Unicode
-  TCoreStringRec = TWideStringRec;
+  PCoreStringRec = PWideParamRec; // TODO: non-Unicode
+  TCoreStringRec = TWideParamRec;
 
 var
   Ellipsis: array[0..2] of LegacyChar = '...'; // non-Unicode, not only for European languages
@@ -196,8 +198,8 @@ procedure SwapWideCharBytes(Source: PWideChar; Count: Integer; Dest: PWideChar);
 
 { Command line parameters }
 
-function ParamStr(CommandLine: PLegacyChar): TLegacyStringRec;
-function WideParamStr(CommandLine: PWideChar): TWideStringRec;
+function ParamStr(CommandLine: PLegacyChar): TLegacyParamRec;
+function WideParamStr(CommandLine: PWideChar): TWideParamRec;
 
 { LocalFree finalization required }
 
@@ -840,7 +842,7 @@ end;
 
 { Command line parameters }
 
-function ParamStr(CommandLine: PLegacyChar): TLegacyStringRec;
+function ParamStr(CommandLine: PLegacyChar): TLegacyParamRec;
 var
   P: PLegacyChar;
   L: Integer;
@@ -856,6 +858,7 @@ begin
       P := StrScan(CommandLine, '"', L); // TODO: MBCS
       if P <> nil then
         L := P - CommandLine;
+      Result.Quoted := True;
     end
     else
     begin
@@ -863,18 +866,20 @@ begin
       while not (P^ in [#32, #9, #0]) do
         Inc(P);
       L := P - CommandLine;
+      Result.Quoted := False;
     end;
     with Result do
     begin
-      Str := CommandLine;
-      Count := L;
+      NextParam := CommandLine + L + Byte(Quoted);
+      Param := CommandLine;
+      Length := L;
     end;
   end
   else
     FillChar(Result, SizeOf(Result), 0);
 end;
 
-function WideParamStr(CommandLine: PWideChar): TWideStringRec;
+function WideParamStr(CommandLine: PWideChar): TWideParamRec;
 var
   P: PWideChar;
   L: Integer;
@@ -890,6 +895,7 @@ begin
       P := WideStrScan(CommandLine, CoreChar('"'), L);
       if P <> nil then
         L := P - CommandLine;
+      Result.Quoted := True;
     end
     else
     begin
@@ -897,11 +903,13 @@ begin
       while (P^ <> WideChar(32)) and (P^ <> WideChar(9)) and (P^ <> WideChar(0)) do
         Inc(P);
       L := P - CommandLine;
+      Result.Quoted := False;
     end;
     with Result do
     begin
-      Str := CommandLine;
-      Count := L;
+      NextParam := CommandLine + L + Byte(Quoted);
+      Param := CommandLine;
+      Length := L;
     end;
   end
   else

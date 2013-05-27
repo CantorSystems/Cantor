@@ -43,7 +43,7 @@ type
 
   TIndexed = class(TEnumerable)
   protected
-    procedure CheckIndex(Index: Integer);
+    procedure CheckIndex(Index: Integer); virtual;
   end;
 
   TListItem = class(TEnumerableItem)
@@ -69,27 +69,36 @@ type
   private
   { placeholder } // FParent, FLeft, FRight: TBalancedTreeItem;
   protected
-    function ParentOf(Item: TBalancedTreeItem): TBalancedTreeItem;
+    function RotateLeft(Left, Item: TBalancedTreeItem): TBalancedTreeItem; virtual; abstract;
+    function RotateRight(Right, Item: TBalancedTreeItem): TBalancedTreeItem; virtual; abstract;
   public
     function Compare(Item: TBalancedTreeItem): Integer; virtual; abstract;
+    function Depth: Integer;
     procedure Extract; override;
     function Find(Item: TBalancedTreeItem): TBalancedTreeItem;
-    function Insert(Item: TBalancedTreeItem; DupFree: Boolean = True): Boolean;
+    function Insert(Item: TBalancedTreeItem; FreeDuplicates: Boolean = True): Boolean;
+    function Level: Integer;
+    function Rebalance(FreeDuplicates: Boolean = True): TBalancedTreeItem;
     function Root: TBalancedTreeItem;
   end;
 
   TBalancedTree = class(TEnumerable)
-  private
   { placeholder } // FRoot: TBalancedTreeItem;
   public
     procedure Clear; override;
+    function Depth: Integer;
     function Find(Item: TBalancedTreeItem): TBalancedTreeItem;
-    function Insert(Item: TBalancedTreeItem; DupFree: Boolean = True): Boolean;
+    function Insert(Item: TBalancedTreeItem; FreeDuplicates: Boolean = True): Boolean;
+    function Rebalance(FreeDuplicates: Boolean = True): TBalancedTreeItem;
   end;
 
   TRedBlackTreeItem = class(TBalancedTreeItem)
   { placeholder } // FRed: Boolean;
+  private
+    procedure Invert;
   protected
+    function RotateLeft(Left, Item: TBalancedTreeItem): TBalancedTreeItem; override;
+    function RotateRight(Right, Item: TBalancedTreeItem): TBalancedTreeItem; override;
   end;
 
   TRedBlackTree = TBalancedTree;
@@ -101,6 +110,8 @@ type
   { placeholder } // FItems: PObjectArray;
     procedure SetCapacity(Value: Integer);
     procedure SetCount(Value: Integer);
+  protected
+    procedure CheckIndex(Index: Integer); override;
   public
     constructor Create(Initial, Delta: Integer; OwnsObjects: Boolean = False);
     function Append(Item: TObject): Integer;
@@ -109,7 +120,7 @@ type
     function Extract(Index: Integer): TObject;
     function IndexOf(Item: TObject): Integer;
     procedure Insert(Index: Integer; Item: TObject);
-  // properites
+
     property Capacity: Integer read FCapacity write SetCapacity;
     property Count write SetCount;
     property Delta: Integer read FDelta write FDelta;
@@ -136,7 +147,8 @@ type
   private
     FLowBound, FHighBound, FIndex: Integer;
   public
-    constructor Create(Container: TObject; Index, LowBound, HighBound: Integer); overload; // because of ERange.Create
+    constructor Create(Container: TObject; Index, LowBound, HighBound: Integer); overload;
+    constructor Create(Container: TObject; Index: Integer); overload;
 
     property Index: Integer read FIndex;
     property HighBound: Integer read FHighBound;
@@ -225,6 +237,16 @@ begin
   FIndex := Index;
 end;
 
+constructor EIndex.Create(Container: TObject; Index: Integer);
+var
+  ClassName: TClassName;
+begin
+  FriendlyClassName(ClassName, Container);
+  inherited Create(sIndexOfNull, [@ClassName, Index]);
+  FContainer := Container;
+  FIndex := Index;
+end;
+
 { ERange }
 
 constructor ERange.Create(Container: TObject; Index, Count, LowBound, HighBound: Integer);
@@ -271,7 +293,7 @@ end;
 procedure TIndexed.CheckIndex(Index: Integer);
 begin
   if (Index < 0) or (Index > FCount) then
-    raise EIndex.Create(Self, Index, 0, FCount);
+    raise EIndex.Create(Self, Index, 0, FCount - 1);
 end;
 
 { TListItem }
@@ -378,6 +400,8 @@ begin
       Last := TListItemCast(Item);
     end;
   end;
+
+  Inc(FCount);
 end;
 
 procedure TList.Clear;
@@ -407,9 +431,28 @@ end;
 
 { TBalancedTreeItem }
 
+function TBalancedTreeItem.Depth: Integer;
+
+function DepthFrom(Item: TBalancedTreeItemCast; Value: Integer): Integer;
+var
+  R: Integer;
+begin
+  
+end;
+
+begin
+{  with TBalancedTreeItemCast(Self)
+  begin
+    Result := DepthFrom(Left, 1);
+    R := DepthFrom(Right, 1);
+  end;
+  if R > Result then
+    Result := R;}
+end;
+
 procedure TBalancedTreeItem.Extract;
 begin
-  inherited;
+  inherited; // TODO
 end;
 
 function TBalancedTreeItem.Find(Item: TBalancedTreeItem): TBalancedTreeItem;
@@ -429,35 +472,67 @@ begin
   end;
 end;
 
-function TBalancedTreeItem.Insert(Item: TBalancedTreeItem; DupFree: Boolean): Boolean;
+function TBalancedTreeItem.Insert(Item: TBalancedTreeItem; FreeDuplicates: Boolean): Boolean;
 var
   Cmp: Integer;
   P: TBalancedTreeItemCast;
 begin
-  if P <> nil then
+  if Item <> nil then
   begin
+    Item.Extract;
     P := TBalancedTreeItemCast(Root);
 
-{    while P <> nil do
+    while P <> nil do
     begin
       Cmp := P.Compare(Item);
       if Cmp < 0 then
-        Result := TBalancedTreeItemCast(Result).Left
+        if P.Left <> nil then
+          P := P.Left
+        else
+        begin
+          RotateLeft(P, Item);
+          Break;
+        end
       else if Cmp > 0 then
-        Result := TBalancedTreeItemCast(Result).Right
+        if P.Right <> nil then
+          P := P.Right
+        else
+        begin
+          RotateRight(P, Item);
+          Break;
+        end
       else
+      begin
+        if FreeDuplicates then
+          Item.Free;
         Break;
-    end;}
+      end;
+    end;
 
+    Inc(TBalancedTreeItemCast(Self).Owner.FCount);
     Result := True;
   end
   else
     Result := False;
 end;
 
-function TBalancedTreeItem.ParentOf(Item: TBalancedTreeItem): TBalancedTreeItem;
+function TBalancedTreeItem.Level: Integer;
+var
+  P: TBalancedTreeItemCast;
 begin
+  Result := 0;
+  P := TBalancedTreeItemCast(Self).Parent;
+  while P <> nil do
+  begin
+    Inc(Result);
+    P := P.Parent;
+  end;
+  Inc(Result);
+end;
 
+function TBalancedTreeItem.Rebalance(FreeDuplicates: Boolean): TBalancedTreeItem;
+begin
+  Result := nil; // TODO
 end;
 
 function TBalancedTreeItem.Root: TBalancedTreeItem;
@@ -479,12 +554,32 @@ procedure TBalancedTree.Clear;
 
 procedure ClearItem(Item: TBalancedTreeItemCast);
 begin
+  with Item do
+  begin
+    Owner := nil;
+    Parent := nil;
+    if Left <> nil then
+      ClearItem(Left);
+    if Right <> nil then
+      ClearItem(Right);
+    Free;
+  end;
 end;
 
-begin // TODO: Fast clear
+begin
   with TBalancedTreeCast(Self) do
     if Root <> nil then
-      Root.Extract;
+     ClearItem(Root);  // fast Clear
+  FCount := 0;
+end;
+
+function TBalancedTree.Depth: Integer;
+begin
+  with TBalancedTreeCast(Self) do
+    if Root <> nil then
+      Result := Root.Depth
+    else
+      Result := 0;
 end;
 
 function TBalancedTree.Find(Item: TBalancedTreeItem): TBalancedTreeItem;
@@ -496,11 +591,11 @@ begin
       Result := nil;
 end;
 
-function TBalancedTree.Insert(Item: TBalancedTreeItem; DupFree: Boolean): Boolean;
+function TBalancedTree.Insert(Item: TBalancedTreeItem; FreeDuplicates: Boolean): Boolean;
 begin
   with TBalancedTreeCast(Self) do
     if Root <> nil then
-      Result := Root.Insert(Item, DupFree)
+      Result := Root.Insert(Item, FreeDuplicates)
     else if Item <> nil then
     begin
       Root := TBalancedTreeItemCast(Item);
@@ -510,6 +605,39 @@ begin
     end
     else
       Result := False;
+end;
+
+function TBalancedTree.Rebalance(FreeDuplicates: Boolean): TBalancedTreeItem;
+begin
+  with TBalancedTreeCast(Self) do
+    if Root <> nil then
+      Result := Root.Rebalance(FreeDuplicates)
+    else
+      Result := nil; // no duplicates
+end;
+
+{ TRedBlackTreeItem }
+
+procedure TRedBlackTreeItem.Invert;
+begin
+  with TRedBlackTreeItemCast(Self) do
+  begin
+    Red := not Red;
+    if Left <> nil then
+      Left.Invert;
+    if Right <> nil then
+      Right.Invert;
+  end;
+end;
+
+function TRedBlackTreeItem.RotateLeft(Left, Item: TBalancedTreeItem): TBalancedTreeItem;
+begin
+  Result := nil; // TODO
+end;
+
+function TRedBlackTreeItem.RotateRight(Right, Item: TBalancedTreeItem): TBalancedTreeItem;
+begin
+  Result := nil; // TODO
 end;
 
 { TObjects }
@@ -534,6 +662,14 @@ begin
   TObjectsCast(Self).Items[FCount] := Item;
   Result := FCount;
   Inc(FCount);
+end;
+
+procedure TObjects.CheckIndex(Index: Integer);
+begin
+  if TObjectsCast(Self).Items = nil then
+    raise EIndex.Create(Self, Index)
+  else
+    inherited;
 end;
 
 procedure TObjects.Exchange(Index1, Index2: Integer);
@@ -626,3 +762,4 @@ begin
 end;
 
 end.
+

@@ -575,7 +575,6 @@ var
   Dummy: array[0..$FF] of LegacyChar; // preventing flood
   BytesRead: LongWord;
 begin
-  WriteLn;
   WriteLn(Prompt, Count, 0);
   WriteLn(@Ellipsis, SizeOf(Ellipsis), 0);
 {$IFDEF Tricks} System. {$ENDIF}
