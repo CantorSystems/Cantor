@@ -54,16 +54,16 @@ type
     property Options: TExceptionOptions read FOptions;
   end;
 
+{$IFNDEF Lite}
   EAbstract = class(Exception)
   private
     FCallee: TObject;
-  {$IFNDEF Lite}
     procedure MethodCall;
-  {$ENDIF}
   public
-    constructor Create(Callee: TObject);
+    constructor Create(Callee: TObject); overload;
     property Callee: TObject read FCallee;
   end;
+{$ENDIF}
 
   EAbort = class(Exception);
   EInvalidCast = class(Exception);
@@ -673,6 +673,7 @@ end;
 
 { EAbstract }
 
+{$IFNDEF Lite}
 constructor EAbstract.Create(Callee: TObject);
 var
   ClassName: TClassName;
@@ -682,7 +683,6 @@ begin
   FCallee := Callee;
 end;
 
-{$IFNDEF Lite}
 procedure EAbstract.MethodCall;
 begin
   raise EAbstract.Create(Self);

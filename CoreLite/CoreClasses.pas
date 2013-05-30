@@ -69,8 +69,8 @@ type
   private
   { placeholder } // FParent, FLeft, FRight: TBalancedTreeItem;
   protected
-    function RotateLeft(Left, Item: TBalancedTreeItem): TBalancedTreeItem; virtual; abstract;
-    function RotateRight(Right, Item: TBalancedTreeItem): TBalancedTreeItem; virtual; abstract;
+    function RotateLeft(Parent, Item: TBalancedTreeItem): TBalancedTreeItem; virtual; abstract;
+    function RotateRight(Parent, Item: TBalancedTreeItem): TBalancedTreeItem; virtual; abstract;
   public
     function Compare(Item: TBalancedTreeItem): Integer; virtual; abstract;
     function Depth: Integer;
@@ -97,8 +97,8 @@ type
   private
     procedure Invert;
   protected
-    function RotateLeft(Left, Item: TBalancedTreeItem): TBalancedTreeItem; override;
-    function RotateRight(Right, Item: TBalancedTreeItem): TBalancedTreeItem; override;
+    function RotateLeft(Parent, Item: TBalancedTreeItem): TBalancedTreeItem; override;
+    function RotateRight(Parent, Item: TBalancedTreeItem): TBalancedTreeItem; override;
   end;
 
   TRedBlackTree = TBalancedTree;
@@ -108,6 +108,7 @@ type
     FCapacity, FDelta: Integer;
     FOwnsObjects: Boolean;
   { placeholder } // FItems: PObjectArray;
+    procedure Grow;
     procedure SetCapacity(Value: Integer);
     procedure SetCount(Value: Integer);
   protected
@@ -120,6 +121,7 @@ type
     function Extract(Index: Integer): TObject;
     function IndexOf(Item: TObject): Integer;
     procedure Insert(Index: Integer; Item: TObject);
+    function TranslateDelta: Integer;
 
     property Capacity: Integer read FCapacity write SetCapacity;
     property Count write SetCount;
@@ -145,14 +147,11 @@ type
 
   EIndex = class(EContainer)
   private
-    FLowBound, FHighBound, FIndex: Integer;
+    FIndex: Integer;
   public
     constructor Create(Container: TObject; Index, LowBound, HighBound: Integer); overload;
     constructor Create(Container: TObject; Index: Integer); overload;
-
     property Index: Integer read FIndex;
-    property HighBound: Integer read FHighBound;
-    property LowBound: Integer read FLowBound;
   end;
 
   ERange = class(EIndex)
@@ -162,6 +161,13 @@ type
     constructor Create(Container: TObject; Index, Count, LowBound, HighBound: Integer);
     property Count: Integer read FCount;
   end;
+
+{$IFNDEF Lite}
+  EFixed = class(EContainer)
+  public
+    constructor Create(Container: TObject; Capacity: Integer);
+  end;
+{$ENDIF}
 
 implementation
 
@@ -232,8 +238,6 @@ begin
   FriendlyClassName(ClassName, Container);
   inherited Create(sIndexOutOfBounds, [@ClassName, Index, LowBound, HighBound]);
   FContainer := Container;
-  FLowBound := LowBound;
-  FHighBound := HighBound;
   FIndex := Index;
 end;
 
@@ -256,11 +260,22 @@ begin
   FriendlyClassName(ClassName, Container);
   inherited Create(sRangeOutOfBounds, [@ClassName, Index, Index + Count, LowBound, HighBound]);
   FContainer := Container;
-  FLowBound := LowBound;
-  FHighBound := HighBound;
   FIndex := Index;
   FCount := Count;
 end;
+
+{ EFixed }
+
+{$IFNDEF Lite}
+constructor EFixed.Create(Container: TObject; Capacity: Integer);
+var
+  ClassName: TClassName;
+begin
+  FriendlyClassName(ClassName, Container);
+  inherited Create(sFixedCapacity, [@ClassName, Capacity]);
+  FContainer := Container;
+end;
+{$ENDIF}
 
 { TContainedItem }
 
@@ -434,20 +449,21 @@ end;
 function TBalancedTreeItem.Depth: Integer;
 
 function DepthFrom(Item: TBalancedTreeItemCast; Value: Integer): Integer;
-var
-  R: Integer;
 begin
-  
+  Inc(Value);
+  if Item.Left <> nil then
+    Value := DepthFrom(Item.Left, Value);
+  if Item.Right <> nil then
+  begin
+    Result := DepthFrom(Item.Right, Value);
+    if Result > Value then
+      Exit;
+  end;
+  Result := Value;
 end;
 
 begin
-{  with TBalancedTreeItemCast(Self)
-  begin
-    Result := DepthFrom(Left, 1);
-    R := DepthFrom(Right, 1);
-  end;
-  if R > Result then
-    Result := R;}
+  Result := DepthFrom(TBalancedTreeItemCast(Self), 0);
 end;
 
 procedure TBalancedTreeItem.Extract;
@@ -527,7 +543,7 @@ begin
     Inc(Result);
     P := P.Parent;
   end;
-  Inc(Result);
+  Inc(Result); // small core
 end;
 
 function TBalancedTreeItem.Rebalance(FreeDuplicates: Boolean): TBalancedTreeItem;
@@ -630,14 +646,20 @@ begin
   end;
 end;
 
-function TRedBlackTreeItem.RotateLeft(Left, Item: TBalancedTreeItem): TBalancedTreeItem;
+function TRedBlackTreeItem.RotateLeft(Parent, Item: TBalancedTreeItem): TBalancedTreeItem;
 begin
-  Result := nil; // TODO
+  TRedBlackTreeItemCast(Parent).Left := TRedBlackTreeItemCast(Item);
+  TRedBlackTreeItemCast(Item).Parent := TRedBlackTreeItemCast(Parent);
+  TRedBlackTreeItemCast(Item).Owner := TRedBlackTreeItemCast(Parent).Owner;
+  Result := Parent;
 end;
 
-function TRedBlackTreeItem.RotateRight(Right, Item: TBalancedTreeItem): TBalancedTreeItem;
+function TRedBlackTreeItem.RotateRight(Parent, Item: TBalancedTreeItem): TBalancedTreeItem;
 begin
-  Result := nil; // TODO
+  TRedBlackTreeItemCast(Parent).Right := TRedBlackTreeItemCast(Item);
+  TRedBlackTreeItemCast(Item).Parent := TRedBlackTreeItemCast(Parent);
+  TRedBlackTreeItemCast(Item).Owner := TRedBlackTreeItemCast(Parent).Owner;
+  Result := Parent;
 end;
 
 { TObjects }
@@ -651,14 +673,12 @@ end;
 
 procedure TObjects.Clear;
 begin
-  SetCapacity(0);
+  SetCount(0);
 end;
 
 function TObjects.Append(Item: TObject): Integer;
 begin
-  if FCount = FCapacity then
-    SetCapacity(FCapacity + FDelta);
-
+  Grow;
   TObjectsCast(Self).Items[FCount] := Item;
   Result := FCount;
   Inc(FCount);
@@ -676,7 +696,6 @@ procedure TObjects.Exchange(Index1, Index2: Integer);
 begin
   CheckIndex(Index1);
   CheckIndex(Index2);
-
   with TObjectsCast(Self) do
     CoreUtils.Exchange(Pointer(Items[Index1]), Pointer(Items[Index2]));
 end;
@@ -684,7 +703,6 @@ end;
 function TObjects.Extract(Index: Integer): TObject;
 begin
   CheckIndex(Index);
-
   with TObjectsCast(Self) do
   begin
     Result := Items[Index];
@@ -704,23 +722,31 @@ begin
       Result := I;
       Exit;
     end;
-
   Result := -1;
 end;
 
 procedure TObjects.Insert(Index: Integer; Item: TObject);
 begin
   CheckIndex(Index);
-
-  if FCount = FCapacity then
-    SetCapacity(FCapacity + FDelta);
-
+  Grow;
   with TObjectsCast(Self) do
   begin
     Move(Items[Index], Items[Index + 1], (FCount - Index) * SizeOf(TObject));
     Items[Index] := Item;
   end;
   Inc(FCount);
+end;
+
+procedure TObjects.Grow;
+begin
+  if (FCapacity = 0) or (FCapacity = FCount) then
+  begin
+  {$IFNDEF Lite}
+    if FDelta = 0 then
+      raise EFixed.Create(Self, FCapacity);
+  {$ENDIF}
+    SetCapacity(FCapacity + TranslateDelta)
+  end;
 end;
 
 procedure TObjects.SetCapacity(Value: Integer);
@@ -735,20 +761,36 @@ begin
         TObjectsCast(Self).Items[I].Free;
     FCount := Value;
   end;
-
   ReallocMem(TObjectsCast(Self).Items, Value * SizeOf(TObject));
   FCapacity := Value;
 end;
 
 procedure TObjects.SetCount(Value: Integer);
+var
+  D: Integer;
 begin
   if FCount <> Value then
   begin
-    SetCapacity(Value + (Value + FDelta - 1) mod FDelta);
+    D := TranslateDelta;
+    SetCapacity(Value + (Value + D - 1) mod D);
     if Value > FCount then
       FillChar(TObjectsCast(Self).Items[FCount], (Value - FCount) * SizeOf(TObject), 0);
     FCount := Value;
   end;
+end;
+
+function TObjects.TranslateDelta: Integer;
+begin
+  if FDelta < 0 then
+  begin
+    Result := FCapacity div Abs(FDelta);
+  {$IFNDEF Lite}
+    if Result = 0 then
+      Result := Abs(FDelta)
+  {$ENDIF}
+  end    
+  else
+    Result := FDelta;
 end;
 
 { TCollectionItem }

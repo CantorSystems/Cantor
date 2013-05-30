@@ -4,9 +4,6 @@
     Core library string messages
 
     Copyright (c) 2008-2013 Vladislav Javadov (Freeman)
-
-    Conditional defines:
-      * Interfaces -- interface support
 *)
 
 unit CoreConsts;
@@ -27,10 +24,10 @@ const
   sPrivilege          = 'Privileged instruction';
   sControlC           = '^C';
   sStackOverflow      = 'Stack overflow';
-{$IFDEF Interfaces}
+
   sIntfNotSupported   = 'Interface not supported';
   sSafecallException  = 'Exception in safecall method';
-{$ENDIF}
+
   sOperationAborted   = 'Operation aborted';
   sOutOfMemory        = 'Out of memory';
   sInvalidPointer     = 'Invalid pointer operation';
@@ -45,14 +42,13 @@ const
   sNotImplemented     = 'Not implemented yet';
   sGeneralFault       = 'General fault %#02X';  // e. g. 0x0F for 15
 
-{$IFOPT C+}
   sAssertError = '%s (%s, line %d)';
   sAssertionFailed = 'Assertion failed';
-{$ENDIF}
 
   sIndexOutOfBounds = 'Index %hs[%d] out of bounds %d..%d';
   sIndexOfNull      = 'Index %hs[%d] where container is null';
   sRangeOutOfBounds = 'Range %hs[%d..%d] out of bounds %d..%d';
+  sFixedCapacity    = 'This %hs object can contain only %d items';
 
   sUnsupportedCodePage = 'Code page %u (%s) is not yet supported';
 

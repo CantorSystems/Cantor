@@ -567,6 +567,7 @@ end;
 
 procedure TStreamConsole.ReadLn(Prompt: PLegacyChar; LineBreaks: Integer);
 begin
+  WriteLn;
   ReadLn(Prompt, StrLen(Prompt), LineBreaks);
 end;
 

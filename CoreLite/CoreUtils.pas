@@ -671,6 +671,8 @@ end;
 
 function StrScan(Where: PLegacyChar; What: LegacyChar; Count: Integer): PLegacyChar;
 asm
+        TEST ECX, ECX
+        JZ @@null
         XCHG EAX, EDX
         XCHG EDI, EDX
         REPNE SCASB
@@ -681,11 +683,14 @@ asm
         RET
 @@notfound:
         MOV EDI, EDX
+@@null:
         XOR EAX, EAX
 end;
 
 function WideStrScan(Where: PWideChar; What: WideChar; Count: Integer): PWideChar;
 asm
+        TEST ECX, ECX
+        JZ @@null
         XCHG EAX, EDX
         XCHG EDI, EDX
         REPNE SCASW
@@ -697,11 +702,14 @@ asm
         RET
 @@notfound:
         MOV EDI, EDX
+@@null:
         XOR EAX, EAX
 end;
 
 function QuadStrScan(Where: PQuadChar; What: QuadChar; Count: Integer): PQuadChar;
 asm
+        TEST ECX, ECX
+        JZ @@null
         XCHG EAX, EDX
         XCHG EDI, EDX
         REPNE SCASD
@@ -712,6 +720,7 @@ asm
         RET
 @@notfound:
         MOV EDI, EDX
+@@null:
         XOR EAX, EAX
 end;
 
@@ -871,6 +880,8 @@ begin
     with Result do
     begin
       NextParam := CommandLine + L + Byte(Quoted);
+      if NextParam^ <> #0 then
+        Inc(NextParam);
       Param := CommandLine;
       Length := L;
     end;
@@ -908,6 +919,8 @@ begin
     with Result do
     begin
       NextParam := CommandLine + L + Byte(Quoted);
+      if NextParam^ <> WideChar(0) then
+        Inc(NextParam);
       Param := CommandLine;
       Length := L;
     end;

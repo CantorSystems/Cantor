@@ -22,7 +22,7 @@ unit CoreStrings;
 interface
 
 uses
-  Windows, CoreUtils, CoreExceptions, CoreClasses, CoreConsts;
+  Windows, CoreUtils, CoreExceptions, CoreWrappers, CoreClasses, CoreConsts;
 
 {$I Unicode.inc}
 
@@ -32,14 +32,14 @@ type
     * Legacy source: try to decode source as UTF-8, continue as code page or Latin1 if code page is null
     * UTF-16 and UTF-32: try to detect byte order
 }
-  TStringOption = (soAttachBuffer, soBigEndian, soDetectCharSet);
+  TStringsOption = (soDetectCharSet, soBigEndian, soAttachBuffer);
 
 const
   soLatin1 = soBigEndian;
 
 type
-  TLegacyOptions = set of soAttachBuffer..soDetectCharSet;
-  TEndianOptions = set of soAttachBuffer..soBigEndian;
+  TLegacyOptions = set of soDetectCharSet..soAttachBuffer;
+  TEndianOptions = set of soBigEndian..soAttachBuffer;
 
   TLegacySource = TLegacyOptions;
   TEndianSource = TEndianOptions;
@@ -157,7 +157,7 @@ type
 
 { Subtrings }
 
-  TStringOptions = set of TStringOption;
+  TStringOptions = TLegacyOptions;
 
   TSubstring = class(TIndexed)
   private
@@ -169,7 +169,6 @@ type
   public
     {class} function ByteCount(Count: Integer): Integer; overload; virtual; abstract;
     function ByteCount: Integer; overload;
-
     {class} function Length(Source: Pointer): Integer; overload; virtual; abstract;
   {$IFNDEF Lite}
     {class} function Length(Source: Pointer; MaxLength: Integer): Integer; overload; virtual; abstract;
@@ -220,19 +219,19 @@ type
   { placeholder } // FOptions: TStringOptions;
     procedure SetCount(Value: Integer);
   protected
+    procedure AcceptRange(Index, Count: Integer);
     procedure CheckIndex(Index: Integer); override;
-    procedure DoInsert(Source: Pointer; Count: Integer; SourceOptions: TStringOptions; DestIndex: Integer); 
+    procedure DoInsert(Source: Pointer; Count: Integer; SourceOptions: TStringOptions; DestIndex: Integer);
   public
     procedure Clear; override;
-
-  // Format still without Count parameter due to Windows implementation uses ASCIIZ
-    procedure Format(Source: Pointer; const Args: array of const); overload; virtual; abstract;
-    procedure Format(const Args: array of const); overload;
+  {$IFNDEF Lite}
+    //procedure Format(const Args: array of const); overload; virtual; abstract;
+  {$ENDIF}
 
     function Insert(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; CodePage: TCodePage = nil;
       SourceOptions: TLegacySource = []; DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload; virtual; abstract;
     function Insert(Source: PLegacyChar; Count: Integer; CodePage: TCodePage = nil;
-      SourceOptions: TLegacySource = []; DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload; 
+      SourceOptions: TLegacySource = []; DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload;
 
     function Insert(var Info: TStringInfo; Source: PWideChar; Count: Integer; SourceOptions: TEndianSource = [];
       DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload; virtual; abstract;
@@ -245,6 +244,11 @@ type
     function Insert(Source: PQuadChar; Count: Integer; SourceOptions: TEndianSource = [];
       DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload;
   {$ENDIF}
+
+    function Load(Source: TReadableStream; SourceOptions: TStringOptions = [];
+      DestIndex: Integer = 0): Integer; overload; virtual; abstract;
+    function Load(FileName: PCoreChar; SourceOptions: TStringOptions = [];
+      DestIndex: Integer = 0): Integer; overload;
 
     property Count write SetCount;
   end;
@@ -260,8 +264,9 @@ type
     {class} function Length(Source: Pointer): Integer; override;
   {$IFNDEF Lite}
     {class} function Length(Source: Pointer; MaxLength: Integer): Integer; override;
+    //procedure Format(const Args: array of const); override;
   {$ENDIF}
-    procedure Format(Source: Pointer; const Args: array of const); override;
+    procedure Format(Source: PLegacyChar; const Args: array of const); overload;
 
     function Insert(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; CodePage: TCodePage = nil;
       SourceOptions: TLegacySource = []; DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; override;
@@ -271,6 +276,9 @@ type
     function Insert(var Info: TStringInfo; Source: PQuadChar; Count: Integer; SourceOptions: TEndianSource = [];
       DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; override;
   {$ENDIF}
+
+    function Load(Source: TReadableStream; SourceOptions: TStringOptions = [];
+      DestIndex: Integer = 0): Integer; override;
 
     property Data: PLegacyChar read FData write SetData;
     property Options: TLegacyOptions read FOptions;
@@ -295,9 +303,10 @@ type
     {class} function Length(Source: Pointer): Integer; override;
   {$IFNDEF Lite}
     {class} function Length(Source: Pointer; MaxLength: Integer): Integer; override;
+    //procedure Format(const Args: array of const); override;
     procedure SwapByteOrder; override;
   {$ENDIF}
-    procedure Format(Source: Pointer; const Args: array of const); override;
+    procedure Format(Source: PWideChar; const Args: array of const); overload;
 
     function Insert(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; CodePage: TCodePage = nil;
       SourceOptions: TLegacySource = []; DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; override;
@@ -307,6 +316,9 @@ type
     function Insert(var Info: TStringInfo; Source: PQuadChar; Count: Integer; SourceOptions: TEndianSource = [];
       DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; override;
   {$ENDIF}
+
+    function Load(Source: TReadableStream; SourceOptions: TStringOptions = [];
+      DestIndex: Integer = 0): Integer; override;
 
     property Data: PWideChar read FData write SetData;
     property Options: TEndianOptions read FOptions;
@@ -322,9 +334,9 @@ type
     {class} function Length(Source: Pointer): Integer; override;
   {$IFNDEF Lite}
     {class} function Length(Source: Pointer; MaxLength: Integer): Integer; override;
+    //procedure Format(const Args: array of const); override;
     procedure SwapByteOrder; override;
   {$ENDIF}
-    procedure Format(Source: Pointer; const Args: array of const); override;
 
     function Insert(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; CodePage: TCodePage = nil;
       SourceOptions: TLegacySource = []; DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; override;
@@ -337,12 +349,12 @@ type
       DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload;
   {$ENDIF}
 
+    function Load(Source: TReadableStream; SourceOptions: TStringOptions = [];
+      DestIndex: Integer = 0): Integer; override;
+
     property Data: PQuadChar read FData write SetData;
     property Options: TEndianOptions read FOptions;
   end;
-{$ENDIF LiteStrings}
-
-  TCoreString = TWideString; // TODO: non-Unicode
 
   TSharedString = class(TString)
   private
@@ -366,6 +378,18 @@ type
     {class} function Length(Source: Pointer; MaxLength: Integer): Integer; overload; override;
   {$ENDIF}
 
+    function Insert(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; CodePage: TCodePage = nil;
+      SourceOptions: TLegacySource = []; DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; override;
+    function Insert(var Info: TStringInfo; Source: PWideChar; Count: Integer; SourceOptions: TEndianSource = [];
+      DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; override;
+  {$IFDEF UTF32}
+    function Insert(var Info: TStringInfo; Source: PQuadChar; Count: Integer; SourceOptions: TEndianSource = [];
+      DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; override;
+  {$ENDIF}
+
+    function Load(Source: TReadableStream; SourceOptions: TStringOptions = [];
+      DestIndex: Integer = 0): Integer; override;
+
     property AsCoreChar: PWideChar read GetAsWideChar write SetAsWideChar; // TODO: non-Unicode
     property AsLegacyChar: PLegacyChar read GetAsLegacyChar write SetAsLegacyChar;
     property AsWideChar: PWideChar read GetAsWideChar write SetAsWideChar;
@@ -376,6 +400,54 @@ type
     property Data: Pointer read FData;
     property Options: TStringOptions read FOptions;
     property Parent: TString read FParent;
+  end;
+{$ENDIF LiteStrings}
+
+  TCoreString = TWideString; // TODO: non-Unicode
+
+  TLineBreak = array[0..1] of LegacyChar;
+  TWideLineBreak = array[0..1] of WideChar;
+  TQuadLineBreak = array[0..1] of QuadChar;
+
+  TStrings = class(TObjects)
+  private
+  { placeholder } // FText: TSubstring;
+  public
+    function Load(Source: TSubstring; SourceOptions: TStringOptions = [];
+      AverageStringLength: Integer = 32): Integer; overload; virtual;
+  {$IFNDEF LiteStrings}
+    function Load(Source: TReadableStream; SourceOptions: TStringOptions = [];
+      AverageStringLength: Integer = 32): Integer; overload; virtual;
+    function Load(FileName: PCoreChar; SourceOptions: TStringOptions = [];
+      AverageStringLength: Integer = 32): Integer; overload;
+  {$ENDIF}
+    function TextLength: Integer;
+  end;
+
+  PLegacyStringArray = ^TLegacyStringArray;
+  TLegacyStringArray = array[0..MaxInt div SizeOf(TLegacyString) - 1] of TLegacyString;
+
+  TLegacyStrings = class(TStrings)
+  private
+  { hold } FItems: PLegacyStringArray;
+  { hold } FText: TLegacySubstring;
+  public
+    function Load(Source: TSubstring; SourceOptions: TStringOptions = [];
+      AverageStringLength: Integer = 32): Integer; override;
+  {$IFDEF LiteStrings}
+    function Load(Source: TReadableStream; SourceOptions: TStringOptions = [];
+      AverageStringLength: Integer = 32): Integer; overload;
+    function Load(FileName: PCoreChar; SourceOptions: TStringOptions = [];
+      AverageStringLength: Integer = 32): Integer; overload;
+  {$ENDIF}
+
+    procedure Save(Dest: TWritableStream; Delimiter: LegacyChar = #10{;
+      WriteBOM: Boolean = False}); overload;
+    procedure Save(FileName: PCoreChar; Delimiter: LegacyChar = #10{;
+      WriteBOM: Boolean = False}); overload;
+
+    property Items: PLegacyStringArray read FItems;
+    property Text: TLegacySubstring read FText;
   end;
 
 { Legacy Windows service }
@@ -1303,15 +1375,14 @@ end;
 
 { TString }
 
-procedure TString.Clear;
+procedure TString.AcceptRange(Index, Count: Integer);
+var
+  NewCount: Integer;
 begin
-  with TLegacyString(Self) do
-  begin
-    if not (soAttachBuffer in FOptions) then
-      FreeMem(FData);
-    FData := nil;
-  end;
-  FCount := 0;
+  CheckIndex(Index);
+  NewCount := Index + Count;
+  if NewCount > FCount then
+    SetCount(NewCount);
 end;
 
 procedure TString.CheckIndex(Index: Integer);
@@ -1322,9 +1393,15 @@ begin
     inherited;
 end;
 
-procedure TString.Format(const Args: array of const);
+procedure TString.Clear;
 begin
-  Format(TLegacyString(Self).FData, Args);
+  with TLegacyString(Self) do
+  begin
+    if not (soAttachBuffer in FOptions) then
+      FreeMem(FData);
+    FData := nil;
+  end;
+  FCount := 0;
 end;
 
 {$IFDEF LiteStrings}
@@ -1447,7 +1524,32 @@ begin
         raise EConvert.Create(Info.InvalidChar, csUTF32, TCharSet(coLatin1 in DestOptions));
   end;
 end;
+
+{$ELSE LiteStrings}
+
+function TString.Load(Source: TReadableStream; SourceOptions: TStringOptions; DestIndex: Integer): Integer;
+var
+  L: Integer;
+begin
+  with Source do
+    L := Size - Position;
+  Result := L div ByteCount(1);
+  AcceptRange(DestIndex, Result);
+  Source.ReadBuffer(TLegacyString(Self).FData[ByteCount(DestIndex)], L);
+end;
 {$ENDIF}
+
+function TString.Load(FileName: PCoreChar; SourceOptions: TStringOptions; DestIndex: Integer): Integer;
+var
+  F: TReadableStream;
+begin
+  F := TFileStream.Create(FileName, faRead);
+  try
+    Result := Load(F, SourceOptions, DestIndex);
+  finally
+    F.Free;
+  end;
+end;
 
 procedure TString.SetCount(Value: Integer);
 var
@@ -1468,7 +1570,7 @@ begin
   else
     ReallocMem(TLegacyString(Self).FData, ByteCount(Value + 1));
 
-  FillChar(TLegacyString(Self).FData[Value], ByteCount(1), 0);
+//  FillChar(TLegacyString(Self).FData[Value], ByteCount(1), 0);
   FCount := Value;
 end;
 
@@ -1490,9 +1592,15 @@ end;
 begin
   Result := StrLen(Source, MaxLength);
 end;
+
+{procedure TLegacyString.Format(const Args: array of const);
+begin
+  SetCount(StrLen(Source) + EstimateArgs(Args));
+  SetCount(FormatBuf(Source, Args, FData));
+end;}
 {$ENDIF}
 
-procedure TLegacyString.Format(Source: Pointer; const Args: array of const);
+procedure TLegacyString.Format(Source: PLegacyChar; const Args: array of const);
 begin
   SetCount(StrLen(Source) + EstimateArgs(Args));
   SetCount(FormatBuf(Source, Args, FData));
@@ -1549,6 +1657,29 @@ begin
   Result := 0; // TODO
 end;
 {$ENDIF UTF32}
+
+function TLegacyString.Load(Source: TReadableStream; SourceOptions: TStringOptions;
+  DestIndex: Integer): Integer;
+var
+  S: TSharedString;
+begin
+  S := TSharedString.Create;
+  try
+    Result := S.Load(Source, SourceOptions);
+    if (FData <> nil) or (S.ByteCount(1) <> SizeOf(LegacyChar)) then
+      Result := Insert(S.FData, S.Count, FCodePage, SourceOptions, DestIndex)
+    else
+    begin
+      FData := S.FData;
+      FCount := S.FCount;
+      FOptions := SourceOptions - [soAttachBuffer];
+      TLegacyString(S.FParent).FData := nil;
+      Result := FCount;
+    end;
+  finally
+    S.Free;
+  end;
+end;
 {$ENDIF LiteStrings}
 
 procedure TLegacyString.SetData(Value: PLegacyChar);
@@ -1581,9 +1712,9 @@ begin
 end;
 {$ENDIF}
 
-procedure TWideString.Format(Source: Pointer; const Args: array of const);
+procedure TWideString.Format(Source: PWideChar; const Args: array of const);
 begin
-  SetCount(StrLen(Source) + EstimateArgs(Args));
+  SetCount(WideStrLen(Source) + EstimateArgs(Args));
   SetCount(WideFormatBuf(Source, Args, FData));
 end;
 
@@ -1607,6 +1738,29 @@ begin
   Result := 0; // TODO
 end;
 {$ENDIF UTF32}
+
+function TWideString.Load(Source: TReadableStream; SourceOptions: TStringOptions;
+  DestIndex: Integer): Integer;
+var
+  S: TSharedString;
+begin
+  S := TSharedString.Create;
+  try
+    Result := S.Load(Source, SourceOptions);
+    if (FData <> nil) or (S.ByteCount(1) <> SizeOf(WideChar)) then
+      Result := Insert(PWideChar(S.FData), S.Count, SourceOptions, DestIndex)
+    else
+    begin
+      FData := S.FData;
+      FCount := S.FCount;
+      FOptions := SourceOptions - [soAttachBuffer];
+      TWideString(S.FParent).FData := nil;
+      Result := FCount;
+    end;
+  finally
+    S.Free;
+  end;
+end;
 {$ENDIF LiteStrings}
 
 procedure TWideString.SetData(Value: PWideChar);
@@ -1637,13 +1791,12 @@ begin
   SwapQuadCharBytes(FData, FCount, FData);
   Byte(FOptions) := Byte(FOptions) xor Byte(soBigEndian);
 end;
-{$ENDIF}
 
-procedure TQuadString.Format(Source: Pointer; const Args: array of const);
+{procedure TQuadString.Format(const Args: array of const);
 begin
-  SetCount(QuadStrLen(Source) + EstimateArgs(Args));
-  // TODO SetCount(QuadFormatBuf(Source, Args, FData));
-end;
+  raise EAbstract.Create(sNotImplemented);
+end;}
+{$ENDIF}
 
 {$IFNDEF LiteStrings}
 function TQuadString.Insert(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; CodePage: TCodePage;
@@ -1665,6 +1818,29 @@ begin
   Result := 0; // TODO
 end;
 {$ENDIF UTF32}
+
+function TQuadString.Load(Source: TReadableStream; SourceOptions: TStringOptions;
+  DestIndex: Integer): Integer;
+var
+  S: TSharedString;
+begin
+  S := TSharedString.Create;
+  try
+    Result := S.Load(Source, SourceOptions);
+    if (FData <> nil) or (S.ByteCount(1) <> SizeOf(QuadChar)) then
+      Result := Insert(PQuadChar(S.FData), S.Count, SourceOptions, DestIndex)
+    else
+    begin
+      FData := S.FData;
+      FCount := S.FCount;
+      FOptions := SourceOptions - [soAttachBuffer];
+      TQuadString(S.FParent).FData := nil;
+      Result := FCount;
+    end;
+  finally
+    S.Free;
+  end;
+end;
 {$ENDIF LiteStrings}
 
 procedure TQuadString.SetData(Value: PQuadChar);
@@ -1738,6 +1914,159 @@ begin
   // TODO
 end;
 {$ENDIF}
+
+function TSharedString.Insert(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; CodePage: TCodePage;
+  SourceOptions: TLegacySource; DestIndex: Integer; DestOptions: TEncodeOptions): Integer;
+begin
+  Result := 0; // TODO
+end;
+
+function TSharedString.Insert(var Info: TStringInfo; Source: PWideChar; Count: Integer; SourceOptions: TEndianSource;
+  DestIndex: Integer; DestOptions: TEncodeOptions): Integer;
+begin
+  Result := 0; // TODO
+end;
+
+{$IFDEF UTF32}
+function TSharedString.Insert(var Info: TStringInfo; Source: PQuadChar; Count: Integer; SourceOptions: TEndianSource;
+  DestIndex: Integer; DestOptions: TEncodeOptions): Integer;
+begin
+  Result := 0; // TODO
+end;
+{$ENDIF}
+
+{$IFNDEF LiteStrings}
+function TSharedString.Load(Source: TReadableStream; SourceOptions: TStringOptions; DestIndex: Integer): Integer;
+begin
+  Result := 0; // TODO: autodetect
+end;
+{$ENDIF}
+
+{ TStrings }
+
+function TStrings.Load(Source: TSubstring; SourceOptions: TStringOptions;
+  AverageStringLength: Integer): Integer;
+var
+  AvgCapacity: Integer;
+begin
+  if Source <> nil then
+  begin
+    AvgCapacity := Source.Count div AverageStringLength;
+    if Count <> 0 then
+      Capacity := Capacity + AvgCapacity
+    else if AvgCapacity > Capacity then
+      Capacity := AvgCapacity;
+  end;
+  Result := 0;
+end;
+
+{$IFNDEF LiteStrings}
+function TStrings.Load(Source: TReadableStream; SourceOptions: TStringOptions;
+  AverageStringLength: Integer): Integer;
+begin
+  Result := 0; // TODO: Load via TSharedString
+end;
+{$ENDIF LiteStrings}
+
+function {$IFDEF LiteStrings} TLegacyStrings {$ELSE} TStrings {$ENDIF} .Load
+  (FileName: PCoreChar; SourceOptions: TStringOptions; AverageStringLength: Integer): Integer;
+var
+  F: TReadableStream;
+begin
+  F := TFileStream.Create(FileName, faRead);
+  try
+    Result := Load(F, SourceOptions);
+  finally
+    F.Free;
+  end;
+end;
+
+function TStrings.TextLength: Integer;
+var
+  I: Integer;
+  S: TLegacyString;
+begin
+  Result := 0;
+  for I := 0 to Count - 1 do
+  begin
+    S := TLegacyStrings(Self).FItems[I];
+    if S <> nil then
+      Inc(Result, S.Count);
+  end;
+end;
+
+{ TLegacyStrings }
+
+function TLegacyStrings.Load(Source: TSubstring; SourceOptions: TStringOptions;
+  AverageStringLength: Integer): Integer;
+var
+  P, T, Z: PLegacyChar;
+  S: TLegacyString;
+begin
+  Result := inherited Load(Source, SourceOptions, AverageStringLength);
+  if Source <> nil then
+  begin
+    P := TLegacySubstring(Source).Data;
+    T := P + TLegacySubstring(Source).Count;
+    while P < T do
+    begin
+      Z := P;
+      while (Z < T) and not (Z^ in [#13, #10]) do
+        Inc(Z);
+      S := TLegacyString.Create;
+      S.Insert(P, Z - P, {$IFNDEF LiteStrings} TLegacySubstring(Source).FCodePage, {$ENDIF} SourceOptions);
+      Append(S);
+      P := Z + 1;
+      if (P < T) and (P^ = #10) then
+        Inc(P);
+      Inc(Result);
+    end;
+  end;
+end;
+
+{$IFDEF LiteStrings}
+function TLegacyStrings.Load(Source: TReadableStream; SourceOptions: TStringOptions;
+  AverageStringLength: Integer): Integer;
+var
+  S: TLegacyString;
+begin
+  S := TLegacyString.Create;
+  try
+    S.Load(Source, SourceOptions);
+    Result := Load(S, SourceOptions, AverageStringLength);
+  finally
+    S.Free;
+  end;
+end;
+{$ENDIF}
+
+procedure TLegacyStrings.Save(Dest: TWritableStream; Delimiter: LegacyChar{; WriteBOM: Boolean});
+var
+  I: Integer;
+  S: TLegacyString;
+begin
+  //if WriteBOM // TODO
+  Dest.Size := TextLength + FCount * SizeOf(Delimiter); // prevents fragmentation
+  for I := 0 to FCount - 1 do
+  begin
+    S := FItems[I];
+    if S <> nil then
+      Dest.WriteBuffer(S.Data^, S.Count);
+    Dest.WriteBuffer(Delimiter, SizeOf(Delimiter));
+  end;
+end;
+
+procedure TLegacyStrings.Save(FileName: PCoreChar; Delimiter: LegacyChar{; WriteBOM: Boolean});
+var
+  F: TWritableStream;
+begin
+  F := TFileStream.Create(FileName, faRewrite);
+  try
+    Save(F, Delimiter{, WriteBOM});
+  finally
+    F.Free;
+  end;
+end;
 
 { TSingleByteCodePage }
 
