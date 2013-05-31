@@ -14,7 +14,7 @@ uses
   CoreUtils, CoreWrappers, CoreClasses, CoreStrings, CoreExceptions;
 
 type
-  TInputFile = (ifInt, ifInto, ifMap, ifSource);
+  TInputFile = (ifInt, ifInto, ifDef, ifMap, ifSource);
   TInputFileNames = array[TInputFile] of PCoreChar;
 
   TApplication = class
@@ -44,6 +44,8 @@ type
     constructor Create(Value: PLegacyChar; Count: Integer);
     destructor Destroy; override;
     function Compare(Item: TBalancedTreeItem): Integer; override;
+    procedure Save(Dest: TWritableStream; Delimiter: LegacyChar = #10);
+    function TextLength: Integer;
 
     property Left: TFuncName read FLeft;
     property Owner: TFuncNames read FOwner;
@@ -59,6 +61,10 @@ type
   public
     function Exists(Value: PLegacyChar; Count: Integer): Boolean;
     function Load(FileName: PCoreChar): Integer;
+    procedure Save(Dest: TWritableStream; Delimiter: LegacyChar = #10); overload;
+    procedure Save(FileName: PCoreChar; Delimiter: LegacyChar = #10); overload;
+    function TextLength: Integer;
+
     property Root: TFuncName read FRoot;
   end;
 
@@ -113,7 +119,7 @@ begin
 end;
 
 const
-  Keys: array[ifInto..ifSource] of PCoreChar = (sInto, sMap, sSrc);
+  Keys: array[ifInto..ifSource] of PCoreChar = (sInto, sDef, sMap, sSrc);
 var
   Dot: PCoreChar;
   P: TWideParamRec;
@@ -182,6 +188,7 @@ var
   Engine: TEngine;
   Into: TLegacyStrings;
   LineCount, FuncCount: Integer;
+  DefFile: PCoreChar;
 begin
   if (FFileNames[ifInt] = nil) or (FFileNames[ifInto] = nil) then
   begin
@@ -198,7 +205,15 @@ begin
       WriteLn(sFuncCount, [FuncCount]);
       WriteLn(sLineCount, [LineCount]);
       if LineCount <> 0 then
-        Into.Save(FFileNames[ifInto])
+      begin
+        Into.Save(FFileNames[ifInto]);
+        if (FuncCount <> 0) and (FFileNames[ifMap] <> nil) then
+        begin
+          DefFile := FFileNames[ifDef];
+          if DefFile <> nil then
+            Engine.FFuncNames.Save(DefFile);
+        end;
+      end
       else
         FConsole.WriteLn(sNothingToSave);
     finally
@@ -248,6 +263,37 @@ function TFuncName.Compare(Item: TBalancedTreeItem): Integer;
 begin
   Result := CompareStringA(LOCALE_USER_DEFAULT, NORM_IGNORECASE,
     TFuncName(Item).Value.Data, TFuncName(Item).Value.Count, Value.Data, Value.Count) - 2;
+end;
+
+function TFuncName.TextLength: Integer;
+begin
+  if FValue <> nil then
+    Result := FValue.Count
+  else
+    Result := 0;
+
+  if FLeft <> nil then
+    Inc(Result, FLeft.TextLength);
+
+  if FRight <> nil then
+    Inc(Result, FRight.TextLength);
+end;
+
+procedure TFuncName.Save(Dest: TWritableStream; Delimiter: LegacyChar);
+begin
+  if FLeft <> nil then
+    FLeft.Save(Dest, Delimiter);
+
+  if FValue <> nil then
+    with Dest do
+    begin
+      with FValue do
+        WriteBuffer(Data^, Count);
+      WriteBuffer(Delimiter, SizeOf(Delimiter));
+    end;
+
+  if FRight <> nil then
+    FRight.Save(Dest, Delimiter);
 end;
 
 { TFuncNames }
@@ -312,7 +358,7 @@ end;
 function InsertToken(const T: TToken): Boolean;
 begin
   with T do
-    if (Token <> nil) and ((Next >= Limit) or (Next^ in [#13, #10])) then
+    if (Token <> nil) and ((Next^ in [#13, #10]) or (Next >= Limit)) then
     begin
       Insert(TFuncName.Create(Token, Count));
       Result := True;
@@ -357,6 +403,36 @@ begin
   finally
     Free;
   end;
+end;
+
+procedure TFuncNames.Save(Dest: TWritableStream; Delimiter: LegacyChar);
+begin
+  if FRoot <> nil then
+  begin
+    with Dest do
+      Size := Position + FRoot.TextLength + Count * SizeOf(Delimiter);
+    FRoot.Save(Dest, Delimiter);
+  end;
+end;
+
+procedure TFuncNames.Save(FileName: PCoreChar; Delimiter: LegacyChar);
+var
+  F: TWritableStream;
+begin
+  F := TFileStream.Create(FileName, faRewrite);
+  try
+    Save(F, Delimiter);
+  finally
+    F.Free;
+  end;
+end;
+
+function TFuncNames.TextLength: Integer;
+begin
+  if FRoot <> nil then
+    Result := FRoot.TextLength
+  else
+    Result := 0;
 end;
 
 { TEngine }

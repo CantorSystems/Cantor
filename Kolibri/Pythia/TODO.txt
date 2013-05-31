@@ -1,0 +1,13 @@
+dcu32int -SA -SS -sv CoreStrings.dcu CoreStrings.int
+  -SA: show address table at the end of file
+  -sv: show VMT
+
+Also:
+  * Automatically add functions from CALLs.
+  * Process many files per session.
+  * Get unit names for unit declaration, not from the file name.
+  * Remove unneeded entries from VMT
+
+Syntax fixes:
+  * Fix CMPXCHG to (mem, reg)
+  * Remove ending ", NEAR" from CALLs
