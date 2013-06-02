@@ -14,6 +14,7 @@
         * Character blocks
         * TString.Language
         * TString.Length(Source, MaxLength)
+      * LiteStrings -- no code page support for strings
       * UTF32 -- UTF-32 character set support
 *)
 
@@ -405,13 +406,9 @@ type
 
   TCoreString = TWideString; // TODO: non-Unicode
 
-  TLineBreak = array[0..1] of LegacyChar;
-  TWideLineBreak = array[0..1] of WideChar;
-  TQuadLineBreak = array[0..1] of QuadChar;
+  TLineBreak = (lbLF, lbCR, lbCRLF);
 
   TStrings = class(TObjects)
-  private
-  { placeholder } // FText: TSubstring;
   public
     function Load(Source: TSubstring; SourceOptions: TStringOptions = [];
       AverageStringLength: Integer = 32): Integer; overload; virtual;
@@ -430,7 +427,6 @@ type
   TLegacyStrings = class(TStrings)
   private
   { hold } FItems: PLegacyStringArray;
-  { hold } FText: TLegacySubstring;
   public
     function Load(Source: TSubstring; SourceOptions: TStringOptions = [];
       AverageStringLength: Integer = 32): Integer; override;
@@ -447,7 +443,6 @@ type
       WriteBOM: Boolean = False}); overload;
 
     property Items: PLegacyStringArray read FItems;
-    property Text: TLegacySubstring read FText;
   end;
 
 { Legacy Windows service }
