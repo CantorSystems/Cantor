@@ -19,6 +19,16 @@ const
   sSrc   = 'src';
   sPause = 'pause';
 
+  sSlashSlash: string[2] = '//';
+  sFunction: string[8] = 'function';
+  sProcedure: string[9] = 'procedure';
+  sConstructor: string[11] = 'constructor';
+  sDestructor: string[10] = 'destructor';
+  sEnd: string[3] = 'end';
+  sImplementation: string[14] = 'implementation';
+  sPtr: string[3] = 'ptr';
+  sNear: string[4] = 'near';
+  sLine: string[4] = 'Line';
 
 { Localize }
 

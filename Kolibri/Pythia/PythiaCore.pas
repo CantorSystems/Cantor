@@ -485,10 +485,10 @@ begin
   end;
 end;
 
-function SameToken(S: PLegacyChar; Count: Integer; Token: PLegacyChar; TokenCount: Integer): Boolean;
+function SameToken(S: PLegacyChar; Count: Integer; Token: PShortString): Boolean;
 begin
   Result := CompareStringA(LOCALE_USER_DEFAULT, NORM_IGNORECASE, S, Count,
-    Token, TokenCount) = CSTR_EQUAL;
+    @Token^[1], Length(Token^)) = CSTR_EQUAL;
 end;
 
 function NextToken(S, Limit: PLegacyChar; AllowSlashSlash: Boolean = False): TToken;
@@ -573,28 +573,24 @@ type
     Next: PLegacyChar;
   end;
 
-function NextKeyword(S: PLegacyChar; const Keywords: array of PLegacyChar;
+function NextKeyword(S: PLegacyChar; const Keywords: array of PShortString;
   AllowSlashSlash: Boolean = False): TKeyword;
 var
   I: Integer;
-  K: PLegacyChar;
 begin
   while S < Limit do
     with NextToken(S, Limit, AllowSlashSlash) do
     begin
       if Token <> nil then
-      begin
         for I := Low(Keywords) to High(Keywords) do
         begin
-          K := Keywords[I];
-          if SameToken(Token, Count, K, StrLen(K)) then
+          if SameToken(Token, Count, Keywords[I]) then
           begin
             Result.Index := I;
             Result.Next := Next;
             Exit;
           end;
         end;
-      end;
       S := Next;
     end;
   with Result do
@@ -719,10 +715,10 @@ begin
     Result := nil;
 end;
 
-procedure StripTokens(Line: TLegacyString; const Tokens: array of PLegacyChar);
+procedure StripTokens(Line: TLegacyString; const Tokens: array of PShortString);
 var
   I, NewCount: Integer;
-  P, T, Limit: PLegacyChar;
+  P, Limit: PLegacyChar;
 begin
   P := Line.Data;
   NewCount := Line.Count;
@@ -733,9 +729,7 @@ begin
     begin
       if Token <> nil then
         for I := Low(Tokens) to High(Tokens) do
-        begin
-          T := Tokens[I];
-          if SameToken(Token, Count, T, StrLen(T)) then
+          if SameToken(Token, Count, Tokens[I]) then
           begin
             P := Token + Count;
             if P^ in [#9, #32, ','] then
@@ -747,7 +741,6 @@ begin
             Dec(NewCount, Count);
             Break;
           end;
-        end;
       P := Next;
     end;
   end;
@@ -805,7 +798,7 @@ begin
         T := TLegacyString.Create;
         T.Insert(AsmLine, L, [soAttachBuffer]);
       end;
-      StripTokens(T, ['ptr', 'near']);
+      StripTokens(T, [@sPtr, @sNear]);
       FixJumpSyntax(T);
       Into.Append(T);
       Inc(LineCount);
@@ -833,8 +826,6 @@ begin
   until False;
 end;
 
-const
-  sLine = 'Line';
 var
   LineNo: TToken;
   T: TLegacyString;
@@ -844,7 +835,7 @@ begin
   while Source < Limit do
   begin
     LineNo := NextToken(Source, Limit);
-    if SameToken(LineNo.Token, LineNo.Count, sLine, StrLen(sLine)) then
+    if SameToken(LineNo.Token, LineNo.Count, @sLine) then
     begin
       with LineNo do
         Source := Token + Count;
@@ -875,7 +866,7 @@ begin
 
     Result := AppendAsmLines(Result, LineCount);
 
-    Keyword := NextKeyword(Result, ['//', 'end'], True);
+    Keyword := NextKeyword(Result, [@sSlashSlash, @sEnd], True);
     if Keyword.Index = 0 then
       Source := Keyword.Next
     else
@@ -896,7 +887,7 @@ begin
       Result := Ident.Next;
       while Result < Limit do
       begin
-        Keyword := NextKeyword(Result, ['//', 'function', 'procedure', 'end'], True);
+        Keyword := NextKeyword(Result, [@sSlashSlash, @sFunction, @sProcedure, @sEnd], True);
         case Keyword.Index of
           0:
             Result := ParseBody(Keyword.Next, Ident, LineCount);
@@ -921,7 +912,7 @@ var
 begin
   while S < Limit do
   begin
-    Func := NextKeyword(S, ['function', 'procedure', 'constructor', 'destructor', 'end']);
+    Func := NextKeyword(S, [@sFunction, @sProcedure, @sConstructor, @sDestructor, @sEnd]);
     if Func.Index in [0..3] { function..destructor } then
       S := ParseFunc(Func.Next, Result)
     else
@@ -937,7 +928,7 @@ begin
   begin
     with FInt do
       Limit := Data + Count;
-    with NextKeyword(FInt.Data, ['implementation']) do
+    with NextKeyword(FInt.Data, [@sImplementation]) do
     begin
       if Index <> 0 then
         raise ECore.Create(sNoImplementation);
