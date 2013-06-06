@@ -44,15 +44,15 @@ begin
   if not MMX_Supported then
   begin
     ErrorMessage(sMMX, StrLen(sMMX));
-    Exit;
+    Halt(1);
   end;
 {$ENDIF}
-                     
+
 {$IFNDEF HX}
   if not IsPlatformUnicode then
   begin
     ErrorMessage(sPlatformRequired, StrLen(sPlatformRequired));
-    Exit;
+    Halt(1);
   end;
 {$ENDIF}
 
@@ -62,9 +62,11 @@ begin
       Run;
     except
       on E: Exception do
+      begin
         ShowException(E);
+        ExitCode := 1;
+      end;
     end;
     Free;
   end;
 end.
- 

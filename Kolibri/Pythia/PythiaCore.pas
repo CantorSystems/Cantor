@@ -91,7 +91,7 @@ const
   CSTR_EQUAL = 2;
 
 type
-  TLineBuf = array[0..79] of LegacyChar;
+  TLineBuf = array[0..80] of LegacyChar; // including #0
 
   TToken = record
     Token: PLegacyChar;
