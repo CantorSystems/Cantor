@@ -66,8 +66,8 @@ type
   end;
 
   TBalancedTreeItem = class(TEnumerableItem)
-  private
-  { placeholder } // FParent, FLeft, FRight: TBalancedTreeItem;
+  private         // Parent at the end for TListItem compliance
+  { placeholder } // FLeft, FRight, FParent: TBalancedTreeItem;
   protected
     function RotateLeft(Parent, Item: TBalancedTreeItem): TBalancedTreeItem; virtual; abstract;
     function RotateRight(Parent, Item: TBalancedTreeItem): TBalancedTreeItem; virtual; abstract;
@@ -103,30 +103,41 @@ type
 
   TRedBlackTree = TBalancedTree;
 
-  TObjects = class(TIndexed)
+  TArray = class(TIndexed)
   private
     FCapacity, FDelta: Integer;
-    FOwnsObjects: Boolean;
-  { placeholder } // FItems: PObjectArray;
+  { placeholder } // FItems: Pointer;
     procedure Grow;
-    procedure SetCapacity(Value: Integer);
     procedure SetCount(Value: Integer);
   protected
+    function Append: Integer;
     procedure CheckIndex(Index: Integer); override;
+    procedure Extract(Index: Integer);
+    procedure Insert(Index: Integer);
+    class function ItemSize: Integer; virtual;
+    procedure SetCapacity(Value: Integer); virtual;
   public
-    constructor Create(Initial, Delta: Integer; OwnsObjects: Boolean = False);
-    function Append(Item: TObject): Integer;
+    constructor Create(Initial, Delta: Integer);
     procedure Clear; override;
-    procedure Exchange(Index1, Index2: Integer);
-    function Extract(Index: Integer): TObject;
-    function IndexOf(Item: TObject): Integer;
-    procedure Insert(Index: Integer; Item: TObject);
     function TranslateDelta: Integer;
 
     property Capacity: Integer read FCapacity write SetCapacity;
     property Count write SetCount;
     property Delta: Integer read FDelta write FDelta;
-    property OwnsObjects: Boolean read FOwnsObjects write FOwnsObjects;
+  end;
+
+  TObjects = class(TArray)
+  private
+  { placeholder } // FOwnsObjects: Boolean;
+  protected
+    procedure SetCapacity(Value: Integer); override;
+  public
+    constructor Create(Initial, Delta: Integer; OwnsObjects: Boolean = False);
+    function Append(Item: TObject): Integer; {$IFNDEF Lite} virtual; {$ENDIF}
+    procedure Exchange(Index1, Index2: Integer);
+    function Extract(Index: Integer): TObject; {$IFNDEF Lite} virtual; {$ENDIF}
+    function IndexOf(Item: TObject): Integer;
+    procedure Insert(Index: Integer; Item: TObject); {$IFNDEF Lite} virtual; {$ENDIF}
   end;
 
   TCollectionItem = class(TContainedItem)
@@ -134,7 +145,12 @@ type
     procedure Extract; override;
   end;
 
-  TCollection = TObjects;
+  TCollection = class(TObjects)
+  public
+    function Append(Item: TObject): Integer; {$IFNDEF Lite} override; {$ENDIF}
+    function Extract(Index: Integer): TObject; {$IFNDEF Lite} override; {$ENDIF}
+    procedure Insert(Index: Integer; Item: TObject); {$IFNDEF Lite} override; {$ENDIF}
+  end;
 
 { Exceptions }
 
@@ -190,7 +206,7 @@ type
 
   TBalancedTreeItemCast = class(TBalancedTreeItem)
     Owner: TBalancedTreeCast;
-    Parent, Left, Right: TBalancedTreeItemCast;
+    Left, Right, Parent: TBalancedTreeItemCast;
   end;
 
   TBalancedTreeCast = class(TBalancedTree)
@@ -201,7 +217,7 @@ type
 
   TRedBlackTreeItemCast = class(TRedBlackTreeItem)
     Owner: TRedBlackTreeCast;
-    Parent, Left, Right: TRedBlackTreeItemCast;
+    Left, Right, Parent: TRedBlackTreeItemCast;
     Red: Boolean;
   end;
 
@@ -209,11 +225,16 @@ type
     Root: TRedBlackTreeItemCast;
   end;
 
+  TArrayCast = class(TArray)
+    Items: PLegacyChar;
+  end;
+
   PObjectArray = ^TObjectArray;
   TObjectArray = array[0..MaxInt div SizeOf(TObject) - 1] of TObject;
 
   TObjectsCast = class(TObjects)
     Items: PObjectArray;
+    OwnsObjects: Boolean;
   end;
 
   TCollectionCast = class;
@@ -662,34 +683,127 @@ begin
   Result := Parent;
 end;
 
-{ TObjects }
+{ TArray }
 
-constructor TObjects.Create(Initial, Delta: Integer; OwnsObjects: Boolean);
-begin
+constructor TArray.Create(Initial, Delta: Integer);
+begin
   FDelta := Delta;
-  FOwnsObjects := OwnsObjects;
   SetCapacity(Initial);
 end;
 
-procedure TObjects.Clear;
-begin
-  SetCount(0);
-end;
-
-function TObjects.Append(Item: TObject): Integer;
-begin
+function TArray.Append: Integer;
+begin
   Grow;
-  TObjectsCast(Self).Items[FCount] := Item;
   Result := FCount;
   Inc(FCount);
 end;
 
-procedure TObjects.CheckIndex(Index: Integer);
-begin
-  if TObjectsCast(Self).Items = nil then
+procedure TArray.CheckIndex(Index: Integer);
+begin
+  if TArrayCast(Self).Items = nil then
     raise EIndex.Create(Self, Index)
   else
     inherited;
+end;
+
+procedure TArray.Clear;
+begin
+  SetCount(0);
+end;
+
+procedure TArray.Extract(Index: Integer);
+var
+  Idx, S: Integer;
+begin
+{$IFNDEF Lite}
+  CheckIndex(Index);
+{$ENDIF}
+  S := ItemSize;
+  Idx := Index * S;
+  with TArrayCast(Self) do
+  begin
+    Move(Items[Idx + S], Items[Idx], (FCount - Index - 1) * S);
+    Dec(FCount);
+  end;
+end;
+
+procedure TArray.Grow;
+begin
+  if (FCapacity = 0) or (FCapacity = FCount) then
+  begin
+  {$IFNDEF Lite}
+    if FDelta = 0 then
+      raise EFixed.Create(Self, FCapacity);
+  {$ENDIF}
+    SetCapacity(FCapacity + TranslateDelta)
+  end;
+end;
+
+procedure TArray.Insert(Index: Integer);
+var
+  Idx, S: Integer;
+begin
+  CheckIndex(Index);
+  Grow;
+  S := ItemSize;
+  Idx := Index * S;
+  with TArrayCast(Self) do
+    Move(Items[Idx], Items[Idx + S], (FCount - Index) * S);
+  Inc(FCount);
+end;
+
+class function TArray.ItemSize: Integer;
+begin
+  Result := SizeOf(Pointer);
+end;
+
+procedure TArray.SetCapacity(Value: Integer);
+begin
+  ReallocMem(TArrayCast(Self).Items, Value * ItemSize);
+  FCapacity := Value;
+end;
+
+procedure TArray.SetCount(Value: Integer);
+var
+  D, S: Integer;
+begin
+  if FCount <> Value then
+  begin
+    D := TranslateDelta;
+    SetCapacity(Value + (Value + D - 1) mod D);
+    S := ItemSize;
+    if Value > FCount then
+      FillChar(TArrayCast(Self).Items[FCount * S], (Value - FCount) * S, 0);
+    FCount := Value;
+  end;
+end;
+
+function TArray.TranslateDelta: Integer;
+begin
+  if FDelta < 0 then
+  begin
+    Result := FCapacity div Abs(FDelta);
+  {$IFNDEF Lite}
+    if Result = 0 then
+      Result := Abs(FDelta)
+  {$ENDIF}
+  end
+  else
+    Result := FDelta;
+end;
+
+{ TObjects }
+
+constructor TObjects.Create(Initial, Delta: Integer; OwnsObjects: Boolean);
+begin
+  inherited Create(Initial, Delta);
+  TObjectsCast(Self).OwnsObjects := OwnsObjects;
+end;
+
+function TObjects.Append(Item: TObject): Integer;
+begin
+  Result := inherited Append;
+  TObjectsCast(Self).Items[Result] := Item;
 end;
 
 procedure TObjects.Exchange(Index1, Index2: Integer);
@@ -703,13 +817,9 @@ end;
 function TObjects.Extract(Index: Integer): TObject;
 begin
   CheckIndex(Index);
-  with TObjectsCast(Self) do
-  begin
-    Result := Items[Index];
-    Move(Items[Index + 1], Items[Index], (FCount - Index - 1) * SizeOf(TObject));
-    Dec(FCount);
-    Items[FCount] := nil;
-  end;
+  Result := TObjectsCast(Self).Items[Index];
+  inherited Extract(Index);
+  TObjectsCast(Self).Items[FCount] := nil;
 end;
 
 function TObjects.IndexOf(Item: TObject): Integer;
@@ -727,26 +837,8 @@ end;
 
 procedure TObjects.Insert(Index: Integer; Item: TObject);
 begin
-  CheckIndex(Index);
-  Grow;
-  with TObjectsCast(Self) do
-  begin
-    Move(Items[Index], Items[Index + 1], (FCount - Index) * SizeOf(TObject));
-    Items[Index] := Item;
-  end;
-  Inc(FCount);
-end;
-
-procedure TObjects.Grow;
-begin
-  if (FCapacity = 0) or (FCapacity = FCount) then
-  begin
-  {$IFNDEF Lite}
-    if FDelta = 0 then
-      raise EFixed.Create(Self, FCapacity);
-  {$ENDIF}
-    SetCapacity(FCapacity + TranslateDelta)
-  end;
+  inherited Insert(Index);
+  TObjectsCast(Self).Items[Index] := Item;
 end;
 
 procedure TObjects.SetCapacity(Value: Integer);
@@ -755,42 +847,13 @@ var
 begin
   if Value < FCount then
   begin
-    CheckIndex(Value);
-    if FOwnsObjects then
+    CheckIndex(Value); // for negative values
+    if TObjectsCast(Self).OwnsObjects then
       for I := FCount - 1 downto Value do
         TObjectsCast(Self).Items[I].Free;
     FCount := Value;
   end;
-  ReallocMem(TObjectsCast(Self).Items, Value * SizeOf(TObject));
-  FCapacity := Value;
-end;
-
-procedure TObjects.SetCount(Value: Integer);
-var
-  D: Integer;
-begin
-  if FCount <> Value then
-  begin
-    D := TranslateDelta;
-    SetCapacity(Value + (Value + D - 1) mod D);
-    if Value > FCount then
-      FillChar(TObjectsCast(Self).Items[FCount], (Value - FCount) * SizeOf(TObject), 0);
-    FCount := Value;
-  end;
-end;
-
-function TObjects.TranslateDelta: Integer;
-begin
-  if FDelta < 0 then
-  begin
-    Result := FCapacity div Abs(FDelta);
-  {$IFNDEF Lite}
-    if Result = 0 then
-      Result := Abs(FDelta)
-  {$ENDIF}
-  end    
-  else
-    Result := FDelta;
+  inherited;
 end;
 
 { TCollectionItem }
@@ -800,6 +863,29 @@ begin
   with TCollectionItemCast(Self) do
     if Owner <> nil then
       Owner.Extract(Owner.IndexOf(Self));
+  inherited;
+end;
+
+{ TCollection }
+
+function TCollection.Append(Item: TObject): Integer;
+begin
+  if Item <> nil then
+    TCollectionItem(Item).Extract;
+  Result := inherited Append(Item);
+end;
+
+function TCollection.Extract(Index: Integer): TObject;
+begin
+  Result := inherited Extract(Index);
+  if Result <> nil then
+    TCollectionItem(Result).Extract;
+end;
+
+procedure TCollection.Insert(Index: Integer; Item: TObject);
+begin
+  if Item <> nil then
+    TCollectionItem(Item).Extract;
   inherited;
 end;
 

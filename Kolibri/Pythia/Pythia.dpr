@@ -6,7 +6,7 @@
     Conditional defines:
       * Compat -- use Delphi IDE friendly exceptions
       * ForceMMX -- allow MMX with FastCode
-      * HX -- no Unicode support check for HX DOS Extender compatibility
+      * HX -- don't check Unicode support for HX DOS Extender compatibility
       * Lite -- commonly lite version of code
       * LiteStrings -- no code page support for strings
       * Tricks  -- use tricky lite System unit
@@ -36,9 +36,7 @@ begin
 {$IFDEF Tricks}
   UseErrorMessageWrite;
 {$ENDIF}
-{$IFDEF Compat}
   UseExceptionMessageWrite;
-{$ENDIF}
 
 {$IFDEF ForceMMX}
   if not MMX_Supported then

@@ -35,7 +35,7 @@ const
 const
   sVersion    = '0.1';
   sTitle      = 'Pythia';
-  sCopyright  = '%s %s  Copyright (c) 2013 Vladislav Javadov';
+  sCopyright  = '%s %s  Copyright © 2013 Vladislav Javadov';
   sUsage      = 'Usage:'#9'%ws int-file -into dest-file [-def def-file] [-map map-file]'#10 +
                         #9'[-src source-file] [-pause]';
 

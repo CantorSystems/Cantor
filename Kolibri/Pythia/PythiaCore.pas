@@ -37,7 +37,7 @@ type
   TFuncName = class(TRedBlackTreeItem)
   private
   { hold } FOwner: TFuncNames;
-  { hold } FParent, FLeft, FRight: TFuncName;
+  { hold } FLeft, FRight, FParent: TFuncName;
   { hold } FRed: Boolean;
     FValue: TLegacyString;
   public
@@ -126,7 +126,11 @@ var
   I: TInputFile;
 begin
   FConsole := TStreamConsole.Create;
-  FConsole.WriteLn;
+  with FConsole do
+  begin
+    CodePage := GetACP;
+    WriteLn;
+  end;
   WriteLn(sCopyright, [sTitle, sVersion], 2);
 
   with WideParamStr(CommandLine) do
@@ -157,7 +161,7 @@ begin
           P := WideParamStr(P.NextParam);
           if P.Length <> 0 then
           begin
-            AssignFileName(I, P);
+            AssignFileName(I, P);    
             P.Param := nil;
           end;
           Break;
@@ -485,10 +489,10 @@ begin
   end;
 end;
 
-function SameToken(S: PLegacyChar; Count: Integer; Token: PShortString): Boolean;
+function SameToken(S: PLegacyChar; Count: Integer; const Token: ShortString): Boolean;
 begin
   Result := CompareStringA(LOCALE_USER_DEFAULT, NORM_IGNORECASE, S, Count,
-    @Token^[1], Length(Token^)) = CSTR_EQUAL;
+    @Token[1], Length(Token)) = CSTR_EQUAL;
 end;
 
 function NextToken(S, Limit: PLegacyChar; AllowSlashSlash: Boolean = False): TToken;
@@ -584,7 +588,7 @@ begin
       if Token <> nil then
         for I := Low(Keywords) to High(Keywords) do
         begin
-          if SameToken(Token, Count, Keywords[I]) then
+          if SameToken(Token, Count, Keywords[I]^) then
           begin
             Result.Index := I;
             Result.Next := Next;
@@ -729,7 +733,7 @@ begin
     begin
       if Token <> nil then
         for I := Low(Tokens) to High(Tokens) do
-          if SameToken(Token, Count, Tokens[I]) then
+          if SameToken(Token, Count, Tokens[I]^) then
           begin
             P := Token + Count;
             if P^ in [#9, #32, ','] then
@@ -835,7 +839,7 @@ begin
   while Source < Limit do
   begin
     LineNo := NextToken(Source, Limit);
-    if SameToken(LineNo.Token, LineNo.Count, @sLine) then
+    if SameToken(LineNo.Token, LineNo.Count, sLine) then
     begin
       with LineNo do
         Source := Token + Count;

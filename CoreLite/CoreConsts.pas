@@ -314,6 +314,24 @@ const
   sPrivateAreaA                    = 'Supplementary Private Use Area-A';
   sPrivateAreaB                    = 'Supplementary Private Use Area-B';
 
+  sStrong       = 'strong';
+  sEmphasis     = 'emphasis';
+  sInsert       = 'insert';
+  sDelete       = 'delete';
+  sSmall        = 'small';
+  sMark         = 'mark';
+  sSubscript    = 'subscript';
+  sSuperscript  = 'superscript';
+  sNoWrap       = 'nowrap';
+  sKeyboard     = 'keyboard';
+  sSample       = 'sample';
+  sVariable     = 'variable';
+  sDefinition   = 'definition';
+  sCite         = 'cite';
+  sQuote        = 'quote';
+  sEmotion      = 'emotion';
+  sSpelling     = 'spelling';
+
 implementation
 
 end.

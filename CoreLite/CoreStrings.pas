@@ -162,9 +162,6 @@ type
 
   TSubstring = class(TIndexed)
   private
-  {$IFNDEF Lite}
-    FLanguage: Word;
-  {$ENDIF}
   { placeholder } // FData: Pointer;
   { placeholder } // FOptions: TStringOptions;
   public
@@ -173,7 +170,6 @@ type
     {class} function Length(Source: Pointer): Integer; overload; virtual; abstract;
   {$IFNDEF Lite}
     {class} function Length(Source: Pointer; MaxLength: Integer): Integer; overload; virtual; abstract;
-    property Language: Word read FLanguage write FLanguage;
   {$ENDIF}
   end;
 
@@ -427,6 +423,7 @@ type
   TLegacyStrings = class(TStrings)
   private
   { hold } FItems: PLegacyStringArray;
+  { hold } FOwnsStrings: Boolean;
   public
     function Load(Source: TSubstring; SourceOptions: TStringOptions = [];
       AverageStringLength: Integer = 32): Integer; override;
@@ -443,6 +440,7 @@ type
       WriteBOM: Boolean = False}); overload;
 
     property Items: PLegacyStringArray read FItems;
+    property OwnsStrings: Boolean read FOwnsStrings;
   end;
 
 { Legacy Windows service }
