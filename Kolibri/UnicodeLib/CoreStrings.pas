@@ -3,7 +3,7 @@
 
     Core string and character set implementation 
 
-    Copyright (c) 2012 The Unified Environment Laboratory
+    Copyright © 2012 The Unified Environment Laboratory
 
     Conditional defines:
       * Lite -- strip support of:

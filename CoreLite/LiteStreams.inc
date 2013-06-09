@@ -3,7 +3,7 @@
 
     Lite streams declaration -- no virtual methods, only THandleStream
 
-    Copyright (c) 2012-2013 Vladislav Javadov (Freeman)
+    Copyright © 2012-2013 Vladislav Javadov (Freeman)
 *)
 
 type

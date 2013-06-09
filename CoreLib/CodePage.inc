@@ -2,8 +2,8 @@
     Windows native engine code page codes for
     MultiByteToWideChar() and WideCharToMultiByte() functions
 
-    Copyright (c) 2004 Kenta Yoshimura
-    Copyright (c) 2008-2009 The Unified Environment Laboratory
+    Copyright © 2004 Kenta Yoshimura
+    Copyright © 2008-2009 The Unified Environment Laboratory
 *)
 
 const

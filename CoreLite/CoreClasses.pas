@@ -3,7 +3,7 @@
 
     Non-platform general classes
 
-    Copyright (c) 2012-2013 Vladislav Javadov (Freeman)
+    Copyright © 2012-2013 Vladislav Javadov (Freeman)
 *)
 
 unit CoreClasses;

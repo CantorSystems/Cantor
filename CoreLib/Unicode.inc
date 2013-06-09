@@ -1,7 +1,7 @@
 (*
     Unicode 6.1 code blocks
 
-    Copyright (c) 2009-2012 The Unified Environment Laboratory
+    Copyright © 2009-2012 The Unified Environment Laboratory
 
     Used abbreviations:
       * Aboriginal -> (removed)

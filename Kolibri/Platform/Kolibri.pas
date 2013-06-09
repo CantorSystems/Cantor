@@ -1,7 +1,7 @@
 (*
     Kolibri OS Platform SDK for Delphi
 
-    Copyright (c) 2012 The Unified Environment Laboratory
+    Copyright © 2012 The Unified Environment Laboratory
 *)
 
 unit Kolibri;

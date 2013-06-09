@@ -3,7 +3,7 @@
 
     Core exceptions implementation
 
-    Copyright (c) 2008-2012 The Unified Environment Laboratory
+    Copyright © 2008-2012 The Unified Environment Laboratory
 
     Conditional defines:
       * Compat -- use IDE friendly and SysUtils compatible exceptions

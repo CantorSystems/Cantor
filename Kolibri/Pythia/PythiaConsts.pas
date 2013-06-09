@@ -3,7 +3,7 @@
 
     String messages
 
-    Copyright (c) 2013 Vladislav Javadov (Freeman)
+    Copyright © 2013 Vladislav Javadov (Freeman)
 *)
 
 unit PythiaConsts;

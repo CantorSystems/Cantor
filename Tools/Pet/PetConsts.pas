@@ -3,7 +3,7 @@
 
     String messages
 
-    Copyright (c) 2012 The Unified Environment Laboratory
+    Copyright © 2012 The Unified Environment Laboratory
 *)
 
 unit PetConsts;

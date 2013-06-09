@@ -3,7 +3,7 @@
 
     Lite strings declaration -- no character set translation and code page support
 
-    Copyright (c) 2012-2013 Vladislav Javadov (Freeman)
+    Copyright © 2012-2013 Vladislav Javadov (Freeman)
 *)
 
 type

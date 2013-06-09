@@ -3,7 +3,7 @@
 
     Command line interface implementation
 
-    Copyright (c) 2012 The Unified Environment Laboratory
+    Copyright © 2012 The Unified Environment Laboratory
 *)
 
 unit CLI;

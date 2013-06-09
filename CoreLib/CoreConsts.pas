@@ -3,7 +3,7 @@
 
     Core library string messages
 
-    Copyright (c) 2008-2012 The Unified Environment Laboratory
+    Copyright © 2008-2012 The Unified Environment Laboratory
 
     Conditional defines:
       * Interfaces -- interface support

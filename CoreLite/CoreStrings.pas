@@ -3,7 +3,7 @@
 
     Core string and character set implementation
 
-    Copyright (c) 2012-2013 Vladislav Javadov (Freeman)
+    Copyright © 2012-2013 Vladislav Javadov (Freeman)
 
     TODO (first is more important):
       * Unicode NFC/NFD/NFKC/NFKD, UTF-7, SCSU, (BOCU is not patent-free)

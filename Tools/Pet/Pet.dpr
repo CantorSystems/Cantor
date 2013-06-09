@@ -1,7 +1,7 @@
 (*
     Portable Executable (PE) Tool
 
-    Copyright (c) 2012 The Unified Environment Laboratory
+    Copyright © 2012 The Unified Environment Laboratory
 
     Conditional defines:
       * Compat -- use Delphi IDE friendly exceptions

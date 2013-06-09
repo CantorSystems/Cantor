@@ -3,7 +3,7 @@
 
     OOP-style platform-dependent wrappers
 
-    Copyright (c) 2007-2012 The Unified Environment Laboratory
+    Copyright © 2007-2012 The Unified Environment Laboratory
 
     Conditional defines:
       * Lite -- allow lite TStream implementation -- without virtual methods

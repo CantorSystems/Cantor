@@ -10,7 +10,7 @@
     - balanced tree based on red-black tree algorithm
     - namespace based on balanced tree
 
-  Copyright (c) 2007 Freeman
+  Copyright © 2007 Freeman
 
   Custom defines (turned off by default):
 

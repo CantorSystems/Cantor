@@ -3,7 +3,7 @@
 
     Core library string messages
 
-    Copyright (c) 2008-2013 Vladislav Javadov (Freeman)
+    Copyright © 2008-2013 Vladislav Javadov (Freeman)
 *)
 
 unit CoreConsts;

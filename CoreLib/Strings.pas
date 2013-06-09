@@ -3,7 +3,7 @@
 
     Core string, character set, code page, and MIME encoding implementation
 
-    Copyright (c) 2007-2012 The Unified Environment Laboratory
+    Copyright © 2007-2012 The Unified Environment Laboratory
 
     TODO:
       * Unicode:

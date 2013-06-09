@@ -4,7 +4,7 @@
 ;   Code page names -- English and Russian
 ;   Used CP866 character set as needed for Kolibri
 ;
-;   Copyright (c) 2012 The Unified Environment Laboratory
+;   Copyright c 2012 The Unified Environment Laboratory
 ;
 
 sRu437  db  '‘˜€ (DOS)', 0

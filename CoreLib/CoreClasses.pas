@@ -3,7 +3,7 @@
 
     Non-platform general classes
 
-    Copyright (c) 2008-2012 The Unified Environment Laboratory
+    Copyright © 2008-2012 The Unified Environment Laboratory
 
     Conditional defines:
       * Interfaces -- IInterface implementation

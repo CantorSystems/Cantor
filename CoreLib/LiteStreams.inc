@@ -3,7 +3,7 @@
 
     Lite streams declaration -- no virtual methods, only THandleStream
 
-    Copyright (c) 2012 The Unified Environment Laboratory
+    Copyright © 2012 The Unified Environment Laboratory
 *)
 
 type

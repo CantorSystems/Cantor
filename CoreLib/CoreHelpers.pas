@@ -3,7 +3,7 @@
 
     Object helpers using core wrappers, core classes and core strings
 
-    Copyright (c) 2012 The Unified Environment Laboratory
+    Copyright © 2012 The Unified Environment Laboratory
 *)
 
 unit CoreHelpers;

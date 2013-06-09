@@ -3,7 +3,7 @@
 
     Executable images object model
 
-    Copyright (c) 2012 The Unified Environment Laboratory
+    Copyright © 2012 The Unified Environment Laboratory
 *)
 
 unit ExeImages;

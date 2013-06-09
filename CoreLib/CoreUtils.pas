@@ -3,7 +3,7 @@
 
     Typecast and platform-based non-OOP utilites
 
-    Copyright (c) 2007-2012 The Unified Environment Laboratory
+    Copyright © 2007-2012 The Unified Environment Laboratory
 
     Conditional defines:
       * Compat -- allow ShortString, AnsiString and WideString at EstimateArgs

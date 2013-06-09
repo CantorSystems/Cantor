@@ -6,7 +6,7 @@
     Windows-1251 character set used here just for Delphi,
     this section has no mean for Kolibri
 
-    Copyright (c) 2012 The Unified Environment Laboratory
+    Copyright © 2012 The Unified Environment Laboratory
 *)
 
 const

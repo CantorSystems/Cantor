@@ -5,7 +5,7 @@
     - file find container (non-enumerable, wrapper of legacy file find API)
     - file name manipulation (based on string list container)
 
-  Copyright (c) 2007 Freeman
+  Copyright © 2007 Freeman
 *)
 
 unit FileSystem;

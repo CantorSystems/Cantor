@@ -6,7 +6,7 @@
     See full CoreStrings source here:
       http://websvn.tunilab.org/wsvn/TuniLab.UniEnv/Legacy/CoreLib/CoreStrings.pas
 
-    Copyright (c) 2012 The Unified Environment Laboratory
+    Copyright © 2012 The Unified Environment Laboratory
 
     Conditional defines:
       * UTF32 -- UTF-32 character set support

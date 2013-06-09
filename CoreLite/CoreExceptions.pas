@@ -3,7 +3,7 @@
 
     Core exceptions implementation
 
-    Copyright (c) 2008-2013 Vladislav Javadov (Freeman)
+    Copyright © 2008-2013 Vladislav Javadov (Freeman)
 
     Conditional defines:
       * Compat -- use IDE friendly and SysUtils compatible exceptions

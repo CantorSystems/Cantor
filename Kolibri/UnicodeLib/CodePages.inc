@@ -3,7 +3,7 @@
 ;
 ;   Raw code page translation tables
 ;
-;   Copyright (c) 2012 The Unified Environment Laboratory
+;   Copyright © 2012 The Unified Environment Laboratory
 ;
 
 CodePageNamesRu:

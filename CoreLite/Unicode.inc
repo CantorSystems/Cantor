@@ -3,7 +3,7 @@
 
     Unicode 6.1 code blocks
 
-    Copyright (c) 2009-2013 Vladislav Javadov (Freeman)
+    Copyright © 2009-2013 Vladislav Javadov (Freeman)
 
     Used abbreviations:
       * Aboriginal -> (removed)
