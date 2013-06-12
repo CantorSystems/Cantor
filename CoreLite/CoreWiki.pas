@@ -11,13 +11,14 @@ unit CoreWiki;
 interface
 
 uses
-  CoreUtils, CoreClasses, CoreStrings;
+  CoreUtils, CoreWrappers, CoreClasses, CoreStrings;
 
 type
-  TTextType = (ttNormal, ttNoBreak, ttCode, ttKeyboard, ttSample, ttVariable,
-    ttStrong, ttEmphasis, ttInsert, ttDelete, ttSmall, ttMark,
-    ttSubscript, ttSuperscript, ttDefinition, ttCite, ttEmotion); // ttQuote, ttSpelling // Ruby?
+  TTextType = (ttNormal, ttNoBreak, ttCode, ttKeyboard, ttSample,
+    ttStrong, ttEmphasis, ttInsert, ttDelete, ttSmall, ttMark, ttSuperscript,
+    ttSubscript, ttVariable, ttDefinition, ttCite, ttEmotion); // ttQuote, ttSpelling // Ruby?
 
+type
   TParagraphType = (ptNormal, ptCode, ptHeading, ptLeft, ptCenter, ptRight, ptJustify);
 
   TGroupType = (gtIndent, gtQuote, gtBullet, gtSquare, gtDisc, gtDecimal,
@@ -36,7 +37,7 @@ type
 
   TWikiLink = class
   private
-    FPrefix, FPath, FPathEnd: TLegacyString;
+    FPrefix, FPath, FPathPlus: TLegacyString;
     FOptions: TWikiLinkOptions;
   public
     destructor Destroy; override;
@@ -44,7 +45,7 @@ type
     property Options: TWikiLinkOptions read FOptions;
     property Prefix: TLegacyString read FPrefix;
     property Path: TLegacyString read FPath;
-    property PathEnd: TLegacyString read FPathEnd;
+    property PathPlus: TLegacyString read FPathPlus;
   end;
 
   TWikiItem = class(TListItem)
@@ -53,10 +54,12 @@ type
   { placeholder } // FLanguage: TLegacyString;
   { placeholder } // FItems: TList;
   { placeholder } // FAnchor, FStyle: TLegacyString;
+  protected
+    function Parse(Source, Limit: PLegacyChar): PLegacyChar; virtual; abstract;
   public
     destructor Destroy; override;
     procedure Extract; override;
-    function Language: TLegacyString;
+    function LanguageContext: TLegacyString;
   end;
 
   TWikiItems = class(TList)
@@ -69,7 +72,7 @@ type
 
   TWikiTexts = class;
 
-  TWikiText = class(TListItem)
+  TWikiText = class(TWikiItem)
   private
   { hold } FOwner: TWikiItems;
   { hold } FPrior, FNext: TWikiText;
@@ -81,6 +84,8 @@ type
     FValue: TLegacyString;
     FLink: TWikiLink;
     FEntityCode: WideChar;
+  protected
+    function Parse(Source, Limit: PLegacyChar): PLegacyChar; override;
   public
     destructor Destroy; override;
 
@@ -120,6 +125,8 @@ type
   { hold } FItems: TWikiTexts;
   { hold } FAnchor, FStyle: TLegacyString;
     FParagraphType: TParagraphType;
+  protected  
+    function Parse(Source, Limit: PLegacyChar): PLegacyChar; override;
   public
     property Anchor: TLegacyString read FAnchor;
     property Items: TWikiTexts read FItems;
@@ -134,6 +141,8 @@ type
   { hold } FItems: TWikiBlocks;
   { hold } FAnchor, FStyle: TLegacyString;
     FGroupType: TGroupType;
+  protected
+    function Parse(Source, Limit: PLegacyChar): PLegacyChar; override;
   public
     property Anchor: TLegacyString read FAnchor;
     property GroupType: TGroupType read FGroupType;
@@ -159,10 +168,16 @@ type
     FItems: TWikiBlocks;
     FPath, FName: TLegacyString;
     FIsUTF8: Boolean;
-    FCharSet, FTitle: TLegacyString;
+    FCharSet, FTitle, FSource: TLegacyString;
     FCluster: TWikiCluster;
+  protected
+    function Parse(P, Limit: PLegacyChar; WikiMode: Boolean): PLegacyChar;
   public
     destructor Destroy; override;
+    procedure Clear;
+    function Compare(Item: TBalancedTreeItem): Integer; override;
+    procedure Load(Stream: TReadableStream; WikiMode: Boolean = True); overload;
+    procedure Load(FileName: PCoreChar; WikiMode: Boolean = True); overload;
 
     property IsUTF8: Boolean read FIsUTF8;
     property Items: TWikiBlocks read FItems;
@@ -188,6 +203,12 @@ function ExtCharIndex(Source: WideChar): Integer;}
 //function HTMLEncoding(CodePage: Word = CP_ACP): CoreString; overload;
 
 implementation
+
+uses
+  Windows;
+
+const
+  TextTags: array[ttNoBreak..ttSuperscript] of LegacyChar = '#%><*/_-+!^';
 
 (*function FindCharIndex(Source: WideChar; Chars: PCharCodes; Count: Integer): Integer;
 var
@@ -263,7 +284,7 @@ end;*)
 
 destructor TWikiLink.Destroy;
 begin
-  FPathEnd.Free;
+  FPathPlus.Free;
   FPath.Free;
   FPrefix.Free;
 //  inherited;
@@ -289,7 +310,7 @@ begin
   inherited;
 end;
 
-function TWikiItem.Language: TLegacyString;
+function TWikiItem.LanguageContext: TLegacyString;
 
 function LanguageOf(Item: TWikiBlock): TLegacyString;
 begin
@@ -314,11 +335,39 @@ begin
   inherited;
 end;
 
+function TWikiText.Parse(Source, Limit: PLegacyChar): PLegacyChar;
+var
+  T: TTextType;
+  Tag: LegacyChar;
+begin
+  while not (Source^ in [#13, #10]) and (Source < Limit) do
+    for T := Low(TextTags) to High(TextTags) do
+    begin
+      Tag := TextTags[T];
+      if (Source^ = Tag) and (Source[1] = Tag) then
+    end;
+end;
+
+{ TWikiParagraph }
+
+function TWikiParagraph.Parse(Source, Limit: PLegacyChar): PLegacyChar;
+begin
+  Result := Limit; // TODO
+end;
+
+{ TWikiGroup }
+
+function TWikiGroup.Parse(Source, Limit: PLegacyChar): PLegacyChar;
+begin
+  Result := Limit; // TODO
+end;
+
 { TWikiDocument }
 
 destructor TWikiDocument.Destroy;
 begin
   FCluster.Free;
+  FSource.Free;
   FTitle.Free;
   FCharSet.Free;
   FName.Free;
@@ -326,6 +375,71 @@ begin
   FItems.Free;
   FLanguage.Free;
   inherited;
+end;
+
+procedure TWikiDocument.Clear;
+begin
+  if FCluster <> nil then
+    FCluster.Clear;
+  if FItems <> nil then
+    FItems.Clear;
+  if FSource <> nil then
+    FSource.Clear;
+  if FTitle <> nil then
+    FTitle.Clear;
+  if FPath <> nil then
+    FPath.Clear;
+  if FName <> nil then
+    FName.Clear;
+  if FLanguage <> nil then
+    FLanguage.Clear;
+  if FCharSet <> nil then
+    FCharSet.Clear;
+{$IFNDEF Lite}
+  FIsUTF8 := False;
+{$ENDIF}
+end;
+
+procedure TWikiDocument.Load(Stream: TReadableStream; WikiMode: Boolean);
+var
+  P, Limit: PLegacyChar;
+begin
+{$IFNDEF Lite}
+  Clear;
+{$ENDIF}  
+  if FSource = nil then
+    FSource := TLegacyString.Create;
+  with FSource do
+  begin
+    Load(Stream);
+    P := Data;
+    Limit := P + Count;
+  end;
+  while P < Limit do
+    P := Parse(P, Limit, WikiMode);
+end;
+
+procedure TWikiDocument.Load(FileName: PCoreChar; WikiMode: Boolean);
+var
+  F: TReadableStream;
+begin
+  F := TFileStream.Create(FileName, faRead);
+  try
+    Load(F, WikiMode);
+  finally
+    F.Free;
+  end;
+end;
+
+function TWikiDocument.Parse(P, Limit: PLegacyChar; WikiMode: Boolean): PLegacyChar;
+begin
+  Result := Limit; // TODO
+end;
+
+function TWikiDocument.Compare(Item: TBalancedTreeItem): Integer;
+begin
+  Result := CompareStringA(LOCALE_USER_DEFAULT, NORM_IGNORECASE,
+    TWikiDocument(Item).FPath.Data, TWikiDocument(Item).FPath.Count, FPath.Data, FPath.Count) - 2;
 end;
 
 end.

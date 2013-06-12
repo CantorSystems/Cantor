@@ -158,6 +158,8 @@ type
     procedure WriteLn(LineBreaks: Integer = 1); overload;
     procedure WriteLn(Text: PLegacyChar; LineBreaks: Integer = 1); overload;
     procedure WriteLn(Text: PLegacyChar; Count, LineBreaks: Integer); overload;
+    procedure WriteLn(Fmt: PLegacyChar; const Args: array of const;
+      LineBreaks: Integer = 1); overload;
   end;
 
   TScreenConsole = class(TConsole)
@@ -605,6 +607,19 @@ begin
 {$IFDEF Tricks} System. {$ENDIF}
   WriteFile(FOutput, Text^, Count, BytesWritten, nil);  // TODO: Windows x64
   WriteLn(LineBreaks);
+end;
+
+procedure TStreamConsole.WriteLn(Fmt: PLegacyChar; const Args: array of const;
+  LineBreaks: Integer);
+var
+  P: PLegacyChar;
+begin
+  GetMem(P, StrLen(Fmt) + EstimateArgs(Args) + 1);
+  try
+    WriteLn(P, FormatBuf(Fmt, Args, P), LineBreaks);
+  finally
+    FreeMem(P);
+  end;
 end;
 
 { TScreenConsole }

@@ -25,7 +25,6 @@ type
     FPause: Boolean;
     procedure Warning(Msg: PLegacyChar); overload;
     procedure Warning(Msg: PLegacyChar; const Args: array of const); overload;
-    procedure WriteLn(Msg: PLegacyChar; const Args: array of const; LineBreaks: Integer = 1);
   public
     constructor Create(CommandLine: PCoreChar);
     destructor Destroy; override;
@@ -130,8 +129,8 @@ begin
   begin
     CodePage := GetACP;
     WriteLn;
+    WriteLn(sCopyright, [sTitle, sVersion], 2);
   end;
-  WriteLn(sCopyright, [sTitle, sVersion], 2);
 
   with WideParamStr(CommandLine) do
   begin
@@ -188,7 +187,6 @@ end;
 
 procedure TApplication.Run;
 var
-  Usage: array[0..MAX_PATH + Length(sUsage) - 1] of LegacyChar;
   Engine: TEngine;
   Into: TLegacyStrings;
   LineCount, FuncCount: Integer;
@@ -196,7 +194,7 @@ var
 begin
   if (FFileNames[ifInt] = nil) or (FFileNames[ifInto] = nil) then
   begin
-    FConsole.WriteLn(Usage, FormatBuf(sUsage, [FAppName], Usage), 1);
+    FConsole.WriteLn(sUsage, [FAppName]);
     Exit;
   end;
 
@@ -206,8 +204,11 @@ begin
     try
       FuncCount := 0;
       LineCount := Engine.Execute(Into, Self, FuncCount);
-      WriteLn(sFuncCount, [FuncCount]);
-      WriteLn(sLineCount, [LineCount]);
+      with FConsole do
+      begin
+        WriteLn(sFuncCount, [FuncCount]);
+        WriteLn(sLineCount, [LineCount]);
+      end;
       if LineCount <> 0 then
       begin
         Into.Save(FFileNames[ifInto]);
@@ -230,23 +231,15 @@ end;
 
 procedure TApplication.Warning(Msg: PLegacyChar);
 begin
-  WriteLn(sWarning, [Msg]);
+  FConsole.WriteLn(sWarning, [Msg]);
 end;
 
-procedure TApplication.Warning(Msg: PLegacyChar; const Args: array of const); 
+procedure TApplication.Warning(Msg: PLegacyChar; const Args: array of const);
 var
   Buf: TLineBuf;
 begin
   FormatBuf(Msg, Args, Buf);
   Warning(Buf);
-end;
-
-procedure TApplication.WriteLn(Msg: PLegacyChar; const Args: array of const;
-  LineBreaks: Integer);
-var
-  Buf: TLineBuf;
-begin
-  FConsole.WriteLn(@Buf, FormatBuf(Msg, Args, Buf), LineBreaks);
 end;
 
 { TFuncName }
