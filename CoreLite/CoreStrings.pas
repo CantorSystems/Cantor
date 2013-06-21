@@ -635,10 +635,16 @@ function TranslateCodePage(Source: Word): Word;
 
 function PlatformCodePage(CodePage: Word = CP_ACP): TPlatformCodePage;
 
+type
+  TFromUTF8 = record
+    Count, SuccessBytes: Integer;
+    NextChar: PLegacyChar;
+  end;
+
 function FromUTF8(var Info: TStringInfo; Source: PLegacyChar; Count: Integer;
-  var SourceIndex: Integer; Dest: PWideChar; DestOptions: TEncodeUTF16 = []): Integer;
-function IsUTF8(Source: PLegacyChar; Count: Integer; DestOptions: TEncodeUTF16 = [];
-  Threshold: Integer = 1): Boolean;
+  Dest: PWideChar; DestOptions: TEncodeUTF16 = []; Threshold: Integer = MaxInt): TFromUTF8;
+function IsUTF8(Source: PLegacyChar; SourceCount: Integer; DestOptions: TEncodeUTF16 = [];
+  Threshold: Integer = 4): Boolean;
 
 implementation
 
@@ -796,14 +802,17 @@ begin
 end;
 
 function FromUTF8(var Info: TStringInfo; Source: PLegacyChar; Count: Integer;
-  var SourceIndex: Integer; Dest: PWideChar; DestOptions: TEncodeUTF16): Integer;
+  Dest: PWideChar; DestOptions: TEncodeUTF16; Threshold: Integer): TFromUTF8;
+
+var
+  Limit: PLegacyChar;
 
 function GetChar: QuadChar; // Fast core: closure
 var
   FirstByte, Bytes, B, C: Byte;
 begin
-  FirstByte := Byte(Source[SourceIndex]);
-  Inc(SourceIndex);
+  FirstByte := Byte(Source^);
+  Inc(Source);
 
   if FirstByte and $80 <> 0 then
   begin
@@ -833,13 +842,13 @@ begin
       B := Bytes;
 
       if Result <> 0 then
-        while (B <> 0) and (SourceIndex < Count) do
+        while (B <> 0) and (Source < Limit) do
         begin
-          C := Byte(Source[SourceIndex]);
+          C := Byte(Source^);
           if C and $C0 = $80 then
           begin
             Result := (Result shl 6) or (C and $3F);
-            Inc(SourceIndex);
+            Inc(Source);
             Dec(B);
           end
           else
@@ -847,9 +856,9 @@ begin
         end;
 
       if (B <> 0) or (Result = 0) then // broken sequence or unexpected end of string
-        if (SourceIndex = Count) and (coContinuous in DestOptions) then
+        if (Source = Limit) and (coContinuous in DestOptions) then
         begin
-          Dec(SourceIndex, Bytes - B + 1);
+          Dec(Source, Bytes - B + 1);
           Result := InvalidUTFMask;
         end
         else
@@ -871,13 +880,18 @@ var
   Block: TCharBlock;
 {$ENDIF}
 begin
-  Result := 0;
+  with Result do
+  begin
+    Count := 0;
+    SuccessBytes := 0;
+  end;
+  Limit := Source + Count;
   T := 0;
 {$IFNDEF Lite}
   Block := cbNonUnicode;
 {$ENDIF}
 
-  while SourceIndex < Count do
+  while (Source < Limit) and (Result.SuccessBytes < Threshold) do
   begin
     if T <> 0 then
       Q := T
@@ -900,7 +914,12 @@ begin
                       PLongWord(Dest)^ := Q or (T shl 16);
 
                     Inc(Dest, 2);
-                    Inc(Result, 2);
+
+                    with Result do
+                    begin
+                      Inc(Count, 2);
+                      Inc(SuccessBytes, 6); // two 3-byte sequences
+                    end;
 
                     with Info do
                     begin
@@ -946,13 +965,19 @@ begin
                 Word((Low(TLowSurrogates) + W and $3FF) shl 16);
 
             Inc(Dest, 2);
-            Inc(Result, 2);
+            with Result do
+            begin
+              Inc(Count, 2);
+              Dec(SuccessBytes, 4); // one 4-byte sequence
+            end;
+
             with Info do
             begin
               Inc(CharCount);
               Inc(SequenceCount);
               Inc(SurrogatePairCount);
             end;
+
           {$IFNDEF Lite}
             if coRangeBlocks in DestOptions then
             begin
@@ -990,10 +1015,13 @@ begin
         with Info do
         begin
           InvalidChar := Q;
-          Inc(Count, Result);
+          Inc(Count, Result.Count);
         end;
-
-        Result := 0;
+        with Result do
+        begin
+          Count := 0;
+          NextChar := Source;
+        end;
         Exit;
       end;
 
@@ -1003,23 +1031,38 @@ begin
       Dest^ := WideChar(Q);
 
     Inc(Dest);
-    Inc(Result);
-    Inc(Info.CharCount);
-    if Q > $7F then
-      Inc(Info.SequenceCount);
+
+    with Result do
+    begin
+      Inc(Count);
+      case Q of
+        $80..$7FF:
+          Inc(SuccessBytes, 2);
+        $800..$FFFF:
+          Inc(SuccessBytes, 3);
+      end;
+    end;
+
+    with Info do
+    begin
+      Inc(CharCount);
+      if Q > $7F then
+        Inc(SequenceCount);
+    end;
   end;
 
-  Inc(Info.Count, Result);
+  Inc(Info.Count, Result.Count);
+  Result.NextChar := Source;
 {  if not (coContinuous in DestOptions) then
     Info.CodePage := nil;}
 end;
 
-function IsUTF8(Source: PLegacyChar; Count: Integer; DestOptions: TEncodeUTF16;
+function IsUTF8(Source: PLegacyChar; SourceCount: Integer; DestOptions: TEncodeUTF16;
   Threshold: Integer): Boolean;
 var
   Info: TStringInfo;
   Buf: array[0..$3FF] of WideChar;
-  Cnt, Idx: Integer;
+  Cnt: Integer;
   Opt: TEncodeUTF16;
 begin
   FillChar(Info, SizeOf(Info), 0);
@@ -1032,25 +1075,30 @@ begin
   Opt := DestOptions + [coContinuous];
 
   repeat
-    if Count < Cnt then
+    if SourceCount < Cnt then
     begin
-      Cnt := Count;
+      Cnt := SourceCount;
       Opt := DestOptions;
     end;
 
-    Idx := 0;
-    FromUTF8(Info, Source, Cnt, Idx, Buf, DestOptions);
-    if (Idx = 0) or (Info.InvalidChar <> 0) then
+    with FromUTF8(Info, Source, Cnt, Buf, DestOptions, Threshold) do
     begin
-      Result := False;
-      Exit;
+      if (Count = 0) or (Info.InvalidChar <> 0) then
+      begin
+        Result := False;
+        Exit;
+      end;
+      if SuccessBytes >= Threshold then
+      begin
+        Result := True;
+        Exit;
+      end;
+      Source := NextChar;
+      Dec(SourceCount, Count);
     end;
+  until SourceCount = 0;
 
-    Inc(Source, Idx);
-    Dec(Count, Idx);
-  until Count = 0;
-
-  Result := Info.SequenceCount > Threshold;
+  Result := Info.SequenceCount >= Threshold div 2; // per 2-byte sequences
 end;
 
 { ECodePage }
@@ -2218,7 +2266,7 @@ end;
 function TSingleByteCodePage.ToUTF16(var Info: TStringInfo; Source: PLegacyChar; Count: Integer;
   SourceOptions: TLegacySource; Dest: PWideChar; DestOptions: TEncodeUTF16): Integer;
 var
-  I, Idx: Integer;
+  I: Integer;
   C: LegacyChar;
   W: WideChar;
   Inf: TStringInfo;
@@ -2229,8 +2277,7 @@ begin
   if soDetectCharSet in SourceOptions then
   begin
     Inf := Info;
-    Idx := 0;
-    Result := FromUTF8(Inf, Source, Count, Idx, Dest, DestOptions);
+    Result := FromUTF8(Inf, Source, Count, Dest, DestOptions).Count;
     if Result <> 0 then
     begin
       Info := Inf;
