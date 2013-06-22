@@ -5,4 +5,3 @@
 *.dpr git-encoding=utf-8 working-tree-encoding=windows-1252
 *.pas git-encoding=utf-8 working-tree-encoding=windows-1252
 *.rc  git-encoding=utf-8 working-tree-encoding=windows-1252
-matrix.full.txt git-encoding=utf-8 working-tree-encoding=cp866
