@@ -160,6 +160,16 @@ type
 
   TStringOptions = TLegacyOptions;
 
+  TLineBreak = (lbNone, lbLF, lbCR, lbLFCR, lbCRLF); // ordered
+const
+  LineBreakChars: array[Boolean] of LegacyChar = #10#13;
+
+type
+  TTextSplit = record
+    Count: Integer;
+    LineBreak: TLineBreak;
+  end;
+
   TSubstring = class(TIndexed)
   private
   { placeholder } // FData: Pointer;
@@ -274,6 +284,7 @@ type
       DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; override;
   {$ENDIF}
 
+    function IsUTF8(ThresholdBytes: Integer = 4): Boolean;
     function Load(Source: TReadableStream; SourceOptions: TStringOptions = [];
       DestIndex: Integer = 0): Integer; override;
 
@@ -402,21 +413,23 @@ type
 
   TCoreString = TWideString; // TODO: non-Unicode
 
-  TLineBreak = (lbLF, lbCR, lbCRLF);
-
   TStrings = class(TObjects)
   public
     function Load(Source: TSubstring; SourceOptions: TStringOptions = [];
-      AverageStringLength: Integer = 32): Integer; overload; virtual;
+      AverageStringLength: Integer = 32): TTextSplit; overload; virtual;
   {$IFNDEF LiteStrings}
     function Load(Source: TReadableStream; SourceOptions: TStringOptions = [];
-      AverageStringLength: Integer = 32): Integer; overload; virtual;
+      AverageStringLength: Integer = 32): TTextSplit; overload; virtual;
     function Load(FileName: PCoreChar; SourceOptions: TStringOptions = [];
-      AverageStringLength: Integer = 32): Integer; overload;
+      AverageStringLength: Integer = 32): TTextSplit; overload;
   {$ENDIF}
     function TextLength: Integer;
   end;
 
+const
+  UTF8BOMChars: array[0..2] of LegacyChar = #$BF#$BB#$EF; // BOM_UTF8 from Unicode.inc is Integer
+
+type
   PLegacyStringArray = ^TLegacyStringArray;
   TLegacyStringArray = array[0..MaxInt div SizeOf(TLegacyString) - 1] of TLegacyString;
 
@@ -424,23 +437,71 @@ type
   private
   { hold } FItems: PLegacyStringArray;
   { hold } FOwnsStrings: Boolean;
+    procedure Append(Source: PLegacyChar; Count: Integer; const Options); overload;
   public
     function Load(Source: TSubstring; SourceOptions: TStringOptions = [];
-      AverageStringLength: Integer = 32): Integer; override;
+      AverageStringLength: Integer = 32): TTextSplit; override;
   {$IFDEF LiteStrings}
     function Load(Source: TReadableStream; SourceOptions: TStringOptions = [];
-      AverageStringLength: Integer = 32): Integer; overload;
+      AverageStringLength: Integer = 32): TTextSplit; overload;
     function Load(FileName: PCoreChar; SourceOptions: TStringOptions = [];
-      AverageStringLength: Integer = 32): Integer; overload;
+      AverageStringLength: Integer = 32): TTextSplit; overload;
   {$ENDIF}
 
-    procedure Save(Dest: TWritableStream; Delimiter: LegacyChar = #10{;
+    procedure Save(Dest: TWritableStream; LineBreak: LegacyChar = #10{;
       WriteBOM: Boolean = False}); overload;
-    procedure Save(FileName: PCoreChar; Delimiter: LegacyChar = #10{;
+    procedure Save(FileName: PCoreChar; LineBreak: LegacyChar = #10{;
       WriteBOM: Boolean = False}); overload;
 
     property Items: PLegacyStringArray read FItems;
     property OwnsStrings: Boolean read FOwnsStrings;
+  end;
+
+  TStringListItem = TListItem;
+
+  TStringList = class(TList)
+  public
+    function Load(Source: TSubstring; SourceOptions: TStringOptions = []): TTextSplit; overload; virtual; abstract;
+  {$IFNDEF LiteStrings}
+    function Load(Source: TReadableStream; SourceOptions: TStringOptions = []): TTextSplit; overload; virtual;
+    function Load(FileName: PCoreChar; SourceOptions: TStringOptions = []): TTextSplit; overload;
+  {$ENDIF}
+    function TextLength: Integer;
+  end;
+
+  TLegacyStringList = class;
+
+  TLegacyStringListItem = class(TStringListItem)
+  private
+  { hold } FOwner: TLegacyStringList;
+  { hold } FPrior, FNext: TLegacyStringListItem;
+    FValue: TLegacyString;
+  public
+    destructor Destroy; override;
+
+    property Next: TLegacyStringListItem read FNext;
+    property Owner: TLegacyStringList read FOwner;
+    property Prior: TLegacyStringListItem read FPrior;
+    property Value: TLegacyString read FValue;
+  end;
+
+  TLegacyStringList = class(TStringList)
+  private
+  { hold } FFirst, FLast: TLegacyStringListItem;
+    procedure Append(Source: PLegacyChar; Count: Integer; const Options); overload;
+  public
+    function Load(Source: TSubstring; SourceOptions: TStringOptions = []): TTextSplit; override;
+  {$IFDEF LiteStrings}
+    function Load(Source: TReadableStream; SourceOptions: TStringOptions = []): TTextSplit; overload;
+    function Load(FileName: PCoreChar; SourceOptions: TStringOptions = []): TTextSplit; overload;
+  {$ENDIF}
+    procedure Save(Dest: TWritableStream; LineBreak: LegacyChar = #10{;
+      WriteBOM: Boolean = False}); overload;
+    procedure Save(FileName: PCoreChar; LineBreak: LegacyChar = #10{;
+      WriteBOM: Boolean = False}); overload;
+
+    property First: TLegacyStringListItem read FFirst;
+    property Last: TLegacyStringListItem read FLast;
   end;
 
 { Legacy Windows service }
@@ -642,9 +703,21 @@ type
   end;
 
 function FromUTF8(var Info: TStringInfo; Source: PLegacyChar; Count: Integer;
-  Dest: PWideChar; DestOptions: TEncodeUTF16 = []; Threshold: Integer = MaxInt): TFromUTF8;
+  Dest: PWideChar; DestOptions: TEncodeUTF16 = []; ThresholdBytes: Integer = MaxInt): TFromUTF8;
 function IsUTF8(Source: PLegacyChar; SourceCount: Integer; DestOptions: TEncodeUTF16 = [];
-  Threshold: Integer = 4): Boolean;
+  ThresholdBytes: Integer = 4): Boolean;
+
+type
+  TLegacyTextEvent = procedure(Source: PLegacyChar; Count: Integer; const Options) of object;
+  TWideTextEvent = procedure(Source: PWideChar; Count: Integer; const Options) of object;
+  TQuadTextEvent = procedure(Source: PQuadChar; Count: Integer; const Options) of object;
+
+function SplitText(Source: PLegacyChar; Count: Integer; DestEvent: TLegacyTextEvent;
+  const DestOptions): TTextSplit; overload;
+function SplitText(Source: PWideChar; Count: Integer; BigEndian: Boolean;
+  DestEvent: TWideTextEvent; const DestOptions): TTextSplit; overload;
+function SplitText(Source: PQuadChar; Count: Integer; BigEndian: Boolean;
+  DestEvent: TQuadTextEvent; const DestOptions): TTextSplit; overload;
 
 implementation
 
@@ -802,7 +875,7 @@ begin
 end;
 
 function FromUTF8(var Info: TStringInfo; Source: PLegacyChar; Count: Integer;
-  Dest: PWideChar; DestOptions: TEncodeUTF16; Threshold: Integer): TFromUTF8;
+  Dest: PWideChar; DestOptions: TEncodeUTF16; ThresholdBytes: Integer): TFromUTF8;
 
 var
   Limit: PLegacyChar;
@@ -891,7 +964,7 @@ begin
   Block := cbNonUnicode;
 {$ENDIF}
 
-  while (Source < Limit) and (Result.SuccessBytes < Threshold) do
+  while (Source < Limit) and (Result.SuccessBytes < ThresholdBytes) do
   begin
     if T <> 0 then
       Q := T
@@ -1058,7 +1131,7 @@ begin
 end;
 
 function IsUTF8(Source: PLegacyChar; SourceCount: Integer; DestOptions: TEncodeUTF16;
-  Threshold: Integer): Boolean;
+  ThresholdBytes: Integer): Boolean;
 var
   Info: TStringInfo;
   Buf: array[0..$3FF] of WideChar;
@@ -1081,14 +1154,14 @@ begin
       Opt := DestOptions;
     end;
 
-    with FromUTF8(Info, Source, Cnt, Buf, DestOptions, Threshold) do
+    with FromUTF8(Info, Source, Cnt, Buf, DestOptions, ThresholdBytes) do
     begin
       if (Count = 0) or (Info.InvalidChar <> 0) then
       begin
         Result := False;
         Exit;
       end;
-      if SuccessBytes >= Threshold then
+      if SuccessBytes >= ThresholdBytes then
       begin
         Result := True;
         Exit;
@@ -1098,7 +1171,71 @@ begin
     end;
   until SourceCount = 0;
 
-  Result := Info.SequenceCount >= Threshold div 2; // per 2-byte sequences
+  Result := Info.SequenceCount >= ThresholdBytes div 2; // per 2-byte sequences
+end;
+
+function SplitText(Source: PLegacyChar; Count: Integer; DestEvent: TLegacyTextEvent;
+  const DestOptions): TTextSplit;
+var
+  P, Limit, Next: PLegacyChar;
+  B: Boolean;
+begin
+  FillChar(Result, SizeOf(Result), 0);
+  if Source <> nil then
+  begin
+    Limit := Source + Count;
+    P := Source;
+    while (P < Limit) and not (P^ in [#13, #10]) do
+      Inc(P);
+    Next := P;
+
+    for B := Low(LineBreakChars) to High(LineBreakChars) do
+      if Next^ = LineBreakChars[B] then
+      begin
+        Result.LineBreak := TLineBreak(Byte(B) + 1);
+        Inc(Next);
+        if Next^ = LineBreakChars[not B] then
+        begin
+          Inc(Next);
+          Inc(Result.LineBreak, 2); // Fast core
+        end;
+
+        repeat
+          DestEvent(Source, P - Source, DestOptions);
+          Inc(Result.Count);
+
+          P := StrScan(Next, LineBreakChars[B], Limit - Next);
+          if P = nil then
+          begin
+            DestEvent(Next, Limit - Next, DestOptions);
+            Inc(Result.Count);
+            Exit;
+          end;
+
+          Source := Next;
+          Next := P + 1;
+          if Next^ = LineBreakChars[not B] then
+            Inc(Next);
+        until Source >= Limit;
+
+        Exit;
+      end;
+
+    DestEvent(Source, Count, DestOptions);
+    Inc(Result.Count);
+  end;
+end;
+
+function SplitText(Source: PWideChar; Count: Integer; BigEndian: Boolean;
+  DestEvent: TWideTextEvent; const DestOptions): TTextSplit;
+begin
+  FillChar(Result, SizeOf(Result), 0); // TODO
+end;
+
+function SplitText(Source: PQuadChar; Count: Integer; BigEndian: Boolean;
+  DestEvent: TQuadTextEvent; const DestOptions): TTextSplit;
+begin
+  FillChar(Result, SizeOf(Result), 0); // TODO
 end;
 
 { ECodePage }
@@ -1699,6 +1836,11 @@ begin
 end;
 {$ENDIF UTF32}
 
+function TLegacyString.IsUTF8(ThresholdBytes: Integer): Boolean;
+begin
+  Result := CoreStrings.IsUTF8(FData, FCount, [], ThresholdBytes);
+end;
+
 function TLegacyString.Load(Source: TReadableStream; SourceOptions: TStringOptions;
   DestIndex: Integer): Integer;
 var
@@ -1986,7 +2128,7 @@ end;
 { TStrings }
 
 function TStrings.Load(Source: TSubstring; SourceOptions: TStringOptions;
-  AverageStringLength: Integer): Integer;
+  AverageStringLength: Integer): TTextSplit;
 var
   AvgCapacity: Integer;
 begin
@@ -1998,19 +2140,21 @@ begin
     else if AvgCapacity > Capacity then
       Capacity := AvgCapacity;
   end;
-  Result := 0;
+{$IFNDEF Lite}
+  FillChar(Result, SizeOf(Result), 0);
+{$ENDIF}
 end;
 
 {$IFNDEF LiteStrings}
 function TStrings.Load(Source: TReadableStream; SourceOptions: TStringOptions;
-  AverageStringLength: Integer): Integer;
+  AverageStringLength: Integer): TTextSplit;
 begin
-  Result := 0; // TODO: Load via TSharedString
+  FillChar(Result, SizeOf(Result), 0); // TODO: Load via TSharedString
 end;
 {$ENDIF LiteStrings}
 
 function {$IFDEF LiteStrings} TLegacyStrings {$ELSE} TStrings {$ENDIF} .Load
-  (FileName: PCoreChar; SourceOptions: TStringOptions; AverageStringLength: Integer): Integer;
+  (FileName: PCoreChar; SourceOptions: TStringOptions; AverageStringLength: Integer): TTextSplit;
 var
   F: TReadableStream;
 begin
@@ -2038,72 +2182,192 @@ end;
 
 { TLegacyStrings }
 
-function TLegacyStrings.Load(Source: TSubstring; SourceOptions: TStringOptions;
-  AverageStringLength: Integer): Integer;
+type
+  TLegacyStringAppend = record
+    CodePage: TCodePage;
+    SourceOptions: TStringOptions;
+  end;
+
+procedure TLegacyStrings.Append(Source: PLegacyChar; Count: Integer; const Options);
 var
-  P, T, Z: PLegacyChar;
   S: TLegacyString;
 begin
-  Result := inherited Load(Source, SourceOptions, AverageStringLength);
-  if Source <> nil then
+  S := TLegacyString.Create;
+  with TLegacyStringAppend(Options) do
+    S.Insert(Source, Count, {$IFNDEF LiteStrings} CodePage, {$ENDIF} SourceOptions);
+  Append(S);
+end;
+
+function TLegacyStrings.Load(Source: TSubstring; SourceOptions: TStringOptions;
+  AverageStringLength: Integer): TTextSplit;
+var
+  Opt: TLegacyStringAppend;
+begin
+  inherited Load(Source, SourceOptions, AverageStringLength);
+  with TLegacySubstring(Source) do
   begin
-    P := TLegacySubstring(Source).Data;
-    T := P + TLegacySubstring(Source).Count;
-    while P < T do
-    begin
-      Z := P;
-      while (Z < T) and not (Z^ in [#13, #10]) do
-        Inc(Z);
-      S := TLegacyString.Create;
-      S.Insert(P, Z - P, {$IFNDEF LiteStrings} TLegacySubstring(Source).FCodePage, {$ENDIF} SourceOptions);
-      Append(S);
-      P := Z + 1;
-      if (P < T) and (P^ = #10) then
-        Inc(P);
-      Inc(Result);
-    end;
+  {$IFNDEF LiteStrings}
+    Opt.CodePage := CodePage;
+  {$ENDIF}
+    Opt.SourceOptions := SourceOptions;
+    Result := SplitText(Data, Count, Append, Opt)
   end;
 end;
 
 {$IFDEF LiteStrings}
 function TLegacyStrings.Load(Source: TReadableStream; SourceOptions: TStringOptions;
-  AverageStringLength: Integer): Integer;
+  AverageStringLength: Integer): TTextSplit;
 var
   S: TLegacyString;
 begin
   S := TLegacyString.Create;
   try
     S.Load(Source, SourceOptions);
-    Result := Load(S, SourceOptions, AverageStringLength);
+    Result := Load(S, SourceOptions - [soAttachBuffer], AverageStringLength);
   finally
     S.Free;
   end;
 end;
 {$ENDIF}
 
-procedure TLegacyStrings.Save(Dest: TWritableStream; Delimiter: LegacyChar{; WriteBOM: Boolean});
+procedure TLegacyStrings.Save(Dest: TWritableStream; LineBreak: LegacyChar{; WriteBOM: Boolean});
 var
   I: Integer;
   S: TLegacyString;
 begin
-  //if WriteBOM // TODO
-  Dest.Size := TextLength + FCount * SizeOf(Delimiter); // prevents fragmentation
+//  if WriteBOM and
+  Dest.Size := TextLength + FCount * SizeOf(LineBreak); // prevent file fragmentation
   for I := 0 to FCount - 1 do
   begin
     S := FItems[I];
     if S <> nil then
       Dest.WriteBuffer(S.Data^, S.Count);
-    Dest.WriteBuffer(Delimiter, SizeOf(Delimiter));
+    Dest.WriteBuffer(LineBreak, SizeOf(LineBreak));
   end;
 end;
 
-procedure TLegacyStrings.Save(FileName: PCoreChar; Delimiter: LegacyChar{; WriteBOM: Boolean});
+procedure TLegacyStrings.Save(FileName: PCoreChar; LineBreak: LegacyChar{; WriteBOM: Boolean});
 var
   F: TWritableStream;
 begin
   F := TFileStream.Create(FileName, faRewrite);
   try
-    Save(F, Delimiter{, WriteBOM});
+    Save(F, LineBreak{, WriteBOM});
+  finally
+    F.Free;
+  end;
+end;
+
+{ TStringList }
+
+{$IFNDEF LiteStrings}
+function TStringList.Load(Source: TReadableStream; SourceOptions: TStringOptions): TTextSplit;
+begin
+  FillChar(Result, SizeOf(Result), 0); // TODO: Load via TSharedString
+end;
+{$ENDIF LiteStrings}
+
+function {$IFDEF LiteStrings} TLegacyStringList {$ELSE} TStringList {$ENDIF} .Load
+  (FileName: PCoreChar; SourceOptions: TStringOptions): TTextSplit;
+var
+  F: TReadableStream;
+begin
+  F := TFileStream.Create(FileName, faRead);
+  try
+    Result := Load(F, SourceOptions);
+  finally
+    F.Free;
+  end;
+end;
+
+function TStringList.TextLength: Integer;
+var
+  Item: TLegacyStringListItem;
+begin
+  Result := 0;
+  Item := TLegacyStringList(Self).FFirst;
+  while Item <> nil do
+  begin
+    Inc(Result);
+    Item := Item.FNext;
+  end;
+end;
+
+{ TLegacyStringListItem }
+
+destructor TLegacyStringListItem.Destroy;
+begin
+  FValue.Free;
+  inherited;
+end;
+
+{ TLegacyStringList }
+
+procedure TLegacyStringList.Append(Source: PLegacyChar; Count: Integer; const Options);
+begin
+  Append(TLegacyStringListItem.Create);
+  with TLegacyStringAppend(Options) do
+  begin
+    FLast.FValue := TLegacyString.Create;
+    FLast.FValue.Insert(Source, Count, SourceOptions);
+  end;
+end;
+
+function TLegacyStringList.Load(Source: TSubstring; SourceOptions: TStringOptions): TTextSplit;
+var
+  Opt: TLegacyStringAppend;
+begin
+  with TLegacySubstring(Source) do
+  begin
+  {$IFNDEF LiteStrings}
+    Opt.CodePage := CodePage;
+  {$ENDIF}
+    Opt.SourceOptions := SourceOptions;
+    Result := SplitText(Data, Count, Append, Opt)
+  end;
+end;
+
+{$IFDEF LiteStrings}
+function TLegacyStringList.Load(Source: TReadableStream; SourceOptions: TStringOptions): TTextSplit;
+var
+  S: TLegacyString;
+begin
+  S := TLegacyString.Create;
+  try
+    S.Load(Source, SourceOptions);
+    Result := Load(S, SourceOptions - [soAttachBuffer]);
+  finally
+    S.Free;
+  end;
+end;
+{$ENDIF}
+
+procedure TLegacyStringList.Save(Dest: TWritableStream; LineBreak: LegacyChar{;
+  WriteBOM: Boolean});
+var
+  Item: TLegacyStringListItem;
+begin
+  //if WriteBOM // TODO
+  Dest.Size := TextLength + FCount * SizeOf(LineBreak); // prevent file fragmentation
+  Item := FFirst;
+  while Item <> nil do
+  begin
+    if Item.FValue <> nil then
+      with Item.FValue do
+        Dest.WriteBuffer(Data^, Count);
+    Dest.WriteBuffer(LineBreak, SizeOf(LineBreak));
+    Item := Item.Next;
+  end;
+end;
+
+procedure TLegacyStringList.Save(FileName: PCoreChar; LineBreak: LegacyChar{;
+  WriteBOM: Boolean});
+var
+  F: TWritableStream;
+begin
+  F := TFileStream.Create(FileName, faRewrite);
+  try
+    Save(F, LineBreak{, WriteBOM});
   finally
     F.Free;
   end;
