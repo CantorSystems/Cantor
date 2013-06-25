@@ -1721,7 +1721,7 @@ function TString.Load(FileName: PCoreChar; SourceOptions: TStringOptions; DestIn
 var
   F: TReadableStream;
 begin
-  F := TFileStream.Create(FileName, faRead);
+  F := TFileStream.Create(FileName, faSequentialRead);
   try
     Result := Load(F, SourceOptions, DestIndex);
   finally
@@ -2158,7 +2158,7 @@ function {$IFDEF LiteStrings} TLegacyStrings {$ELSE} TStrings {$ENDIF} .Load
 var
   F: TReadableStream;
 begin
-  F := TFileStream.Create(FileName, faRead);
+  F := TFileStream.Create(FileName, faSequentialRead);
   try
     Result := Load(F, SourceOptions);
   finally
@@ -2250,7 +2250,7 @@ procedure TLegacyStrings.Save(FileName: PCoreChar; LineBreak: LegacyChar{; Write
 var
   F: TWritableStream;
 begin
-  F := TFileStream.Create(FileName, faRewrite);
+  F := TFileStream.Create(FileName, faSequentialRewrite);
   try
     Save(F, LineBreak{, WriteBOM});
   finally
@@ -2272,7 +2272,7 @@ function {$IFDEF LiteStrings} TLegacyStringList {$ELSE} TStringList {$ENDIF} .Lo
 var
   F: TReadableStream;
 begin
-  F := TFileStream.Create(FileName, faRead);
+  F := TFileStream.Create(FileName, faSequentialRead);
   try
     Result := Load(F, SourceOptions);
   finally
@@ -2365,7 +2365,7 @@ procedure TLegacyStringList.Save(FileName: PCoreChar; LineBreak: LegacyChar{;
 var
   F: TWritableStream;
 begin
-  F := TFileStream.Create(FileName, faRewrite);
+  F := TFileStream.Create(FileName, faSequentialRewrite);
   try
     Save(F, LineBreak{, WriteBOM});
   finally

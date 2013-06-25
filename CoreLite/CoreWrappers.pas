@@ -32,6 +32,9 @@ const
   faRead = [faShareRead];
   faRewrite = [faWrite, faOverwrite, faShareRead];
 
+  faSequentialRead = faRead + [faSequential];
+  faSequentialRewrite = faRewrite + [faSequential];
+
 {$IFDEF Lite}
   {$I LiteStreams.inc}
 {$ELSE}

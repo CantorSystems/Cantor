@@ -197,6 +197,32 @@ type
     property Root: TWikiDocument read FRoot;
   end;
 
+  TWikiTarget = class
+  public
+  //  function Estimate: Integer;
+    function Save(Dest: TWritableStream): Integer; virtual; abstract;
+  end;
+
+  TWikiHTMLTarget = class(TWikiTarget)
+  public
+    function Save(Dest: TWritableStream): Integer; override;
+  end;
+
+  TWikiWikiTarget = class(TWikiTarget)
+  public
+    function Save(Dest: TWritableStream): Integer; override;
+  end;
+
+  TWikiTextTarget = class(TWikiTarget)
+  public
+    function Save(Dest: TWritableStream): Integer; override;
+  end;
+
+  TWikiFB2Target = class(TWikiTarget)
+  public
+    function Save(Dest: TWritableStream): Integer; override;
+  end;
+
 {function CharIndex(Source: Char): Integer;
 function ExtCharIndex(Source: WideChar): Integer;}
 
@@ -345,6 +371,8 @@ begin
     begin
       Tag := TextTags[T];
       if (Source^ = Tag) and (Source[1] = Tag) then
+        if Tag = '-' then
+        else
     end;
 end;
 
@@ -423,7 +451,7 @@ procedure TWikiDocument.Load(FileName: PCoreChar; WikiMode: Boolean);
 var
   F: TReadableStream;
 begin
-  F := TFileStream.Create(FileName, faRead);
+  F := TFileStream.Create(FileName, faSequentialRead);
   try
     Load(F, WikiMode);
   finally
@@ -440,6 +468,34 @@ function TWikiDocument.Compare(Item: TBalancedTreeItem): Integer;
 begin
   Result := CompareStringA(LOCALE_USER_DEFAULT, NORM_IGNORECASE,
     TWikiDocument(Item).FPath.Data, TWikiDocument(Item).FPath.Count, FPath.Data, FPath.Count) - 2;
+end;
+
+{ TWikiHTMLTarget }
+
+function TWikiHTMLTarget.Save(Dest: TWritableStream): Integer;
+begin
+  Result := 0; // TODO
+end;
+
+{ TWikiWikiTarget }
+
+function TWikiWikiTarget.Save(Dest: TWritableStream): Integer;
+begin
+  Result := 0; // TODO
+end;
+
+{ TWikiTextTarget }
+
+function TWikiTextTarget.Save(Dest: TWritableStream): Integer;
+begin
+  Result := 0; // TODO
+end;
+
+{ TWikiFB2Target }
+
+function TWikiFB2Target.Save(Dest: TWritableStream): Integer;
+begin
+  Result := 0; // TODO
 end;
 
 end.
