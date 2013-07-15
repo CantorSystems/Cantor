@@ -152,6 +152,17 @@ type
     procedure Insert(Index: Integer; Item: TObject); {$IFNDEF Lite} override; {$ENDIF}
   end;
 
+  TCRC32Table = array[0..$FF] of LongWord;
+
+  TCRC32 = class
+  private
+    FTable: TCRC32Table;
+  public
+    constructor Create(Polynomial: LongWord = $EDB88320);
+    function CalcChecksum(const Buf; Count: Integer; Initial: LongWord = 0): LongWord;
+    property Table: TCRC32Table read FTable;
+  end;
+
 { Exceptions }
 
   EContainer = class(Exception)         
@@ -887,6 +898,35 @@ procedure TCollection.Insert(Index: Integer; Item: TObject);
   if Item <> nil then
     TCollectionItem(Item).Extract;
   inherited;
+end;
+
+{ TCRC32 }
+
+constructor TCRC32.Create(Polynomial: LongWord);
+var
+  I, J: Integer;
+  T: LongWord;
+begin
+  for I := Low(FTable) to High(FTable) do
+  begin
+    T := I;
+    for J := 0 to 7 do
+      if T and 1 <> 0 then
+        T := (T shr 1) xor Polynomial
+      else
+        T := T shr 1;
+    FTable[I] := T;
+  end;
+end;
+
+function TCRC32.CalcChecksum(const Buf; Count: Integer; Initial: LongWord): LongWord;
+var
+  I: Integer;
+begin
+  Result := not Initial;
+  for I := 0 to Count - 1 do
+    Result := FTable[(Result xor TByteArray(Buf)[I]) and $FF] xor (Result shr 8);
+  Result := not Result;
 end;
 
 end.
