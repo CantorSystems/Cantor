@@ -92,7 +92,6 @@ type
 
   TCodePage = class;
 
-  PStringInfo = ^TStringInfo;
   TStringInfo = record
     Count, CharCount: Integer;
     CodePage: TCodePage;

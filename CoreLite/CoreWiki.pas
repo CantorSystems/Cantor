@@ -365,15 +365,26 @@ function TWikiText.Parse(Source, Limit: PLegacyChar): PLegacyChar;
 var
   T: TTextType;
   Tag: LegacyChar;
+  Comment: PLegacyChar;
+  WithinComment: Boolean;
 begin
   while not (Source^ in [#13, #10]) and (Source < Limit) do
-    for T := Low(TextTags) to High(TextTags) do
+    if (Source^ = '?') and (Source[1] = '?') then // skip inline comments
     begin
-      Tag := TextTags[T];
-      if (Source^ = Tag) and (Source[1] = Tag) then
-        if Tag = '-' then
-        else
-    end;
+      Comment := Source + 2;
+      while {not (Comment in} (Comment < Limit) do
+      begin
+        if Comment^ = '?' then
+      end;
+    end
+    else
+      for T := Low(TextTags) to High(TextTags) do
+      begin
+        Tag := TextTags[T];
+        if (Source^ = Tag) and (Source[1] = Tag) then
+          if Tag = '-' then
+          else
+      end;
 end;
 
 { TWikiParagraph }
@@ -428,6 +439,12 @@ begin
 {$ENDIF}
 end;
 
+function TWikiDocument.Compare(Item: TBalancedTreeItem): Integer;
+begin
+  Result := CompareStringA(LOCALE_USER_DEFAULT, NORM_IGNORECASE,
+    TWikiDocument(Item).FPath.Data, TWikiDocument(Item).FPath.Count, FPath.Data, FPath.Count) - 2;
+end;
+
 procedure TWikiDocument.Load(Stream: TReadableStream; WikiMode: Boolean);
 var
   P, Limit: PLegacyChar;
@@ -462,12 +479,6 @@ end;
 function TWikiDocument.Parse(P, Limit: PLegacyChar; WikiMode: Boolean): PLegacyChar;
 begin
   Result := Limit; // TODO
-end;
-
-function TWikiDocument.Compare(Item: TBalancedTreeItem): Integer;
-begin
-  Result := CompareStringA(LOCALE_USER_DEFAULT, NORM_IGNORECASE,
-    TWikiDocument(Item).FPath.Data, TWikiDocument(Item).FPath.Count, FPath.Data, FPath.Count) - 2;
 end;
 
 { TWikiHTMLTarget }
