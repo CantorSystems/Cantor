@@ -26,8 +26,8 @@ uses
   Windows,
   CoreUtils,
   CoreExceptions,
-  LiteConvCore in 'LiteConvCore.pas',
-  LiteConvConsts in 'LiteConvConsts.pas';
+  ConvCore in 'ConvCore.pas',
+  ConvConsts in 'ConvConsts.pas';
 
 const
   sMMX = 'This program requires MMX';

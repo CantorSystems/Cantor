@@ -4,7 +4,7 @@
     Copyright © 2013 Vladislav Javadov (Freeman)
 *)
 
-unit LiteConvCore;
+unit ConvCore;
 
 interface
 
@@ -20,7 +20,7 @@ type
     FFileName: TCoreString;
     FCodePage: Word;
   public
-    constructor Create(FileName: PCoreChar; Count: Integer);
+    constructor Create(FileName: PCoreChar; Count: Integer); overload;
     destructor Destroy; override; 
 
     property CodePage: Word read FCodePage write FCodePage;
@@ -74,7 +74,7 @@ type
 implementation
 
 uses
-  Windows, LiteConvConsts;
+  Windows, ConvConsts;
 
 const
   CSTR_EQUAL = 2;
@@ -141,7 +141,6 @@ var
   ExeName: array[0..MAX_PATH] of CoreChar;
   Arg: TFileArg;
   CP: Word;
-  Into: Boolean;
 begin
   FConsole := TStreamConsole.Create;
   with FConsole do
@@ -208,7 +207,7 @@ begin
       end
       else if SameKey(P, sInto) then
       begin
-        Into := True;
+        FInto := TFileArg.Create;
         P.Param := nil;
       end
       else if SameKey(P, sPause) then

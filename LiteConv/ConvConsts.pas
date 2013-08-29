@@ -4,7 +4,7 @@
     Copyright © 2013 Vladislav Javadov (Freeman)
 *)
 
-unit LiteConvConsts;
+unit ConvConsts;
 
 interface
 
