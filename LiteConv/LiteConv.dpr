@@ -8,7 +8,6 @@
       * ForceMMX -- allow MMX with FastCode
       * HX -- don't check Unicode support for HX DOS Extender compatibility
       * Lite -- commonly lite version of code
-      * LiteStrings -- no code page support for strings
       * Tricks  -- use tricky lite System unit
 
     Search path:  ..\CoreLite

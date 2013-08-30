@@ -13,7 +13,11 @@ uses
 
 type
   TCodePageArg = (cpAuto, cpOEM, cpCESU8, cpUTF16LE, cpUTF16BE, cpUTF32LE, cpUTF32BE);
+const
+  cpUTF16 = cpUTF16LE; // platform ??
+  cpUTF32 = cpUTF32LE;
 
+type
   TFileArg = class(TListItem)
   private
   { hold } FPrior, FNext: TFileArg;
@@ -184,6 +188,8 @@ begin
     if P.Length = 0 then
       Break;
 
+    CP := 0;
+
     if (not P.Quoted) and ((P.Param^ = CoreChar('/')) or (P.Param^ = CoreChar('-'))) then
     begin
       if SameKey(P, sCodePage) then
@@ -192,19 +198,15 @@ begin
         if P.Length = 0 then
           raise ECommandLine.Create(sMissingCodePage, nil);
         if FInto <> nil then
-          FInto.CodePage := ToCodePage(P)
-        else
         begin
-          Arg := FFileArgs.Last;
+          FInto.CodePage := ToCodePage(P);
+          P.Param := nil;
+        end
+        else
           CP := ToCodePage(P);
-          while Arg <> nil do
-          begin
-            Arg.CodePage := CP;
-            Arg := Arg.Prior;
-          end;
-        end;
-        P.Param := nil;
       end
+      else if SameKey(P, sOEM) then
+        CP := Word(cpOEM)
       else if SameKey(P, sInto) then
       begin
         FInto := TFileArg.Create;
@@ -214,12 +216,54 @@ begin
       begin
         FPause := True;
         P.Param := nil;
-      end;
+      end
+      else
+        if FInto <> nil then
+        begin
+          if SameKey(P, sCESU8) then
+          begin
+            FInto.CodePage := Word(cpCESU8);
+            P.Param := nil;
+          end
+          else if SameKey(P, sUTF16) then
+          begin
+            FInto.CodePage := Word(cpUTF16);
+            P.Param := nil;
+          end
+          else if SameKey(P, sUTF32) then
+          begin
+            FInto.CodePage := Word(cpUTF32);
+            P.Param := nil;
+          end
+          else if SameKey(P, sBigEndian) and (TCodePageArg(FInto.CodePage) in [cpUTF16, cpUTF32]) then
+          begin
+            Inc(FInto.FCodePage);
+            P.Param := nil;
+          end;
+        end;
     end;
 
-    if P.Param <> nil then
+    if CP <> 0 then
     begin
-    
+      Arg := FFileArgs.Last;
+      while (Arg <> nil) and (Arg.CodePage = 0) do
+      begin
+        Arg.CodePage := CP;
+        Arg := Arg.Prior;
+      end;
+    end
+    else if P.Param <> nil then
+    begin
+      with P do
+        Param[Length] := CoreChar(0); // unsafe;
+
+      if FInto <> nil then
+        if FInto.FFileName = nil then
+          FInto := TFileArg.Create(P.Param, P.Length)
+        else
+          FInto.FileName.Insert(P.Param, P.Length, [soAttachBuffer])
+      else
+        FFileArgs.Append(TFileArg.Create(P.Param, P.Length));
     end;
 
     CommandLine := P.NextParam;
