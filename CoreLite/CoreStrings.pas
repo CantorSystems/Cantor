@@ -505,6 +505,11 @@ type
 
 { Legacy Windows service }
 
+const
+  CSTR_LESS_THAN    = 1;
+  CSTR_EQUAL        = 2;
+  CSTR_GREATER_THAN = 3;
+
 type
   TCPInfoEx = packed record
     MaxCharSize: LongWord;
@@ -2308,7 +2313,7 @@ begin
   with TLegacyStringAppend(Options) do
   begin
     FLast.FValue := TLegacyString.Create;
-    FLast.FValue.Insert(Source, Count, SourceOptions);
+    FLast.FValue.Insert(Source, Count, nil, SourceOptions);
   end;
 end;
 
