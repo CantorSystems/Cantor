@@ -171,6 +171,7 @@ type
 
   TSubstring = class(TIndexed)
   private
+    FChildCount: Integer;
   { placeholder } // FData: Pointer;
   { placeholder } // FOptions: TStringOptions;
   public
@@ -180,6 +181,7 @@ type
   {$IFNDEF Lite}
     {class} function Length(Source: Pointer; MaxLength: Integer): Integer; overload; virtual; abstract;
   {$ENDIF}
+    property ChildCount: Integer read FChildCount;
   end;
 
   TLegacySubstring = class(TSubstring)
@@ -379,11 +381,12 @@ type
   {$ENDIF}
   public
     {class} function ByteCount(Count: Integer): Integer; override;
-    procedure Clear; override;
     {class} function Length(Source: Pointer): Integer; overload; override;
   {$IFNDEF Lite}
     {class} function Length(Source: Pointer; MaxLength: Integer): Integer; overload; override;
   {$ENDIF}
+    procedure Clear; override;
+    function IsUnique: Boolean;
 
     function Insert(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; CodePage: TCodePage = nil;
       SourceOptions: TLegacySource = []; DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; override;
@@ -426,7 +429,7 @@ type
   end;
 
 const
-  UTF8BOMChars: array[0..2] of LegacyChar = #$BF#$BB#$EF; // BOM_UTF8 from Unicode.inc is Integer
+  UTF8BOMChars: array[0..2] of LegacyChar = #$BF#$BB#$EF; // const BOM_UTF8 from Unicode.inc is Integer
 
 type
   PLegacyStringArray = ^TLegacyStringArray;
@@ -436,7 +439,7 @@ type
   private
   { hold } FItems: PLegacyStringArray;
   { hold } FOwnsStrings: Boolean;
-    procedure Append(Source: PLegacyChar; Count: Integer; const Options); overload;
+    procedure Append(Source: PLegacyChar; Count: Integer; const Options); reintroduce; overload; // otherwise "hides"
   public
     function Load(Source: TSubstring; SourceOptions: TStringOptions = [];
       AverageStringLength: Integer = 32): TTextSplit; override;
@@ -621,6 +624,40 @@ type
     property SingleByteMap;
     property DoubleByteMap: TDoubleByteMap read FDoubleByteMap;
     property WideMap: PWideMap read FWideMap;
+  end;
+
+  TNewCodePageFunc = function(CodePage: Word = CP_ACP): TCodePage;
+
+  TCodePages = class;
+
+  TCodePagesItem = class(TRedBlackTreeItem)
+  private
+  { hold } FOwner: TCodePages;
+  { hold } FLeft, FRight, FParent: TCodePagesItem;
+  { hold } FRed: Boolean;
+    FCodePage: TCodePage;
+  public
+    destructor Destroy; override;
+    function Compare(Item: TBalancedTreeItem): Integer; override;
+
+    property CodePage: TCodePage read FCodePage;
+    property Left: TCodePagesItem read FLeft;
+    property Parent: TCodePagesItem read FParent;
+    property Owner: TCodePages read FOwner;
+    property Red: Boolean read FRed;
+    property Right: TCodePagesItem read FRight;
+  end;
+
+  TCodePages = class(TRedBlackTree)
+  private
+  { hold } FRoot: TCodePagesItem;
+    FNewCodePageFunc: TNewCodePageFunc;
+    function GetItem(CodePage: Word): TCodePage;
+  public
+    constructor Create(NewCodePageFunc: TNewCodePageFunc);
+
+    property Items[CodePage: Word]: TCodePage read GetItem; default;
+    property Root: TCodePagesItem read FRoot;
   end;
 
 { Exceptions }
@@ -2070,6 +2107,11 @@ begin
   FCount := 0;
 end;
 
+function TSharedString.IsUnique: Boolean;
+begin
+  Result := (FParent = nil)
+end;
+
 function TSharedString.GetAsLegacyChar: PLegacyChar;
 begin
   Result := FData; // TODO
@@ -2124,8 +2166,39 @@ end;
 
 {$IFNDEF LiteStrings}
 function TSharedString.Load(Source: TReadableStream; SourceOptions: TStringOptions; DestIndex: Integer): Integer;
+
+procedure LoadWideString;
+var
+  ByteLen: Integer;
 begin
-  Result := 0; // TODO: autodetect
+  FParent := TWideString.Create;
+  ByteLen := Source.Size - SizeOf(WideChar); // BOM
+  FParent.SetCount(ByteLen div SizeOf(WideChar));
+  Source.ReadBuffer(TLegacyString(FParent).Data^, ByteLen);
+  FData := TLegacyString(FParent).Data;
+  FCount := FParent.Count;
+end;
+
+var
+  BOM: WideChar;
+begin
+  if DestIndex = 0 then
+  begin
+    Clear;
+    Source.ReadBuffer(BOM, SizeOf(BOM));
+    case BOM of
+      BOM_UTF16_LE:
+        LoadWideString;
+      BOM_UTF16_BE:
+        begin
+          LoadWideString;
+
+        end;
+
+    end;
+  end
+  else
+    Result := 0; 
 end;
 {$ENDIF}
 
@@ -2313,7 +2386,7 @@ begin
   with TLegacyStringAppend(Options) do
   begin
     FLast.FValue := TLegacyString.Create;
-    FLast.FValue.Insert(Source, Count, nil, SourceOptions);
+    FLast.FValue.Insert(Source, Count, {$IFNDEF LiteStrings} nil, {$ENDIF} SourceOptions);
   end;
 end;
 
@@ -2764,6 +2837,55 @@ begin
   Result := 0; // TODO
 end;
 {$ENDIF}
+
+{ TCodePagesItem }
+
+destructor TCodePagesItem.Destroy;
+begin
+  FCodePage.Free;
+  inherited;
+end;
+
+function TCodePagesItem.Compare(Item: TBalancedTreeItem): Integer;
+begin
+  Result := 0;
+  if TCodePagesItem(Item).CodePage.Number < FCodePage.Number then
+    Dec(Result)
+  else if TCodePagesItem(Item).CodePage.Number > FCodePage.Number then
+    Inc(Result);
+end;
+
+{ TCodePages }
+
+constructor TCodePages.Create(NewCodePageFunc: TNewCodePageFunc);
+begin
+  FNewCodePageFunc := NewCodePageFunc;
+end;
+
+function TCodePages.GetItem(CodePage: Word): TCodePage;
+var
+  Item: TCodePagesItem;
+begin
+  CodePage := TranslateCodePage(CodePage);
+  Item := Root;
+  while Item <> nil do
+  begin
+    if CodePage < Item.CodePage.Number then
+      Item := Item.Left
+    else if CodePage > Item.CodePage.Number then
+      Item := Item.Right
+    else
+    begin
+      Result := Item.CodePage;
+      Exit;
+    end;
+  end;
+
+  Item := TCodePagesItem.Create;
+  Item.FCodePage := FNewCodePageFunc(CodePage);
+  Insert(Item);
+  Result := Item.CodePage;
+end;
 
 end.
 

@@ -18,8 +18,11 @@ const
   cpUTF32 = cpUTF32LE;
 
 type
+  TFileArgs = class;
+
   TFileArg = class(TListItem)
   private
+  { hold } FOwner: TFileArgs;
   { hold } FPrior, FNext: TFileArg;
     FFileName: TCoreString;
     FCodePage: Word;
@@ -30,6 +33,7 @@ type
     property CodePage: Word read FCodePage write FCodePage;
     property FileName: TCoreString read FFileName;
     property Next: TFileArg read FNext;
+    property Owner: TFileArgs read FOwner;
     property Prior: TFileArg read FPrior;
   end;
 
@@ -56,15 +60,6 @@ type
     procedure Run;
   end;
 
-  {TProcessor = class
-  private
-  public
-    constructor Create(const FileNames: TInputFileNames);
-    destructor Destroy; override;
-    function Execute(Into: TLegacyStrings; App: TApplication;
-      var FuncCount: Integer): Integer;
-  end;}
-
   ECommandLine = class(Exception)
   private
     FInvalidArg: PCoreChar;
@@ -79,9 +74,6 @@ implementation
 
 uses
   Windows, ConvConsts;
-
-const
-  CSTR_EQUAL = 2;
 
 type
   TLineBuf = array[0..80] of LegacyChar; // including #0
@@ -272,20 +264,11 @@ end;
 
 destructor TApplication.Destroy;
 begin
-  if FPause then // placed here to show exceptions properly
-    FConsole.ReadLn(sPressEnterToExit);
   FInto.Free;
   FFileArgs.Free;
+  if FPause then // placed here to show exceptions properly
+    FConsole.ReadLn(sPressEnterToExit);
   FConsole.Free;
-end;
-
-procedure TApplication.Run;
-begin
-  if FFileArgs.First = nil then
-  begin
-    FConsole.WriteLn(sUsage, [FAppName, GetACP, GetOEMCP]);
-    Exit;
-  end;
 end;
 
 procedure TApplication.Warning(Msg: PLegacyChar);
@@ -301,25 +284,42 @@ begin
   Warning(Buf);
 end;
 
-{ TProcessor }
-
-{constructor TProcessor.Create(const FileNames: TInputFileNames);
-begin
-end;
-
-destructor TProcessor.Destroy;
-begin
-//  inherited;
-end;
-
-function TProcessor.Execute(Into: TLegacyStrings; App: TApplication;
-  var FuncCount: Integer): Integer;
+procedure TApplication.Run;
 
 var
-  Limit: PLegacyChar;
+  CodePages: TCodePages;
 
+procedure ConvertFile(Source: TFileArg);
+var
+  Text, DestFileName: TCoreString;
+  CP: TCodePage;
 begin
-end;}
+  CP := CodePages[Source.CodePage];
+
+end;
+
+var
+  Arg: TFileArg;
+begin
+  CodePages := TCodePages.Create(@PlatformCodePage);
+  try
+    if FFileArgs.First <> nil then
+    begin
+      Arg := FFileArgs.First;
+      while Arg <> nil do
+      begin
+        ConvertFile(Arg);
+        Arg := Arg.Next;
+      end;
+    end
+    else if (FInto <> nil) and (FInto.FFileName <> nil) then
+      ConvertFile(FInto)
+    else
+      FConsole.WriteLn(sUsage, [FAppName, GetACP, GetOEMCP]);
+  finally
+    CodePages.Free;
+  end;
+end;
 
 end.
 
