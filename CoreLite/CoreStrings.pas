@@ -429,7 +429,7 @@ type
   end;
 
 const
-  UTF8BOMChars: array[0..2] of LegacyChar = #$BF#$BB#$EF; // const BOM_UTF8 from Unicode.inc is Integer
+  UTF8BOMChars: array[0..2] of LegacyChar = #$BF#$BB#$EF; // BOM_UTF8 const from Unicode.inc is Integer
 
 type
   PLegacyStringArray = ^TLegacyStringArray;

@@ -1,22 +1,22 @@
 (*
-    Lite charset conversion utility (LiteConv)
+    Portable Executable (PE) Tool
 
     Copyright © 2013 Vladislav Javadov (Freeman)
 
     Conditional defines:
       * Compat -- use Delphi IDE friendly exceptions
+      * CustomStub -- get Windows requirement message from custom stub (planning)
       * ForceMMX -- allow MMX with FastCode
       * HX -- don't check Unicode support for HX DOS Extender compatibility
       * Lite -- commonly lite version of code
       * Tricks  -- use tricky lite System unit
 
-    Search path:  ..\CoreLite
+    Search path:  ..\..\CoreLite
 *)
 
-program LiteConv;
+program Pet;
 
 {$APPTYPE CONSOLE}
-{$R *.res}
 
 uses
 {$IFDEF Tricks}
@@ -25,8 +25,8 @@ uses
   Windows,
   CoreUtils,
   CoreExceptions,
-  ConvCore in 'ConvCore.pas',
-  ConvConsts in 'ConvConsts.pas';
+  CLI in 'CLI.pas',
+  PetConsts in 'PetConsts.pas';
 
 const
   sMMX = 'This program requires MMX';
@@ -36,21 +36,27 @@ begin
 {$IFDEF Tricks}
   UseErrorMessageWrite;
 {$ENDIF}
-  UseExceptionMessageWrite;  
+{$IFDEF Compat}
+  UseExceptionMessageWrite;
+{$ENDIF}
 
 {$IFDEF ForceMMX}
   if not MMX_Supported then
   begin
     ErrorMessage(sMMX, StrLen(sMMX));
-    Halt(1);
+    Exit;
   end;
 {$ENDIF}
                      
 {$IFNDEF HX}
   if not IsPlatformUnicode then
   begin
+  {$IFDEF CustomStub}
+    ErrorMessage(PLegacyChar($0040002F), PByte($0040002E)^);
+  {$ELSE}
     ErrorMessage(sPlatformRequired, StrLen(sPlatformRequired));
-    Halt(1);
+  {$ENDIF}
+    Exit;
   end;
 {$ENDIF}
 
@@ -60,12 +66,9 @@ begin
       Run;
     except
       on E: Exception do
-      begin
         ShowException(E);
-        ExitCode := 1;
-      end;
     end;
-    Free;
+    Destroy;
   end;
 end.
  

@@ -295,7 +295,6 @@ var
   CP: TCodePage;
 begin
   CP := CodePages[Source.CodePage];
-
 end;
 
 var
