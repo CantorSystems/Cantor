@@ -45,6 +45,12 @@ const
   sAssertError = '%s (%s, line %d)';
   sAssertionFailed = 'Assertion failed';
 
+  sStreamRead = 'read';
+  sStreamWrote = 'wrote';
+  sStreamReadError = 'Unexpected end of stream';
+  sStreamWriteError = 'Storage overloaded';
+  sStreamError = '%hs: %hs only %u bytes of %u required';
+
   sIndexOutOfBounds = 'Index %hs[%d] out of bounds %d..%d';
   sIndexOfNull      = 'Index %hs[%d] where container is null';
   sRangeOutOfBounds = 'Range %hs[%d..%d] out of bounds %d..%d';

@@ -15,7 +15,7 @@ unit CoreWrappers;
 interface
 
 uses
-  Windows, CoreUtils;
+  Windows, CoreUtils, CoreExceptions;
 
 type
   TFileAccess = set of (faShareRead, faShareWrite, faShareDelete, // ordered
@@ -252,6 +252,22 @@ type
     property Translations: PTranslationArray read FTranslations;
   end;
 
+{ Exceptions }
+
+  TStreamAccess = (saRead, saWrite);
+
+  EStream = class(Exception)
+  private
+    FActualBytes, FRequiredBytes: LongWord;
+    FAccess: TStreamAccess;
+  public
+    constructor Create(Access: TStreamAccess; ActualBytes, RequiredBytes: LongWord);
+
+    property Access: TStreamAccess read FAccess;
+    property ActualBytes: LongWord read FActualBytes;
+    property RequiredBytes: LongWord read FRequiredBytes;
+  end;
+
 { Absent in Windows.pas }
 
 function GetFileSizeEx(hFile: THandle; var lpFileSize: QuadWord): LongBool; stdcall;
@@ -261,7 +277,7 @@ function SetFilePointerEx(hFile: THandle; liDistanceToMove: QuadWord;
 implementation
 
 uses
-  CoreExceptions, CoreConsts;
+  CoreConsts;
 
 { Absent in Windows.pas }
 
@@ -271,6 +287,20 @@ function SetFilePointerEx(hFile: THandle; liDistanceToMove: QuadWord;
   lpNewFilePointer: PQuadWord; dwMoveMethod: LongWord): LongBool; stdcall;
   external kernel32 name 'SetFilePointerEx';
 
+{ EStream }
+
+constructor EStream.Create(Access: TStreamAccess; ActualBytes,
+  RequiredBytes: LongWord);
+const
+  Error: array[TStreamAccess] of PLegacyChar = (sStreamReadError, sStreamWriteError);
+  Op: array[TStreamAccess] of PLegacyChar = (sStreamRead, sStreamWrote);
+begin
+  inherited Create(sStreamError, [Error[Access], Op[Access], ActualBytes, RequiredBytes]);
+  FAccess := Access;
+  FActualBytes := ActualBytes;
+  FRequiredBytes := RequiredBytes;
+end;
+
 { TReadableStream }
 
 procedure TReadableStream.ReadBuffer(var Data; Count: LongWord);
@@ -279,7 +309,7 @@ var
 begin
   Bytes := Read(Data, Count);
   if Bytes <> Count then
-    RaiseLastPlatformError; // TODO: exception
+    raise EStream.Create(saRead, Bytes, Count);
 end;
 
 { TWritableStream }
@@ -290,7 +320,7 @@ var
 begin
   Bytes := Write(Data, Count);
   if Bytes <> Count then
-    RaiseLastPlatformError; // TODO: exception
+    raise EStream.Create(saWrite, Bytes, Count);
 end;
 
 { THandleStream }
