@@ -522,7 +522,7 @@ procedure Abort;
 
 function ReturnAddr: Pointer;
 asm
-        MOV     EAX,[EBP + 4]
+        MOV EAX, [EBP + 4]
 end;
 
 begin

@@ -17,6 +17,7 @@
 program Pet;
 
 {$APPTYPE CONSOLE}
+{$R *.res}
 
 uses
 {$IFDEF Tricks}
@@ -25,7 +26,7 @@ uses
   Windows,
   CoreUtils,
   CoreExceptions,
-  CLI in 'CLI.pas',
+  PetCore in 'PetCore.pas',
   PetConsts in 'PetConsts.pas';
 
 const
@@ -36,15 +37,13 @@ begin
 {$IFDEF Tricks}
   UseErrorMessageWrite;
 {$ENDIF}
-{$IFDEF Compat}
   UseExceptionMessageWrite;
-{$ENDIF}
 
 {$IFDEF ForceMMX}
   if not MMX_Supported then
   begin
     ErrorMessage(sMMX, StrLen(sMMX));
-    Exit;
+    Halt(1);
   end;
 {$ENDIF}
                      
@@ -52,11 +51,11 @@ begin
   if not IsPlatformUnicode then
   begin
   {$IFDEF CustomStub}
-    ErrorMessage(PLegacyChar($0040002F), PByte($0040002E)^);
+    ErrorMessage(PLegacyChar($0040004F), PByte($0040004E)^);
   {$ELSE}
     ErrorMessage(sPlatformRequired, StrLen(sPlatformRequired));
   {$ENDIF}
-    Exit;
+    Halt(1);
   end;
 {$ENDIF}
 
@@ -66,9 +65,12 @@ begin
       Run;
     except
       on E: Exception do
+      begin
         ShowException(E);
+        ExitCode := 1;
+      end;
     end;
-    Destroy;
+    Free;
   end;
 end.
  

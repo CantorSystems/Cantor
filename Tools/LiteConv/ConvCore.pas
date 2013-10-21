@@ -132,7 +132,7 @@ begin
 end;
 
 var
-  Dot: PCoreChar;
+  Dot, Ver: PCoreChar;
   P: TWideParamRec;
   ExeName: array[0..MAX_PATH] of CoreChar;
   Arg: TFileArg;
@@ -150,8 +150,14 @@ begin
   with TVersionInfo.Create(ExeName) do
   try
     if TranslationCount <> 0 then
+    begin
+      if FixedInfo.Flags * [verDebug, verPreRelease] <> [] then
+        Ver := StringInfo(0, 'FileVersion')
+      else
+        Ver := StringInfo(0, 'ProductVersion');
       FConsole.WriteLn('%ws %ws  %ws', [StringInfo(0, 'ProductName'),
-        StringInfo(0, 'ProductVersion'), StringInfo(0, 'LegalCopyright')], 2);
+        Ver, StringInfo(0, 'LegalCopyright')], 2);
+    end;
   finally
     Free;
   end;

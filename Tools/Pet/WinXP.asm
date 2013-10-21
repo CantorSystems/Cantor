@@ -13,9 +13,9 @@ start:
   MOV AH, 9
   MOV DX, Message
   INT 21h
-  MOV AX, 4C00h
+  MOV AX, 4C01h
   INT 21h
 
-MsgLen    db TermChar - Message
+MsgLen    db EOL - Message
 Message   db 'This program requires Windows XP'
-TermChar  db '$'
+EOL       db 13, 10, '$'
