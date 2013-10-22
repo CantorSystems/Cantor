@@ -12,6 +12,13 @@ uses
   Windows, CoreUtils, CoreWrappers, CoreClasses, CoreStrings;
 
 type
+  TImageLegacyHeaderExtension = packed record
+    Reserved: array[0..3] of Word;
+    OEMId, OEMInfo: Word;
+    Reserved2: array[0..9] of Word;
+    NewHeaderOffset: LongWord;
+  end;
+
   PImageLegacyHeader = ^TImageLegacyHeader;
   TImageLegacyHeader = packed record
     Magic,
@@ -21,10 +28,7 @@ type
     Checksum,
     InitialIP, InitialCS,
     RelocationsOffset, OverlayNumber: Word;
-    Reserved: array[0..3] of Word;
-    OEMId, OEMInfo: Word;
-    Reserved2: array[0..9] of Word;
-    NewHeaderOffset: LongWord;
+    Extension: TImageLegacyHeaderExtension;
   end;
 
   TExeStub = class
@@ -110,18 +114,27 @@ var
 begin
   if FHeader <> nil then
   begin
-    New := MinParagraphs - FHeader.HeaderParagraphs;
-    if New > 0 then
+    if FHeader.HeaderParagraphs < MinParagraphs then
     begin
       New := MinParagraphs * LegacyParagraphBytes;
-      Old := FHeader.HeaderParagraphs * LegacyParagraphBytes;
       L := GetSize;
-      Tail := L - Old;
-      SetSize(New + Tail);
-      Move(PLegacyChar(FHeader)[Old], PLegacyChar(FHeader)[New], Tail);
-      FillChar(PLegacyChar(FHeader)[Old], New - Old, 0);
-      FHeader.HeaderParagraphs := MinParagraphs;
+      if L > SizeOf(TImageLegacyHeader) then
+      begin
+        Old := FHeader^.HeaderParagraphs * LegacyParagraphBytes;
+        Tail := L - Old;
+        SetSize(New + Tail);
+        Move(PLegacyChar(FHeader)[Old], PLegacyChar(FHeader)[New], Tail);
+        FHeader.HeaderParagraphs := MinParagraphs;
+      end
+      else
+      begin
+        Old := L;
+        SetSize(New + 2);
+        PWord(PLegacyChar(FHeader) + SizeOf(TImageLegacyHeader))^ := $E2EB; // JMP -28
+      end;
+      FillChar(PLegacyChar(FHeader)[Old], New - Old, 0); // instead of ð*ùRich<ð*ù
     end;
+    FHeader.Extension.NewHeaderOffset := GetSize;
   end;
 end;
 
@@ -147,17 +160,18 @@ begin
 end;
 
 procedure TExeStub.Load(Source: TReadableStream);
+const
+  HeaderBytes = SizeOf(TImageLegacyHeader) - SizeOf(TImageLegacyHeaderExtension);
 var
   L: LongInt;
 begin
-  ReallocMem(FHeader, SizeOf(TImageLegacyHeader));
-  Source.ReadBuffer(FHeader^, SizeOf(TImageLegacyHeader));
+  ReallocMem(FHeader, HeaderBytes);
+  Source.ReadBuffer(FHeader^, HeaderBytes);
   L := GetSize;
-  if L > SizeOf(TImageLegacyHeader) then
+  if L > HeaderBytes then
   begin
     ReallocMem(FHeader, L);
-    Source.ReadBuffer(PLegacyChar(FHeader)[SizeOf(TImageLegacyHeader)],
-      L - SizeOf(TImageLegacyHeader));
+    Source.ReadBuffer(PLegacyChar(FHeader)[HeaderBytes], L - HeaderBytes);
   end;
 end;
 
@@ -182,9 +196,8 @@ procedure TExeStub.Save(FileName: PCoreChar);
 var
   Dest: TWritableStream;
 begin
-  Dest := TFileStream.Create(FileName, faRewrite);
+  Dest := TFileStream.Create(FileName, faRewrite + [faSequential]);
   try
-    //Strip;
     Dest.Size := GetSize;
     Save(Dest);
   finally
@@ -194,17 +207,13 @@ end;
 
 procedure TExeStub.SetSize(Value: LongWord);
 begin
-  if FHeader = nil then
-  begin
-    FHeader := AllocMem(Value);
-    FHeader.Magic := IMAGE_DOS_SIGNATURE;
-  end;
-  with FHeader^ do
-  begin
-    FilePages := (Value + LegacyPageBytes - 1) div LegacyPageBytes;
-    LastPageBytes := Value mod LegacyPageBytes;
-  end;
-  ReallocMem(FHeader, GetSize);
+  ReallocMem(FHeader, Value);
+  if FHeader <> nil then
+    with FHeader^ do
+    begin
+      FilePages := (Value + LegacyPageBytes - 1) div LegacyPageBytes;
+      LastPageBytes := Value mod LegacyPageBytes;
+    end;
 end;
 
 procedure TExeStub.Strip(Heuristics: Boolean);
@@ -214,7 +223,7 @@ var
 begin
   if FHeader <> nil then
   begin
-    NewSize := FHeader.NewHeaderOffset;
+    NewSize := FHeader.Extension.NewHeaderOffset;
     L := GetSize;
     if (NewSize <> 0) and (L > NewSize) then
     begin
@@ -232,7 +241,7 @@ begin
         end;
       end;
       SetSize(NewSize);
-      FHeader.NewHeaderOffset := 0;
+      FHeader.Extension.NewHeaderOffset := 0;
     end;
   end;
 end;
@@ -328,16 +337,19 @@ begin
     FStub := TExeStub.Create;
   FStub.Load(Source);
 
-  Source.Position := FStub.Header.NewHeaderOffset;
-  ReallocMem(FHeaders, SizeOf(TImageNtHeaders));
-  Source.ReadBuffer(FHeaders^, SizeOf(TImageNtHeaders));
-  ReallocMem(FHeaders, HeadersSize);
-
-  for I := 0 to FHeaders.FileHeader.NumberOfSections - 1 do
+  if (FStub.Size > SizeOf(TImageLegacyHeader)) and (FStub.Header.Extension.NewHeaderOffset <> 0) then
   begin
-    Section := TExeSection.Create;
-    Section.Load(Source);
-    Append(Section);
+    Source.Position := FStub.Header.Extension.NewHeaderOffset;
+    ReallocMem(FHeaders, SizeOf(TImageNtHeaders));
+    Source.ReadBuffer(FHeaders^, SizeOf(TImageNtHeaders));
+    ReallocMem(FHeaders, HeadersSize);
+
+    for I := 0 to FHeaders.FileHeader.NumberOfSections - 1 do
+    begin
+      Section := TExeSection.Create;
+      Section.Load(Source);
+      Append(Section);
+    end;
   end;
 end;
 
@@ -358,12 +370,10 @@ var
   Section: TExeSection;
 begin
   if FStub <> nil then
-    with FStub do
-    begin
-      Expand;
-      // Header.NewHeaderOffset := // TODO
-      Save(Dest);
-    end;
+  begin
+    FStub.Expand;
+    FStub.Save(Dest);
+  end;
   Dest.WriteBuffer(FHeaders^, HeadersSize);
   Section := First;
   while Section <> nil do
@@ -379,7 +389,8 @@ var
 begin
   Dest := TFileStream.Create(FileName, faRewrite + [faRandom]);
   try
-    Dest.Size := FHeaders.OptionalHeader.SizeOfImage;
+    if FHeaders <> nil then
+      Dest.Size := FHeaders.OptionalHeader.SizeOfImage;
     Save(Dest);
   finally
     Dest.Free;
