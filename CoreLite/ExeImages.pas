@@ -231,8 +231,8 @@ begin
       begin
         Limit := PLegacyChar(FHeader) + L;
         P := PLegacyChar(FHeader) + FHeader.HeaderParagraphs * LegacyParagraphBytes;
-        P := StrScan(P, #$4C, Limit - P);               // mov ax, 4C01h
-        if (P <> nil) and (PWord(P + 1)^ = $21CD) then  // int 21h
+        P := StrScan(P, #$4C, Limit - P);               // MOV AX, 4C01h
+        if (P <> nil) and (PWord(P + 1)^ = $21CD) then  // INT 21h
         begin
           Inc(P, 3);
           P := StrScan(P, '$', Limit - P);

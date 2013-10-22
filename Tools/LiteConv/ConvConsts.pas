@@ -11,7 +11,7 @@ interface
 { Do not localize }
 
 const
-  CP_CORE = 1252; // we're using “”
+  CP_CORE = 1252; // we're using “”, but only in exception messages
 
   sInto       = 'into';
   sPause      = 'pause';
