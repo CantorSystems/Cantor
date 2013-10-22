@@ -3,7 +3,7 @@
 
     OOP-style platform-dependent wrappers
 
-    Copyright © 2007-2013 Vladislav Javadov (Freeman)
+    Copyright (c) 2007-2013 Vladislav Javadov (Freeman)
 
     Conditional defines:
       * Lite -- allow lite TStream implementation -- without virtual methods

@@ -1,7 +1,7 @@
 (*
     LiteConv string constants and messages
 
-    Copyright © 2013 Vladislav Javadov (Freeman)
+    Copyright (c) 2013 Vladislav Javadov (Freeman)
 *)
 
 unit ConvConsts;
@@ -11,7 +11,7 @@ interface
 { Do not localize }
 
 const
-  CP_CORE = 1252;
+  CP_CORE = 1252; // we're using “”
 
   sInto       = 'into';
   sPause      = 'pause';

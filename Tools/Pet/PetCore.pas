@@ -1,7 +1,7 @@
 (*
     PE Tool core
 
-    Copyright © 2013 Vladislav Javadov (Freeman)
+    Copyright (c) 2013 Vladislav Javadov (Freeman)
 *)
 
 unit PetCore;
@@ -251,7 +251,7 @@ begin
     end;
   end
   else
-    FConsole.WriteLn(sCat);
+    FConsole.WriteLn(sUsage, [FAppName], 2);
 end;
 
 end.

@@ -1,7 +1,7 @@
 (*
     Lite charset conversion utility (LiteConv)
 
-    Copyright © 2013 Vladislav Javadov (Freeman)
+    Copyright (c) 2013 Vladislav Javadov (Freeman)
 
     Conditional defines:
       * Compat -- use Delphi IDE friendly exceptions

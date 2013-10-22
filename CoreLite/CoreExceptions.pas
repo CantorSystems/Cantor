@@ -3,7 +3,7 @@
 
     Core exceptions implementation
 
-    Copyright © 2008-2013 Vladislav Javadov (Freeman)
+    Copyright (c) 2008-2013 Vladislav Javadov (Freeman)
 
     Conditional defines:
       * Compat -- use IDE friendly and SysUtils compatible exceptions
@@ -406,6 +406,7 @@ asm
 
         MOV ECX, EAX  // Length
         SHL ECX, 1
+        ADD ECX, EAX  // 3 bytes per char for UTF-8
         ADD ECX, 3
         AND ECX, $FFFFFFFC
         SUB ESP, ECX
