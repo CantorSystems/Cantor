@@ -132,7 +132,7 @@ begin
 end;
 
 var
-  Dot, Ver: PCoreChar;
+  Dot, Ver, CmdLineParams: PCoreChar;
   P: TWideParamRec;
   ExeName: array[0..MAX_PATH] of CoreChar;
   Arg: TFileArg;
@@ -179,12 +179,17 @@ begin
     CommandLine := NextParam;
   end;
 
+  CmdLineParams := CommandLine;
   FFileArgs := TFileArgs.Create;
 
   repeat
     P := WideParamStr(CommandLine);
     if P.Length = 0 then
+    begin
+      if CommandLine = CmdLineParams then // no params
+        FPause := True;
       Break;
+    end;
 
     CP := 0;
 
@@ -272,9 +277,15 @@ destructor TApplication.Destroy;
 begin
   FInto.Free;
   FFileArgs.Free;
-  if FPause then // placed here to show exceptions properly
-    FConsole.ReadLn(sPressEnterToExit);
+
   FConsole.Free;
+  if FPause then // placed here to show exceptions properly
+    with TStreamConsole.Create(True) do
+    try
+      ReadLn(sPressEnterToExit);
+    finally
+      Free;
+    end;
 end;
 
 procedure TApplication.Warning(Msg: PLegacyChar);
