@@ -21,7 +21,8 @@ const
 
   sStrip    = 'strip';
   sRes      = 'res';
-  sPause    = 'pause';
+  sPause    = 'pause';                                                
+  sWinVer   = 'winver';
 
 { Localize }
 
@@ -34,11 +35,14 @@ const
             #9'-dump <dump>'#9'Dump <source> info to <dump> file'#10 +
             #9'-extract <xtub>'#9'Extract <source> stub to <xtub> file'#9'    PET :-)'#10 +
             #9'-into <dest>'#9'Save result to <dest> file'#10#10 +
-    'Options'#10 +
-            #9'-pause'#9#9'Wait for ENTER key to exit'#10 +
-            #9'-strip'#9#9'Strip headers, relocations and empty sections'#10+
-            #9#9#9'from <dest> when possible'#10 +
-            #9'-stub <stub>'#9'Replace <dest> stub with stub from <stub> file';
+    'Options for <dest>'#10 +
+            #9'-osver <#.#>'#9'Change required OS version to <#.#>'#10 +
+            #9'-strip'#9#9'Strip headers, relocations and empty sections'#10 +
+            #9#9#9'when possible'#10 +
+            #9'-stub <stub>'#9'Replace stub with one from <stub> file'#10#10 +
+    'Other option'#10 +
+            #9'-pause'#9#9'Wait for ENTER key to exit';
+
 
   sPressEnterToExit = 'Press ENTER to exit';
 

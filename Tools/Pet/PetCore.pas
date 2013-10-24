@@ -15,12 +15,14 @@ type
   TFileKey = (fkInto, fkBackup, fkStub, fkExtract, fkDump);
   TFileKeys = array[TFileKey] of PCoreChar;
 
+  TRunOptions = set of (roStrip, roPause);
+
   TApplication = class
   private
     FConsole: TStreamConsole;
     FAppName, FSourceFileName: PCoreChar;
     FFileNames: TFileKeys;
-    FOptions: set of (aoStrip, aoPause);
+    FOptions: TRunOptions;
   public
     constructor Create(CommandLine: PCoreChar);
     destructor Destroy; override;
@@ -94,7 +96,7 @@ begin
 end;
 
 var
-  Dot, Ver: PCoreChar;
+  Dot, Ver, CmdLineParams: PCoreChar;
   ExeName: array[0..MAX_PATH] of CoreChar;
   K: TFileKey;
 begin
@@ -139,10 +141,16 @@ begin
     CommandLine := NextParam;
   end;
 
+  CmdLineParams := CommandLine;
+
   repeat
     P := WideParamStr(CommandLine);
     if P.Length = 0 then
+    begin
+      if CommandLine = CmdLineParams then // no params
+        Include(FOptions, roPause);
       Break;
+    end;
 
     if (not P.Quoted) and ((P.Param^ = CoreChar('/')) or (P.Param^ = CoreChar('-'))) then
     begin
@@ -172,12 +180,12 @@ begin
       if P.Param <> nil then
         if SameKey(sStrip) then
         begin
-          Include(FOptions, aoStrip);
+          Include(FOptions, roStrip);
           P.Param := nil;
         end
         else if SameKey(sPause) then
         begin
-          Include(FOptions, aoPause);
+          Include(FOptions, roPause);
           P.Param := nil;
         end;
     end;
@@ -201,9 +209,14 @@ end;
 
 destructor TApplication.Destroy;
 begin
-  if aoPause in FOptions then // placed here to show exceptions properly
-    FConsole.ReadLn(sPressEnterToExit);
   FConsole.Free;
+  if roPause in FOptions then // placed here to show exceptions properly
+    with TStreamConsole.Create(True) do
+    try
+      ReadLn(sPressEnterToExit);
+    finally
+      Free;
+    end;
 end;
 
 procedure TApplication.Run;
@@ -221,7 +234,7 @@ begin
         with TExeStub.Create do
         try
           Load(Image.Stub);
-          Strip(aoStrip in FOptions);
+          Strip(roStrip in FOptions);
           Save(FFileNames[fkExtract]);
           FConsole.WriteLn(sExtractingStub, [FFileNames[fkExtract], Size])//;, 1);
         finally
@@ -232,7 +245,7 @@ begin
       if FFileNames[fkStub] <> nil then
         Image.Stub.Load(FFileNames[fkStub]);
 
-      if aoStrip in FOptions then
+      if roStrip in FOptions then
         Image.Strip
       else
         Image.Stub.Strip(False);
@@ -251,7 +264,7 @@ begin
     end;
   end
   else
-    FConsole.WriteLn(sUsage, [FAppName], 2);
+    FConsole.WriteLn(sUsage, [FAppName]);
 end;
 
 end.
