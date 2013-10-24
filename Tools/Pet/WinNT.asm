@@ -16,6 +16,4 @@ start:
   MOV AX, 4C01h
   INT 21h
 
-MsgLen    db EOL - Message
-Message   db 'This program requires Windows NT'
-EOL       db 13, 10, '$'
+Message db 'This program requires Windows NT', 13, 10, '$'

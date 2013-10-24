@@ -16,5 +16,5 @@ start:
   MOV AX, 4C01h
   INT 21h
 
-Message   db 'Win32 module', 10, '$'
+Message db 'Win32 module', 10, '$'
 

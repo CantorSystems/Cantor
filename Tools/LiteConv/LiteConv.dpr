@@ -6,7 +6,6 @@
     Conditional defines:
       * Compat -- use Delphi IDE friendly exceptions
       * ForceMMX -- allow MMX with FastCode
-      * HX -- don't check Unicode support for HX DOS Extender compatibility
       * Lite -- commonly lite version of code
       * Tricks  -- use tricky lite System unit
 
@@ -30,7 +29,6 @@ uses
 
 const
   sMMX = 'This program requires MMX';
-  sPlatformRequired = 'This program requires Windows NT';
 
 begin
 {$IFDEF Tricks}
@@ -46,14 +44,6 @@ begin
   end;
 {$ENDIF}
                      
-{$IFNDEF HX}
-  if not IsPlatformUnicode then
-  begin
-    ErrorMessage(sPlatformRequired, StrLen(sPlatformRequired));
-    Halt(1);
-  end;
-{$ENDIF}
-
   with TApplication.Create(GetCommandLineW) do
   begin
     try
