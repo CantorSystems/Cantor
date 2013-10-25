@@ -15,13 +15,15 @@ type
   TFileKey = (fkInto, fkBackup, fkStub, fkExtract, fkDump);
   TFileKeys = array[TFileKey] of PCoreChar;
 
-  TRunOptions = set of (roStrip, roPause);
+  TRunOption = (roStrip, ro3GB, roPause);
+  TRunOptions = set of TRunOption;
 
   TApplication = class
   private
     FConsole: TStreamConsole;
     FAppName, FSourceFileName: PCoreChar;
     FFileNames: TFileKeys;
+    FMajorVersion, FMinorVersion: Word;
     FOptions: TRunOptions;
   public
     constructor Create(CommandLine: PCoreChar);
@@ -95,10 +97,13 @@ begin
     P.Param + 1, P.Length - 1) = CSTR_EQUAL;
 end;
 
+const
+  OptionKeys: array[TRunOption] of PCoreChar = (sStrip, s3GB, sPause);
 var
-  Dot, Ver, CmdLineParams: PCoreChar;
+  Dot, Ver, CmdLineParams, Limit: PCoreChar;
   ExeName: array[0..MAX_PATH] of CoreChar;
   K: TFileKey;
+  R: TRunOption;
 begin
   FConsole := TStreamConsole.Create;
   with FConsole do
@@ -178,16 +183,40 @@ begin
         end;
 
       if P.Param <> nil then
-        if SameKey(sStrip) then
-        begin
-          Include(FOptions, roStrip);
-          P.Param := nil;
-        end
-        else if SameKey(sPause) then
-        begin
-          Include(FOptions, roPause);
-          P.Param := nil;
-        end;
+        for R := Low(R) to High(R) do
+          if SameKey(OptionKeys[R]) then
+          begin
+            Include(FOptions, R);
+            P.Param := nil;
+            Break;
+          end;
+
+      if (P.Param <> nil) and SameKey(sOSVer) then
+      begin
+        P := WideParamStr(P.NextParam);
+        with P do
+          if Length <> 0 then
+          begin
+            Limit := Param + Length;
+            while (LegacyChar(Param^) in ['0'..'9']) and (Param < Limit) do
+            begin
+              FMajorVersion := FMajorVersion * 10 + Byte(Param^) - Byte('0');
+              Inc(Param);
+            end;
+            if Param^ = '.' then
+            begin
+              Inc(Param);
+              while (Param < Limit) and (LegacyChar(Param^) in ['0'..'9']) do
+              begin
+                FMinorVersion := FMinorVersion * 10 + Byte(Param^) - Byte('0');
+                Inc(Param);
+              end;
+            end;
+            Param := nil;
+          end
+          else
+            raise ECommandLine.Create(sMissingOSVer);
+      end;
     end;
 
     if P.Param <> nil then
@@ -225,7 +254,7 @@ var
 begin
   if FSourceFileName <> nil then
   begin
-    Image := TExeImage.Create;
+    Image := TExeImage.Create(IMAGE_NUMBEROF_DIRECTORY_ENTRIES, 0);
     try
       Image.Load(FSourceFileName);
 
@@ -236,7 +265,7 @@ begin
           Load(Image.Stub);
           Strip(roStrip in FOptions);
           Save(FFileNames[fkExtract]);
-          FConsole.WriteLn(sExtractingStub, [FFileNames[fkExtract], Size])//;, 1);
+          FConsole.WriteLn(sExtractingStub, [FFileNames[fkExtract], Size]);
         finally
           Free;
         end;
@@ -256,8 +285,23 @@ begin
           FFileNames[fkBackup], MOVEFILE_COPY_ALLOWED or MOVEFILE_WRITE_THROUGH))
         then
           RaiseLastPlatformError;
-        // Image.Stub. // compatibility
-        Image.Save(FFileNames[fkInto]);
+        with Image do
+        begin
+          if FMajorVersion <> 0 then
+            with Image.Headers.OptionalHeader do
+            begin
+              MajorOSVersion := FMajorVersion;
+              MinorOSVersion := FMinorVersion;
+              MajorSubsystemVersion := FMajorVersion;
+              MinorSubsystemVersion := FMinorVersion;
+            end;
+          if ro3GB in FOptions then
+            with Image.Headers.FileHeader do
+              Characteristics := Characteristics or IMAGE_FILE_LARGE_ADDRESS_AWARE;
+          Build;
+          Save(FFileNames[fkInto]);
+          FConsole.WriteLn(sWritingInto, [FFileNames[fkInto], Size]);
+        end;
       end;
     finally
       Image.Free;

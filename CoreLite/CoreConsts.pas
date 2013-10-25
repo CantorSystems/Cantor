@@ -48,13 +48,15 @@ const
   sStreamRead = 'read';
   sStreamWrote = 'wrote';
   sStreamReadError = 'Unexpected end of stream';
-  sStreamWriteError = 'Storage overloaded';
+  sStreamWriteError = 'Not enough space';
   sStreamError = '%hs: %hs only %u bytes of %u required';
 
   sIndexOutOfBounds = 'Index %hs[%d] out of bounds %d..%d';
   sIndexOfNull      = 'Index %hs[%d] where container is null';
   sRangeOutOfBounds = 'Range %hs[%d..%d] out of bounds %d..%d';
   sFixedCapacity    = 'This %hs object can contain only %d items';
+
+  sUnknownExeImage = 'Unknown image signature: %c%c';
 
   sUnsupportedCodePage = 'Code page %u (%s) is not yet supported';
 

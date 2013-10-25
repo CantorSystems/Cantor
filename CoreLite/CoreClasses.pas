@@ -746,7 +746,7 @@ procedure TArray.Grow;
     if FDelta = 0 then
       raise EFixed.Create(Self, FCapacity);
   {$ENDIF}
-    SetCapacity(FCapacity + TranslateDelta)
+    SetCapacity(FCapacity + TranslateDelta);
   end;
 end;
 
@@ -772,6 +772,8 @@ procedure TArray.SetCapacity(Value: Integer);
 begin
   ReallocMem(TArrayCast(Self).Items, Value * ItemSize);
   FCapacity := Value;
+  if FCount > FCapacity then
+    FCount := FCapacity;
 end;
 
 procedure TArray.SetCount(Value: Integer);
@@ -780,8 +782,13 @@ procedure TArray.SetCount(Value: Integer);
 begin
   if FCount <> Value then
   begin
-    D := TranslateDelta;
-    SetCapacity(Value + (Value + D - 1) mod D);
+    if FDelta <> 0 then
+    begin
+      D := TranslateDelta;
+      SetCapacity(Value + (Value + D - 1) mod D);
+    end
+    else
+      SetCapacity(Value);
     S := ItemSize;
     if Value > FCount then
       FillChar(TArrayCast(Self).Items[FCount * S], (Value - FCount) * S, 0);
@@ -862,7 +869,6 @@ begin
     if TObjectsCast(Self).OwnsObjects then
       for I := FCount - 1 downto Value do
         TObjectsCast(Self).Items[I].Free;
-    FCount := Value;
   end;
   inherited;
 end;
