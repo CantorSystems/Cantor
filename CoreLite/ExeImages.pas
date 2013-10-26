@@ -11,83 +11,7 @@ interface
 uses
   Windows, CoreUtils, CoreExceptions, CoreWrappers, CoreClasses, CoreStrings;
 
-type
-  TImageLegacyHeaderExt = packed record
-    Reserved: array[0..3] of Word;
-    OEMId, OEMInfo: Word;
-    Reserved2: array[0..9] of Word;
-    NewHeaderOffset: LongWord;
-  end;
-
-  PImageLegacyHeader = ^TImageLegacyHeader;
-  TImageLegacyHeader = packed record
-    Magic: array[0..1] of Char;
-    LastPageBytes, FilePages, RelocationCount,
-    HeaderParagraphs, MinAlloc, MaxAlloc,
-    InitialSS, InitialSP,
-    Checksum,
-    InitialIP, InitialCS,
-    RelocationsOffset, OverlayNumber: Word;
-    Ext: TImageLegacyHeaderExt;
-  end;
-
-  PImageFileHeader = ^TImageFileHeader;
-  TImageFileHeader = packed record
-    Machine, SectionCount: Word;
-    TimeDateStamp,
-    SymbolsOffset, SymbolCount: LongWord;
-    OptionalHeaderSize, Characteristics: Word;
-  end;
-
-  PImageOptionalHeader = ^TImageOptionalHeader;
-  TImageOptionalHeader = packed record
-    Magic: Word;
-    MajorLinkerVersion, MinorLinkerVersion: Byte;
-    CodeSize, InitializedDataSize, UninitializedDataSize,
-    EntryPoint, CodeBase, DataBase, ImageBase,
-    SectionAlignment, FileAlignment: LongWord;
-    MajorOSVersion, MinorOSVersion,
-    MajorImageVersion, MinorImageVersion,
-    MajorSubsystemVersion, MinorSubsystemVersion: Word;
-    Win32Version,
-    ImageSize, HeadersSize,
-    Checksum: LongWord;
-    Subsystem, DLLCharacteristics: Word;
-    StackReserveSize, StackCommitSize,
-    HeapReserveSize, HeapCommitSize,
-    LoaderFlags: LongWord;
-    DirectoryEntryCount: LongInt;
-    DataDirectory: array[0..IMAGE_NUMBEROF_DIRECTORY_ENTRIES - 1] of TImageDataDirectory;
-  end;
-
-  PImageNewHeaders = ^TImageNewHeaders;
-  TImageNewHeaders = packed record
-    Magic: array[0..3] of Char;
-    FileHeader: TImageFileHeader;
-    OptionalHeader: TImageOptionalHeader;
-  end;
-
-  TImageSectionMisc = packed record
-    case Byte of
-      0: (PhysicalAddress: LongWord);
-      1: (VirtualSize: LongWord);
-  end;
-
-  PImageSectionHeader = ^TImageSectionHeader;
-  TImageSectionHeader = packed record
-    Name: array[0..IMAGE_SIZEOF_SHORT_NAME - 1] of Char;
-    Misc: TImageSectionMisc;
-    VirtualAddress, RawDataSize,
-    RawDataOffset, RelocationsOffset, LineNumbersOffset: LongWord;
-    RelocationCount, LineNumberCount: Word;
-    Characteristics: LongWord;
-  end;
-
-const // for Delphi 6
-  IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT    = 13;
-  IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR  = 14;
-
-  IMAGE_FILE_LARGE_ADDRESS_AWARE        = $0020; 
+{$I ImageHelper.inc}
 
 type
   TExeStub = class
@@ -128,7 +52,7 @@ type
     property Header: TImageSectionHeader read FHeader;
   end;
 
-  TStripOptions = set of (soDirectory, soStub, soEmptySections, soOrphanedSections,
+  TStripOptions = set of (soStub, soDirectory, soEmptySections, soOrphanedSections,
      soRelocations{, soRedundantResources});
 
   PExeSectionArray = ^TExeSectionArray;
@@ -215,14 +139,16 @@ begin
     L := Size;
     if L > SizeOf(FHeader) then
     begin
-      SetDataSize(Aligned(DataSize + ExtBytes));
-      Move(FData^, PLegacyChar(FData)[ExtBytes], ExtBytes);
+      L := DataSize;
+      FHeader.HeaderParagraphs := MinParagraphs;
+      SetDataSize(Aligned(L));
+      Move(FData^, PLegacyChar(FData)[ExtBytes], L);
       Move(FHeader.Ext, FData^, ExtBytes);
       FillChar(FHeader.Ext, ExtBytes, 0); // goodbye, ð*ùRich<ð*ù
-      FHeader.HeaderParagraphs := MinParagraphs;
     end
     else
     begin
+      FHeader.HeaderParagraphs := MinParagraphs;
       SetDataSize(SizeOf(LongWord)); // aligning to 32-bit boundary
       PLongWord(FData)^ := $E2EB;    // JMP -28
       FillChar(PLegacyChar(@FHeader)[L], SizeOf(FHeader) - L, 0); // also ð*ùRich<ð*ù
@@ -290,25 +216,15 @@ begin
 end;
 
 procedure TExeStub.Save(Dest: TWritableStream);
-var
-  L, SaveSize: LongWord;
 begin
-  L := Size;
-  if L > SizeOf(FHeader) then
-  begin
-    SaveSize := FHeader.FilePages;
-    try
-      with Dest do
-      begin
-        WriteBuffer(FHeader, SizeOf(FHeader));
-        WriteBuffer(FData^, L - SizeOf(FHeader));
-      end
-    finally
-      FHeader.FilePages := SaveSize;
-    end;
-  end
+  if FData <> nil then
+    with Dest do
+    begin
+      WriteBuffer(FHeader, SizeOf(FHeader));
+      WriteBuffer(FData^, DataSize);
+    end
   else
-    Dest.WriteBuffer(FHeader, L);
+    Dest.WriteBuffer(FHeader, Size);
 end;
 
 procedure TExeStub.Save(FileName: PCoreChar);
@@ -370,12 +286,14 @@ begin
         end;
       end;
       SetDataSize(NewSize);
-    end;
-    with FHeader do
+    end
+    else if Heuristics and (FData <> nil) and (FHeader.HeaderParagraphs = 2) and 
+      (PByte(FData)^ = $EB) and (PByteArray(FData)[1] and $80 <> 0) then  // JMP -xx
     begin
-      Checksum := 0;
-      Ext.NewHeaderOffset := 0;
+      SetDataSize(0);
+      Dec(FHeader.LastPageBytes, SizeOf(FHeader.Ext.NewHeaderOffset));
     end;
+    FHeader.Checksum := 0;
   end;
 end;
 
@@ -487,15 +405,22 @@ end;
 
 function TExeImage.Extract(Index: Integer): TObject;
 begin
+  if Index <> 0 then
+    with FSections[Index - 1].FHeader do
+      Inc(VirtualSize, SectionAlignBytes(VirtualSize) + FSections[Index].FHeader.VirtualSize);
   Result := inherited Extract(Index);
   Dec(FHeaders.FileHeader.SectionCount);
 end;
 
 function TExeImage.FileAlignBytes(Source: LongWord): LongWord;
 begin
-  Result := Source mod FHeaders.OptionalHeader.FileAlignment;
+  Result := FHeaders.OptionalHeader.FileAlignment;
   if Result <> 0 then
-    Result := FHeaders.OptionalHeader.FileAlignment - Result;
+  begin
+    Result := Source mod Result;
+    if Result <> 0 then
+      Result := FHeaders.OptionalHeader.FileAlignment - Result;
+  end;
 end;
 
 function TExeImage.HeadersSize: LongWord;
@@ -607,9 +532,13 @@ end;
 
 function TExeImage.SectionAlignBytes(Source: LongWord): LongWord;
 begin
-  Result := Source mod FHeaders.OptionalHeader.SectionAlignment;
+  Result := FHeaders.OptionalHeader.SectionAlignment;
   if Result <> 0 then
-    Result := FHeaders.OptionalHeader.SectionAlignment - Result;
+  begin
+    Result := Source mod Result;
+    if Result <> 0 then
+      Result := FHeaders.OptionalHeader.SectionAlignment - Result;
+  end;
 end;
 
 function TExeImage.Size: LongWord;
@@ -631,17 +560,6 @@ begin
 end;
 
 procedure TExeImage.Strip(Options: TStripOptions);
-
-procedure DropSection(Index: Integer);
-begin
-  if Index <> 0 then
-  begin
-    with FSections[Index - 1].FHeader.Misc do
-      Inc(VirtualSize, SectionAlignBytes(VirtualSize) + FSections[Index].FHeader.Misc.VirtualSize);
-    Extract(Index).Free;
-  end;
-end;
-
 var
   I: Integer;
 begin
@@ -653,32 +571,35 @@ begin
   begin
     I := IndexOfSection(IMAGE_DIRECTORY_ENTRY_BASERELOC);
     if I >= 0 then
-      DropSection(I);
+      Extract(I).Free;
     QuadWord(FHeaders.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC]) := 0;
     with FHeaders.FileHeader do
       Characteristics := Characteristics or IMAGE_FILE_RELOCS_STRIPPED;
   end;
 
   if Options * [soEmptySections, soOrphanedSections] <> [] then
+  begin
     for I := Count - 1 downto 0 do
       with Sections[I] do
         if ((soEmptySections in Options) and (Header.RawDataSize = 0)) or
           ((soOrphanedSections in Options) and IsOrphaned(FHeaders.OptionalHeader))
         then
-          DropSection(I);
+          Extract(I).Free;
+  end;
 
   if soDirectory in Options then
-    for I := FHeaders.OptionalHeader.DirectoryEntryCount - 1 downto IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG do
-      if QuadWord(FHeaders.OptionalHeader.DataDirectory[I]) <> 0 then
-      begin
-        with FHeaders do
+    with FHeaders do
+    begin
+      for I := OptionalHeader.DirectoryEntryCount - 1 downto 0 do
+        if QuadWord(OptionalHeader.DataDirectory[I]) <> 0 then
         begin
           OptionalHeader.DirectoryEntryCount := I + 1;
-          FileHeader.OptionalHeaderSize := SizeOf(OptionalHeader) -
-            SizeOf(OptionalHeader.DataDirectory) + (I + 1) * SizeOf(TImageDataDirectory);
+//          FileHeader.OptionalHeaderSize := SizeOf(OptionalHeader) -
+//            SizeOf(OptionalHeader.DataDirectory) + (I + 1) * SizeOf(TImageDataDirectory);
+          Exit;
         end;
-        Break;
-      end;
+      OptionalHeader.DirectoryEntryCount := 0;
+    end;
 end;
 
 end.
