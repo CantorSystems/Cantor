@@ -15,7 +15,7 @@ type
   TFileKey = (fkInto, fkBackup, fkStub, fkExtract, fkDump);
   TFileKeys = array[TFileKey] of PCoreChar;
 
-  TRunOption = (roStrip, ro3GB, roPause);
+  TRunOption = (roDelphi, roStrip, ro3GB, roPause);
   TRunOptions = set of TRunOption;
 
   TApplication = class
@@ -98,7 +98,7 @@ begin
 end;
 
 const
-  OptionKeys: array[TRunOption] of PCoreChar = (sStrip, s3GB, sPause);
+  OptionKeys: array[TRunOption] of PCoreChar = (sDelphi, sStrip, s3GB, sPause);
 var
   Dot, Ver, CmdLineParams, Limit: PCoreChar;
   ExeName: array[0..MAX_PATH] of CoreChar;
@@ -166,19 +166,14 @@ begin
           if P.Length <> 0 then
           begin
             with P do
-              Param[Length] := CoreChar(0); // unsafe
-            if FFileNames[K] = nil then
             begin
-              FFileNames[K] := P.Param;
-              P.Param := nil;
-              Break;
-            end
-            else
-              raise EFileKey.Create(K, P.Param);
+              Param[Length] := CoreChar(0); // unsafe
+              FFileNames[K] := Param;
+              Param := nil;
+            end;
+            Break;
           end
-          else if FFileNames[K] <> nil then
-            raise EFileKey.Create(K, nil)
-          else
+          else if FFileNames[K] = nil then
             raise EFileKey.Create(K);
         end;
 

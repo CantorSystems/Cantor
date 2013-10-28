@@ -144,3 +144,16 @@ type
   PCursorResInfo = ^PIconResInfo;
   TCursorResInfo = TIconResInfo;
 
+{  PVarFileInfo = ^TVarFileInfo;
+  TVarFileInfo = packed record
+    Length, ValueLength, DataType: Word;
+    Key: array[0..10] of WideChar;
+    Padding: array[0..1] of Word;
+  end;
+
+  PStringFileInfo = ^TStringFileInfo;
+  TStringFileInfo = packed record
+    Length, ValueLength, DataType: Word;
+    Key: array[0..12] of WideChar;
+    Padding: array[0..1] of Word;
+  end;}

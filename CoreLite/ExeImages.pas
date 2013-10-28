@@ -52,8 +52,8 @@ type
     property Header: TImageSectionHeader read FHeader;
   end;
 
-  TStripOptions = set of (soStub, soDirectory, soEmptySections, soOrphanedSections,
-     soRelocations{, soRedundantResources});
+  TStripOptions = set of (soStub, soDataDirectory, soEmptySections, soOrphanedSections,
+     soRelocations, soCleanResources);
 
   PExeSectionArray = ^TExeSectionArray;
   TExeSectionArray = array[0..MaxInt div SizeOf(TExeSection) - 1] of TExeSection;
@@ -77,7 +77,7 @@ type
     procedure Save(FileName: PCoreChar); overload;
     function SectionAlignBytes(Source: LongWord): LongWord;
     function Size: LongWord;
-    procedure Strip(Options: TStripOptions = [soStub..soRelocations]);
+    procedure Strip(Options: TStripOptions = [soStub..soCleanResources]);
 
     property Headers: TImageNewHeaders read FHeaders;
     property OwnsSections: Boolean read FOwnsSections;
@@ -95,7 +95,11 @@ type
     property Headers: PImageNewHeaders read FHeaders;
   end;
 
-implementation
+{ Service functions }
+
+function AlignToLongWord(Source: LongWord): LongWord;
+
+implementation
 
 uses
   CoreConsts;
@@ -104,6 +108,13 @@ const
   LegacyPageBytes       = 512; // DOS page
   LegacyParagraphBytes  = 16;  // DOS paragraph
   MinParagraphs         = SizeOf(TImageLegacyHeader) div LegacyParagraphBytes;
+
+{ Service functions }
+
+function AlignToLongWord(Source: LongWord): LongWord;
+begin
+  Result := Source + SizeOf(LongWord) - Source mod SizeOf(LongWord);
+end;
 
 { EUnknownImage }
 
@@ -123,12 +134,6 @@ begin
 end;
 
 procedure TExeStub.Expand;
-
-function Aligned(Source: LongWord): LongWord;
-begin
-  Result := Source + SizeOf(LongWord) - Source mod SizeOf(LongWord);
-end;
-
 const
   ExtBytes = SizeOf(TImageLegacyHeaderExt);
 var
@@ -141,21 +146,19 @@ begin
     begin
       L := DataSize;
       FHeader.HeaderParagraphs := MinParagraphs;
-      SetDataSize(Aligned(L));
+      SetDataSize(AlignToLongWord(L));
       Move(FData^, PLegacyChar(FData)[ExtBytes], L);
       Move(FHeader.Ext, FData^, ExtBytes);
       FillChar(FHeader.Ext, ExtBytes, 0); // goodbye, ð*ùRich<ð*ù
     end
     else
     begin
-      FHeader.HeaderParagraphs := MinParagraphs;
-      SetDataSize(SizeOf(LongWord)); // aligning to 32-bit boundary
-      PLongWord(FData)^ := $E2EB;    // JMP -28
+      SetDataSize(SizeOf(FHeader.Ext));
       FillChar(PLegacyChar(@FHeader)[L], SizeOf(FHeader) - L, 0); // also ð*ùRich<ð*ù
     end;
   end
   else
-    SetDataSize(Aligned(DataSize));
+    SetDataSize(AlignToLongWord(DataSize));
   FHeader.Checksum := 0;
 end;
 
@@ -176,7 +179,9 @@ var
   L: LongWord;
 begin
   FHeader := Source.FHeader;
-  L := Source.DataSize;
+  L := DataSize;
+  if L >= SizeOf(FHeader.Ext) then
+    Dec(L, SizeOf(FHeader.Ext));
   ReallocMem(FData, L);
   Move(Source.FData^, FData^, L);
 end;
@@ -199,6 +204,7 @@ begin
   else
   begin
     Source.ReadBuffer(FHeader.Ext, L);
+    //FillChar(PLegacyChar(@FHeader.Ext)[L], SizeOf(FHeader.Ext) - L, 0);
     FreeMemAndNil(FData);
   end;
 end;
@@ -242,8 +248,11 @@ end;
 
 procedure TExeStub.SetDataSize(Value: LongWord);
 begin
-  ReallocMem(FData, Value);
-  Inc(Value, SizeOf(FHeader));
+  if FHeader.HeaderParagraphs >= MinParagraphs then
+    ReallocMem(FData, Value)
+  else
+    FreeMemAndNil(FData);
+  Inc(Value, HeaderSize);
   with FHeader do
   begin
     FilePages := Value div LegacyPageBytes + 1;
@@ -265,34 +274,36 @@ var
   NewSize, L: LongWord;
   P, Limit: PLegacyChar;
 begin
-  NewSize := FHeader.Ext.NewHeaderOffset;
-  if NewSize <> 0 then
+  if FHeader.HeaderParagraphs >= MinParagraphs then
   begin
-    Dec(NewSize, HeaderSize);
-    L := DataSize;
-    if L > NewSize then
+    NewSize := FHeader.Ext.NewHeaderOffset;
+    if NewSize <> 0 then
     begin
-      if Heuristics then
+      Dec(NewSize, HeaderSize);
+      L := DataSize;
+      if L > NewSize then
       begin
-        Limit := PLegacyChar(FData) + L;
-        P := PLegacyChar(FData) + FHeader.HeaderParagraphs * LegacyParagraphBytes - SizeOf(FHeader);
-        P := StrScan(P, #$4C, Limit - P);               // MOV AX, 4C01h
-        if (P <> nil) and (PWord(P + 1)^ = $21CD) then  // INT 21h
+        if Heuristics then
         begin
-          Inc(P, 3);
-          P := StrScan(P, '$', Limit - P);
-          if P <> nil then
-            NewSize := P - PLegacyChar(FData) + 1;
+          Limit := PLegacyChar(FData) + L;
+          P := PLegacyChar(FData) + FHeader.HeaderParagraphs * LegacyParagraphBytes - SizeOf(FHeader);
+          P := StrScan(P, #$4C, Limit - P);               // MOV AX, 4C01h
+          if (P <> nil) and (PWord(P + 1)^ = $21CD) then  // INT 21h
+          begin
+            Inc(P, 3);
+            P := StrScan(P, '$', Limit - P);
+            if P <> nil then
+              NewSize := P - PLegacyChar(FData) + 1;
+          end;
         end;
+        SetDataSize(NewSize);
+        FHeader.Checksum := 0;
       end;
-      SetDataSize(NewSize);
-    end
-    else if Heuristics and (FData <> nil) and (FHeader.HeaderParagraphs = 2) and 
-      (PByte(FData)^ = $EB) and (PByteArray(FData)[1] and $80 <> 0) then  // JMP -xx
-    begin
-      SetDataSize(0);
-      Dec(FHeader.LastPageBytes, SizeOf(FHeader.Ext.NewHeaderOffset));
     end;
+  end
+  else if Heuristics and (Size = SizeOf(FHeader)) and (FHeader.Ext.NewHeaderOffset = SizeOf(FHeader)) then
+  begin
+    SetDataSize(SizeOf(FHeader.Ext) - SizeOf(FHeader.Ext.NewHeaderOffset));
     FHeader.Checksum := 0;
   end;
 end;
@@ -587,18 +598,18 @@ begin
           Extract(I).Free;
   end;
 
-  if soDirectory in Options then
-    with FHeaders do
+  if soDataDirectory in Options then
+    with FHeaders.OptionalHeader do
     begin
-      for I := OptionalHeader.DirectoryEntryCount - 1 downto 0 do
-        if QuadWord(OptionalHeader.DataDirectory[I]) <> 0 then
+      for I := DirectoryEntryCount - 1 downto 0 do
+        if QuadWord(DataDirectory[I]) <> 0 then
         begin
-          OptionalHeader.DirectoryEntryCount := I + 1;
+          DirectoryEntryCount := I + 1;
 //          FileHeader.OptionalHeaderSize := SizeOf(OptionalHeader) -
 //            SizeOf(OptionalHeader.DataDirectory) + (I + 1) * SizeOf(TImageDataDirectory);
           Exit;
         end;
-      OptionalHeader.DirectoryEntryCount := 0;
+      DirectoryEntryCount := 0;
     end;
 end;
 
