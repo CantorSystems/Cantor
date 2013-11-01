@@ -116,12 +116,14 @@ type
   EPlatform = class(Exception)
   private
     FErrorCode: LongWord;
+    FErrorSource: PCoreChar;
   public
-    constructor Create(ErrorCode: LongWord);
+    constructor Create(ErrorCode: LongWord; ErrorSource: PCoreChar = nil);
   {$IFNDEF Compat}
     destructor Destroy; override;
   {$ENDIF}
     property ErrorCode: LongWord read FErrorCode;
+    property ErrorSource: PCoreChar read FErrorSource;
   end;
 
 {$IFNDEF Tricks}
@@ -131,7 +133,7 @@ type
 { Exception raising }
 
 procedure Abort;
-procedure RaiseLastPlatformError;
+procedure RaiseLastPlatformError(ErrorSource: PCoreChar = nil);
 
 { Exception handling }
 
@@ -530,13 +532,13 @@ begin
   raise EAbort.Create(sOperationAborted) at ReturnAddr;
 end;
 
-procedure RaiseLastPlatformError;
+procedure RaiseLastPlatformError(ErrorSource: PCoreChar);
 var
   LastError: LongWord;
 begin
   LastError := GetLastError;
   if LastError <> 0 then
-    raise EPlatform.Create(LastError);
+    raise EPlatform.Create(LastError, ErrorSource);
 end;
 
 { Exception handling }
@@ -692,29 +694,42 @@ end;
 
 { EPlatform }
 
-constructor EPlatform.Create(ErrorCode: LongWord);
-{$IFDEF Compat}
+constructor EPlatform.Create(ErrorCode: LongWord; ErrorSource: PCoreChar);
 var
   W: PCoreChar;
+{$IFDEF Compat}
 begin
   W := SysErrorMessage(ErrorCode);
   try
-    inherited Create(W, WideStrLen(W));
+    if ErrorSource <> nil then
+      inherited Create(sPlatformError, CP_LEGACY, [W, ErrorSource])
+    else
+      inherited Create(W, WideStrLen(W));
   finally
     LocalFree(THandle(W));
   end;
 {$ELSE}
 begin
-  FMessage := SysErrorMessage(ErrorCode);
+  if ErrorSource <> nil then
+  begin
+    W := SysErrorMessage(ErrorCode);
+    inherited Create(sPlatformError, CP_LEGACY, [W, ErrorSource]);
+  end
+  else
+    FMessage := SysErrorMessage(ErrorCode);
   FOptions := [eoWideChar, eoCanFree];
 {$ENDIF}
   FErrorCode := ErrorCode;
+  FErrorSource := ErrorSource;
 end;
 
 {$IFNDEF Compat}
 destructor EPlatform.Destroy;
 begin
-  LocalFree(THandle(FMessage));
+  if FErrorSource = nil then
+    LocalFree(THandle(FMessage))
+  else
+    inherited;
 end;
 {$ENDIF}
 

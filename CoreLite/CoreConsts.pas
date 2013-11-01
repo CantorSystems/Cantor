@@ -45,6 +45,9 @@ const
   sAssertError = '%s (%s, line %d)';
   sAssertionFailed = 'Assertion failed';
 
+  sPlatformError = '%s: “%s”';
+  sVS_VERSION_INFO = 'VS_VERSION_INFO';
+
   sStreamRead = 'read';
   sStreamWrote = 'wrote';
   sStreamReadError = 'Unexpected end of stream';

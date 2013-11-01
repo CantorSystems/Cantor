@@ -329,7 +329,7 @@ constructor THandleStream.Create(FileName: PCoreChar; Access: TFileAccess;
   Attributes: TFileAttributes);
 begin
   if not Open(FileName, Access, Attributes) then
-    RaiseLastPlatformError;
+    RaiseLastPlatformError(FileName);
 end;
 
 destructor THandleStream.Destroy;
@@ -452,7 +452,7 @@ constructor TFileMapping.Create(MappingName: PCoreChar; Options: TOpenFileMappin
   InheritHandle: Boolean);
 begin
   if not Open(MappingName, Options, InheritHandle) then
-    RaiseLastPlatformError;
+    RaiseLastPlatformError(MappingName);
 end;
 
 destructor TFileMapping.Destroy;
@@ -541,7 +541,7 @@ constructor TFileStreamMapping.Create(FileName: PCoreChar; Options: TCreateFileM
 begin
   FStream := TFileStream.Create;
   if not Open(FileName, Options, Size, MappingName) then
-    RaiseLastPlatformError;
+    RaiseLastPlatformError(FileName);
 end;
 
 destructor TFileStreamMapping.Destroy;
@@ -760,7 +760,7 @@ end;
 constructor TVersionInfo.Create(FileName: PCoreChar);
 begin
   if not Open(FileName) then
-    RaiseLastPlatformError;
+    RaiseLastPlatformError(sVS_VERSION_INFO);
 end;
 
 destructor TVersionInfo.Destroy;
