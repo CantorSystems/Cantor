@@ -44,7 +44,7 @@ type
 
   PImageLegacyHeader = ^TImageLegacyHeader;
   TImageLegacyHeader = packed record
-    Magic: array[0..1] of Char;
+    Magic: array[0..1] of LegacyChar;
     LastPageBytes, FilePages, RelocationCount,
     HeaderParagraphs, MinAlloc, MaxAlloc,
     InitialSS, InitialSP,
@@ -86,14 +86,14 @@ type
 
   PImageNewHeaders = ^TImageNewHeaders;
   TImageNewHeaders = packed record
-    Magic: array[0..3] of Char;
+    Magic: array[0..3] of LegacyChar;
     FileHeader: TImageFileHeader;
     OptionalHeader: TImageOptionalHeader;
   end;
 
   PImageSectionHeader = ^TImageSectionHeader;
   TImageSectionHeader = packed record
-    Name: array[0..IMAGE_SIZEOF_SHORT_NAME - 1] of Char;
+    Name: array[0..IMAGE_SIZEOF_SHORT_NAME - 1] of LegacyChar;
     case Byte of
       0: (VirtualSize, VirtualAddress,
           RawDataSize, RawDataOffset,
@@ -113,19 +113,19 @@ type
   PImageResourceDirectoryEntry = ^TImageResourceDirectoryEntry;
   TImageResourceDirectoryEntry = packed record
     case Byte of
-      0: (Id, DataOffset: LongWord);
-      1: (Name: LongWord);
+      0: (Name, DataOffset: LongWord);
+      1: (Id: Word);
   end;
 
   PImageResourceDataEntry = ^TImageResourceDataEntry;
   TImageResourceDataEntry = packed record
-    DataOffset, Size, CodePage, Reserved: LongWord;
+    DataOffset, Size, Locale, Reserved: LongWord;
   end;
 
   PImageResourceString = ^TImageResourceString;
   TImageResourceString = packed record
     Length: Word;
-    Data: array [0..0] of WideChar;
+  //  Data: array [0..0] of WideChar;
   end;
 
   PIconHeader = ^TIconHeader;

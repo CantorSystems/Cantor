@@ -9,20 +9,60 @@ unit PetCore;
 interface
 
 uses
-  CoreUtils, CoreExceptions, CoreWrappers;
+  CoreUtils, CoreExceptions, CoreWrappers, CoreClasses;
 
 type
+  TResourceName = record
+    Length: Integer;
+    Value: PCoreChar;
+  end;
+
+  PResourceNameArray = ^TResourceNameArray;
+  TResourceNameArray = array[0..MaxInt div SizeOf(TResourceName) - 1] of TResourceName;
+
+  TResourceNames = class(TArray)
+  private
+  { hold } FItems: PResourceNameArray;
+  public
+    class function ItemSize: Integer; override;
+    property Items: PResourceNameArray read FItems;
+  end;
+
+  TSectionName = class
+  private
+    FLength: Integer;
+    FValue: PLegacyChar;
+  public
+    destructor Destroy; override;
+
+    property Length: Integer read FLength;
+    property Value: PLegacyChar read FValue;
+  end;
+
+  PSectionNameArray = ^TSectionNameArray;
+  TSectionNameArray = array[0..MaxInt div SizeOf(TSectionName) - 1] of TSectionName;
+
+  TSectionNames = class(TObjects)
+  private
+  { hold } FItems: PSectionNameArray;
+  public
+    property Items: PSectionNameArray read FItems;
+  end;
+
   TFileKey = (fkInto, fkBackup, fkStub, fkExtract, fkDump);
   TFileKeys = array[TFileKey] of PCoreChar;
 
-  TRunOption = (roDelphi, roStrip, ro3GB, roPause);
+  TRunOption = (roStrip, roDeep, roClean, roMainIcon, ro3GB, roPause);
   TRunOptions = set of TRunOption;
 
   TApplication = class
   private
     FConsole: TStreamConsole;
-    FAppName, FSourceFileName: PCoreChar;
+    FAppName: PLegacyChar;
+    FSourceFileName: PCoreChar;
     FFileNames: TFileKeys;
+    FSectionNames: TSectionNames;
+    FResourceNames: TResourceNames;
     FMajorVersion, FMinorVersion: Word;
     FOptions: TRunOptions;
   public
@@ -33,22 +73,14 @@ type
 
 { Exceptions }
 
-  ECommandLine = Exception;
-
-  EFileName = class(ECommandLine)
-  private
-    FFileName: PCoreChar;
-  public
-    constructor Create(Value: PCoreChar); overload;
-    property FileName: PCoreChar read FFileName;
+  ECommandLine = class(Exception)
   end;
 
-  EFileKey = class(EFileName)
+  EFileKey = class(ECommandLine)
   private
     FFileKey: TFileKey;
   public
     constructor Create(MissingFileName: TFileKey); overload;
-    constructor Create(DuplicateFileName: TFileKey; Value: PCoreChar); overload;
     property FileKey: TFileKey read FFileKey;
   end;
 
@@ -57,17 +89,10 @@ type
 implementation
 
 uses
-  Windows, CoreClasses, CoreStrings, PetConsts, ExeImages;
+  Windows, CoreStrings, PetConsts, ExeImages;
 
 const
   FileKeys: TFileKeys = (sInto, sBackup, sStub, sExtract, sDump);
-
-{ EFileName }
-
-constructor EFileName.Create(Value: PCoreChar);
-begin
-  inherited Create(sDuplicateSourceFileName, CP_CORE, [Value]);
-end;
 
 { EFileKey }
 
@@ -76,12 +101,19 @@ begin
   inherited Create(sMissingFileName, CP_CORE, [FileKeys[MissingFileName]]);
 end;
 
-constructor EFileKey.Create(DuplicateFileName: TFileKey; Value: PCoreChar);
+{ TResourceNames }
+
+class function TResourceNames.ItemSize: Integer;
 begin
-  if Value <> nil then
-    inherited Create(sDuplicateFileName, CP_CORE, [FileKeys[DuplicateFileName], Value])
-  else
-    inherited Create(sDuplicateFileKey, CP_CORE, [FileKeys[DuplicateFileName]])
+  Result := SizeOf(TResourceName); 
+end;
+
+{ TSectionName }
+
+destructor TSectionName.Destroy;
+begin
+  FreeMem(FValue);
+  inherited;
 end;
 
 { TApplication }
@@ -98,12 +130,13 @@ begin
 end;
 
 const
-  OptionKeys: array[TRunOption] of PCoreChar = (sDelphi, sStrip, s3GB, sPause);
+  OptionKeys: array[TRunOption] of PCoreChar = (sStrip, sDeep, sCleanVer, sMainIcon, s3GB, sPause);
 var
-  Dot, Ver, CmdLineParams, Limit: PCoreChar;
+  Dot, Ver, CmdLineParams, StubFileName, Limit, Head: PCoreChar;
   ExeName: array[0..MAX_PATH] of CoreChar;
   K: TFileKey;
   R: TRunOption;
+  S: TSectionName;
 begin
   FConsole := TStreamConsole.Create;
   with FConsole do
@@ -131,17 +164,19 @@ begin
 
   with WideParamStr(CommandLine) do
   begin
-    FAppName := WideStrRScan(Param, PathDelimiter, Length);
-    if FAppName <> nil then
-      Inc(FAppName)
-    else
-      FAppName := Param;
+    Param[Length] := CoreChar(0); // unsafe
+    StubFileName := Param;
 
-    Dot := WideStrScan(FAppName, '.', Length - (PLegacyChar(FAppName) - PLegacyChar(Param)) div SizeOf(CoreChar));
-    if Dot <> nil then
-      Dot^ := CoreChar(0) // unsafe
+    Head := WideStrRScan(Param, PathDelimiter, Length);
+    if Head <> nil then
+      Inc(Head)
     else
-      Param[Length] := CoreChar(0); // unsafe
+      Head := Param;
+
+    Dot := WideStrScan(Head, '.', Length - (Head - Param));
+    if Dot <> nil then
+      Length := Dot - Head;
+    FAppName := EncodeLegacy(Head, Length, CP_ACP);
 
     CommandLine := NextParam;
   end;
@@ -171,10 +206,12 @@ begin
               FFileNames[K] := Param;
               Param := nil;
             end;
-            Break;
           end
-          else if FFileNames[K] = nil then
-            raise EFileKey.Create(K);
+          else if (FFileNames[K] = nil) and not (K in [fkInto, fkStub]) then
+            raise EFileKey.Create(K)
+          else
+            P.Param := nil;
+          Break;
         end;
 
       if P.Param <> nil then
@@ -186,54 +223,112 @@ begin
             Break;
           end;
 
-      if (P.Param <> nil) and SameKey(sOSVer) then
-      begin
-        P := WideParamStr(P.NextParam);
-        with P do
-          if Length <> 0 then
-          begin
-            Limit := Param + Length;
-            while (LegacyChar(Param^) in ['0'..'9']) and (Param < Limit) do
+      if P.Param <> nil then
+        if SameKey(sOSVer) then
+        begin
+          P := WideParamStr(P.NextParam);
+          with P do
+            if Length <> 0 then
             begin
-              FMajorVersion := FMajorVersion * 10 + Byte(Param^) - Byte('0');
-              Inc(Param);
-            end;
-            if Param^ = '.' then
-            begin
-              Inc(Param);
-              while (Param < Limit) and (LegacyChar(Param^) in ['0'..'9']) do
+              Limit := Param + Length;
+              while (Word(Param^) and $FF00 = 0) and (LegacyChar(Param^) in ['0'..'9']) and (Param < Limit) do
               begin
-                FMinorVersion := FMinorVersion * 10 + Byte(Param^) - Byte('0');
+                FMajorVersion := FMajorVersion * 10 + Byte(Param^) - Byte('0');
                 Inc(Param);
               end;
+              if Param^ = '.' then
+              begin
+                Inc(Param);
+                while (Param < Limit) and (Word(Param^) and $FF00 = 0) and (LegacyChar(Param^) in ['0'..'9']) do
+                begin
+                  FMinorVersion := FMinorVersion * 10 + Byte(Param^) - Byte('0');
+                  Inc(Param);
+                end;
+              end;
+              Param := nil;
+            end
+            else
+              raise ECommandLine.Create(sMissingOSVer);
+        end
+        else if SameKey(sDropSections) then
+        begin
+          P := WideParamStr(P.NextParam);
+          with P do
+          begin
+            Limit := Param + Length;
+            while Param < Limit do
+            begin
+              while (Word(Param^) and $FF00 = 0) and (LegacyChar(Param^) in [' ', ',', ';']) and (Param < Limit) do
+                Inc(Param);
+              Head := Param;
+              while (Param < Limit) and (Word(Param^) and $FF00 = 0) and not (LegacyChar(Param^) in [' ', ',', ';']) do
+                Inc(Param);
+              if FSectionNames = nil then
+                FSectionNames := TSectionNames.Create(16, -2, True);
+              S := TSectionName.Create;
+              with S do
+              begin
+                FLength := Param - Head;
+                FValue := EncodeLegacy(Head, FLength, CP_ACP);
+              end;
+              FSectionNames.Append(S);
             end;
+            if FSectionNames = nil then
+              raise ECommandLine.Create(sMissingSectionNames);
             Param := nil;
-          end
-          else
-            raise ECommandLine.Create(sMissingOSVer);
-      end;
+          end;
+        end
+        else if SameKey(sDropRes) then
+        begin
+          P := WideParamStr(P.NextParam);
+          with P do
+          begin
+            Limit := Param + Length;
+            while Param < Limit do
+            begin
+              while (Word(Param^) and $FF00 = 0) and (LegacyChar(Param^) in [' ', ',', ';']) and (Param < Limit) do
+                Inc(Param);
+              Head := Param;
+              while (Param < Limit) and (Word(Param^) and $FF00 = 0) and not (LegacyChar(Param^) in [' ', ',', ';']) do
+                Inc(Param);
+              if FResourceNames = nil then
+                FResourceNames := TResourceNames.Create(16, -2);
+              with FResourceNames, FItems[Append] do
+              begin
+                Length := Param - Head;
+                Value := Head;
+              end;
+            end;
+            if FSectionNames = nil then
+              raise ECommandLine.Create(sMissingSectionNames);
+            Param := nil;
+          end;
+        end;
     end;
 
     if P.Param <> nil then
-    begin
       with P do
+      begin
         Param[Length] := CoreChar(0); // unsafe
-      if FSourceFileName = nil then
-        FSourceFileName := P.Param
-      else
-        raise EFileName.Create(P.Param);
-    end;
+        FSourceFileName := Param;
+      end;
 
     CommandLine := P.NextParam;
   until False;
 
-  if (FFileNames[fkInto] = nil) and (FFileNames[fkBackup] <> nil) then
+  if FFileNames[fkInto] = nil then
     FFileNames[fkInto] := FSourceFileName;
+  if FFileNames[fkStub] = nil then
+    FFileNames[fkStub] := StubFileName; 
 end;
 
 destructor TApplication.Destroy;
 begin
+  FResourceNames.Free;
+  FSectionNames.Free;
+  FreeMem(FAppName);
   FConsole.Free;
+
   if roPause in FOptions then // placed here to show exceptions properly
     with TStreamConsole.Create(True) do
     try
@@ -244,12 +339,15 @@ begin
 end;
 
 procedure TApplication.Run;
+const
+  Deep: array[Boolean] of TStripOptions = ([], [soOrphanedSections]);
 var
+  I, Idx: Integer;
   Image: TExeImage;
 begin
   if FSourceFileName <> nil then
   begin
-    Image := TExeImage.Create(IMAGE_NUMBEROF_DIRECTORY_ENTRIES, 0);
+    Image := TExeImage.Create(IMAGE_NUMBEROF_DIRECTORY_ENTRIES, 0, True);
     try
       Image.Load(FSourceFileName);
 
@@ -270,9 +368,39 @@ begin
         Image.Stub.Load(FFileNames[fkStub]);
 
       if roStrip in FOptions then
-        Image.Strip
+        Image.Strip([soStub..soEmptySections] + Deep[roDeep in FOptions])
       else
         Image.Stub.Strip(False);
+
+      if FSectionNames <> nil then
+        for I := 0 to FSectionNames.Count - 1 do
+        begin
+          with FSectionNames.Items[I] do
+            Idx := Image.IndexOfSection(Value, Length);
+          if Idx >= 0 then
+            Image.Extract(Idx).Free;
+        end;
+
+      if (FResourceNames <> nil) or (FOptions * [roClean, roMainIcon] <> []) then
+      begin
+        Idx := Image.IndexOfSection(IMAGE_DIRECTORY_ENTRY_RESOURCE);
+        if Idx >= 0 then
+          with TExeResources.Create(Image.Sections[Idx]) do
+          try
+            Load(Image.Sections[Idx]);
+            Save(Image.Sections[Idx]);
+          finally
+            Free;
+          end;
+
+        if roClean in FOptions then
+        begin
+        end;
+
+        if roMainIcon in FOptions then
+        begin
+        end;  
+      end;
 
       if FFileNames[fkInto] <> nil then
       begin
