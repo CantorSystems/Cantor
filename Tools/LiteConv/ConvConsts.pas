@@ -17,7 +17,7 @@ const
   sPause      = 'pause';
 
   sCodePage   = 'cp';
-  sCharSet    = 'cs';
+  sCharSet    = 'charset';
 
   sOEM        = 'OEM';
   sCESU8      = '8';
@@ -36,13 +36,13 @@ const
                     #9'-pause'#9#9'Wait for ENTER key to exit'#10#10 +
             'Options for both <in-charset> and <out-charset>'#10 +
                     #9'-cp N'#9'Use code page N to decode/encode file'#10 +
-                  //  #9'-cs S'#9'Use character set S to decode/encode file'#10 +
-                    #9'-oem'#9'Use OEM code page to decode/encode file'#10#10 +
+                  //  #9'-charset S'#9'Use character set S to decode/encode file'#10 +
+                    #9'-OEM'#9'Use OEM code page to decode/encode file'#10#10 +
             'Options for <out-charset> only'#10 +
                     #9'-8'#9'Encode to CESU-8'#10 +
                     #9'-16'#9'Encode to UTF-16'#10 +
                     #9'-32'#9'Encode to UTF-32'#10 +
-                    #9'-be'#9'Encode UTF-16 or UTF-32 as big-endian'#10#10 +
+                    #9'-BE'#9'Encode UTF-16 or UTF-32 as big-endian'#10#10 +
             'Current environment'#10 +
                     #9'ANSI code page (ACP)'#9'%u'#10+
                     #9'OEM code page (OEMCP)'#9'%u';
