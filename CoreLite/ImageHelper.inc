@@ -10,6 +10,9 @@ const // for Delphi 6
 
   IMAGE_FILE_LARGE_ADDRESS_AWARE        = $0020;
 
+  IMAGE_RESOURCE_NAME_IS_STRING         = $80000000;
+  IMAGE_RESOURCE_DATA_IS_DIRECTORY      = $80000000;
+
 {
   RT_NEW            = $2000;
   RT_ERROR          = $7FFF;
@@ -117,15 +120,23 @@ type
       1: (Id: Word);
   end;
 
+//  PImageResourceDirectoryEntries = ^TImageResourceDirectoryEntries;
+//  TImageResourceDirectoryEntries = array[0..MaxInt div SizeOf(TImageResourceDirectoryEntry) - 1] of TImageResourceDirectoryEntry;
+
   PImageResourceDataEntry = ^TImageResourceDataEntry;
   TImageResourceDataEntry = packed record
     DataOffset, Size, Locale, Reserved: LongWord;
   end;
 
-  PImageResourceString = ^TImageResourceString;
-  TImageResourceString = packed record
+//  PImageResourceDataEntries = ^TImageResourceDataEntries;
+//  TImageResourceDataEntries = array[0..MaxInt div SizeOf(TImageResourceDataEntry) - 1] of TImageResourceDataEntry;
+
+  PImageResourceName = ^TImageResourceName;
+  TImageResourceName = packed record
     Length: Word;
-  //  Data: array [0..0] of WideChar;
+    case Byte of
+      0: (LegacyData: array [0..0] of LegacyChar);
+      1: (UnicodeData: array [0..0] of WideChar);
   end;
 
   PIconHeader = ^TIconHeader;

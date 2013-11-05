@@ -2188,17 +2188,18 @@ begin
     Source.ReadBuffer(BOM, SizeOf(BOM));
     case BOM of
       BOM_UTF16_LE:
-        LoadWideString;
+        begin
+          LoadWideString;
+//          Exit;
+        end;
       BOM_UTF16_BE:
         begin
           LoadWideString;
-
+//          Exit;
         end;
-
     end;
-  end
-  else
-    Result := 0; 
+  end;
+  Result := 0;
 end;
 {$ENDIF}
 

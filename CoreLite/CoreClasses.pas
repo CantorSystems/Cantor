@@ -126,6 +126,11 @@ type
     property Delta: Integer read FDelta write FDelta;
   end;
 
+  {TSortedArray = class(TArray)
+  protected
+    function Insert: Integer;
+  end;}
+
   TObjects = class(TArray)
   private
   { placeholder } // FOwnsObjects: Boolean;
@@ -809,6 +814,13 @@ function TArray.TranslateDelta: Integer;
   else
     Result := FDelta;
 end;
+
+{ TSortedArray }
+
+{function TSortedArray.Insert: Integer;
+begin
+
+end;}
 
 { TObjects }
 

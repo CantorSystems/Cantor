@@ -10,7 +10,7 @@ interface
 
 uses
   Windows, CoreUtils, CoreExceptions, CoreWrappers, CoreClasses, CoreStrings;
-
+                                       
 {$I ImageHelper.inc}
 
 type
@@ -37,18 +37,31 @@ type
     property Header: TImageLegacyHeader read FHeader;
   end;
 
+  TExeSection = class;
+
+  TExeSectionHandler = class(TObjects)
+  public
+    function DataSize: LongWord; virtual; abstract;
+    procedure Load(Source: TExeSection); virtual; abstract;
+    procedure Save(Dest: TWritableStream); virtual; abstract;
+  end;
+
   TExeSection = class
   private
     FHeader: TImageSectionHeader;
     FData: Pointer;
+    FHandler: TExeSectionHandler;
+    procedure SetHandler(Value: TExeSectionHandler);
   public
     destructor Destroy; override;
+    procedure Build;
     function DirectoryIndex(const OptionalHeader: TImageOptionalHeader): Integer;
     function IsOrphaned(const OptionalHeader: TImageOptionalHeader): Boolean;
     procedure Load(Source: TReadableStream);
     procedure Save(Dest: TWritableStream);
 
     property Data: Pointer read FData;
+    property Handler: TExeSectionHandler read FHandler write SetHandler;
     property Header: TImageSectionHeader read FHeader;
   end;
 
@@ -86,41 +99,68 @@ type
     property Stub: TExeStub read FStub;
   end;
 
-  TExeResource = class
-  private
-    FSize, FCodePage: LongWord;
+  TExeResourceHandler = class
   public
-    property CodePage: LongWord read FCodePage;
-    property Size: LongWord read FSize;
+    function DataSize: LongWord; virtual; abstract;
+    procedure Load(Source: Pointer); virtual; abstract;
+    procedure Save(Dest: TWritableStream); virtual; abstract;
   end;
 
-  TRawResource = class(TExeResource)
+  TExeResourceData = record
+    Data: Pointer;
+    Size, Locale: LongWord;
+    Handler: TExeResourceHandler;
+  end;
+
+  PExeResourceDataArray = ^TExeResourceDataArray;
+  TExeResourceDataArray = array[0..MaxInt div SizeOf(TExeResourceData) - 1] of TExeResourceData;
+
+  TExeResource = class(TArray)
   private
-    FData: Pointer;
+  { hold } FItems: PExeResourceDataArray;
+    FDirectory: PImageResourceDirectory;
+    FId: Word;
+    FName: PWideChar;
   public
-    destructor Destroy; override;
-    property Data: Pointer read FData;
+    class function ItemSize: Integer; override;
+    procedure Load(Source: Pointer; const Res: TImageResourceDirectoryEntry);
+    function Size: LongWord;
+
+    property Directory: PImageResourceDirectory read FDirectory;
+    property Id: Word read FId;
+    property Items: PExeResourceDataArray read FItems;
+    property Name: PWideChar read FName;
   end;
 
   PExeResourceArray = ^TExeResourceArray;
   TExeResourceArray = array[0..MaxInt div SizeOf(TExeResource) - 1] of TExeResource;
 
-  TExeResources = class(TObjects)
+  TExeResources = class(TExeSectionHandler)
   private
   { hold } FItems: PExeResourceArray;
-    FDirectory: TImageResourceDirectory;
+    FDirectory: PImageResourceDirectory;
   public
     constructor Create(Section: TExeSection; Delta: Integer = 0); overload;
-    procedure Load(Source: TExeSection);
-    procedure Save(Dest: TExeSection);
+    function DataSize: LongWord; override;
+    procedure Load(Source: TExeSection); override;
+    procedure Save(Dest: TWritableStream); override;
 
-    property Directory: TImageResourceDirectory read FDirectory;
+    property Directory: PImageResourceDirectory read FDirectory;
     property Items: PExeResourceArray read FItems;
+  end;
+
+  TExeVersionInfo = class(TExeResourceHandler)
+  public
+    function DataSize: LongWord; override;
+    procedure Load(Source: Pointer); override;
+    procedure Save(Dest: TWritableStream); override;
   end;
 
 { Exceptions }
 
-  EUnknownImage = class(Exception)
+  EBadImage = class(Exception);
+
+  EUnknownImage = class(EBadImage)
   private
     FHeaders: PImageNewHeaders;
   public
@@ -344,8 +384,15 @@ end;
 
 destructor TExeSection.Destroy;
 begin
+  FHandler.Free;
   FreeMem(FData);
   inherited;
+end;
+
+procedure TExeSection.Build;
+begin
+  if FHandler <> nil then
+    FHeader.RawDataSize := FHandler.DataSize;
 end;
 
 function TExeSection.DirectoryIndex(const OptionalHeader: TImageOptionalHeader): Integer;
@@ -392,11 +439,25 @@ begin
     Pos := Position;
     try
       Position := FHeader.RawDataOffset;
-      WriteBuffer(FData^, FHeader.RawDataSize);
+      if FHandler <> nil then
+        FHandler.Save(Dest)
+      else
+        WriteBuffer(FData^, FHeader.RawDataSize);
     finally
       Position := Pos;
     end;
   end;
+end;
+
+procedure TExeSection.SetHandler(Value: TExeSectionHandler);
+begin
+{$IFNDEF Lite}
+  if FHandler = Value then
+    Exit;
+{$ENDIF}
+  FHandler.Free;
+  FHandler := Value;
+  FHandler.Load(Self);
 end;
 
 { TExeImage }
@@ -433,6 +494,7 @@ begin
     for I := 0 to Count - 1 do
       with FSections[I] do
       begin
+        Build;
         if CodeBase = FHeader.RawDataOffset then
           CodeBase := Offset
         else if DataBase = FHeader.RawDataOffset then
@@ -567,12 +629,17 @@ begin
   Dest.WriteBuffer(Dummy, FileAlignBytes(Offset + SizeOf(TImageSectionHeader) * LongWord(Count)));
 
   for I := 0 to Count - 1 do
-    with FSections[I], Dest do
+  begin
+    with FSections[I] do
     begin
-      WriteBuffer(FData^, FHeader.RawDataSize);
-      if I < Count - 1 then
-        WriteBuffer(Dummy, FileAlignBytes(FHeader.RawDataSize));
+      if FHandler <> nil then
+        FHandler.Save(Dest)
+      else
+        Dest.WriteBuffer(FData^, FHeader.RawDataSize);
     end;
+    if I < Count - 1 then
+      Dest.WriteBuffer(Dummy, FileAlignBytes(Sections[I].FHeader.RawDataSize));
+  end;
 end;
 
 procedure TExeImage.Save(FileName: PCoreChar);
@@ -631,7 +698,7 @@ begin
     I := IndexOfSection(IMAGE_DIRECTORY_ENTRY_BASERELOC);
     if I >= 0 then
       Extract(I).Free;
-    QuadWord(FHeaders.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC]) := 0;
+    QuadWord(FHeaders.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC]) := 0; // Fast core
     with FHeaders.FileHeader do
       Characteristics := Characteristics or IMAGE_FILE_RELOCS_STRIPPED;
   end;
@@ -650,7 +717,7 @@ begin
     with FHeaders.OptionalHeader do
     begin
       for I := DirectoryEntryCount - 1 downto 0 do
-        if QuadWord(DataDirectory[I]) <> 0 then
+        if QuadWord(DataDirectory[I]) <> 0 then // Fast core
         begin
           DirectoryEntryCount := I + 1;
           Exit;
@@ -659,12 +726,33 @@ begin
     end;
 end;
 
-{ TRawResource }
+{ TExeResource }
 
-destructor TRawResource.Destroy;
+class function TExeResource.ItemSize: Integer;
 begin
-  FreeMem(FData);
-  inherited;
+  Result := SizeOf(TExeResourceData);
+end;
+
+procedure TExeResource.Load(Source: Pointer; const Res: TImageResourceDirectoryEntry);
+begin
+//  if Res.DataOffset and IMAGE_RESOURCE_DATA_IS_DIRECTORY <> 0 then
+//    raise EBadImage.Create(sBadExeImage, [sResDirAtSingleResLevel]);
+
+  if Res.Name and IMAGE_RESOURCE_NAME_IS_STRING <> 0 then
+    with PImageResourceName((PLegacyChar(Source) + Res.Name and not IMAGE_RESOURCE_NAME_IS_STRING))^ do
+    begin
+      FId := Length;
+      FName := @UnicodeData;
+    end
+  else
+    FId := Res.Name;
+
+//  LoadData(Source, PImageResourceDataEntry(PLegacyChar(Source) + Res.DataOffset and not IMAGE_RESOURCE_DATA_IS_DIRECTORY)^);
+end;
+
+function TExeResource.Size: LongWord;
+begin
+  Result := 0;
 end;
 
 { TExeResources }
@@ -676,21 +764,72 @@ begin
   Load(Section);
 end;
 
-procedure TExeResources.Load(Source: TExeSection);
+function TExeResources.DataSize: LongWord;
 var
-  P: PImageResourceDirectoryEntry;
-  Offset: LongWord;
+  I: Integer;
 begin
-  Clear;
-  FDirectory := PImageResourceDirectory(Source.Data)^;
-  P := Pointer(PLegacyChar(Source.Data) + SizeOf(FDirectory));
-  Offset := P.DataOffset and not $80000000;
-  P := Pointer(PLegacyChar(P) + Offset);
-  with P^ do
-//    Inc(DataOffset);               
+  Result := 0;
+  for I := 0 to Count - 1 do
+//    Inc(Result, FItems[I].Size);
 end;
 
-procedure TExeResources.Save(Dest: TExeSection);
+procedure TExeResources.Load(Source: TExeSection);
+var
+  ResType, ChildRes: PImageResourceDirectoryEntry;
+  ResDir: PImageResourceDirectory;
+  I, J, H: Integer;
+begin
+  Clear;
+  FDirectory := PImageResourceDirectory(Source.Data);
+  ResType := Pointer(PLegacyChar(Source.Data) + SizeOf(FDirectory));
+  for I := 0 to FDirectory.NamedEntryCount + FDirectory.IdEntryCount - 1 do
+  begin
+    if ResType.Name and IMAGE_RESOURCE_NAME_IS_STRING <> 0 then
+      raise EBadImage.Create(sNotImplemented, [sNamedResourceTypes]);
+
+{    ResClass := TExeResource;
+    for H := 0 to HandlerCount - 1 do
+      if Handlers[H].ResourceType = ResType.Name then
+      begin
+        ResClass := Handlers[H].HandlerClass;
+        Break;
+      end;}
+
+    if ResType.DataOffset and IMAGE_RESOURCE_DATA_IS_DIRECTORY <> 0 then
+    begin
+      ResDir := Pointer(PLegacyChar(Source.Data) + ResType.DataOffset and not IMAGE_RESOURCE_DATA_IS_DIRECTORY);
+      ChildRes := Pointer(PLegacyChar(ResDir) + SizeOf(ResDir^));
+      for J := 0 to ResDir.NamedEntryCount + ResDir.IdEntryCount - 1 do
+      begin
+//        AppendRes(ChildRes);
+        Inc(ChildRes);
+      end;
+    end
+    else
+//      AppendRes(Pointer(PLegacyChar(ResType) + ResType.DataOffset));
+
+    Inc(ResType);
+  end;
+end;
+
+procedure TExeResources.Save(Dest: TWritableStream);
+begin
+
+end;
+
+{ TExeVersionInfo }
+
+function TExeVersionInfo.DataSize: LongWord;
+begin
+  Result := 0;
+end;
+
+procedure TExeVersionInfo.Load(Source: Pointer);
+begin
+
+end;
+
+procedure TExeVersionInfo.Save(Dest: TWritableStream);
 begin
 
 end;

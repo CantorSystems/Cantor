@@ -12,6 +12,20 @@ uses
   CoreUtils, CoreExceptions, CoreWrappers, CoreClasses;
 
 type
+  TLocaleMapRec = packed record // satisfying TArray.ItemSize
+    LocaleFrom, LocaleTo: Word;
+  end;
+
+  PLocaleMapArray = ^TLocaleMapArray;
+  TLocaleMapArray = array[0..MaxInt div SizeOf(TLocaleMapRec) - 1] of TLocaleMapRec;
+
+  TLocaleMap = class(TArray)
+  private
+  { hold } FItems: PLocaleMapArray;
+  public
+    property Items: PLocaleMapArray read FItems;
+  end;
+
   TResourceName = record
     Length: Integer;
     Value: PCoreChar;
@@ -34,7 +48,6 @@ type
     FValue: PLegacyChar;
   public
     destructor Destroy; override;
-
     property Length: Integer read FLength;
     property Value: PLegacyChar read FValue;
   end;
@@ -52,7 +65,7 @@ type
   TFileKey = (fkInto, fkBackup, fkStub, fkExtract, fkDump);
   TFileKeys = array[TFileKey] of PCoreChar;
 
-  TRunOption = (roStrip, roDeep, roClean, roMainIcon, ro3GB, roPause);
+  TRunOption = (roStrip, roDeep, roCleanVer, roMainIcon, ro3GB, roPause);
   TRunOptions = set of TRunOption;
 
   TApplication = class
@@ -63,6 +76,7 @@ type
     FFileNames: TFileKeys;
     FSectionNames: TSectionNames;
     FResourceNames: TResourceNames;
+    FLocaleMap: TLocaleMap;
     FMajorVersion, FMinorVersion: Word;
     FOptions: TRunOptions;
   public
@@ -73,8 +87,7 @@ type
 
 { Exceptions }
 
-  ECommandLine = class(Exception)
-  end;
+  ECommandLine = class(Exception);
 
   EFileKey = class(ECommandLine)
   private
@@ -132,11 +145,12 @@ end;
 const
   OptionKeys: array[TRunOption] of PCoreChar = (sStrip, sDeep, sCleanVer, sMainIcon, s3GB, sPause);
 var
-  Dot, Ver, CmdLineParams, StubFileName, Limit, Head: PCoreChar;
+  Dot, Ver, CmdLineParams, StubFileName, Limit, Head, Current: PCoreChar;
   ExeName: array[0..MAX_PATH] of CoreChar;
   K: TFileKey;
   R: TRunOption;
   S: TSectionName;
+  Value: Word;
 begin
   FConsole := TStreamConsole.Create;
   with FConsole do
@@ -227,81 +241,128 @@ begin
         if SameKey(sOSVer) then
         begin
           P := WideParamStr(P.NextParam);
-          with P do
-            if Length <> 0 then
+          if P.Length <> 0 then
+          begin
+            with P do
             begin
-              Limit := Param + Length;
-              while (Word(Param^) and $FF00 = 0) and (LegacyChar(Param^) in ['0'..'9']) and (Param < Limit) do
+              Current := Param;
+              Limit := Current + Length;
+            end;
+            while (PWord(Current)^ and $FF00 = 0) and (PLegacyChar(Current)^ in ['0'..'9']) and (Current < Limit) do
+            begin
+              FMajorVersion := FMajorVersion * 10 + PByte(Current)^ - Byte('0');
+              Inc(Current);
+            end;
+            if Current^ = '.' then
+            begin
+              Inc(Current);
+              while (Current < Limit) and (PWord(Current)^ and $FF00 = 0) and (PLegacyChar(Current)^ in ['0'..'9']) do
               begin
-                FMajorVersion := FMajorVersion * 10 + Byte(Param^) - Byte('0');
-                Inc(Param);
+                FMinorVersion := FMinorVersion * 10 + PByte(Current)^ - Byte('0');
+                Inc(Current);
               end;
-              if Param^ = '.' then
-              begin
-                Inc(Param);
-                while (Param < Limit) and (Word(Param^) and $FF00 = 0) and (LegacyChar(Param^) in ['0'..'9']) do
-                begin
-                  FMinorVersion := FMinorVersion * 10 + Byte(Param^) - Byte('0');
-                  Inc(Param);
-                end;
-              end;
-              Param := nil;
-            end
-            else
-              raise ECommandLine.Create(sMissingOSVer);
+            end;
+            P.Param := nil;
+          end
+          else
+            raise ECommandLine.Create(sMissingParam, [sOSVersion]);
         end
         else if SameKey(sDropSections) then
         begin
           P := WideParamStr(P.NextParam);
           with P do
           begin
-            Limit := Param + Length;
-            while Param < Limit do
-            begin
-              while (Word(Param^) and $FF00 = 0) and (LegacyChar(Param^) in [' ', ',', ';']) and (Param < Limit) do
-                Inc(Param);
-              Head := Param;
-              while (Param < Limit) and (Word(Param^) and $FF00 = 0) and not (LegacyChar(Param^) in [' ', ',', ';']) do
-                Inc(Param);
-              if FSectionNames = nil then
-                FSectionNames := TSectionNames.Create(16, -2, True);
-              S := TSectionName.Create;
-              with S do
-              begin
-                FLength := Param - Head;
-                FValue := EncodeLegacy(Head, FLength, CP_ACP);
-              end;
-              FSectionNames.Append(S);
-            end;
-            if FSectionNames = nil then
-              raise ECommandLine.Create(sMissingSectionNames);
-            Param := nil;
+            Current := Param;
+            Limit := Current + Length;
           end;
+          while Current < Limit do
+          begin
+            while (PWord(Current)^ and $FF00 = 0) and (PLegacyChar(Current)^ in [' ', ',', ';']) and (Current < Limit) do
+              Inc(Current);
+            Head := Current;
+            while (Current < Limit) and (PWord(Current)^ and $FF00 = 0) and not (PLegacyChar(Current)^ in [' ', ',', ';']) do
+              Inc(Current);
+            if FSectionNames = nil then
+              FSectionNames := TSectionNames.Create(IMAGE_NUMBEROF_DIRECTORY_ENTRIES, -2, True);
+            S := TSectionName.Create;
+            with S do
+            begin
+              FLength := Current - Head;
+              FValue := EncodeLegacy(Head, FLength, CP_ACP);
+            end;
+            FSectionNames.Append(S);
+          end;
+          if FSectionNames = nil then
+            raise ECommandLine.Create(sMissingParam, [sSectionNames]);
+          P.Param := nil;
         end
         else if SameKey(sDropRes) then
         begin
           P := WideParamStr(P.NextParam);
           with P do
           begin
-            Limit := Param + Length;
-            while Param < Limit do
+            Current := Param;
+            Limit := Current + Length;
+          end;
+          while Current < Limit do
+          begin
+            while (PWord(Current)^ and $FF00 = 0) and (PLegacyChar(Current)^ in [' ', ',', ';']) and (Current < Limit) do
+              Inc(Current);
+            Head := Current;
+            while (Current < Limit) and (PWord(Current)^ and $FF00 = 0) and not (PLegacyChar(Current)^ in [' ', ',', ';']) do
+              Inc(Current);
+            if FResourceNames = nil then
+              FResourceNames := TResourceNames.Create(16, -2); // why not 16?
+            with FResourceNames, FItems[Append] do
             begin
-              while (Word(Param^) and $FF00 = 0) and (LegacyChar(Param^) in [' ', ',', ';']) and (Param < Limit) do
-                Inc(Param);
-              Head := Param;
-              while (Param < Limit) and (Word(Param^) and $FF00 = 0) and not (LegacyChar(Param^) in [' ', ',', ';']) do
-                Inc(Param);
-              if FResourceNames = nil then
-                FResourceNames := TResourceNames.Create(16, -2);
-              with FResourceNames, FItems[Append] do
+              Length := Current - Head;
+              Value := Head;
+            end;
+          end;
+          if FResourceNames = nil then
+            raise ECommandLine.Create(sMissingParam, [sResourceNames]);
+          P.Param := nil;
+        end
+        else if SameKey(sLocale) then
+        begin
+          P := WideParamStr(P.NextParam);
+          with P do
+          begin
+            Current := Param;
+            Limit := Current + Length;
+          end;
+          while Current < Limit do
+          begin
+            while (PWord(Current)^ and $FF00 = 0) and (PLegacyChar(Current)^ in [' ', ',', ';']) and (Current < Limit) do
+              Inc(Current);
+            Value := 0;
+            while (Current < Limit) and (PWord(Current)^ and $FF00 = 0) and (PLegacyChar(Current)^ in ['0'..'9']) do
+            begin
+              Value := Value * 10 + PByte(Current)^ - Byte('0');
+              Inc(Current);
+            end;
+            if Value <> 0 then
+            begin
+              if FLocaleMap = nil then
+                FLocaleMap := TLocaleMap.Create(8, -2); // why not 8?
+              with FLocaleMap do
+                LongWord(FItems[Append]) := Value; // Fast core
+              if PLegacyChar(Current)^ = '=' then
               begin
-                Length := Param - Head;
-                Value := Head;
+                Inc(Current);
+                Value := 0;
+                while (Current < Limit) and (PWord(Current)^ and $FF00 = 0) and (PLegacyChar(Current)^ in ['0'..'9']) do
+                begin
+                  Value := Value * 10 + PByte(Current)^ - Byte('0');
+                  Inc(Current);
+                end;
+                with FLocaleMap do
+                  FItems[Count - 1].LocaleTo := Value;
               end;
             end;
-            if FSectionNames = nil then
-              raise ECommandLine.Create(sMissingSectionNames);
-            Param := nil;
+            if FLocaleMap = nil then
+              raise ECommandLine.Create(sMissingParam, [sLocaleMap]);
+            P.Param := nil;
           end;
         end;
     end;
@@ -324,6 +385,7 @@ end;
 
 destructor TApplication.Destroy;
 begin
+  FLocaleMap.Free;
   FResourceNames.Free;
   FSectionNames.Free;
   FreeMem(FAppName);
@@ -381,25 +443,34 @@ begin
             Image.Extract(Idx).Free;
         end;
 
-      if (FResourceNames <> nil) or (FOptions * [roClean, roMainIcon] <> []) then
+      if (FResourceNames <> nil) or (FLocaleMap <> nil) or (FOptions * [roCleanVer, roMainIcon] <> []) then
       begin
         Idx := Image.IndexOfSection(IMAGE_DIRECTORY_ENTRY_RESOURCE);
         if Idx >= 0 then
           with TExeResources.Create(Image.Sections[Idx]) do
           try
-            Load(Image.Sections[Idx]);
-            Save(Image.Sections[Idx]);
+            if FResourceNames <> nil then
+              for I := 0 to FResourceNames.Count - 1 do
+              begin
+              end;
+
+            if roCleanVer in FOptions then
+            begin
+            end;
+
+            if roMainIcon in FOptions then
+            begin
+            end;
+
+            if FLocaleMap <> nil then
+              for I := 0 to FLocaleMap.Count - 1 do
+              begin
+              end;
+
+            //Save(Image.Sections[Idx]);
           finally
             Free;
           end;
-
-        if roClean in FOptions then
-        begin
-        end;
-
-        if roMainIcon in FOptions then
-        begin
-        end;  
       end;
 
       if FFileNames[fkInto] <> nil then

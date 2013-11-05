@@ -1,5 +1,5 @@
 (*
-    PE Tool's string messages
+    PE Tool's strings and messages
 
     Copyright (c) 2012-2013 Vladislav Javadov (Freeman)
 *)
@@ -22,6 +22,7 @@ const
   s3GB          = '3GB';
   sDeep         = 'deep';
   sCleanVer     = 'cleanver';
+  sLocale       = 'locale';
   sMainIcon     = 'mainicon';
   sPause        = 'pause';
   sDropRes      = 'dropres';
@@ -46,9 +47,11 @@ const
             #9'-deep'#9#9#9'Strip orphaned sections too (unsafe!)'#10 +
             #9'-dropres <r1,r2,...>'#9'Drop resources <r1>, <r2>, etc.'#10 +
             #9'-dropsect <s1,s2,...>'#9'Drop sections <s1>, <s2>, etc.'#10 +
+            #9'-locale <a1,a2,...>'#9'Set locales <a1>, <a2>, etc. Each <a> has form'#10 +
+            #9#9#9#9'of <#=#> or <#>'#10 +    
             #9'-mainicon'#9#9'Strip the name of MAINICON resource (not for'#10 +
             #9#9#9#9'VCL applications!)'#10 +
-            #9'-osver <#.#>'#9#9'Set required OS version to <#.#>'#10 +
+            #9'-osver <#[.#]>'#9#9'Set required OS version to <#.#> or <#> only'#10 +
             #9'-strip'#9#9#9'Strip headers, relocations and empty sections'#10 +
             #9#9#9#9'when possible'#10 +
             #9'-stub <stub>'#9#9'Replace stub with one from <stub> file'#10#10 +
@@ -58,9 +61,11 @@ const
   sPressEnterToExit = 'Press ENTER to exit';
 
   sMissingFileName = 'Missing file name for “%s” key';
-  sMissingOSVer = 'Missing OS version number';
-  sMissingSectionNames = 'Missing section names';
-  sMissingResourceNames = 'Missing resource names';
+  sMissingParam = 'Missing %s';
+  sOSVersion = 'OS version number';
+  sSectionNames = 'section names';
+  sResourceNames = 'resource names';
+  sLocaleMap = 'locale map';
 
   sDone = #9'done';
   sExtractingStub = 'Extracting stub'#9'%ws (%d bytes)';
