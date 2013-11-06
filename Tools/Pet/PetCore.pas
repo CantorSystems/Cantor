@@ -68,18 +68,21 @@ type
   TRunOption = (roStrip, roDeep, roCleanVer, roMainIcon, ro3GB, roPause);
   TRunOptions = set of TRunOption;
 
+  TMenuetKolibri = (mkNone, mkMenuet, mkKolibri);
+
   TApplication = class
   private
     FConsole: TStreamConsole;
     FAppName: PLegacyChar;
     FSourceFileName: PCoreChar;
     FFileNames: TFileKeys;
-    FSectionNames: TSectionNames;
-    FResourceNames: TResourceNames;
+    FDropSections: TSectionNames;
+    FDropResources: TResourceNames;
     FLocaleMap: TLocaleMap;
-    FImageBase: LongWord;
+    FImageBase: CoreInt;
     FMajorVersion, FMinorVersion: Word;
     FOptions: TRunOptions;
+    FMenuetKolibri: TMenuetKolibri;
   public
     constructor Create(CommandLine: PCoreChar);
     destructor Destroy; override;
@@ -103,7 +106,7 @@ type
 implementation
 
 uses
-  Windows, ImageHlp, PetConsts, ExeImages;
+  Windows, PetConsts, ExeImages;
 
 const
   FileKeys: TFileKeys = (sInto, sBackup, sStub, sExtract, sDump);
@@ -119,7 +122,7 @@ end;
 
 class function TResourceNames.ItemSize: Integer;
 begin
-  Result := SizeOf(TResourceName); 
+  Result := SizeOf(TResourceName);
 end;
 
 { TSectionName }
@@ -145,6 +148,7 @@ end;
 
 const
   OptionKeys: array[TRunOption] of PCoreChar = (sStrip, sDeep, sCleanVer, sMainIcon, s3GB, sPause);
+  HexBase: array[Boolean] of LegacyChar = 'A0';
 var
   ExeName: array[0..MAX_PATH] of CoreChar;
   Ver: TVersionBuffer;
@@ -153,6 +157,7 @@ var
   R: TRunOption;
   S: TSectionName;
   Value: Word;
+//  Nibble: Byte;
 begin
   FConsole := TStreamConsole.Create;
   with FConsole do
@@ -172,6 +177,8 @@ begin
   finally
     Free;
   end;
+
+  FImageBase := -1;
 
   with WideParamStr(CommandLine) do
   begin
@@ -279,17 +286,17 @@ begin
             Head := Current;
             while (Current < Limit) and (PWord(Current)^ and $FF00 = 0) and not (PLegacyChar(Current)^ in [' ', ',', ';']) do
               Inc(Current);
-            if FSectionNames = nil then
-              FSectionNames := TSectionNames.Create(IMAGE_NUMBEROF_DIRECTORY_ENTRIES, -2, True);
+            if FDropSections = nil then
+              FDropSections := TSectionNames.Create(IMAGE_NUMBEROF_DIRECTORY_ENTRIES, -2, True);
             S := TSectionName.Create;
             with S do
             begin
               FLength := Current - Head;
               FValue := EncodeLegacy(Head, FLength, CP_ACP);
             end;
-            FSectionNames.Append(S);
+            FDropSections.Append(S);
           end;
-          if FSectionNames = nil then
+          if FDropSections = nil then
             raise ECommandLine.Create(sMissingParam, [sSectionNames]);
           P.Param := nil;
         end
@@ -308,15 +315,15 @@ begin
             Head := Current;
             while (Current < Limit) and (PWord(Current)^ and $FF00 = 0) and not (PLegacyChar(Current)^ in [' ', ',', ';']) do
               Inc(Current);
-            if FResourceNames = nil then
-              FResourceNames := TResourceNames.Create(16, -2); // why not 16?
-            with FResourceNames, FItems[Append] do
+            if FDropResources = nil then
+              FDropResources := TResourceNames.Create(16, -2); // why not 16?
+            with FDropResources, FItems[Append] do
             begin
               Length := Current - Head;
               Value := Head;
             end;
           end;
-          if FResourceNames = nil then
+          if FDropResources = nil then
             raise ECommandLine.Create(sMissingParam, [sResourceNames]);
           P.Param := nil;
         end
@@ -361,6 +368,39 @@ begin
               raise ECommandLine.Create(sMissingParam, [sLocaleMap]);
             P.Param := nil;
           end;
+        {end
+        else if SameKey(sRebase) then
+        begin
+          P := WideParamStr(P.NextParam);
+          if P.Length <> 0 then
+          begin
+            with P do
+            begin
+              Current := Param;
+              Limit := Current + Length;
+            end;
+            FImageBase := 0;
+            while (PWord(Current)^ and $FF00 = 0) and (PLegacyChar(Current)^ in ['0'..'9', 'A'..'F', 'a'..'f']) and
+              (Current < Limit) do
+            begin
+              if PLegacyChar(Current)^ in ['0'..'9'] then
+                Nibble := PByte(Current)^ - Byte('0')
+              else
+                Nibble := PByte(Current)^ and not $20 - Byte('A') + 10;
+              FImageBase := FImageBase * 16 + Nibble;
+              Inc(Current);
+            end;
+            P.Param := nil;
+          end
+          else
+            raise ECommandLine.Create(sMissingParam, [sImageBase]);
+        end
+        else if SameKey(sMenuet) then
+        begin
+          FMenuetKolibri := mkMenuet;
+          if FImageBase < 0 then
+            FImageBase := 8;
+          P.Param := nil;}
         end;
     end;
 
@@ -383,8 +423,8 @@ end;
 destructor TApplication.Destroy;
 begin
   FLocaleMap.Free;
-  FResourceNames.Free;
-  FSectionNames.Free;
+  FDropResources.Free;
+  FDropSections.Free;
   FreeMem(FAppName);
   FConsole.Free;
 
@@ -431,23 +471,23 @@ begin
       else
         Image.Stub.Strip(False);
 
-      if FSectionNames <> nil then
-        for I := 0 to FSectionNames.Count - 1 do
+      if FDropSections <> nil then
+        for I := 0 to FDropSections.Count - 1 do
         begin
-          with FSectionNames.Items[I] do
+          with FDropSections.Items[I] do
             Idx := Image.IndexOfSection(Value, Length);
           if Idx >= 0 then
             Image.Extract(Idx).Free;
         end;
 
-      if (FResourceNames <> nil) or (FLocaleMap <> nil) or (FOptions * [roCleanVer, roMainIcon] <> []) then
+      if (FDropResources <> nil) or (FLocaleMap <> nil) or (FOptions * [roCleanVer, roMainIcon] <> []) then
       begin
         Idx := Image.IndexOfSection(IMAGE_DIRECTORY_ENTRY_RESOURCE);
         if Idx >= 0 then
           with TExeResources.Create(Image.Sections[Idx]) do
           try
-            if FResourceNames <> nil then
-              for I := 0 to FResourceNames.Count - 1 do
+            if FDropResources <> nil then
+              for I := 0 to FDropResources.Count - 1 do
               begin
               end;
 
@@ -499,7 +539,11 @@ begin
     end;
   end
   else
-    FConsole.WriteLn(sUsage, [FAppName]);
+    with FConsole do
+    begin
+      WriteLn(sUsage, [FAppName], 0); // wvsprintf limits length to 1024 characters :-(
+      WriteLn(sHelp);
+    end;
 end;
 
 end.

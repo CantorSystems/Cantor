@@ -20,21 +20,25 @@ const
   sDump     = 'dump';
 
   s3GB          = '3GB';
-  sDeep         = 'deep';
   sCleanVer     = 'cleanver';
+  sDeep         = 'deep';
+  sDropRes      = 'dropres';
+  sDropSections = 'dropsect';
   sLocale       = 'locale';
   sMainIcon     = 'mainicon';
+  sMenuet       = 'menuet';
   sPause        = 'pause';
-  sDropRes      = 'dropres';
+  sRebase       = 'rebase';
   sOSVer        = 'osver';
-  sDropSections = 'dropsect';
   sStrip        = 'strip';
 
 { Localize }
 
 const
-  sUsage  =
-    'Usage:'#9'%s <source> [commands [options]]' +                   #9#9#9#9'/\_/\'#10 +
+  sUsage =
+    'Usage:'#9'%s <source> [commands [options]]';
+  sHelp =
+                                                                     #9#9#9#9'/\_/\'#10 +
                                                      #9#9#9#9#9#9#9#9'   ____/ o o \'#10 +
     'Commands' +                                       #9#9#9#9#9#9#9' /~____ ==t==/'#10 +
             #9'-backup <bak>'#9'Backup <source> file to <bak> file'#9'(_______)_m_m)'#10 +
@@ -48,9 +52,11 @@ const
             #9'-dropres <r1,r2,...>'#9'Drop resources <r1>, <r2>, etc.'#10 +
             #9'-dropsect <s1,s2,...>'#9'Drop sections <s1>, <s2>, etc.'#10 +
             #9'-locale <a1,a2,...>'#9'Set locales <a1>, <a2>, etc. Each <a> has form'#10 +
-            #9#9#9#9'of <#=#> or <#>'#10 +    
+            #9#9#9#9'of <#=#> or <#>'#10 +
             #9'-mainicon'#9#9'Strip the name of MAINICON resource (not for'#10 +
             #9#9#9#9'VCL applications!)'#10 +
+         //   #9'-menuet'#9#9#9'Save to MENUET01 format'#10 +
+         //   #9'-rebase <#>'#9#9'Change image base to <#> (hexadecimal value)'#10 +
             #9'-osver <#[.#]>'#9#9'Set required OS version to <#.#> or <#> only'#10 +
             #9'-strip'#9#9#9'Strip headers, relocations and empty sections'#10 +
             #9#9#9#9'when possible'#10 +
@@ -66,6 +72,9 @@ const
   sSectionNames = 'section names';
   sResourceNames = 'resource names';
   sLocaleMap = 'locale map';
+  sImageBase = 'image base value';
+
+  sCannotRebaseImage = 'Cannot rebase image: %s';
 
   sDone = #9'done';
   sExtractingStub = 'Extracting stub'#9'%ws (%d bytes)';
