@@ -77,6 +77,7 @@ type
     FSectionNames: TSectionNames;
     FResourceNames: TResourceNames;
     FLocaleMap: TLocaleMap;
+    FImageBase: LongWord;
     FMajorVersion, FMinorVersion: Word;
     FOptions: TRunOptions;
   public
@@ -102,7 +103,7 @@ type
 implementation
 
 uses
-  Windows, CoreStrings, PetConsts, ExeImages;
+  Windows, ImageHlp, PetConsts, ExeImages;
 
 const
   FileKeys: TFileKeys = (sInto, sBackup, sStub, sExtract, sDump);

@@ -207,6 +207,11 @@ function SysErrorMessage(ErrorCode: LongWord): PCoreChar;
 
 { Legacy Windows service }
 
+const
+  CSTR_LESS_THAN    = 1;
+  CSTR_EQUAL        = 2;
+  CSTR_GREATER_THAN = 3;
+
 function FormatBuf(Fmt: PLegacyChar; const Args: array of const;
   Buf: PLegacyChar): Integer;
 function WideFormatBuf(Fmt: PWideChar; const Args: array of const;

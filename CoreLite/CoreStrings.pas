@@ -508,11 +508,6 @@ type
 
 { Legacy Windows service }
 
-const
-  CSTR_LESS_THAN    = 1;
-  CSTR_EQUAL        = 2;
-  CSTR_GREATER_THAN = 3;
-
 type
   TCPInfoEx = packed record
     MaxCharSize: LongWord;

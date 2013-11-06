@@ -9,7 +9,7 @@ unit ExeImages;
 interface
 
 uses
-  Windows, CoreUtils, CoreExceptions, CoreWrappers, CoreClasses, CoreStrings;
+  Windows, CoreUtils, CoreExceptions, CoreWrappers, CoreClasses;
                                        
 {$I ImageHelper.inc}
 
@@ -132,8 +132,15 @@ type
     property Name: PWideChar read FName;
   end;
 
+  TExeResources = class;
+
   PExeResourceArray = ^TExeResourceArray;
-  TExeResourceArray = array[0..MaxInt div SizeOf(TExeResource) - 1] of TExeResource;
+  TExeResourceArray = array[0..MaxInt div SizeOf(TExeResource) - 1] of
+    packed record
+      case Byte of
+        0: (AsResource: TExeResource);
+        1: (AsResources: TExeResources);
+    end;
 
   TExeResources = class(TExeSectionHandler)
   private
