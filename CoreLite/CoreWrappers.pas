@@ -230,6 +230,9 @@ type
   PTranslationArray = ^TTranslationArray;
   TTranslationArray = array[0..MaxInt div SizeOf(TTranslation) - 1] of TTranslation;
 
+  TVersionBuffer = array[0..39] of LegacyChar;
+  TFormatVersionOptions = set of (fvProductVersion, fvSkipZeroRelease);
+
   TVersionInfo = class
   private
     FData: Pointer;
@@ -241,6 +244,10 @@ type
 
     function FixedInfo: TFixedVersionInfo; overload;
     function FixedInfo(var Info: TFixedVersionInfo): Boolean; overload;
+
+    function FormatVersion(var Buffer: TVersionBuffer;
+      Options: TFormatVersionOptions = [fvProductVersion..fvSkipZeroRelease];
+      BuildFlags: TVersionFlags = [verDebug..verPatched]): Integer;
 
     function StringInfo(TranslationIndex: LongWord; Ident: PLegacyChar;
       var Info: PCoreChar; var Length: LongWord): Boolean; overload;
@@ -811,6 +818,45 @@ begin
   end
   else
     Result := False;
+end;
+
+function TVersionInfo.FormatVersion(var Buffer: TVersionBuffer;
+  Options: TFormatVersionOptions; BuildFlags: TVersionFlags): Integer;
+const
+  MinFmt: PLegacyChar = '%u.%u';
+var
+  Info: TFixedVersionInfo;
+  Ver: TVersion;
+  Fmt: array[0..9] of LegacyChar;
+  Tmp: TVersionBuffer;
+begin
+  Info := FixedInfo;
+  if fvProductVersion in Options then
+    Ver := Info.ProductVersion
+  else
+    Ver := Info.FileVersion;
+
+  if (fvSkipZeroRelease in Options) and (Ver.Release = 0) then
+  begin
+    if Info.Flags * BuildFlags = [] then
+    begin
+      Result := FormatBuf(MinFmt, [Ver.Major, Ver.Minor], Buffer);
+      Exit;
+    end;
+    FormatBuf(MinFmt, [Ver.Major, Ver.Minor], Tmp);
+  end
+  else
+  begin
+    PQuadWord(@Fmt)^ := PQuadWord(MinFmt)^; // Fast core
+    PLongWord(@Fmt[5])^ := PLongWord(MinFmt + 2)^;
+    if Info.Flags * BuildFlags = [] then
+    begin
+      Result := FormatBuf(Fmt, [Ver.Major, Ver.Minor, Ver.Release], Buffer);
+      Exit;
+    end;
+    FormatBuf(Fmt, [Ver.Major, Ver.Minor, Ver.Release], Tmp)
+  end;
+  Result := FormatBuf(sVersionAndBuild, [Tmp, Ver.Build], Buffer);
 end;
 
 function TVersionInfo.StringInfo(TranslationIndex: LongWord;

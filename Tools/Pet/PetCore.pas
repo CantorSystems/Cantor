@@ -145,8 +145,9 @@ end;
 const
   OptionKeys: array[TRunOption] of PCoreChar = (sStrip, sDeep, sCleanVer, sMainIcon, s3GB, sPause);
 var
-  Dot, Ver, CmdLineParams, StubFileName, Limit, Head, Current: PCoreChar;
   ExeName: array[0..MAX_PATH] of CoreChar;
+  Ver: TVersionBuffer;
+  Dot, CmdLineParams, StubFileName, Limit, Head, Current: PCoreChar;
   K: TFileKey;
   R: TRunOption;
   S: TSectionName;
@@ -163,15 +164,10 @@ begin
     RaiseLastPlatformError;
   with TVersionInfo.Create(ExeName) do
   try
+    FormatVersion(Ver);
     if TranslationCount <> 0 then
-    begin
-      if FixedInfo.Flags * [verDebug, verPreRelease] <> [] then
-        Ver := StringInfo(0, 'FileVersion')
-      else
-        Ver := StringInfo(0, 'ProductVersion');
-      FConsole.WriteLn('%ws %ws  %ws', [StringInfo(0, 'ProductName'),
-        Ver, StringInfo(0, 'LegalCopyright')], 2);
-    end;
+      FConsole.WriteLn('%ws %s  %ws', [StringInfo(0, 'ProductName'), Ver,
+        StringInfo(0, 'LegalCopyright')], 2);
   finally
     Free;
   end;

@@ -47,6 +47,7 @@ const
 
   sPlatformError = '%s: “%s”';
   sVS_VERSION_INFO = 'VS_VERSION_INFO';
+  sVersionAndBuild = '%s build %u';
 
   sStreamRead = 'read';
   sStreamWrote = 'wrote';
