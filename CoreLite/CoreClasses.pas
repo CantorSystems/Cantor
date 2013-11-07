@@ -117,7 +117,7 @@ type
     class function ItemSize: Integer; virtual;
     procedure SetCapacity(Value: Integer); virtual;
   public
-    constructor Create(Initial, Delta: Integer);
+    constructor Create(Initial, Delta: Integer); overload;
     procedure Clear; override;
     function TranslateDelta: Integer;
 
@@ -131,18 +131,25 @@ type
     function Insert: Integer;
   end;}
 
-  TObjects = class(TArray)
+  TPointers = class(TArray)
   private
   { placeholder } // FOwnsObjects: Boolean;
   protected
+    class procedure FreeItem(const Item); virtual;
     procedure SetCapacity(Value: Integer); override;
   public
-    constructor Create(Initial, Delta: Integer; OwnsObjects: Boolean = False);
-    function Append(Item: TObject): Integer; {$IFNDEF Lite} virtual; {$ENDIF}
+    constructor Create(Initial, Delta: Integer; OwnsObjects: Boolean = False); overload;
+    constructor Create(OwnsObjects: Boolean = False); overload;
+    function Append(Item: Pointer): Integer; {$IFNDEF Lite} virtual; {$ENDIF} overload;
     procedure Exchange(Index1, Index2: Integer);
-    function Extract(Index: Integer): TObject; {$IFNDEF Lite} virtual; {$ENDIF}
-    function IndexOf(Item: TObject): Integer;
-    procedure Insert(Index: Integer; Item: TObject); {$IFNDEF Lite} virtual; {$ENDIF}
+    function Extract(Index: Integer): Pointer; {$IFNDEF Lite} virtual; {$ENDIF}
+    function IndexOf(Item: Pointer): Integer;
+    procedure Insert(Index: Integer; Item: Pointer); {$IFNDEF Lite} virtual; {$ENDIF}
+  end;
+
+  TObjects = class(TPointers)
+  protected
+    class procedure FreeItem(const Item); override;
   end;
 
   TCollectionItem = class(TContainedItem)
@@ -243,6 +250,14 @@ type
 
   TArrayCast = class(TArray)
     Items: PLegacyChar;
+  end;
+
+  PPointerArray = ^TPointerArray;
+  TPointerArray = array[0..MaxInt div SizeOf(Pointer) - 1] of Pointer;
+
+  TPointersCast = class(TPointers)
+    Items: PPointerArray;
+    OwnsObjects: Boolean;
   end;
 
   PObjectArray = ^TObjectArray;
@@ -822,67 +837,79 @@ end;
 
 end;}
 
-{ TObjects }
+{ TPointers }
 
-constructor TObjects.Create(Initial, Delta: Integer; OwnsObjects: Boolean);
+constructor TPointers.Create(Initial, Delta: Integer; OwnsObjects: Boolean);
 begin
   inherited Create(Initial, Delta);
-  TObjectsCast(Self).OwnsObjects := OwnsObjects;
+  TPointersCast(Self).OwnsObjects := OwnsObjects;
 end;
 
-function TObjects.Append(Item: TObject): Integer;
+constructor TPointers.Create(OwnsObjects: Boolean);
+begin
+  TPointersCast(Self).OwnsObjects := OwnsObjects;
+end;
+
+function TPointers.Append(Item: Pointer): Integer;
 begin
   Result := inherited Append;
-  TObjectsCast(Self).Items[Result] := Item;
+  TPointersCast(Self).Items[Result] := Item;
 end;
 
-procedure TObjects.Exchange(Index1, Index2: Integer);
+procedure TPointers.Exchange(Index1, Index2: Integer);
 begin
   CheckIndex(Index1);
   CheckIndex(Index2);
-  with TObjectsCast(Self) do
-    CoreUtils.Exchange(Pointer(Items[Index1]), Pointer(Items[Index2]));
+  with TPointersCast(Self) do
+    CoreUtils.Exchange(Items[Index1], Items[Index2]);
 end;
 
-function TObjects.Extract(Index: Integer): TObject;
+function TPointers.Extract(Index: Integer): Pointer;
 begin
   CheckIndex(Index);
-  Result := TObjectsCast(Self).Items[Index];
+  Result := TPointersCast(Self).Items[Index];
   inherited Extract(Index);
-  TObjectsCast(Self).Items[FCount] := nil;
+  TPointersCast(Self).Items[FCount] := nil;
 end;
 
-function TObjects.IndexOf(Item: TObject): Integer;
-var
-  I: Integer;
+class procedure TPointers.FreeItem(const Item);
 begin
-  for I := 0 to FCount - 1 do
-    if TObjectsCast(Self).Items[I] = Item then
-    begin
-      Result := I;
+  FreeMem(Pointer(Item));
+end;
+
+function TPointers.IndexOf(Item: Pointer): Integer;
+begin
+  for Result := 0 to FCount - 1 do
+    if TPointersCast(Self).Items[Result] = Item then
       Exit;
-    end;
   Result := -1;
 end;
 
-procedure TObjects.Insert(Index: Integer; Item: TObject);
+procedure TPointers.Insert(Index: Integer; Item: Pointer);
 begin
   inherited Insert(Index);
-  TObjectsCast(Self).Items[Index] := Item;
+  TPointersCast(Self).Items[Index] := Item;
 end;
 
-procedure TObjects.SetCapacity(Value: Integer);
+procedure TPointers.SetCapacity(Value: Integer);
 var
   I: Integer;
 begin
   if Value < FCount then
   begin
     CheckIndex(Value); // for negative values
-    if TObjectsCast(Self).OwnsObjects then
+    if TPointersCast(Self).OwnsObjects then
       for I := FCount - 1 downto Value do
-        TObjectsCast(Self).Items[I].Free;
+        FreeItem(TPointersCast(Self).Items[I]);
   end;
   inherited;
+end;
+
+{ TObjects }
+
+class procedure TObjects.FreeItem(const Item);
+begin
+  TObject(Item).Free;
 end;
 
 { TCollectionItem }
@@ -915,7 +942,7 @@ procedure TCollection.Insert(Index: Integer; Item: TObject);
 begin
   if Item <> nil then
     TCollectionItem(Item).Extract;
-  inherited;
+  inherited Insert(Index, Item);
 end;
 
 { TCRC32 }
