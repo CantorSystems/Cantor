@@ -110,15 +110,18 @@ type
     procedure Grow;
     procedure SetCount(Value: Integer);
   protected
-    function Append: Integer;
+    function Append: Integer; overload;
     procedure CheckIndex(Index: Integer); override;
-    procedure Extract(Index: Integer);
-    procedure Insert(Index: Integer);
+    procedure Extract(Index: Integer); overload;
+    procedure Insert(Index: Integer); overload;
     class function ItemSize: Integer; virtual;
     procedure SetCapacity(Value: Integer); virtual;
   public
     constructor Create(Initial, Delta: Integer); overload;
+    function Append(const Item): Integer; overload;
     procedure Clear; override;
+    procedure Extract(Index: Integer; var Item); overload;
+    procedure Insert(Index: Integer; const Item); overload;
     function TranslateDelta: Integer;
 
     property Capacity: Integer read FCapacity write SetCapacity;
@@ -131,16 +134,58 @@ type
     function Insert: Integer;
   end;}
 
-  TPointers = class(TArray)
+  TDataHolder = class(TArray)
   private
   { placeholder } // FOwnsObjects: Boolean;
   protected
     class procedure FreeItem(const Item); virtual;
     procedure SetCapacity(Value: Integer); override;
   public
-    constructor Create(Initial, Delta: Integer; OwnsObjects: Boolean = False); overload;
-    constructor Create(OwnsObjects: Boolean = False); overload;
-    function Append(Item: Pointer): Integer; {$IFNDEF Lite} virtual; {$ENDIF} overload;
+    constructor Create(Initial, Delta: Integer; OwnsObjects: Boolean); overload;
+    constructor Create(OwnsObjects: Boolean); overload;
+  end;
+
+  TStringArray = class(TDataHolder)
+  protected
+    class procedure FreeItem(const Item); override;
+    class function ItemSize: Integer; override;
+  end;
+
+  PLegacyStringRecArray = ^TLegacyStringRecArray;
+  TLegacyStringRecArray = array[0..MaxInt div SizeOf(TLegacyStringRec) - 1] of TLegacyStringRec;
+
+  TLegacyStringArray = class(TStringArray)
+  private
+  { hold } FItems: PLegacyStringRecArray;
+  { hold } FOwnsData: Boolean;
+  public
+    function Extract(Index: Integer): TLegacyStringRec;
+    function IndexOf(const Item: TLegacyStringRec): Integer;
+
+    property Items: PLegacyStringRecArray read FItems;
+    property OwnsData: Boolean read FOwnsData;
+  end;
+
+  PWideStringRecArray = ^TWideStringRecArray;
+  TWideStringRecArray = array[0..MaxInt div SizeOf(TWideStringRec) - 1] of TWideStringRec;
+
+  TWideStringArray = class(TStringArray)
+  private
+  { hold } FItems: PWideStringRecArray;
+  { hold } FOwnsData: Boolean;
+  public
+    function Extract(Index: Integer): TWideStringRec;
+    function IndexOf(const Item: TWideStringRec): Integer;
+
+    property Items: PWideStringRecArray read FItems;
+    property OwnsData: Boolean read FOwnsData;
+  end;
+
+  TCoreStringArray = TWideStringArray; // TODO: non-Unicode
+
+  TPointers = class(TDataHolder)
+  public
+    function Append(Item: Pointer): Integer; {$IFNDEF Lite} virtual; {$ENDIF}
     procedure Exchange(Index1, Index2: Integer);
     function Extract(Index: Integer): Pointer; {$IFNDEF Lite} virtual; {$ENDIF}
     function IndexOf(Item: Pointer): Integer;
@@ -729,6 +774,15 @@ function TArray.Append: Integer;
   Inc(FCount);
 end;
 
+function TArray.Append(const Item): Integer;
+var
+  Bytes: Integer;
+begin
+  Result := Append;
+  Bytes := ItemSize;
+  Move(Item, TArrayCast(Self).Items[Result * Bytes], Bytes);
+end;
+
 procedure TArray.CheckIndex(Index: Integer);
 begin
   if TArrayCast(Self).Items = nil then
@@ -758,6 +812,16 @@ procedure TArray.Extract(Index: Integer);
   end;
 end;
 
+procedure TArray.Extract(Index: Integer; var Item);
+var
+  Bytes: Integer;
+begin
+  CheckIndex(Index);
+  Bytes := ItemSize;
+  Move(TArrayCast(Self).Items[Index * Bytes], Item, Bytes);
+  Extract(Index);
+end;
+
 procedure TArray.Grow;
 begin
   if (FCapacity = 0) or (FCapacity = FCount) then
@@ -781,6 +845,15 @@ procedure TArray.Insert(Index: Integer);
   with TArrayCast(Self) do
     Move(Items[Idx], Items[Idx + S], (FCount - Index) * S);
   Inc(FCount);
+end;
+
+procedure TArray.Insert(Index: Integer; const Item);
+var
+  Bytes: Integer;
+begin
+  Insert(Index);
+  Bytes := ItemSize;
+  Move(Item, TArrayCast(Self).Items[Index * Bytes], Bytes);
 end;
 
 class function TArray.ItemSize: Integer;
@@ -837,18 +910,75 @@ end;
 
 end;}
 
-{ TPointers }
+{ TDataHolder }
 
-constructor TPointers.Create(Initial, Delta: Integer; OwnsObjects: Boolean);
+constructor TDataHolder.Create(Initial, Delta: Integer; OwnsObjects: Boolean);
 begin
   inherited Create(Initial, Delta);
   TPointersCast(Self).OwnsObjects := OwnsObjects;
 end;
 
-constructor TPointers.Create(OwnsObjects: Boolean);
+constructor TDataHolder.Create(OwnsObjects: Boolean);
 begin
   TPointersCast(Self).OwnsObjects := OwnsObjects;
 end;
+
+class procedure TDataHolder.FreeItem(const Item);
+begin
+  FreeMem(Pointer(Item));
+end;
+
+procedure TDataHolder.SetCapacity(Value: Integer);
+var
+  I: Integer;
+begin
+  if Value < FCount then
+  begin
+    CheckIndex(Value); // for negative values
+    if TPointersCast(Self).OwnsObjects then
+      for I := FCount - 1 downto Value do
+        FreeItem(TPointersCast(Self).Items[I]);
+  end;
+  inherited;
+end;
+
+{ TStrings }
+
+class procedure TStringArray.FreeItem(const Item);
+begin
+  FreeMem(TCoreStringRec(Item).Value);
+end;
+
+class function TStringArray.ItemSize: Integer;
+begin
+  Result := SizeOf(TCoreStringRec);
+end;
+
+{ TLegacyStringArray }
+
+function TLegacyStringArray.Extract(Index: Integer): TLegacyStringRec;
+begin
+  inherited Extract(Index, Result);
+end;
+
+function TLegacyStringArray.IndexOf(const Item: TLegacyStringRec): Integer;
+begin
+  Result := -1; // TODO
+end;
+
+{ TWideStringArray }
+
+function TWideStringArray.Extract(Index: Integer): TWideStringRec;
+begin
+  inherited Extract(Index, Result);
+end;
+
+function TWideStringArray.IndexOf(const Item: TWideStringRec): Integer;
+begin
+  Result := -1; // TODO
+end;
+
+{ TPointers }
 
 function TPointers.Append(Item: Pointer): Integer;
 begin
@@ -872,11 +1002,6 @@ begin
   TPointersCast(Self).Items[FCount] := nil;
 end;
 
-class procedure TPointers.FreeItem(const Item);
-begin
-  FreeMem(Pointer(Item));
-end;
-
 function TPointers.IndexOf(Item: Pointer): Integer;
 begin
   for Result := 0 to FCount - 1 do
@@ -889,20 +1014,6 @@ procedure TPointers.Insert(Index: Integer; Item: Pointer);
 begin
   inherited Insert(Index);
   TPointersCast(Self).Items[Index] := Item;
-end;
-
-procedure TPointers.SetCapacity(Value: Integer);
-var
-  I: Integer;
-begin
-  if Value < FCount then
-  begin
-    CheckIndex(Value); // for negative values
-    if TPointersCast(Self).OwnsObjects then
-      for I := FCount - 1 downto Value do
-        FreeItem(TPointersCast(Self).Items[I]);
-  end;
-  inherited;
 end;
 
 { TObjects }

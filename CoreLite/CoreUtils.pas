@@ -81,22 +81,31 @@ type
   PCoreChar     = PWideChar;
   PPCoreChar    = PPWideChar;
 
-  PLegacyParamRec = ^TLegacyParamRec;
+  TLegacyStringRec = record
+    Value: PLegacyChar;
+    Length: Integer;
+  end;
+
+  TWideStringRec = record
+    Value: PWideChar;
+    Length: Integer;
+  end;
+
+  TCoreStringRec = TWideStringRec; // TODO: non-Unicode
+
   TLegacyParamRec = record
     NextParam, Param: PLegacyChar;
     Length: Integer;
     Quoted: Boolean;
   end;
 
-  PWideParamRec = ^TWideParamRec;
   TWideParamRec = record
     NextParam, Param: PWideChar;
     Length: Integer;
     Quoted: Boolean;
   end;
 
-  PCoreStringRec = PWideParamRec; // TODO: non-Unicode
-  TCoreStringRec = TWideParamRec;
+  TCoreParamRec = TWideParamRec; // TODO: non-Unicode
 
 var
   Ellipsis: array[0..2] of LegacyChar = '...'; // non-Unicode, not only for European languages
@@ -219,13 +228,13 @@ function WideFormatBuf(Fmt: PWideChar; const Args: array of const;
 
 { FreeMem finalization required }
 
-function DecodeLegacy(Source: PLegacyChar; CodePage: Word): PWideChar; overload;
-function DecodeLegacy(Source: PLegacyChar; Count: Integer; CodePage: Word): PWideChar; overload;
+function DecodeLegacy(Source: PLegacyChar; CodePage: Word): TWideStringRec; overload;
+function DecodeLegacy(Source: PLegacyChar; Count: Integer; CodePage: Word): TWideStringRec; overload;
 
 function EncodeLegacy(Source: PWideChar; CodePage: Word{;
-  UseDefaultChar: Boolean = True}): PLegacyChar; overload;
+  UseDefaultChar: Boolean = True}): TLegacyStringRec; overload;
 function EncodeLegacy(Source: PWideChar; Count: Integer; CodePage: Word{;
-  UseDefaultChar: Boolean = True}): PLegacyChar; overload;
+  UseDefaultChar: Boolean = True}): TLegacyStringRec; overload;
 
 function Format(Fmt: PLegacyChar; const Args: array of const): PLegacyChar;
 function WideFormat(Fmt: PWideChar; const Args: array of const): PWideChar;
@@ -1008,50 +1017,53 @@ end;
 
 { FreeMem finalization required }
 
-function DecodeLegacy(Source: PLegacyChar; CodePage: Word): PWideChar;
+function DecodeLegacy(Source: PLegacyChar; CodePage: Word): TWideStringRec;
 begin
   Result := DecodeLegacy(Source, StrLen(Source), CodePage);
 end;
 
-function DecodeLegacy(Source: PLegacyChar; Count: Integer; CodePage: Word): PWideChar;
-var
-  L: Integer;
+function DecodeLegacy(Source: PLegacyChar; Count: Integer; CodePage: Word): TWideStringRec;
 begin
-  L := {$IFDEF Tricks} System. {$ENDIF}
-    MultiByteToWideChar(CodePage, 0, Source, Count, nil, 0);
-  if L <> 0 then
+  with Result do
   begin
-    GetMem(Result, (L + 1) * SizeOf(WideChar));
-  {$IFDEF Tricks} System. {$ENDIF}
-    MultiByteToWideChar(CodePage, 0, Source, Count, Result, L);
-    Result[L] := WideChar(0);
-  end
-  else
-    Result := nil;
+    Length := {$IFDEF Tricks} System. {$ENDIF}
+      MultiByteToWideChar(CodePage, 0, Source, Count, nil, 0);
+    if Length <> 0 then
+    begin
+      GetMem(Value, (Length + 1) * SizeOf(WideChar));
+    {$IFDEF Tricks} System. {$ENDIF}
+      MultiByteToWideChar(CodePage, 0, Source, Count, Value, Length);
+      Value[Length] := WideChar(0);
+    end
+    else
+      Value := nil;
+  end;
 end;
 
-function EncodeLegacy(Source: PWideChar; CodePage: Word{; UseDefaultChar: Boolean}): PLegacyChar;
+function EncodeLegacy(Source: PWideChar; CodePage: Word{; UseDefaultChar: Boolean}): TLegacyStringRec;
 begin
   Result := EncodeLegacy(Source, WideStrLen(Source), CodePage{, UseDefaultChar});
 end;
 
 function EncodeLegacy(Source: PWideChar; Count: Integer; CodePage: Word{;
-  UseDefaultChar: Boolean}): PLegacyChar;
+  UseDefaultChar: Boolean}): TLegacyStringRec;
 var
-  L: Integer;
   DefaultCharUsed: Bool;
 begin
-  L := {$IFDEF Tricks} System. {$ENDIF}
-    WideCharToMultiByte(CodePage, 0, Source, Count, nil, 0, nil, @DefaultCharUsed);
-  if (L <> 0) and ({not UseDefaultChar or} not DefaultCharUsed) then
+  with Result do
   begin
-    GetMem(Result, L + 1);
-  {$IFDEF Tricks} System. {$ENDIF}
-    WideCharToMultiByte(CodePage, 0, Source, Count, Result, L, nil, nil);
-    Result[L] := #0;
-  end
-  else
-    Result := nil;
+    Length := {$IFDEF Tricks} System. {$ENDIF}
+      WideCharToMultiByte(CodePage, 0, Source, Count, nil, 0, nil, @DefaultCharUsed);
+    if (Length <> 0) and ({not UseDefaultChar or} not DefaultCharUsed) then
+    begin
+      GetMem(Value, Length + 1);
+    {$IFDEF Tricks} System. {$ENDIF}
+      WideCharToMultiByte(CodePage, 0, Source, Count, Value, Length, nil, nil);
+      Value[Length] := #0;
+    end
+    else
+      Value := nil;
+  end;
 end;
 
 function Format(Fmt: PLegacyChar; const Args: array of const): PLegacyChar;
@@ -1070,7 +1082,7 @@ function LegacyFormat(Fmt: PLegacyChar; CodePage: Word; const Args: array of con
 var
   W: PWideChar;
 begin
-  W := DecodeLegacy(Fmt, CodePage);
+  W := DecodeLegacy(Fmt, CodePage).Value;
   try
     Result := WideFormat(W, Args);
   finally
