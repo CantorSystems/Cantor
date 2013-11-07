@@ -13,6 +13,8 @@ const // for Delphi 6
   IMAGE_RESOURCE_NAME_IS_STRING         = $80000000;
   IMAGE_RESOURCE_DATA_IS_DIRECTORY      = $80000000;
 
+  IMAGE_REL_BASED_HIGHLOW = 3;
+
 {
   RT_NEW            = $2000;
   RT_ERROR          = $7FFF;
@@ -106,6 +108,11 @@ type
       1: (PhysicalAddress: LongWord);
   end;
 
+  PImageBaseRelocations = ^TImageBaseRelocations;
+  TImageBaseRelocations = packed record
+    BaseOffset, BlockSize: LongWord;
+  end;
+
   PImageResourceDirectory = ^TImageResourceDirectory;
   TImageResourceDirectory = packed record
     Characteristics, TimeDateStamp: LongWord;
@@ -120,16 +127,10 @@ type
       1: (Id: Word);
   end;
 
-//  PImageResourceDirectoryEntries = ^TImageResourceDirectoryEntries;
-//  TImageResourceDirectoryEntries = array[0..MaxInt div SizeOf(TImageResourceDirectoryEntry) - 1] of TImageResourceDirectoryEntry;
-
   PImageResourceDataEntry = ^TImageResourceDataEntry;
   TImageResourceDataEntry = packed record
-    DataOffset, Size, Locale, Reserved: LongWord;
+    DataOffset, DataSize, Locale, Reserved: LongWord;
   end;
-
-//  PImageResourceDataEntries = ^TImageResourceDataEntries;
-//  TImageResourceDataEntries = array[0..MaxInt div SizeOf(TImageResourceDataEntry) - 1] of TImageResourceDataEntry;
 
   PImageResourceName = ^TImageResourceName;
   TImageResourceName = packed record

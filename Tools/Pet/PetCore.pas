@@ -26,40 +26,14 @@ type
     property Items: PLocaleMapArray read FItems;
   end;
 
-  TResourceName = record
-    Length: Integer;
-    Value: PCoreChar;
+  TResourceNames = class(TWideStringArray)
+  public
+    procedure Append(Source: PCoreChar; Count: Integer);
   end;
 
-  PResourceNameArray = ^TResourceNameArray;
-  TResourceNameArray = array[0..MaxInt div SizeOf(TResourceName) - 1] of TResourceName;
-
-  TResourceNames = class(TArray)
-  private
-  { hold } FItems: PResourceNameArray;
+  TSectionNames = class(TLegacyStringArray)
   public
-    class function ItemSize: Integer; override;
-    property Items: PResourceNameArray read FItems;
-  end;
-
-  TSectionName = class
-  private
-    FLength: Integer;
-    FValue: PLegacyChar;
-  public
-    destructor Destroy; override;
-    property Length: Integer read FLength;
-    property Value: PLegacyChar read FValue;
-  end;
-
-  PSectionNameArray = ^TSectionNameArray;
-  TSectionNameArray = array[0..MaxInt div SizeOf(TSectionName) - 1] of TSectionName;
-
-  TSectionNames = class(TObjects)
-  private
-  { hold } FItems: PSectionNameArray;
-  public
-    property Items: PSectionNameArray read FItems;
+    procedure Append(Source: PCoreChar; Count: Integer);
   end;
 
   TFileKey = (fkInto, fkBackup, fkStub, fkExtract, fkDump);
@@ -82,7 +56,7 @@ type
     FImageBase: CoreInt;
     FMajorVersion, FMinorVersion: Word;
     FOptions: TRunOptions;
-    FMenuetKolibri: TMenuetKolibri;
+//    FMenuetKolibri: TMenuetKolibri;
   public
     constructor Create(CommandLine: PCoreChar);
     destructor Destroy; override;
@@ -120,17 +94,20 @@ end;
 
 { TResourceNames }
 
-class function TResourceNames.ItemSize: Integer;
+procedure TResourceNames.Append(Source: PCoreChar; Count: Integer);
 begin
-  Result := SizeOf(TResourceName);
+  with Items[inherited Append] do
+  begin
+    Value := Source;
+    Length := Count;
+  end;
 end;
 
-{ TSectionName }
+{ TSectionNames }
 
-destructor TSectionName.Destroy;
+procedure TSectionNames.Append(Source: PCoreChar; Count: Integer);
 begin
-  FreeMem(FValue);
-  inherited;
+  Items[inherited Append] := EncodeLegacy(Source, Count, CP_ACP);
 end;
 
 { TApplication }
@@ -155,7 +132,6 @@ var
   Dot, CmdLineParams, StubFileName, Limit, Head, Current: PCoreChar;
   K: TFileKey;
   R: TRunOption;
-  S: TSectionName;
   Value: Word;
 //  Nibble: Byte;
 begin
@@ -194,7 +170,7 @@ begin
     Dot := WideStrScan(Head, '.', Length - (Head - Param));
     if Dot <> nil then
       Length := Dot - Head;
-    FAppName := EncodeLegacy(Head, Length, CP_ACP);
+    FAppName := EncodeLegacy(Head, Length, CP_ACP).Value;
 
     CommandLine := NextParam;
   end;
@@ -288,13 +264,7 @@ begin
               Inc(Current);
             if FDropSections = nil then
               FDropSections := TSectionNames.Create(IMAGE_NUMBEROF_DIRECTORY_ENTRIES, -2, True);
-            S := TSectionName.Create;
-            with S do
-            begin
-              FLength := Current - Head;
-              FValue := EncodeLegacy(Head, FLength, CP_ACP);
-            end;
-            FDropSections.Append(S);
+            FDropSections.Append(Head, Current - Head);
           end;
           if FDropSections = nil then
             raise ECommandLine.Create(sMissingParam, [sSectionNames]);
@@ -317,11 +287,7 @@ begin
               Inc(Current);
             if FDropResources = nil then
               FDropResources := TResourceNames.Create(16, -2); // why not 16?
-            with FDropResources, FItems[Append] do
-            begin
-              Length := Current - Head;
-              Value := Head;
-            end;
+            FDropResources.Append(Head, Current - Head);
           end;
           if FDropResources = nil then
             raise ECommandLine.Create(sMissingParam, [sResourceNames]);
@@ -484,30 +450,27 @@ begin
       begin
         Idx := Image.IndexOfSection(IMAGE_DIRECTORY_ENTRY_RESOURCE);
         if Idx >= 0 then
-          with TExeResources.Create(Image.Sections[Idx]) do
-          try
-            if FDropResources <> nil then
-              for I := 0 to FDropResources.Count - 1 do
-              begin
-              end;
+        begin
+          Image.Sections[Idx].Handler := TExeResources.Create(True);
 
-            if roCleanVer in FOptions then
+          if FDropResources <> nil then
+            for I := 0 to FDropResources.Count - 1 do
             begin
             end;
 
-            if roMainIcon in FOptions then
-            begin
-            end;
-
-            if FLocaleMap <> nil then
-              for I := 0 to FLocaleMap.Count - 1 do
-              begin
-              end;
-
-            //Save(Image.Sections[Idx]);
-          finally
-            Free;
+          if roCleanVer in FOptions then
+          begin
           end;
+
+          if roMainIcon in FOptions then
+          begin
+          end;
+
+          if FLocaleMap <> nil then
+            for I := 0 to FLocaleMap.Count - 1 do
+            begin
+            end;
+        end;
       end;
 
       if FFileNames[fkInto] <> nil then
@@ -530,8 +493,8 @@ begin
             with Image.Headers.FileHeader do
               Characteristics := Characteristics or IMAGE_FILE_LARGE_ADDRESS_AWARE;
           Build;
-          Save(FFileNames[fkInto]);
-          FConsole.WriteLn(sWritingInto, [FFileNames[fkInto], Size]);
+          Save(FFileNames[fkInto], roStrip in FOptions);
+          FConsole.WriteLn(sWritingInto, [FFileNames[fkInto], Size(roStrip in FOptions)]);
         end;
       end;
     finally

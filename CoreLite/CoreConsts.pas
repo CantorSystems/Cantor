@@ -61,9 +61,7 @@ const
   sFixedCapacity    = 'This %hs object can contain only %d items';
 
   sUnknownExeImage = 'Unknown image signature: %c%c';
-  sNamedResourceTypes = 'Named resource type';
   sBadExeImage = 'Bad image: %s';
-  sResDirAtSingleResLevel = 'resource directory found at single resource level';
 
   sUnsupportedCodePage = 'Code page %u (%s) is not yet supported';
 
