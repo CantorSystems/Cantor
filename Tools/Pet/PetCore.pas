@@ -26,15 +26,8 @@ type
     property Items: PLocaleMapArray read FItems;
   end;
 
-  TResourceNames = class(TWideStringArray)
-  public
-    procedure Append(Source: PCoreChar; Count: Integer);
-  end;
-
-  TSectionNames = class(TLegacyStringArray)
-  public
-    procedure Append(Source: PCoreChar; Count: Integer);
-  end;
+  TResourceNames = TWideStringArray;
+  TSectionNames = TLegacyStringArray;
 
   TFileKey = (fkInto, fkBackup, fkStub, fkExtract, fkDump);
   TFileKeys = array[TFileKey] of PCoreChar;
@@ -90,24 +83,6 @@ const
 constructor EFileKey.Create(MissingFileName: TFileKey);
 begin
   inherited Create(sMissingFileName, CP_CORE, [FileKeys[MissingFileName]]);
-end;
-
-{ TResourceNames }
-
-procedure TResourceNames.Append(Source: PCoreChar; Count: Integer);
-begin
-  with Items[inherited Append] do
-  begin
-    Value := Source;
-    Length := Count;
-  end;
-end;
-
-{ TSectionNames }
-
-procedure TSectionNames.Append(Source: PCoreChar; Count: Integer);
-begin
-  Items[inherited Append] := EncodeLegacy(Source, Count, CP_ACP);
 end;
 
 { TApplication }
@@ -264,7 +239,7 @@ begin
               Inc(Current);
             if FDropSections = nil then
               FDropSections := TSectionNames.Create(IMAGE_NUMBEROF_DIRECTORY_ENTRIES, -2, True);
-            FDropSections.Append(Head, Current - Head);
+            FDropSections.Append(EncodeLegacy(Head, Current - Head, CP_ACP));
           end;
           if FDropSections = nil then
             raise ECommandLine.Create(sMissingParam, [sSectionNames]);
@@ -404,17 +379,56 @@ begin
 end;
 
 procedure TApplication.Run;
+
+var
+  Buf: string[6];
+
+function Percentage(Ratio: Double): PLegacyChar;
+begin
+  Str((Ratio * 100):1:1, Buf);
+  PWord(@Buf[Length(Buf) + 1])^ := Word('%');  // Fast core
+  Result :=  @Buf[1];
+end;
+
+procedure Processing(Args: array of const; IsUnicode: Boolean = True);
+const
+  Prefixes: array[Boolean] of LegacyChar = 'hw';
+var
+  Format: string[Length(sProcessing) + 1];
+begin
+  Format := sProcessing + #0;
+  Format[FileNameOffset] := Prefixes[IsUnicode];
+  FConsole.WriteLn(@Format[1], FileNameWidth, Args);
+end;
+
 const
   Deep: array[Boolean] of TStripOptions = ([], [soOrphanedSections]);
 var
   I, Idx: Integer;
+  OldSize, NewSize, RawSize, FixedSize: LongWord;
   Image: TExeImage;
+  FileInfo: TWin32FindDataW;
+  hInfo: THandle;
 begin
   if FSourceFileName <> nil then
   begin
     Image := TExeImage.Create(IMAGE_NUMBEROF_DIRECTORY_ENTRIES, 0, True);
     try
-      Image.Load(FSourceFileName);
+      hInfo := FindFirstFileW(FSourceFileName, FileInfo);
+      if hInfo = INVALID_HANDLE_VALUE then
+        RaiseLastPlatformError(FSourceFileName);
+      FindClose(hInfo);
+      OldSize := FileInfo.nFileSizeLow;
+      Processing([sLoadingSource, FSourceFileName, OldSize]);
+
+      with Image do
+      begin
+        Load(FSourceFileName);
+        //if Stub <> nil then
+        //  Stub.Strip(False);
+        NewSize := Size(False);
+        Processing([sImageData, Percentage(NewSize / OldSize), NewSize], False);
+      end;
 
       if FFileNames[fkExtract] <> nil then
       begin
@@ -422,20 +436,35 @@ begin
         try
           Load(Image.Stub);
           Strip(roStrip in FOptions);
+          Processing([sExtractingStub, FFileNames[fkExtract], Size]);
           Save(FFileNames[fkExtract]);
-          FConsole.WriteLn(sExtractingStub, [FFileNames[fkExtract], Size]);
         finally
           Free;
         end;
       end;
 
       if FFileNames[fkStub] <> nil then
-        Image.Stub.Load(FFileNames[fkStub]);
+        with Image.Stub do
+        begin
+          Load(FFileNames[fkStub]);
+          Processing([sInsertingStub, FFileNames[fkStub], Size]);
+        end;
 
       if roStrip in FOptions then
-        Image.Strip([soStub..soEmptySections] + Deep[roDeep in FOptions])
+        with Image do
+        begin
+          Strip([soStub..soEmptySections] + Deep[roDeep in FOptions]);
+          NewSize := OldSize - Size;
+          Processing([sStripping, Percentage(NewSize / OldSize), NewSize], False);
+        end
       else
-        Image.Stub.Strip(False);
+        with Image.Stub do
+        begin
+          RawSize := Size;
+          Strip(False);
+          FixedSize := Size;
+          Processing([sFixingStub, Percentage(FixedSize / RawSize), FixedSize], False);
+        end;
 
       if FDropSections <> nil then
         for I := 0 to FDropSections.Count - 1 do
@@ -443,7 +472,11 @@ begin
           with FDropSections.Items[I] do
             Idx := Image.IndexOfSection(Value, Length);
           if Idx >= 0 then
+          begin
+            with Image.Sections[Idx].Header do
+              Processing([sDroppingSection, Name, RawDataSize], False);
             Image.Extract(Idx).Free;
+          end;
         end;
 
       if (FDropResources <> nil) or (FLocaleMap <> nil) or (FOptions * [roCleanVer, roMainIcon] <> []) then
@@ -475,10 +508,14 @@ begin
 
       if FFileNames[fkInto] <> nil then
       begin
-        if (FFileNames[fkBackup] <> nil) and (not MoveFileExW(FSourceFileName,
-          FFileNames[fkBackup], MOVEFILE_COPY_ALLOWED or MOVEFILE_WRITE_THROUGH))
-        then
-          RaiseLastPlatformError;
+        if FFileNames[fkBackup] <> nil then
+        begin
+          FConsole.WriteLn(sBackuping, [FFileNames[fkBackup]]);
+          if not MoveFileExW(FSourceFileName, FFileNames[fkBackup],
+            MOVEFILE_COPY_ALLOWED or MOVEFILE_WRITE_THROUGH)
+          then
+            RaiseLastPlatformError(FFileNames[fkBackup]);
+        end;
         with Image do
         begin
           if FMajorVersion <> 0 then
@@ -493,9 +530,12 @@ begin
             with Image.Headers.FileHeader do
               Characteristics := Characteristics or IMAGE_FILE_LARGE_ADDRESS_AWARE;
           Build;
-          Save(FFileNames[fkInto], roStrip in FOptions);
-          FConsole.WriteLn(sWritingInto, [FFileNames[fkInto], Size(roStrip in FOptions)]);
+          NewSize := Size(roStrip in FOptions);
         end;
+        Image.Save(FFileNames[fkInto], roStrip in FOptions);
+        Processing([sSavingInto, FFileNames[fkInto], NewSize]);
+        FConsole.WriteLn;
+        Processing([sTotal, Percentage(NewSize / OldSize), OldSize - NewSize], False);
       end;
     finally
       Image.Free;

@@ -163,6 +163,8 @@ type
     procedure WriteLn(Text: PLegacyChar; Count, LineBreaks: Integer); overload;
     procedure WriteLn(Fmt: PLegacyChar; const Args: array of const;
       LineBreaks: Integer = 1); overload;
+    procedure WriteLn(Fmt: PLegacyChar; FixedWidth: Integer; const Args: array of const;
+      LineBreaks: Integer = 1); overload;
   end;
 
   TScreenConsole = class(TConsole)
@@ -651,10 +653,16 @@ end;
 
 procedure TStreamConsole.WriteLn(Fmt: PLegacyChar; const Args: array of const;
   LineBreaks: Integer);
+begin
+  WriteLn(Fmt, 0, Args, LineBreaks);
+end;
+
+procedure TStreamConsole.WriteLn(Fmt: PLegacyChar; FixedWidth: Integer;
+  const Args: array of const; LineBreaks: Integer);
 var
   P: PLegacyChar;
 begin
-  GetMem(P, StrLen(Fmt) + EstimateArgs(Args) + 1);
+  GetMem(P, StrLen(Fmt) + FixedWidth + EstimateArgs(Args) + 1);
   try
     WriteLn(P, FormatBuf(Fmt, Args, P), LineBreaks);
   finally

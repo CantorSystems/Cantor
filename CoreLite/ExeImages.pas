@@ -61,6 +61,7 @@ type
     function IsOrphaned(const OptionalHeader: TImageOptionalHeader): Boolean;
     procedure Load(Source: TReadableStream);
     procedure Save(Dest: TWritableStream);
+    function Size: LongWord;
     procedure Strip;
 
     property Data: Pointer read FData;
@@ -466,11 +467,19 @@ begin
     FHandler.Load(Self);
 end;
 
+function TExeSection.Size: LongWord;
+begin
+  if FHandler <> nil then
+    Result := FHandler.DataSize
+  else
+    Result := FHeader.RawDataSize;
+end;
+
 procedure TExeSection.Strip;
 begin
   if (FHandler = nil) and (FData <> nil) then
     with FHeader do
-      while PLegacyChar(FData)[RawDataSize - 1] = #0 do
+      while (RawDataSize <> 0) and (PLegacyChar(FData)[RawDataSize - 1] = #0) do
         Dec(RawDataSize);
 end;
 
@@ -687,7 +696,7 @@ begin
   Inc(Result, FileAlignBytes(Result));
   for I := 0 to Count - 1 do
   begin
-    Inc(Result, FSections[I].Header.RawDataSize);;
+    Inc(Result, FSections[I].Size);;
     if (I < Count - 1) or not StripLastSection then
       Inc(Result, FileAlignBytes(Result));
   end;
