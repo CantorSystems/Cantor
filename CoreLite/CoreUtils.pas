@@ -205,6 +205,11 @@ function QuadStrRScan(Where: PQuadChar; What: QuadChar; Count: Integer): PQuadCh
 procedure SwapQuadCharBytes(Source: PQuadChar; Count: Integer; Dest: PQuadChar);
 procedure SwapWideCharBytes(Source: PWideChar; Count: Integer; Dest: PWideChar);
 
+function StrComp(Str1: PLegacyChar; Count1: Integer; Str2: PLegacyChar; Count2: Integer;
+  IgnoreFlags: LongWord = NORM_IGNORECASE; Locale: LongWord = LOCALE_USER_DEFAULT): Integer;
+function WideStrComp(Str1: PWideChar; Count1: Integer; Str2: PWideChar; Count2: Integer;
+  IgnoreFlags: LongWord = NORM_IGNORECASE; Locale: LongWord = LOCALE_USER_DEFAULT): Integer;
+
 { Command line parameters }
 
 function ParamStr(CommandLine: PLegacyChar): TLegacyParamRec;
@@ -861,6 +866,18 @@ asm
 @@complete:
         POP EBX
 @@exit:
+end;
+
+function StrComp(Str1: PLegacyChar; Count1: Integer; Str2: PLegacyChar; Count2: Integer;
+  IgnoreFlags: LongWord = NORM_IGNORECASE; Locale: LongWord = LOCALE_USER_DEFAULT): Integer;
+begin
+  Result := CompareStringA(Locale, IgnoreFlags, Str1, Count1, Str2, Count2) - CSTR_EQUAL;
+end;
+
+function WideStrComp(Str1: PWideChar; Count1: Integer; Str2: PWideChar; Count2: Integer;
+  IgnoreFlags: LongWord = NORM_IGNORECASE; Locale: LongWord = LOCALE_USER_DEFAULT): Integer;
+begin
+  Result := CompareStringW(Locale, IgnoreFlags, Str1, Count1, Str2, Count2) - CSTR_EQUAL;
 end;
 
 { Command line parameters }

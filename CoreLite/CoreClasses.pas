@@ -11,7 +11,7 @@ unit CoreClasses;
 interface
 
 uses
-  CoreUtils, CoreExceptions;
+  Windows, CoreUtils, CoreExceptions;
 
 type
   TContainedItem = class
@@ -136,52 +136,14 @@ type
 
   TDataHolder = class(TArray)
   private
-  { placeholder } // FOwnsObjects: Boolean;
+  { placeholder } // FOwnsData: Boolean;
   protected
     class procedure FreeItem(const Item); virtual;
     procedure SetCapacity(Value: Integer); override;
   public
-    constructor Create(Initial, Delta: Integer; OwnsObjects: Boolean); overload;
-    constructor Create(OwnsObjects: Boolean); overload;
+    constructor Create(Initial, Delta: Integer; OwnsItems: Boolean); overload;
+    constructor Create(OwnsItems: Boolean); overload;
   end;
-
-  TStringArray = class(TDataHolder)
-  protected
-    class procedure FreeItem(const Item); override;
-    class function ItemSize: Integer; override;
-  end;
-
-  PLegacyStringRecArray = ^TLegacyStringRecArray;
-  TLegacyStringRecArray = array[0..MaxInt div SizeOf(TLegacyStringRec) - 1] of TLegacyStringRec;
-
-  TLegacyStringArray = class(TStringArray)
-  private
-  { hold } FItems: PLegacyStringRecArray;
-  { hold } FOwnsData: Boolean;
-  public
-    function Extract(Index: Integer): TLegacyStringRec;
-    function IndexOf(const Item: TLegacyStringRec): Integer;
-
-    property Items: PLegacyStringRecArray read FItems;
-    property OwnsData: Boolean read FOwnsData;
-  end;
-
-  PWideStringRecArray = ^TWideStringRecArray;
-  TWideStringRecArray = array[0..MaxInt div SizeOf(TWideStringRec) - 1] of TWideStringRec;
-
-  TWideStringArray = class(TStringArray)
-  private
-  { hold } FItems: PWideStringRecArray;
-  { hold } FOwnsData: Boolean;
-  public
-    function Extract(Index: Integer): TWideStringRec;
-    function IndexOf(const Item: TWideStringRec): Integer;
-
-    property Items: PWideStringRecArray read FItems;
-    property OwnsData: Boolean read FOwnsData;
-  end;
-
-  TCoreStringArray = TWideStringArray; // TODO: non-Unicode
 
   TPointers = class(TDataHolder)
   public
@@ -208,6 +170,62 @@ type
     function Extract(Index: Integer): TObject; {$IFNDEF Lite} override; {$ENDIF}
     procedure Insert(Index: Integer; Item: TObject); {$IFNDEF Lite} override; {$ENDIF}
   end;
+
+  TStringArray = class(TDataHolder)
+  protected
+    class procedure FreeItem(const Item); override;
+    class function ItemSize: Integer; override;
+  end;
+
+  PLegacyStringRecArray = ^TLegacyStringRecArray;
+  TLegacyStringRecArray = array[0..MaxInt div SizeOf(TLegacyStringRec) - 1] of TLegacyStringRec;
+
+  TLegacyStringArray = class(TStringArray)
+  private
+  { hold } FItems: PLegacyStringRecArray;
+  { hold } FOwnsData: Boolean;
+  public
+    function Append(const Item: TLegacyStringRec): Integer; overload;
+    function Append(Str: PLegacyChar): Integer; overload;
+    function Append(Str: PLegacyChar; Count: Integer): Integer; overload;
+    function Extract(Index: Integer): TLegacyStringRec;
+    function IndexOf(Str: PLegacyChar; IgnoreFlags: LongWord = NORM_IGNORECASE;
+      Locale: LongWord = LOCALE_USER_DEFAULT): Integer; overload;
+    function IndexOf(Str: PLegacyChar; Count: Integer; IgnoreFlags: LongWord = NORM_IGNORECASE;
+      Locale: LongWord = LOCALE_USER_DEFAULT): Integer; overload;
+    procedure Insert(Index: Integer; const Item: TLegacyStringRec); overload;
+    procedure Insert(Index: Integer; Str: PLegacyChar); overload;
+    procedure Insert(Index: Integer; Str: PLegacyChar; Count: Integer); overload;
+
+    property Items: PLegacyStringRecArray read FItems;
+    property OwnsData: Boolean read FOwnsData;
+  end;
+
+  PWideStringRecArray = ^TWideStringRecArray;
+  TWideStringRecArray = array[0..MaxInt div SizeOf(TWideStringRec) - 1] of TWideStringRec;
+
+  TWideStringArray = class(TStringArray)
+  private
+  { hold } FItems: PWideStringRecArray;
+  { hold } FOwnsData: Boolean;
+  public
+    function Append(const Item: TWideStringRec): Integer; overload;
+    function Append(Str: PWideChar): Integer; overload;
+    function Append(Str: PWideChar; Count: Integer): Integer; overload;
+    function Extract(Index: Integer): TWideStringRec;
+    function IndexOf(Str: PWideChar; IgnoreFlags: LongWord = NORM_IGNORECASE;
+      Locale: LongWord = LOCALE_USER_DEFAULT): Integer; overload;
+    function IndexOf(Str: PWideChar; Count: Integer; IgnoreFlags: LongWord = NORM_IGNORECASE;
+      Locale: LongWord = LOCALE_USER_DEFAULT): Integer; overload;
+    procedure Insert(Index: Integer; const Item: TWideStringRec); overload;
+    procedure Insert(Index: Integer; Str: PWideChar); overload;
+    procedure Insert(Index: Integer; Str: PWideChar; Count: Integer); overload;
+
+    property Items: PWideStringRecArray read FItems;
+    property OwnsData: Boolean read FOwnsData;
+  end;
+
+  TCoreStringArray = TWideStringArray; // TODO: non-Unicode
 
   TCRC32Table = array[0..$FF] of LongWord;
 
@@ -297,12 +315,17 @@ type
     Items: PLegacyChar;
   end;
 
+  TDataHolderCast = class(TDataHolder)
+    Items: PLegacyChar;
+    OwnsData: Boolean;
+  end;
+
   PPointerArray = ^TPointerArray;
   TPointerArray = array[0..MaxInt div SizeOf(Pointer) - 1] of Pointer;
 
   TPointersCast = class(TPointers)
     Items: PPointerArray;
-    OwnsObjects: Boolean;
+    OwnsItems: Boolean;
   end;
 
   PObjectArray = ^TObjectArray;
@@ -316,7 +339,7 @@ type
   TCollectionCast = class;
 
   TCollectionItemCast = class(TCollectionItem)
-    Owner: TCollectionCast;
+    Owner: TCollection;
   end;
 
   PCollectionItems = ^TCollectionItems;
@@ -871,20 +894,20 @@ end;
 
 procedure TArray.SetCount(Value: Integer);
 var
-  D, S: Integer;
+  Bytes, Delta: Integer;
 begin
   if FCount <> Value then
   begin
     if FDelta <> 0 then
     begin
-      D := TranslateDelta;
-      SetCapacity(Value + (Value + D - 1) mod D);
+      Delta := TranslateDelta;
+      SetCapacity(Value + (Value + Delta - 1) mod Delta);
     end
     else
       SetCapacity(Value);
-    S := ItemSize;
+    Bytes := ItemSize;
     if Value > FCount then
-      FillChar(TArrayCast(Self).Items[FCount * S], (Value - FCount) * S, 0);
+      FillChar(TArrayCast(Self).Items[FCount * Bytes], (Value - FCount) * Bytes, 0);
     FCount := Value;
   end;
 end;
@@ -912,15 +935,15 @@ end;}
 
 { TDataHolder }
 
-constructor TDataHolder.Create(Initial, Delta: Integer; OwnsObjects: Boolean);
+constructor TDataHolder.Create(Initial, Delta: Integer; OwnsItems: Boolean);
 begin
   inherited Create(Initial, Delta);
-  TPointersCast(Self).OwnsObjects := OwnsObjects;
+  TDataHolderCast(Self).OwnsData := OwnsItems;
 end;
 
-constructor TDataHolder.Create(OwnsObjects: Boolean);
+constructor TDataHolder.Create(OwnsItems: Boolean);
 begin
-  TPointersCast(Self).OwnsObjects := OwnsObjects;
+  TDataHolderCast(Self).OwnsData := OwnsItems;
 end;
 
 class procedure TDataHolder.FreeItem(const Item);
@@ -930,52 +953,19 @@ end;
 
 procedure TDataHolder.SetCapacity(Value: Integer);
 var
-  I: Integer;
+  I, Bytes: Integer;
 begin
   if Value < FCount then
   begin
     CheckIndex(Value); // for negative values
-    if TPointersCast(Self).OwnsObjects then
+    if TDataHolderCast(Self).OwnsData then
+    begin
+      Bytes := ItemSize;
       for I := FCount - 1 downto Value do
-        FreeItem(TPointersCast(Self).Items[I]);
+        FreeItem(TDataHolderCast(Self).Items[I * Bytes]);
+    end;
   end;
   inherited;
-end;
-
-{ TStrings }
-
-class procedure TStringArray.FreeItem(const Item);
-begin
-  FreeMem(TCoreStringRec(Item).Value);
-end;
-
-class function TStringArray.ItemSize: Integer;
-begin
-  Result := SizeOf(TCoreStringRec);
-end;
-
-{ TLegacyStringArray }
-
-function TLegacyStringArray.Extract(Index: Integer): TLegacyStringRec;
-begin
-  inherited Extract(Index, Result);
-end;
-
-function TLegacyStringArray.IndexOf(const Item: TLegacyStringRec): Integer;
-begin
-  Result := -1; // TODO
-end;
-
-{ TWideStringArray }
-
-function TWideStringArray.Extract(Index: Integer): TWideStringRec;
-begin
-  inherited Extract(Index, Result);
-end;
-
-function TWideStringArray.IndexOf(const Item: TWideStringRec): Integer;
-begin
-  Result := -1; // TODO
 end;
 
 { TPointers }
@@ -1040,13 +1030,15 @@ function TCollection.Append(Item: TObject): Integer;
   if Item <> nil then
     TCollectionItem(Item).Extract;
   Result := inherited Append(Item);
+  if Item <> nil then
+    TCollectionItemCast(Item).Owner := Self;
 end;
 
 function TCollection.Extract(Index: Integer): TObject;
 begin
   Result := inherited Extract(Index);
   if Result <> nil then
-    TCollectionItem(Result).Extract;
+    TCollectionItemCast(Result).Owner := nil;
 end;
 
 procedure TCollection.Insert(Index: Integer; Item: TObject);
@@ -1054,6 +1046,152 @@ procedure TCollection.Insert(Index: Integer; Item: TObject);
   if Item <> nil then
     TCollectionItem(Item).Extract;
   inherited Insert(Index, Item);
+  if Item <> nil then
+    TCollectionItemCast(Item).Owner := Self;
+end;
+
+{ TStringArray }
+
+class procedure TStringArray.FreeItem(const Item);
+begin
+  FreeMem(TCoreStringRec(Item).Value);
+end;
+
+class function TStringArray.ItemSize: Integer;
+begin
+  Result := SizeOf(TCoreStringRec);
+end;
+
+{ TLegacyStringArray }
+
+function TLegacyStringArray.Append(const Item: TLegacyStringRec): Integer;
+begin
+  Result := inherited Append;
+  FItems[Result] := Item;
+end;
+
+function TLegacyStringArray.Append(Str: PLegacyChar): Integer;
+begin
+  Result := Append(Str, StrLen(Str));
+end;
+
+function TLegacyStringArray.Append(Str: PLegacyChar; Count: Integer): Integer;
+begin
+  Result := inherited Append;
+  with FItems[Result] do
+  begin
+    Value := Str;
+    Length := Count;
+  end;
+end;
+
+function TLegacyStringArray.Extract(Index: Integer): TLegacyStringRec;
+begin
+  CheckIndex(Index);
+  Result := FItems[Index];
+  Extract(Index);
+end;
+
+function TLegacyStringArray.IndexOf(Str: PLegacyChar; IgnoreFlags, Locale: LongWord): Integer;
+begin
+  Result := IndexOf(Str, StrLen(Str), IgnoreFlags, Locale);
+end;
+
+function TLegacyStringArray.IndexOf(Str: PLegacyChar; Count: Integer;
+  IgnoreFlags, Locale: LongWord): Integer;
+begin
+  for Result := 0 to Count - 1 do
+    with FItems[Result] do
+      if StrComp(Value, Length, Str, Count, IgnoreFlags, Locale) = 0 then
+        Exit;
+  Result := -1;
+end;
+
+procedure TLegacyStringArray.Insert(Index: Integer; const Item: TLegacyStringRec);
+begin
+  inherited Insert(Index);
+  FItems[Index] := Item;
+end;
+
+procedure TLegacyStringArray.Insert(Index: Integer; Str: PLegacyChar);
+begin
+  Insert(Index, Str, StrLen(Str));
+end;
+
+procedure TLegacyStringArray.Insert(Index: Integer; Str: PLegacyChar; Count: Integer);
+begin
+  inherited Insert(Index);
+  with FItems[Index] do
+  begin
+    Value := Str;
+    Length := Count;
+  end;
+end;
+
+{ TWideStringArray }
+
+function TWideStringArray.Append(const Item: TWideStringRec): Integer;
+begin
+  Result := inherited Append;
+  FItems[Result] := Item;
+end;
+
+function TWideStringArray.Append(Str: PWideChar): Integer;
+begin
+  Result := Append(Str, WideStrLen(Str));
+end;
+
+function TWideStringArray.Append(Str: PWideChar; Count: Integer): Integer;
+begin
+  Result := inherited Append;
+  with FItems[Result] do
+  begin
+    Value := Str;
+    Length := Count;
+  end;
+end;
+
+function TWideStringArray.Extract(Index: Integer): TWideStringRec;
+begin
+  CheckIndex(Index);
+  Result := FItems[Index];
+  Extract(Index);
+end;
+
+function TWideStringArray.IndexOf(Str: PWideChar; IgnoreFlags, Locale: LongWord): Integer;
+begin
+  Result := IndexOf(Str, WideStrLen(Str), IgnoreFlags, Locale);
+end;
+
+function TWideStringArray.IndexOf(Str: PWideChar; Count: Integer;
+  IgnoreFlags, Locale: LongWord): Integer;
+begin
+  for Result := 0 to Count - 1 do
+    with FItems[Result] do
+      if WideStrComp(Value, Length, Str, Count, IgnoreFlags, Locale) = 0 then
+        Exit;
+  Result := -1;
+end;
+
+procedure TWideStringArray.Insert(Index: Integer; const Item: TWideStringRec);
+begin
+  inherited Insert(Index);
+  FItems[Index] := Item;
+end;
+
+procedure TWideStringArray.Insert(Index: Integer; Str: PWideChar);
+begin
+  Insert(Index, Str, WideStrLen(Str));
+end;
+
+procedure TWideStringArray.Insert(Index: Integer; Str: PWideChar; Count: Integer);
+begin
+  inherited Insert(Index);
+  with FItems[Index] do
+  begin
+    Value := Str;
+    Length := Count;
+  end;
 end;
 
 { TCRC32 }
