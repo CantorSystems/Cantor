@@ -9,7 +9,7 @@ unit PetCore;
 interface
 
 uses
-  CoreUtils, CoreExceptions, CoreWrappers, CoreClasses;
+  Windows, CoreUtils, CoreExceptions, CoreWrappers, CoreClasses;
 
 type
   TLocaleMapRec = packed record // satisfying TArray.ItemSize
@@ -40,8 +40,8 @@ type
   TApplication = class
   private
     FConsole: TStreamConsole;
-    FAppName: PLegacyChar;
-    FSourceFileName: PCoreChar;
+    FExeName: array[0..MAX_PATH] of CoreChar;
+    FAppName, FSourceFileName: PCoreChar;
     FFileNames: TFileKeys;
     FDropSections: TSectionNames;
     FDropResources: TResourceNames;
@@ -73,7 +73,7 @@ type
 implementation
 
 uses
-  Windows, PetConsts, ExeImages;
+  ExeImages, PetConsts;
 
 const
   FileKeys: TFileKeys = (sInto, sBackup, sStub, sExtract, sDump);
@@ -102,9 +102,8 @@ const
   OptionKeys: array[TRunOption] of PCoreChar = (sStrip, sDeep, sCleanVer, sMainIcon, s3GB, sPause);
   HexBase: array[Boolean] of LegacyChar = 'A0';
 var
-  ExeName: array[0..MAX_PATH] of CoreChar;
   Ver: TVersionBuffer;
-  Dot, CmdLineParams, StubFileName, Limit, Head, Current: PCoreChar;
+  Dot, CmdLineParams, Limit, Head, Current: PCoreChar;
   K: TFileKey;
   R: TRunOption;
   Value: Word;
@@ -117,9 +116,9 @@ begin
     WriteLn;
   end;
 
-  if GetModuleFileNameW(0, ExeName, Length(ExeName)) = 0 then
+  if GetModuleFileNameW(0, FExeName, Length(FExeName)) = 0 then
     RaiseLastPlatformError;
-  with TVersionInfo.Create(ExeName) do
+  with TVersionInfo.Create(FExeName) do
   try
     FormatVersion(Ver);
     if TranslationCount <> 0 then
@@ -133,19 +132,17 @@ begin
 
   with WideParamStr(CommandLine) do
   begin
-    Param[Length] := CoreChar(0); // unsafe
-    StubFileName := Param;
-
-    Head := WideStrRScan(Param, PathDelimiter, Length);
-    if Head <> nil then
-      Inc(Head)
+    FAppName := WideStrRScan(Param, PathDelimiter, Length);
+    if FAppName <> nil then
+      Inc(FAppName)
     else
-      Head := Param;
+      FAppName := Param;
 
-    Dot := WideStrScan(Head, '.', Length - (Head - Param));
+    Dot := WideStrScan(FAppName, '.', Length - (PLegacyChar(FAppName) - PLegacyChar(Param)) div SizeOf(CoreChar));
     if Dot <> nil then
-      Length := Dot - Head;
-    FAppName := EncodeLegacy(Head, Length, CP_ACP).Value;
+      Dot^ := CoreChar(0) // unsafe
+    else
+      Param[Length] := CoreChar(0); // unsafe
 
     CommandLine := NextParam;
   end;
@@ -176,10 +173,18 @@ begin
               Param := nil;
             end;
           end
-          else if (FFileNames[K] = nil) and not (K in [fkInto, fkStub]) then
-            raise EFileKey.Create(K)
-          else
+          else if FFileNames[K] = nil then
+          begin
+            case K of
+              fkInto:
+                FFileNames[fkInto] := FSourceFileName;
+              fkStub:
+                FFileNames[fkStub] := FExeName;
+            else
+              raise EFileKey.Create(K);
+            end;
             P.Param := nil;
+          end;
           Break;
         end;
 
@@ -354,11 +359,6 @@ begin
 
     CommandLine := P.NextParam;
   until False;
-
-  if FFileNames[fkInto] = nil then
-    FFileNames[fkInto] := FSourceFileName;
-  if FFileNames[fkStub] = nil then
-    FFileNames[fkStub] := StubFileName; 
 end;
 
 destructor TApplication.Destroy;
@@ -366,7 +366,6 @@ begin
   FLocaleMap.Free;
   FDropResources.Free;
   FDropSections.Free;
-  FreeMem(FAppName);
   FConsole.Free;
 
   if roPause in FOptions then // placed here to show exceptions properly
@@ -529,7 +528,7 @@ begin
           if ro3GB in FOptions then
             with Image.Headers.FileHeader do
               Characteristics := Characteristics or IMAGE_FILE_LARGE_ADDRESS_AWARE;
-          Build;
+          Build(Byte(roStrip in FOptions) * 512); 
           NewSize := Size(roStrip in FOptions);
         end;
         Image.Save(FFileNames[fkInto], roStrip in FOptions);

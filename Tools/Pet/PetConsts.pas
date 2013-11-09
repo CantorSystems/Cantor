@@ -36,7 +36,7 @@ const
 
 const
   sUsage =
-    'Usage:'#9'%s <source> [commands [options]]';
+    'Usage:'#9'%ws <source> [commands [options]]';
   sHelp =
                                                                      #9#9#9#9'/\_/\'#10 +
                                                      #9#9#9#9#9#9#9#9'   ____/ o o \'#10 +
