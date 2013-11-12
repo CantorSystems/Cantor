@@ -32,7 +32,7 @@ type
   TFileKey = (fkInto, fkBackup, fkStub, fkExtract, fkDump);
   TFileKeys = array[TFileKey] of PCoreChar;
 
-  TRunOption = (roStrip, roDeep, roCleanVer, roMainIcon, ro3GB, roPause);
+  TRunOption = (roStrip, roTrunc, roDeep, roCleanVer, roMainIcon, ro3GB, roPause);
   TRunOptions = set of TRunOption;
 
   TMenuetKolibri = (mkNone, mkMenuet, mkKolibri);
@@ -99,7 +99,7 @@ begin
 end;
 
 const
-  OptionKeys: array[TRunOption] of PCoreChar = (sStrip, sDeep, sCleanVer, sMainIcon, s3GB, sPause);
+  OptionKeys: array[TRunOption] of PCoreChar = (sStrip, sTrunc, sDeep, sCleanVer, sMainIcon, s3GB, sPause);
   HexBase: array[Boolean] of LegacyChar = 'A0';
 var
   Ver: TVersionBuffer;
@@ -227,7 +227,7 @@ begin
           else
             raise ECommandLine.Create(sMissingParam, [sOSVersion]);
         end
-        else if SameKey(sDropSections) then
+        else if SameKey(sDropSect) then
         begin
           P := WideParamStr(P.NextParam);
           with P do
@@ -434,7 +434,7 @@ begin
         with TExeStub.Create do
         try
           Load(Image.Stub);
-          Strip(roStrip in FOptions);
+          Strip(roTrunc in FOptions);
           Processing([sExtractingStub, FFileNames[fkExtract], Size]);
           Save(FFileNames[fkExtract]);
         finally
@@ -529,9 +529,9 @@ begin
             with Image.Headers.FileHeader do
               Characteristics := Characteristics or IMAGE_FILE_LARGE_ADDRESS_AWARE;
           Build(Byte(roStrip in FOptions) * 512); 
-          NewSize := Size(roStrip in FOptions);
+          NewSize := Size(roTrunc in FOptions);
         end;
-        Image.Save(FFileNames[fkInto], roStrip in FOptions);
+        Image.Save(FFileNames[fkInto], roTrunc in FOptions);
         Processing([sSavingInto, FFileNames[fkInto], NewSize]);
         FConsole.WriteLn;
         Processing([sTotal, Percentage(NewSize / OldSize), OldSize - NewSize], False);

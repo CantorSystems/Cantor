@@ -91,10 +91,10 @@ type
     function IndexOfSection(Name: PLegacyChar; Length: Integer): Integer; overload;
     procedure Load(Source: TReadableStream); overload;
     procedure Load(FileName: PCoreChar); overload;
-    procedure Save(Dest: TWritableStream; StripLastSection: Boolean = True); overload;
-    procedure Save(FileName: PCoreChar; StripLastSection: Boolean = True); overload;
+    procedure Save(Dest: TWritableStream; TruncLastSection: Boolean = True); overload;
+    procedure Save(FileName: PCoreChar; TruncLastSection: Boolean = True); overload;
     function SectionAlignBytes(Source: LongWord): LongWord;
-    function Size(StripLastSection: Boolean = True): LongWord;
+    function Size(TruncLastSection: Boolean = True): LongWord;
     procedure Strip(Options: TStripOptions = [soStub..soEmptySections]);
 
     property Headers: TImageNewHeaders read FHeaders;
@@ -178,10 +178,10 @@ type
 
   EUnknownImage = class(EBadImage)
   private
-    FHeaders: PImageNewHeaders;
+    FHeaders: TImageNewHeaders;
   public
     constructor Create(const Headers: TImageNewHeaders);
-    property Headers: PImageNewHeaders read FHeaders;
+    property Headers: TImageNewHeaders read FHeaders;
   end;
 
 { Service functions }
@@ -211,7 +211,7 @@ constructor EUnknownImage.Create(const Headers: TImageNewHeaders);
 begin
   with Headers do
     inherited Create(sUnknownExeImage, [Magic[0], Magic[1]]);
-  FHeaders := @Headers;
+  FHeaders := Headers;
 end;
 
 { TExeStub }
@@ -639,7 +639,7 @@ begin
   end;
 end;
 
-procedure TExeImage.Save(Dest: TWritableStream; StripLastSection: Boolean);
+procedure TExeImage.Save(Dest: TWritableStream; TruncLastSection: Boolean);
 var
   Dummy: array[0..4095] of Byte;
   Offset, H: LongWord;
@@ -666,19 +666,19 @@ begin
   for I := 0 to Count - 1 do
   begin
     FSections[I].Save(Dest);
-    if (I < Count - 1) or not StripLastSection then
+    if (I < Count - 1) or not TruncLastSection then
       Dest.WriteBuffer(Dummy, FileAlignBytes(Sections[I].FHeader.RawDataSize));
   end;
 end;
 
-procedure TExeImage.Save(FileName: PCoreChar; StripLastSection: Boolean);
+procedure TExeImage.Save(FileName: PCoreChar; TruncLastSection: Boolean);
 var
   Dest: TReadableStream;
 begin
   Dest := TFileStream.Create(FileName, faRewrite + [faSequential]);
   try
-    Dest.Size := Size(StripLastSection);
-    Save(Dest, StripLastSection);
+    Dest.Size := Size(TruncLastSection);
+    Save(Dest, TruncLastSection);
   finally
     Dest.Free;
   end;
@@ -695,7 +695,7 @@ begin
   end;
 end;
 
-function TExeImage.Size(StripLastSection: Boolean): LongWord;
+function TExeImage.Size(TruncLastSection: Boolean): LongWord;
 var
   I: Integer;
 begin
@@ -709,7 +709,7 @@ begin
   for I := 0 to Count - 1 do
   begin
     Inc(Result, FSections[I].Size);;
-    if (I < Count - 1) or not StripLastSection then
+    if (I < Count - 1) or not TruncLastSection then
       Inc(Result, FileAlignBytes(Result));
   end;
 end;

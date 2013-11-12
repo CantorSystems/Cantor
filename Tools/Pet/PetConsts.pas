@@ -19,18 +19,19 @@ const
   sExtract  = 'extract';
   sDump     = 'dump';
 
-  s3GB          = '3GB';
-  sCleanVer     = 'cleanver';
-  sDeep         = 'deep';
-  sDropRes      = 'dropres';
-  sDropSections = 'dropsect';
-  sLocale       = 'locale';
-  sMainIcon     = 'mainicon';
-  sMenuet       = 'menuet';
-  sPause        = 'pause';
-  sRebase       = 'rebase';
-  sOSVer        = 'osver';
-  sStrip        = 'strip';
+  s3GB        = '3GB';
+  sCleanVer   = 'cleanver';
+  sDeep       = 'deep';
+  sDropRes    = 'dropres';
+  sDropSect   = 'dropsect';
+  sLocale     = 'locale';
+  sMainIcon   = 'mainicon';
+  sMenuet     = 'menuet';
+  sPause      = 'pause';
+  sRebase     = 'rebase';
+  sOSVer      = 'osver';
+  sStrip      = 'strip';
+  sTrunc      = 'trunc';
 
 { Localize }
 
@@ -61,6 +62,8 @@ const
             #9'-strip'#9#9#9'Strip headers, relocations and empty sections'#10 +
             #9#9#9#9'when possible'#10 +
             #9'-stub <stub>'#9#9'Replace stub with one from <stub> file'#10#10 +
+            #9'-trunc'#9#9#9'Don''t align last section, truncate file'#10 +
+            #9#9#9#9'immediately after data end'#10#10 +
     'Other option'#10 +
             #9'-pause'#9#9#9'Wait for ENTER key to exit';
 
