@@ -535,8 +535,10 @@ asm
         XOR AL, AL
         REPNE SCASB
         POP EAX
+        JCXZ @@max
         SUB EAX, ECX
         DEC EAX
+@@max:
         MOV EDI, EDX
 @@exit:
 end;
@@ -571,8 +573,10 @@ asm
         XOR AX, AX
         REPNE SCASW
         POP EAX
+        JCXZ @@max
         SUB EAX, ECX
         DEC EAX
+@@max:
         MOV EDI, EDX
 @@exit:
 end;
@@ -607,8 +611,10 @@ asm
         XOR EAX, EAX
         REPNE SCASD
         POP EAX
+        JCXZ @@max
         SUB EAX, ECX
         DEC EAX
+@@max:
         MOV EDI, EDX
 @@exit:
 end;
