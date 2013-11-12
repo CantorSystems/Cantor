@@ -60,6 +60,8 @@ const
   sRangeOutOfBounds = 'Range %hs[%d..%d] out of bounds %d..%d';
   sFixedCapacity    = 'This %hs object can contain only %d items';
 
+  sNotExecutableImage = 'Not an executable image';
+  sNotValidWin32Image = 'Not valid Win32 image';
   sUnknownExeImage = 'Unknown image signature: %c%c';
   sBadExeImage = 'Bad image: %s';
 

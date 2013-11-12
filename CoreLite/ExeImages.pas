@@ -83,7 +83,7 @@ type
     FStub: TExeStub;
   public
     destructor Destroy; override;
-    procedure Build;
+    procedure Build(FileAlignment: LongWord = 512);
     function Extract(Index: Integer): TObject; {$IFNDEF Lite} override; {$ENDIF}
     function FileAlignBytes(Source: LongWord): LongWord;
     function HeadersSize: LongWord;
@@ -282,19 +282,24 @@ var
   L: LongWord;
 begin
   Source.ReadBuffer(FHeader, MinHeaderBytes);
-  L := Size - MinHeaderBytes;
-  if L > SizeOf(FHeader.Ext) then
+  if FHeader.Magic <> 'MZ' then
+    raise EBadImage.Create(sNotExecutableImage);
+  L := Size;
+  if L > 0 then
   begin
-    Source.ReadBuffer(FHeader.Ext, SizeOf(FHeader.Ext));
-    Dec(L, SizeOf(FHeader.Ext));
-    ReallocMem(FData, L);
-    Source.ReadBuffer(FData^, L);
-  end
-  else
-  begin
-    Source.ReadBuffer(FHeader.Ext, L);
-    FreeMemAndNil(FData);
+    Dec(L, MinHeaderBytes);
+    if L > SizeOf(FHeader.Ext) then
+    begin
+      Source.ReadBuffer(FHeader.Ext, SizeOf(FHeader.Ext));
+      Dec(L, SizeOf(FHeader.Ext));
+      ReallocMem(FData, L);
+      Source.ReadBuffer(FData^, L);
+      Exit;
+    end
+    else
+      Source.ReadBuffer(FHeader.Ext, L);
   end;
+  FreeMemAndNil(FData);
 end;
 
 procedure TExeStub.Load(FileName: PCoreChar);
@@ -491,11 +496,14 @@ begin
   inherited;
 end;
 
-procedure TExeImage.Build;
+procedure TExeImage.Build(FileAlignment: LongWord);
 var
   Offset: LongWord;
   I: Integer;
 begin
+  if FileAlignment <> 0 then
+    FHeaders.OptionalHeader.FileAlignment := FileAlignment;
+
   Offset := 0;
 
   if FStub <> nil then
@@ -601,8 +609,12 @@ begin
     begin
       Position := FStub.Header.Ext.NewHeaderOffset;
       ReadBuffer(FHeaders, SizeOf(FHeaders) - SizeOf(FHeaders.OptionalHeader));
-      ReadBuffer(FHeaders.OptionalHeader, FHeaders.FileHeader.OptionalHeaderSize);
     end;
+    if LongWord(FHeaders.Magic) <> IMAGE_NT_SIGNATURE then
+      raise EUnknownImage.Create(FHeaders);
+    if FHeaders.FileHeader.OptionalHeaderSize <> SizeOf(FHeaders.OptionalHeader) then
+      raise EBadImage.Create(sNotValidWin32Image);
+    Source.ReadBuffer(FHeaders.OptionalHeader, FHeaders.FileHeader.OptionalHeaderSize);
     with FHeaders.OptionalHeader do
       FillChar(DataDirectory[DirectoryEntryCount], SizeOf(DataDirectory) -
         DirectoryEntryCount * SizeOf(TImageDataDirectory), 0);
