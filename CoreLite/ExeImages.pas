@@ -144,7 +144,7 @@ type
   { hold } FOwnsItems: Boolean;
     FHeader: TImageResourceDirectory;
     FName: PWideChar;
-    FNameOffset: Word;
+    FNameOffset: LongWord;
     FId: Word;
     procedure Load(Source: Pointer; Header: PImageResourceDirectory); reintroduce; overload;
     function SaveNames(Dest: TWritableStream): LongWord;
@@ -154,6 +154,7 @@ type
     procedure Build; override;
     function DataSize: LongWord; override;
     function Extract(Index: Integer): TObject; {$IFNDEF Lite} override; {$ENDIF}
+    function HeadersSize(Minimize: Boolean = True): LongWord;
     procedure Load(Source: TExeSection); overload; override;
     procedure Save(Dest: TWritableStream); override;
 
@@ -161,8 +162,19 @@ type
     property Id: Word read FId write SetId;
     property Items: PExeResourceArray read FItems;
     property Name: PWideChar read FName write SetName;
-    property NameOffset: Word read FNameOffset;
+    property NameOffset: LongWord read FNameOffset;
     property OwnsItems: Boolean read FOwnsItems;
+  end;
+
+  PExeResourceNameArray = ^TExeResourceNameArray;
+  TExeResourceNameArray = array[0..MaxInt div SizeOf(PImageResourceName) - 1] of PImageResourceName;
+
+  TExeResourceNames = class(TArray)
+  { hold } FItems: PExeResourceNameArray;
+  public
+    function Append(Item: PImageResourceName): Integer;
+    function Extract(Index: Integer): PImageResourceName;
+    procedure Insert(Index: Integer; Item: PImageResourceName);
   end;
 
   TExeVersionInfo = class(TExeResourceHandler)
@@ -504,6 +516,10 @@ begin
   if FileAlignment <> 0 then
     FHeaders.OptionalHeader.FileAlignment := FileAlignment;
 
+  if FHeaders.OptionalHeader.MajorOSVersion >= 5 then
+    with FHeaders.FileHeader do
+      Characteristics := Characteristics and not IMAGE_FILE_BYTES_REVERSED_HI;
+
   Offset := 0;
 
   if FStub <> nil then
@@ -722,11 +738,18 @@ begin
     FStub.Strip;
 
   if (soRelocations in Options) and (FHeaders.FileHeader.Characteristics and IMAGE_FILE_DLL = 0) and
+    (FHeaders.OptionalHeader.Subsystem in [IMAGE_SUBSYSTEM_WINDOWS_GUI, IMAGE_SUBSYSTEM_WINDOWS_CUI]) and
     (FHeaders.OptionalHeader.DirectoryEntryCount >= IMAGE_DIRECTORY_ENTRY_BASERELOC) then
   begin
     I := IndexOfSection(IMAGE_DIRECTORY_ENTRY_BASERELOC);
     if I >= 0 then
       Extract(I).Free;
+    for I := 0 to Count - 1 do
+      with FSections[I].FHeader do
+      begin
+        RelocationsOffset := 0;
+        RelocationCount := 0;
+      end;
     QuadWord(FHeaders.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC]) := 0; // Fast core
     with FHeaders.FileHeader do
       Characteristics := Characteristics or IMAGE_FILE_RELOCS_STRIPPED;
@@ -894,6 +917,22 @@ begin
   end;
 end;
 
+function TExeResources.HeadersSize(Minimize: Boolean): LongWord;
+var
+  I: Integer;
+begin
+  Result := 0;
+  if Count > 0 then
+    Inc(Result, SizeOf(FHeader));
+  Inc(Result, SizeOf(TImageResourceDirectoryEntry) * Count);
+  for I := 0 to Count - 1 do
+    with FItems[I] do
+      if Value is TExeResources then
+        Inc(Result, AsResources.HeadersSize(Minimize))
+      else {$IFNDEF Lite} if FItems[I].Value is TExeResource then {$ENDIF}
+        Inc(Result, SizeOf(AsResource.FHeader));
+end;
+
 procedure TExeResources.Load(Source: TExeSection);
 begin
   Load(Source.Data, Source.Data);
@@ -932,6 +971,27 @@ procedure TExeResources.SetName(Value: PWideChar);
 begin
   FName := Value;
   FId := WideStrLen(FName);
+end;
+
+{ TExeResourceNames }
+
+function TExeResourceNames.Append(Item: PImageResourceName): Integer;
+begin
+  Result := inherited Append;
+  FItems[Result] := Item;
+end;
+
+function TExeResourceNames.Extract(Index: Integer): PImageResourceName;
+begin
+  CheckIndex(Index);
+  Result := FItems[Index];
+  inherited Extract(Index);
+end;
+
+procedure TExeResourceNames.Insert(Index: Integer; Item: PImageResourceName);
+begin
+  inherited Insert(Index);
+  FItems[Index] := Item;
 end;
 
 { TExeVersionInfo }
