@@ -32,7 +32,7 @@ type
   TFileKey = (fkInto, fkBackup, fkStub, fkExtract, fkDump);
   TFileKeys = array[TFileKey] of PCoreChar;
 
-  TRunOption = (roStrip, roTrunc, roDeep, roCleanVer, roMainIcon, ro3GB, roPause);
+  TRunOption = (roStrip, roTrunc, roDeep, roMiniRes, roCleanVer, roMainIcon, ro3GB, roPause);
   TRunOptions = set of TRunOption;
 
   TMenuetKolibri = (mkNone, mkMenuet, mkKolibri);
@@ -99,7 +99,8 @@ begin
 end;
 
 const
-  OptionKeys: array[TRunOption] of PCoreChar = (sStrip, sTrunc, sDeep, sCleanVer, sMainIcon, s3GB, sPause);
+  OptionKeys: array[TRunOption] of PCoreChar =
+    (sStrip, sTrunc, sDeep, sMiniRes, sCleanVer, sMainIcon, s3GB, sPause);
   HexBase: array[Boolean] of LegacyChar = 'A0';
 var
   Ver: TVersionBuffer;
@@ -434,7 +435,7 @@ begin
         with TExeStub.Create do
         try
           Load(Image.Stub);
-          Strip(roTrunc in FOptions);
+          Strip(roStrip in FOptions);
           Processing([sExtractingStub, FFileNames[fkExtract], Size]);
           Save(FFileNames[fkExtract]);
         finally
@@ -478,7 +479,8 @@ begin
           end;
         end;
 
-      if (FDropResources <> nil) or (FLocaleMap <> nil) or (FOptions * [roCleanVer, roMainIcon] <> []) then
+      if (FDropResources <> nil) or (FLocaleMap <> nil) or
+        (FOptions * [roMiniRes, roCleanVer, roMainIcon] <> []) then
       begin
         Idx := Image.IndexOfSection(IMAGE_DIRECTORY_ENTRY_RESOURCE);
         if Idx >= 0 then
@@ -528,7 +530,7 @@ begin
           if ro3GB in FOptions then
             with Image.Headers.FileHeader do
               Characteristics := Characteristics or IMAGE_FILE_LARGE_ADDRESS_AWARE;
-          Build(Byte(roStrip in FOptions) * 512); 
+          Build(Byte(roStrip in FOptions) * 512);
           NewSize := Size(roTrunc in FOptions);
         end;
         Image.Save(FFileNames[fkInto], roTrunc in FOptions);

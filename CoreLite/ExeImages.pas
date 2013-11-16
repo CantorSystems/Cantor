@@ -38,7 +38,7 @@ type
     property Header: TImageLegacyHeader read FHeader;
   end;
 
-  TExeSection = class;
+  TExeSection = class;               
 
   TExeSectionHandler = class(TObjects)
   public
@@ -103,107 +103,105 @@ type
     property Stub: TExeStub read FStub;
   end;
 
-  TExeResourceHandler = class
-  public
-    function DataSize: LongWord; virtual; abstract;
-    procedure Load(Source: Pointer); virtual; abstract;
-    procedure Save(Dest: TWritableStream); virtual; abstract;
-  end;
+  TExeResourceHandler = class
+  public
+    function DataSize: LongWord; virtual; abstract;
+    procedure Load(Source: Pointer); virtual; abstract;
+    procedure Save(Dest: TWritableStream); virtual; abstract;
+  end;
 
-  TExeResource = class
-  private
-    FHeader: TImageResourceDataEntry;
-    FData: Pointer;
-    FHandler: TExeResourceHandler;
-    procedure SetHandler(Value: TExeResourceHandler);
-  public
-    procedure Build;
-    procedure Load(Source: Pointer; const Header: TImageResourceDataEntry);
-    procedure Save(Dest: TWritableStream);
-    function Size: LongWord;
+  TExeResource = class
+  private
+    FHeader: TImageResourceDataEntry;
+    FData: Pointer;
+    FHandler: TExeResourceHandler;
+    procedure SetHandler(Value: TExeResourceHandler);
+  public
+    procedure Build;
+    procedure Load(Source: Pointer; const Header: TImageResourceDataEntry);
+    procedure Save(Dest: TWritableStream);
+    function Size: LongWord;
 
-    property Data: Pointer read FData;
-    property Handler: TExeResourceHandler read FHandler write SetHandler;
-    property Header: TImageResourceDataEntry read FHeader;
-  end;
+    property Data: Pointer read FData;
+    property Handler: TExeResourceHandler read FHandler write SetHandler;
+    property Header: TImageResourceDataEntry read FHeader;
+  end;
 
-  TExeResources = class;
+  TExeResources = class;
 
-  PExeResourceArray = ^TExeResourceArray;
-  TExeResourceArray = array[0..MaxInt div SizeOf(TExeResource) - 1] of
-    packed record
-      case Byte of
-        0: (Value: TObject);
-        1: (AsResource: TExeResource);
-        2: (AsResources: TExeResources);
-    end;
+  PExeResourceArray = ^TExeResourceArray;
+  TExeResourceArray = array[0..MaxInt div SizeOf(TExeResource) - 1] of
+    packed record
+      case Byte of
+        0: (Value: TObject);
+        1: (AsResource: TExeResource);
+        2: (AsResources: TExeResources);
+    end;
 
-  TExeResources = class(TExeSectionHandler)
-  private
-  { hold } FItems: PExeResourceArray;
-  { hold } FOwnsItems: Boolean;
-    FHeader: TImageResourceDirectory;
-    FName: PWideChar;
-    FNameOffset: LongWord;
-    FId: Word;
-    procedure Load(Source: Pointer; Header: PImageResourceDirectory); reintroduce; overload;
-    function SaveNames(Dest: TWritableStream): LongWord;
-    procedure SetId(Value: Word);
-    procedure SetName(Value: PWideChar);
-  public
-    procedure Build; override;
-    function DataSize: LongWord; override;
-    function Extract(Index: Integer): TObject; {$IFNDEF Lite} override; {$ENDIF}
-    function HeadersSize(Minimize: Boolean = True): LongWord;
-    procedure Load(Source: TExeSection); overload; override;
-    procedure Save(Dest: TWritableStream); override;
+  TExeResources = class(TExeSectionHandler)
+  private
+  { hold } FItems: PExeResourceArray;
+  { hold } FOwnsItems: Boolean;
+    FHeader: TImageResourceDirectory;
+    FName: PWideChar;
+    FId: Word;
+    procedure Load(Source: Pointer; Header: PImageResourceDirectory); reintroduce; overload;
+    function SaveNames(Dest: TWritableStream): LongWord;
+    procedure SetId(Value: Word);
+    procedure SetName(Value: PWideChar);
+  public
+    procedure Build; override;
+    function DataSize: LongWord; override;
+    function Extract(Index: Integer): TObject; {$IFNDEF Lite} override; {$ENDIF}
+    function HeadersSize(Minimize: Boolean = True): LongWord;
+    procedure Load(Source: TExeSection); overload; override;
+    procedure Save(Dest: TWritableStream); override;
 
-    property Header: TImageResourceDirectory read FHeader;
-    property Id: Word read FId write SetId;
-    property Items: PExeResourceArray read FItems;
-    property Name: PWideChar read FName write SetName;
-    property NameOffset: LongWord read FNameOffset;
-    property OwnsItems: Boolean read FOwnsItems;
-  end;
+    property Header: TImageResourceDirectory read FHeader;
+    property Id: Word read FId write SetId;
+    property Items: PExeResourceArray read FItems;
+    property Name: PWideChar read FName write SetName;
+    property OwnsItems: Boolean read FOwnsItems;
+  end;
 
-  PExeResourceNameArray = ^TExeResourceNameArray;
-  TExeResourceNameArray = array[0..MaxInt div SizeOf(PImageResourceName) - 1] of PImageResourceName;
+  PExeResourceNameArray = ^TExeResourceNameArray;
+  TExeResourceNameArray = array[0..MaxInt div SizeOf(PImageResourceName) - 1] of PImageResourceName;
 
-  TExeResourceNames = class(TArray)
-  { hold } FItems: PExeResourceNameArray;
-  public
-    function Append(Item: PImageResourceName): Integer;
-    function Extract(Index: Integer): PImageResourceName;
-    procedure Insert(Index: Integer; Item: PImageResourceName);
-  end;
+  TExeResourceNames = class(TArray)
+  { hold } FItems: PExeResourceNameArray;
+  public
+    function Append(Item: PImageResourceName): Integer;
+    function Extract(Index: Integer): PImageResourceName;
+    procedure Insert(Index: Integer; Item: PImageResourceName);
+  end;
 
-  TExeVersionInfo = class(TExeResourceHandler)
-  public
-    function DataSize: LongWord; override;
-    procedure Load(Source: Pointer); override;
-    procedure Save(Dest: TWritableStream); override;
-  end;
+  TExeVersionInfo = class(TExeResourceHandler)
+  public
+    function DataSize: LongWord; override;
+    procedure Load(Source: Pointer); override;
+    procedure Save(Dest: TWritableStream); override;
+  end;
 
-{ Exceptions }
+{ Exceptions }
 
-  EBadImage = class(Exception);
+  EBadImage = class(Exception);
 
-  EUnknownImage = class(EBadImage)
-  private
-    FHeaders: TImageNewHeaders;
-  public
-    constructor Create(const Headers: TImageNewHeaders);
-    property Headers: TImageNewHeaders read FHeaders;
-  end;
+  EUnknownImage = class(EBadImage)
+  private
+    FHeaders: TImageNewHeaders;
+  public
+    constructor Create(const Headers: TImageNewHeaders);
+    property Headers: TImageNewHeaders read FHeaders;
+  end;
 
-{ Service functions }
-
+{ Service functions }
+
 function AlignToLongWord(Source: LongWord): LongWord;
 
 implementation
 
-uses
-  CoreConsts;
+uses
+  CoreConsts;
 
 const
   LegacyPageBytes       = 512; // DOS page

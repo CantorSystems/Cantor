@@ -27,6 +27,7 @@ const
   sLocale     = 'locale';
   sMainIcon   = 'mainicon';
   sMenuet     = 'menuet';
+  sMiniRes    = 'minires';
   sPause      = 'pause';
   sRebase     = 'rebase';
   sOSVer      = 'osver';
