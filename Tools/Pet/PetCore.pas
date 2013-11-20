@@ -404,11 +404,12 @@ end;
 const
   Deep: array[Boolean] of TStripOptions = ([], [soOrphanedSections]);
 var
-  I, Idx: Integer;
+  I, Idx, L: Integer;
   OldSize, NewSize, RawSize, FixedSize: LongWord;
   Image: TExeImage;
   FileInfo: TWin32FindDataW;
   hInfo: THandle;
+  TempFileName: PCoreChar;
 begin
   if FSourceFileName <> nil then
   begin
@@ -533,8 +534,27 @@ begin
           Build(Byte(roStrip in FOptions) * 512);
           NewSize := Size(roTrunc in FOptions);
         end;
-        Image.Save(FFileNames[fkInto], roTrunc in FOptions);
         Processing([sSavingInto, FFileNames[fkInto], NewSize]);
+        if FFileNames[fkBackup] <> nil then
+          Image.Save(FFileNames[fkInto], roTrunc in FOptions)
+        else
+        begin
+          L := WideStrLen(FFileNames[fkInto]);
+          GetMem(TempFileName, (L + Length('.$$$') + 1) * SizeOf(CoreChar));
+          try
+            Move(FFileNames[fkInto]^, TempFileName^, L * SizeOf(CoreChar));
+            PLongWord(TempFileName + L)^ := $0024002E;     // Fast core: '.$'
+            PLongWord(TempFileName + L + 2)^ := $00240024; // '$$'
+            TempFileName[L + 4] := CoreChar(0);
+            Image.Save(TempFileName, roTrunc in FOptions);
+            if not MoveFileExW(TempFileName, FFileNames[fkInto],
+              MOVEFILE_COPY_ALLOWED or MOVEFILE_WRITE_THROUGH or MOVEFILE_REPLACE_EXISTING)
+            then
+              RaiseLastPlatformError(FFileNames[fkBackup]);
+          finally
+            FreeMem(TempFileName);
+          end;
+        end;
         FConsole.WriteLn;
         Processing([sTotal, Percentage(NewSize / OldSize), OldSize - NewSize], False);
       end;
