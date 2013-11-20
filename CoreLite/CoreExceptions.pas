@@ -137,9 +137,13 @@ procedure RaiseLastPlatformError(ErrorSource: PCoreChar = nil);
 
 { Exception handling }
 
+procedure DefaultExceptionMessage(Msg: PWideChar);
 procedure ShowException(E: {$IFDEF Compat} TObject {$ELSE} Exception {$ENDIF});
 procedure UseExceptionMessageBox;
 procedure UseExceptionMessageWrite;
+
+var
+  ExceptionMessage: procedure(Msg: PWideChar) = DefaultExceptionMessage;
 
 implementation
 
@@ -224,7 +228,7 @@ end;
 
 procedure ExceptionHandler(ExceptObject: TObject; ExceptAddr: Pointer);
 begin
-  // "as" typecast -- CoreLib exceptions only: build with runtime packages or die!
+  // "as" typecast -- CoreLite exceptions only: build with runtime packages or die!
   ShowException(ExceptObject {$IFNDEF Compat} as Exception {$ENDIF});
   Halt(1);
 end;
@@ -516,9 +520,6 @@ asm
         JMP ExceptionErrorMessage
 end;
 
-var
-  ExceptionMessageProc: procedure(Msg: PWideChar) = DefaultExceptionMessage;
-
 { Exception raising }
 
 procedure Abort;
@@ -552,7 +553,7 @@ begin
     ErrorMessage(Exception(E).DelphiMsg, PInteger(Exception(E).DelphiMsg - SizeOf(Integer))^);
 {$ELSE}
   if eoWideChar in E.Options then
-    ExceptionMessageProc(E.Message)
+    ExceptionMessage(E.Message)
   else
     ErrorMessage(Pointer(E.Message), StrLen(Pointer(E.Message)));
 {$ENDIF}
@@ -560,12 +561,12 @@ end;
 
 procedure UseExceptionMessageBox;
 begin
-  ExceptionMessageProc := ExceptionMessageBox;
+  ExceptionMessage := ExceptionMessageBox;
 end;
 
 procedure UseExceptionMessageWrite;
 begin
-  ExceptionMessageProc := ExceptionMessageWrite;
+  ExceptionMessage := ExceptionMessageWrite;
 end;
 
 { Exception}
