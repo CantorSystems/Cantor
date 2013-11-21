@@ -128,6 +128,8 @@ begin
     ExceptionMessage := CoreExceptions.ExceptionMessage;
   {$IFDEF Tricks}
     SuppressErrorMessages := NoErrMsg;
+  {$ELSE}
+    SuppressErrorMessages := False;
   {$ENDIF}
   end;
 end;
