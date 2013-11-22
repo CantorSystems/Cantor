@@ -548,7 +548,7 @@ procedure ShowException(E: {$IFDEF Compat} TObject {$ELSE} Exception {$ENDIF});
 begin
 {$IFDEF Compat}
   if (E is Exception) and (eoWideChar in Exception(E).Options) then
-    ExceptionMessageProc(Exception(E).Message)
+    ExceptionMessage(Exception(E).Message)
   else // treat as compatible or SysUtils exception, unsafe with 3rd-party exceptions
     ErrorMessage(Exception(E).DelphiMsg, PInteger(Exception(E).DelphiMsg - SizeOf(Integer))^);
 {$ELSE}
