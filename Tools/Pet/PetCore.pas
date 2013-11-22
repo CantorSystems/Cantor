@@ -425,8 +425,6 @@ begin
       with Image do
       begin
         Load(FSourceFileName);
-        //if Stub <> nil then
-        //  Stub.Strip(False);
         NewSize := Size(False);
         Processing([sImageData, Percentage(NewSize / OldSize), NewSize], False);
       end;
