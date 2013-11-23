@@ -75,18 +75,22 @@ type
   PExeSectionArray = ^TExeSectionArray;
   TExeSectionArray = array[0..MaxInt div SizeOf(TExeSection) - 1] of TExeSection;
 
+  TExeHeaderSection = (hsCode, hsData);
+
   TExeImage = class(TObjects)
   private
   { hold } FSections: PExeSectionArray;
   { hold } FOwnsSections: Boolean;
     FHeaders: TImageNewHeaders;
     FStub: TExeStub;
+    function IndexOfAddress(Address: LongWord): Integer;
   public
     destructor Destroy; override;
     procedure Build(FileAlignment: LongWord = 512);
     function Extract(Index: Integer): TObject; {$IFNDEF Lite} override; {$ENDIF}
     function FileAlignBytes(Source: LongWord): LongWord;
     function HeadersSize: LongWord;
+    function IndexOfSection(HeaderSection: TExeHeaderSection): Integer; overload;
     function IndexOfSection(DirectoryIndex: Byte): Integer; overload;
     function IndexOfSection(Name: PLegacyChar; Length: Integer): Integer; overload;
     procedure Load(Source: TReadableStream); overload;
@@ -182,6 +186,26 @@ type
     procedure Save(Dest: TWritableStream); override;
   end;
 
+  TKolibriImage = class
+  private
+    FHeader: TKolibriHeader;
+    FCode, FData, FImports, FExports: Pointer;
+  public
+    function AlignBytes(Source: LongWord): LongWord;
+    procedure Build(Alignment: Byte = 3);
+    procedure Clear;
+    procedure Load(Image: TExeImage);
+    procedure Save(Dest: TWritableStream; TruncLastSection: Boolean = True); overload;
+    procedure Save(FileName: PCoreChar; TruncLastSection: Boolean = True); overload;
+    function Size(TruncLastSection: Boolean = True): LongWord;
+
+    property Code: Pointer read FCode;
+    property Data: Pointer read FData;
+    property Exports_: Pointer read FExports;
+    property Header: TKolibriHeader read FHeader;
+    property Imports: Pointer read FImports;
+  end;
+
 { Exceptions }
 
   EBadImage = class(Exception);
@@ -273,7 +297,7 @@ begin
     Result := SizeOf(FHeader);
 end;
 
-procedure TExeStub.Load(Source: TExeStub);
+procedure TExeStub.Load(Source: TExeStub);               
 var
   L: LongWord;
 begin
@@ -582,16 +606,27 @@ begin
     Result := 0;
 end;
 
-function TExeImage.IndexOfSection(DirectoryIndex: Byte): Integer;
-var
-  Addr: LongWord;
+function TExeImage.IndexOfAddress(Address: LongWord): Integer;
 begin
-  Addr := FHeaders.OptionalHeader.DataDirectory[DirectoryIndex].VirtualAddress;
-  if Addr <> 0 then
+  if Address <> 0 then
     for Result := 0 to Count - 1 do
-      if FSections[Result].Header.VirtualAddress = Addr then
+      if FSections[Result].Header.VirtualAddress = Address then
         Exit;
   Result := -1;
+end;
+
+function TExeImage.IndexOfSection(HeaderSection: TExeHeaderSection): Integer;
+begin
+  with FHeaders.OptionalHeader do
+    if HeaderSection = hsCode then
+      Result := IndexOfAddress(CodeBase)
+    else
+      Result := IndexOfAddress(DataBase);
+end;
+
+function TExeImage.IndexOfSection(DirectoryIndex: Byte): Integer;
+begin
+  Result := IndexOfAddress(FHeaders.OptionalHeader.DataDirectory[DirectoryIndex].VirtualAddress);
 end;
 
 function TExeImage.IndexOfSection(Name: PLegacyChar; Length: Integer): Integer;
@@ -1007,6 +1042,122 @@ end;
 procedure TExeVersionInfo.Save(Dest: TWritableStream);
 begin
 
+end;
+
+{ TKolibriImage }
+
+function TKolibriImage.AlignBytes(Source: LongWord): LongWord;
+begin
+ Result := Source mod (1 shl FHeader.Alignment);
+ if Result <> 0 then
+   Result := 1 shl FHeader.Alignment - Result;
+end;
+
+procedure TKolibriImage.Build(Alignment: Byte);
+begin
+  FHeader.Magic.AsQuadWord := $00495242494C4F4B; // Fast core: 'KOLIBRI'#0
+  FHeader.Alignment := Alignment;
+end;
+
+procedure TKolibriImage.Clear;
+begin
+  FillChar(FHeader, SizeOf(FHeader), 0);
+  FCode := nil;
+  FData := nil;
+  FExports := nil;
+  FImports := nil;
+end;
+
+procedure TKolibriImage.Load(Image: TExeImage);
+
+procedure LoadEntry(Entry: TExeHeaderSection; var Data: Pointer; var Size: LongWord); overload;
+var
+  Idx: Integer;
+begin
+  Idx := Image.IndexOfSection(Entry);
+  if Idx >= 0 then
+  begin
+    Size := Image.Sections[Idx].Size;
+    Data := Image.Sections[Idx].Data;
+  end;
+end;
+
+procedure LoadEntry(Entry: Byte; var Data: Pointer; var Size: LongWord); overload;
+var
+  Idx: Integer;
+begin
+  Idx := Image.IndexOfSection(Entry);
+  if Idx >= 0 then
+  begin
+    Size := Image.Sections[Idx].Size;
+    Data := Image.Sections[Idx].Data;
+  end;
+end;
+
+begin
+{$IFNDEF Lite}
+  Clear;
+{$ENDIF}
+  with Image.Headers.OptionalHeader do
+  begin
+    FHeader.ImageBase := ImageBase;
+    FHeader.EntryPoint := EntryPoint;
+    FHeader.UninitDataSize :=  UninitializedDataSize;
+    if Subsystem = IMAGE_SUBSYSTEM_WINDOWS_CUI then
+      FHeader.CommandLine := Pointer(-1);
+  end;
+  LoadEntry(hsCode, FCode, FHeader.CodeSize);
+  LoadEntry(hsData, FData, FHeader.InitDataSize);
+  LoadEntry(IMAGE_DIRECTORY_ENTRY_IMPORT, FImports, FHeader.ImportsSize);
+  LoadEntry(IMAGE_DIRECTORY_ENTRY_EXPORT, FExports, FHeader.ExportsSize);
+end;
+
+procedure TKolibriImage.Save(Dest: TWritableStream; TruncLastSection: Boolean);
+var
+  Dummy: array[0..4095] of Byte;
+begin
+  FillChar(Dummy, SizeOf(Dummy), 0);
+  with Dest do
+  begin
+    WriteBuffer(FHeader, SizeOf(FHeader));
+    WriteBuffer(Dummy, AlignBytes(SizeOf(FHeader)));
+    WriteBuffer(FCode^, FHeader.CodeSize);
+    WriteBuffer(Dummy, AlignBytes(FHeader.CodeSize));
+    WriteBuffer(FImports^, FHeader.ImportsSize);
+    WriteBuffer(Dummy, AlignBytes(FHeader.ImportsSize));
+    WriteBuffer(FExports^, FHeader.ExportsSize);
+    WriteBuffer(Dummy, AlignBytes(FHeader.ExportsSize));
+    WriteBuffer(FData^, FHeader.InitDataSize);
+    if not TruncLastSection then
+      WriteBuffer(Dummy, AlignBytes(FHeader.InitDataSize));
+  end;
+end;
+
+procedure TKolibriImage.Save(FileName: PCoreChar; TruncLastSection: Boolean);
+var
+  Dest: TWritableStream;
+begin
+  Dest := TFileStream.Create(FileName, faRewrite + [faSequential]);
+  try
+    Save(Dest, TruncLastSection);
+  finally
+    Dest.Free;
+  end;
+end;
+
+function TKolibriImage.Size(TruncLastSection: Boolean): LongWord;
+begin
+  Result := SizeOf(FHeader);
+  Inc(Result, AlignBytes(Result));
+  Inc(Result, FHeader.CodeSize);
+  Inc(Result, AlignBytes(Result));
+  Inc(Result, FHeader.ImportsSize);
+  Inc(Result, AlignBytes(Result));
+  Inc(Result, FHeader.ExportsSize);
+  Inc(Result, AlignBytes(Result));
+  Inc(Result, FHeader.InitDataSize);
+  if not TruncLastSection then
+    Inc(Result, AlignBytes(Result));
 end;
 
 end.

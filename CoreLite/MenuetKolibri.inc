@@ -7,7 +7,26 @@
     dd     0x1000                  ; esp
     dd     0x0 , 0x0               ; I_Param , I_Icon
 }
-{
+
+type
+  TKolibriMagic = packed record
+    case Byte of
+      0: (Sign: array[0..6] of LegacyChar;
+          Version: Byte);
+      1: (AsQuadWord: QuadWord);
+  end;
+
+  TKolibriHeader = packed record  // by Freeman
+    Magic: TKolibriMagic;
+    Alignment: Byte;
+    Reserved: array[0..2] of Byte;
+    ImageBase, EntryPoint,
+    CodeSize, ImportsSize, ExportsSize, InitDataSize,
+    UninitDataSize, StackSize: LongWord;
+    CommandLine, ExecPath, Environment, TLS: Pointer;
+  end;
+
+{ // by Serge
     db 'KOLIBRI',0     ;+00 banner + revision 0-255
     dd start           ;+08 application entry
     dd ecode           ;+12 end of code and constant data

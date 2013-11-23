@@ -49,7 +49,7 @@ type
     FImageBase: CoreInt;
     FMajorVersion, FMinorVersion: Word;
     FOptions: TRunOptions;
-//    FMenuetKolibri: TMenuetKolibri;
+    FMenuetKolibri: TMenuetKolibri;
   public
     constructor Create(CommandLine: PCoreChar);
     destructor Destroy; override;
@@ -348,6 +348,11 @@ begin
           if FImageBase < 0 then
             FImageBase := 8;
           P.Param := nil;}
+        end  
+        else if SameKey(sKolibri) then
+        begin
+          FMenuetKolibri := mkKolibri;
+          P.Param := nil;
         end;
     end;
 
@@ -401,15 +406,27 @@ begin
   FConsole.WriteLn(@Format[1], FileNameWidth, Args);
 end;
 
+function TempFileName(Source: PCoreChar): PCoreChar;
+var
+  L: Integer;
+begin
+  L := WideStrLen(Source);
+  GetMem(Result, (L + Length('.$$$') + 1) * SizeOf(CoreChar));
+  Move(Source^, Result^, L * SizeOf(CoreChar));
+  PLongWord(Result + L)^ := $0024002E;     // Fast core: '.$'
+  PLongWord(Result + L + 2)^ := $00240024; // '$$'
+  Result[L + 4] := CoreChar(0);
+end;
+
 const
   Deep: array[Boolean] of TStripOptions = ([], [soOrphanedSections]);
 var
-  I, Idx, L: Integer;
+  I, Idx: Integer;
   OldSize, NewSize, RawSize, FixedSize: LongWord;
   Image: TExeImage;
   FileInfo: TWin32FindDataW;
   hInfo: THandle;
-  TempFileName: PCoreChar;
+  TmpFileName: PCoreChar;
 begin
   if FSourceFileName <> nil then
   begin
@@ -516,43 +533,69 @@ begin
           then
             RaiseLastPlatformError(FFileNames[fkBackup]);
         end;
-        with Image do
-        begin
-          if FMajorVersion <> 0 then
-            with Image.Headers.OptionalHeader do
-            begin
-              MajorOSVersion := FMajorVersion;
-              MinorOSVersion := FMinorVersion;
-              MajorSubsystemVersion := FMajorVersion;
-              MinorSubsystemVersion := FMinorVersion;
+
+        case FMenuetKolibri of
+          mkKolibri:
+            with TKolibriImage.Create do
+            try
+              Load(Image);
+              Build(Byte(roStrip in FOptions) * 8);
+              NewSize := Size;
+              Processing([sSavingInto, FFileNames[fkInto], NewSize]);
+              if FFileNames[fkBackup] <> nil then
+                Save(FFileNames[fkInto], roTrunc in FOptions)
+              else
+              begin
+                TmpFileName := TempFileName(FFileNames[fkInto]);
+                try
+                  Save(TmpFileName, roTrunc in FOptions);
+                  if not MoveFileExW(TmpFileName, FFileNames[fkInto],
+                    MOVEFILE_COPY_ALLOWED or MOVEFILE_WRITE_THROUGH or MOVEFILE_REPLACE_EXISTING)
+                  then
+                    RaiseLastPlatformError(FFileNames[fkInto]);
+                finally
+                  FreeMem(TmpFileName);
+                end;
+              end;
+            finally
+              Free;
             end;
-          if ro3GB in FOptions then
-            with Image.Headers.FileHeader do
-              Characteristics := Characteristics or IMAGE_FILE_LARGE_ADDRESS_AWARE;
-          Build(Byte(roStrip in FOptions) * 512);
-          NewSize := Size(roTrunc in FOptions);
-        end;
-        Processing([sSavingInto, FFileNames[fkInto], NewSize]);
-        if FFileNames[fkBackup] <> nil then
-          Image.Save(FFileNames[fkInto], roTrunc in FOptions)
         else
-        begin
-          L := WideStrLen(FFileNames[fkInto]);
-          GetMem(TempFileName, (L + Length('.$$$') + 1) * SizeOf(CoreChar));
-          try
-            Move(FFileNames[fkInto]^, TempFileName^, L * SizeOf(CoreChar));
-            PLongWord(TempFileName + L)^ := $0024002E;     // Fast core: '.$'
-            PLongWord(TempFileName + L + 2)^ := $00240024; // '$$'
-            TempFileName[L + 4] := CoreChar(0);
-            Image.Save(TempFileName, roTrunc in FOptions);
-            if not MoveFileExW(TempFileName, FFileNames[fkInto],
-              MOVEFILE_COPY_ALLOWED or MOVEFILE_WRITE_THROUGH or MOVEFILE_REPLACE_EXISTING)
-            then
-              RaiseLastPlatformError(FFileNames[fkBackup]);
-          finally
-            FreeMem(TempFileName);
+          with Image do
+          begin
+            if FMajorVersion <> 0 then
+              with Image.Headers.OptionalHeader do
+              begin
+                MajorOSVersion := FMajorVersion;
+                MinorOSVersion := FMinorVersion;
+                MajorSubsystemVersion := FMajorVersion;
+                MinorSubsystemVersion := FMinorVersion;
+              end;
+            if ro3GB in FOptions then
+              with Image.Headers.FileHeader do
+                Characteristics := Characteristics or IMAGE_FILE_LARGE_ADDRESS_AWARE;
+            Build(Byte(roStrip in FOptions) * 512);
+            NewSize := Size(roTrunc in FOptions);
+          end;
+
+          Processing([sSavingInto, FFileNames[fkInto], NewSize]);
+          if FFileNames[fkBackup] <> nil then
+            Image.Save(FFileNames[fkInto], roTrunc in FOptions)
+          else
+          begin
+            TmpFileName := TempFileName(FFileNames[fkInto]);
+            try
+              Image.Save(TmpFileName, roTrunc in FOptions);
+              if not MoveFileExW(TmpFileName, FFileNames[fkInto],
+                MOVEFILE_COPY_ALLOWED or MOVEFILE_WRITE_THROUGH or MOVEFILE_REPLACE_EXISTING)
+              then
+                RaiseLastPlatformError(FFileNames[fkInto]);
+            finally
+              FreeMem(TmpFileName);
+            end;
           end;
         end;
+
         FConsole.WriteLn;
         Processing([sTotal, Percentage(NewSize / OldSize), OldSize - NewSize], False);
       end;
