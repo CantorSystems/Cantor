@@ -58,8 +58,8 @@ const
             #9'-dropres <r1,r2,...>'#9'Drop resources <r1>, <r2>, etc.'#10 +
             #9'-dropsect <s1,s2,...>'#9'Drop sections <s1>, <s2>, etc.'#10 +
             #9'-kolibri'#9#9'Save to KOLIBRI format'#10 +
-            #9'-locale <a1,a2,...>'#9'Set locales resource locales to <a1>, <a2>,'#10 +
-            #9#9#9#9'etc. Each <a> has form of <#=#> or <#>'#10 +
+            #9'-locale <a1,a2,...>'#9'Set resource locales to <a1>, <a2>, etc.'#10 +
+            #9#9#9#9'Each <a> has form of <#=#> or <#>'#10 +
             #9'-mainicon'#9#9'Strip name of MAINICON resource (not for VCL'#10 +
             #9#9#9#9'applications!)'#10 +
           //  #9'-menuet'#9#9#9'Save to MENUET01 format'#10 +
