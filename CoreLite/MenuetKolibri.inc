@@ -26,6 +26,24 @@ type
     CommandLine, ExecPath, Environment, TLS: Pointer;
   end;
 
+{ // by Freeman
+    magic         db    'KOLIBRI', 0  ; sign, version
+    alignment     db    4   ; power of 2: 3 = 8 bytes, 4 = 16 bytes
+    reserved      db    3 dup 0
+    imagebase     dd    0   ; image base, for better flexibility
+    entrypoint    dd    0   ; entry point, for better flexibility
+    code          dd    0   ; size of code section
+    import        dd    0   ; size of import section, 0 = section is not present
+    export        dd    0   ; size of export section, 0 = application
+    data_         dd    0   ; size of initialized data section
+    mem           dd    0   ; size of uninitialized memory for application, as the same in MENUET01
+    stack_        dd    0   ; size of stack
+    cmdline       dd    -1  ; command line, kernel-defined; -1 = prompt for params
+    execpath      dd    0   ; exec path, kernel-defined
+    env           dd    0   ; environment variables, kernel-defined
+    tls           dd    0   ; address of thread local storage (TLS), kernel-defined
+}
+
 { // by Serge
     db 'KOLIBRI',0     ;+00 banner + revision 0-255
     dd start           ;+08 application entry
