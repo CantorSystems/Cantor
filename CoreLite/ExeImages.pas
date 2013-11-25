@@ -349,11 +349,10 @@ end;
 procedure TExeStub.Save(Dest: TWritableStream);
 begin
   if FData <> nil then
-    with Dest do
-    begin
-      WriteBuffer(FHeader, SizeOf(FHeader));
-      WriteBuffer(FData^, Size - SizeOf(FHeader));
-    end
+  begin
+    Dest.WriteBuffer(FHeader, SizeOf(FHeader));
+    Dest.WriteBuffer(FData^, Size - SizeOf(FHeader));
+  end
   else
     Dest.WriteBuffer(FHeader, Size);
 end;
