@@ -303,8 +303,6 @@ var
 begin
   FHeader := Source.FHeader;
   L := DataSize;
-  if L >= SizeOf(FHeader.Ext) then
-    Dec(L, SizeOf(FHeader.Ext));
   ReallocMem(FData, L);
   Move(Source.FData^, FData^, L);
 end;
@@ -354,7 +352,7 @@ begin
     with Dest do
     begin
       WriteBuffer(FHeader, SizeOf(FHeader));
-      WriteBuffer(FData^, DataSize);
+      WriteBuffer(FData^, Size - SizeOf(FHeader));
     end
   else
     Dest.WriteBuffer(FHeader, Size);
