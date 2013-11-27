@@ -19,16 +19,13 @@ program Pet;
 
 uses
 {$IFDEF Tricks}
-  {$IFDEF ForceMMX} ShareMM, {$ELSE} HeapMM, {$ENDIF} 
+  {$IFDEF ForceMMX} ShareMM, CoreConsts, {$ELSE} HeapMM, {$ENDIF}
 {$ENDIF}
   Windows,
   CoreUtils,
   CoreExceptions,
   PetCore in 'PetCore.pas',
   PetConsts in 'PetConsts.pas';
-
-const
-  sMMX = 'This program requires MMX';
 
 begin
 {$IFDEF Tricks}

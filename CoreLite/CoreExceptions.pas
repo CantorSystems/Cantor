@@ -8,6 +8,7 @@
     Conditional defines:
       * Compat -- use IDE friendly and SysUtils compatible exceptions
                   with additional message (DelphiMsg)
+      * ForceMMX -- EMMX exception            
       * Interfaces -- interface support
       * Lite -- don't raise EAbstract on abstract method call
 *)
@@ -128,6 +129,15 @@ type
 
 {$IFNDEF Tricks}
   EInOutError = EPlatform;
+{$ENDIF}
+
+{$IFDEF ForceMMX}
+  EMMX = class(Exception)
+  private
+    // possible getting module name is unsafe because of using MMX-powered procedures
+  public
+    constructor Create;
+  end;
 {$ENDIF}
 
 { Exception raising }
@@ -731,6 +741,13 @@ begin
     LocalFree(THandle(FMessage))
   else
     inherited;
+end;
+{$ENDIF}
+
+{$IFDEF ForceMMX}
+constructor EMMX.Create;
+begin
+  inherited Create(sMMX);
 end;
 {$ENDIF}
 

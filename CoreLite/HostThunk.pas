@@ -2,6 +2,9 @@
     CoreLite host program thunk
 
     Copyright (c) 2013 Vladislav Javadov (Freeman)
+
+    Conditional defines:
+      * ForceMMX -- check for MMX support on initialization
 *)
 
 unit HostThunk;
@@ -46,7 +49,7 @@ function MakeThunk: TThunk;
 implementation
 
 uses
-  CoreExceptions;
+  CoreConsts, CoreExceptions;
 
 var
   SaveMemoryManager: TMemoryManager;
@@ -99,6 +102,13 @@ var
   MM: TMemoryManager;
 begin
   HostApp := Thunk;
+  ErrorMessage := ErrorMessageThunk;
+  ExceptionMessage := ExceptionMessageThunk;
+{$IFDEF ForceMMX}
+  if not MMX_Supported then
+    raise EMMX.Create; // until memory manager isn't set yet
+{$ENDIF}
+  NoErrMsg := Thunk.SuppressErrorMessages;
   with MM do
   begin
     GetMem := GetMemThunk;
@@ -106,17 +116,18 @@ begin
     ReallocMem := ReallocMemThunk;
   end;
   SetMemoryManager(MM);
-  ErrorMessage := ErrorMessageThunk;
-  ExceptionMessage := ExceptionMessageThunk;
-  NoErrMsg := Thunk.SuppressErrorMessages;
 end;
 
 procedure FastInit(const Thunk: TThunk);
 begin
-  SetMemoryManager(Thunk.MemoryManager);
   ErrorMessage := Thunk.ErrorMessage;
   ExceptionMessage := Thunk.ExceptionMessage;
+{$IFDEF ForceMMX}
+  if not MMX_Supported then
+    raise EMMX.Create; // until memory manager isn't set yet
+{$ENDIF}
   NoErrMsg := Thunk.SuppressErrorMessages;
+  SetMemoryManager(Thunk.MemoryManager);
 end;
 
 function MakeThunk: TThunk;

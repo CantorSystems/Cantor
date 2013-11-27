@@ -19,16 +19,13 @@ program LiteConv;
 
 uses
 {$IFDEF Tricks}
-  {$IFDEF ForceMMX} ShareMM, {$ELSE} HeapMM, {$ENDIF}
+  {$IFDEF ForceMMX} ShareMM, CoreConsts, {$ELSE} HeapMM, {$ENDIF}
 {$ENDIF}
   Windows,
   CoreUtils,
   CoreExceptions,
   ConvCore in 'ConvCore.pas',
   ConvConsts in 'ConvConsts.pas';
-
-const
-  sMMX = 'This program requires MMX';
 
 begin
 {$IFDEF Tricks}

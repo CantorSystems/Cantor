@@ -45,6 +45,8 @@ const
   sAssertError = '%s (%s, line %d)';
   sAssertionFailed = 'Assertion failed';
 
+  sMMX = 'This program requires MMX';
+
   sPlatformError = '%s: “%s”';
   sVS_VERSION_INFO = 'VS_VERSION_INFO';
   sVersionAndBuild = '%s build %u';
