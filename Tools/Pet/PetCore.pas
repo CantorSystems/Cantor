@@ -173,6 +173,8 @@ begin
               FFileNames[K] := Param;
               Param := nil;
             end;
+            if K = fkBackup then
+              FFileNames[fkInto] := FSourceFileName;
           end
           else if FFileNames[K] = nil then
           begin
