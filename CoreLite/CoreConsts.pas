@@ -64,6 +64,7 @@ const
 
   sNotExecutableImage = 'Not an executable image';
   sNotValidWin32Image = 'Not valid Win32 image';
+  sDotNETAssembly = '.NET assemblies cannot be handled';
   sUnknownExeImage = 'Unknown image signature: %c%c';
   sBadExeImage = 'Bad image: %s';
 

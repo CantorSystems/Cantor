@@ -662,8 +662,14 @@ begin
       raise EBadImage.Create(sNotValidWin32Image);
     Source.ReadBuffer(FHeaders.OptionalHeader, FHeaders.FileHeader.OptionalHeaderSize);
     with FHeaders.OptionalHeader do
+    begin
+      if (DirectoryEntryCount >= IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR) and
+        (QuadWord(DataDirectory[IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR]) <> 0) // Fast core
+      then
+        raise EBadImage.Create(sDotNETAssembly);
       FillChar(DataDirectory[DirectoryEntryCount], SizeOf(DataDirectory) -
         DirectoryEntryCount * SizeOf(TImageDataDirectory), 0);
+    end;
     for I := 0 to FHeaders.FileHeader.SectionCount - 1 do
     begin
       Section := TExeSection.Create;
