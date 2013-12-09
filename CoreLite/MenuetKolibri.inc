@@ -9,6 +9,12 @@
 }
 
 type
+  TMenuetHeader = packed record
+    Magic: array[0..7] of LegacyChar; // 'MENUET01';
+    HeaderVersion, EntryPoint, ImageSize, HeapSize, ESP,
+    CommandLine, Icon: LongWord;
+  end;
+
   TKolibriMagic = packed record
     case Byte of
       0: (Sign: array[0..6] of LegacyChar;

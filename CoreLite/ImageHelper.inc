@@ -108,9 +108,9 @@ type
       1: (PhysicalAddress: LongWord);
   end;
 
-  PImageBaseRelocations = ^TImageBaseRelocations;
-  TImageBaseRelocations = packed record
-    BaseOffset, BlockSize: LongWord;
+  PImageBaseRelocation = ^TImageBaseRelocation;
+  TImageBaseRelocation = packed record
+    VirtualAddress, BlockSize: LongWord;
   end;
 
   PImageResourceDirectory = ^TImageResourceDirectory;
