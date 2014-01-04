@@ -1,3 +1,9 @@
+(*
+    Menuet and Kolibri OS executable file headers
+
+    Copyright (c) 2013-2014 Vladislav Javadov (Freeman)
+*)
+
 {
     db     'MENUET01'              ; 8 byte id
     dd     0x01                    ; header version
@@ -17,7 +23,7 @@ type
 
   TKolibriMagic = packed record
     case Byte of
-      0: (Sign: array[0..6] of LegacyChar;
+      0: (Sign: array[0..6] of LegacyChar; // 'KOLIBRI'#0
           Version: Byte);
       1: (AsQuadWord: QuadWord);
   end;
