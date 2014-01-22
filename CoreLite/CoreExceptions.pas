@@ -58,11 +58,11 @@ type
 {$IFNDEF Lite}
   EAbstract = class(Exception)
   private
-    FCallee: TObject;
-    procedure MethodCall;
+    FCallee: TClass;
+    procedure MethodCall(ClassType: TClass);
   public
-    constructor Create(Callee: TObject); overload;
-    property Callee: TObject read FCallee;
+    constructor Create(Callee: TClass); overload;
+    property Callee: TClass read FCallee;
   end;
 {$ENDIF}
 
@@ -688,7 +688,7 @@ end;
 { EAbstract }
 
 {$IFNDEF Lite}
-constructor EAbstract.Create(Callee: TObject);
+constructor EAbstract.Create(Callee: TClass);
 var
   ClassName: TClassName;
 begin
@@ -697,9 +697,14 @@ begin
   FCallee := Callee;
 end;
 
-procedure EAbstract.MethodCall;
+procedure EAbstract.MethodCall(ClassType: TClass);
+var
+  SelfClass: TClass;
 begin
-  raise EAbstract.Create(Self);
+  SelfClass := Pointer(Self); // class method
+  if {dirty hack!} SelfClass <> ClassType then
+    SelfClass := PPointer(Self)^; // instance method
+  raise EAbstract.Create(SelfClass);
 end;
 {$ENDIF}
 
