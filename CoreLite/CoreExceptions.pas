@@ -10,7 +10,7 @@
                   with additional message (DelphiMsg)
       * ForceMMX -- EMMX exception            
       * Interfaces -- interface support
-      * Lite -- don't raise EAbstract on abstract method call
+      * Lite -- don't raise EAbstract descendants on abstract method call
 *)
 
 unit CoreExceptions;
@@ -58,10 +58,22 @@ type
 {$IFNDEF Lite}
   EAbstract = class(Exception)
   private
-    FCallee: TClass;
     procedure MethodCall(ClassType: TClass);
+  end;
+
+  EAbstractInstance = class(EAbstract)
+  private
+    FCallee: TObject;
   public
-    constructor Create(Callee: TClass); overload;
+    constructor Create(Callee: TObject);
+    property Callee: TObject read FCallee;
+  end;
+
+  EAbstractClass = class(EAbstract)
+  private
+    FCallee: TClass;
+  public
+    constructor Create(Callee: TClass);
     property Callee: TClass read FCallee;
   end;
 {$ENDIF}
@@ -685,26 +697,30 @@ begin
     inherited FreeInstance;
 end;
 
-{ EAbstract }
-
 {$IFNDEF Lite}
-constructor EAbstract.Create(Callee: TClass);
+procedure EAbstract.MethodCall(ClassType: TClass);
+begin
+  if {dirty hack!} Pointer(Self) = ClassType then
+    raise EAbstractClass.Create(ClassType);
+  raise EAbstractInstance.Create(Self);
+end;
+
+constructor EAbstractInstance.Create(Callee: TObject);
 var
   ClassName: TClassName;
 begin
   FriendlyClassName(ClassName, Callee);
-  inherited Create(sAbstractMethodCall, [ClassName]);
+  inherited Create(sAbstractInstance, [ClassName]);
   FCallee := Callee;
 end;
 
-procedure EAbstract.MethodCall(ClassType: TClass);
+constructor EAbstractClass.Create(Callee: TClass);
 var
-  SelfClass: TClass;
+  ClassName: TClassName;
 begin
-  SelfClass := Pointer(Self); // class method
-  if {dirty hack!} SelfClass <> ClassType then
-    SelfClass := PPointer(Self)^; // instance method
-  raise EAbstract.Create(SelfClass);
+  FriendlyClassName(ClassName, Callee);
+  inherited Create(sAbstractClass, [ClassName]);
+  FCallee := Callee;
 end;
 {$ENDIF}
 

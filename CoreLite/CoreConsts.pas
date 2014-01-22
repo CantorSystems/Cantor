@@ -3,7 +3,7 @@
 
     Core library string messages
 
-    Copyright (c) 2008-2013 Vladislav Javadov (Freeman)
+    Copyright (c) 2008-2014 Vladislav Javadov (Freeman)
 *)
 
 unit CoreConsts;
@@ -38,7 +38,9 @@ const
   sAccessViolation = 'Access violation at address %p. %hs of address %p';
   sModuleAccessViolation = 'Access violation at address %p in module “%ws”.'#10'%hs of address %p';
 
-  sAbstractMethodCall = '%hs class abstract method call';
+  sAbstractInstance = '%hs instance abstract method call';
+  sAbstractClass    = '%hs abstract class method call';
+  
   sNotImplemented     = '%s support is not yet implemented';
   sGeneralFault       = 'General fault %#02X';  // e. g. 0x0F for 15
 
