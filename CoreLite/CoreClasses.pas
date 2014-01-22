@@ -166,9 +166,9 @@ type
 
   TCollection = class(TObjects)
   public
-    function Append(Item: TObject): Integer; {$IFNDEF Lite} override; {$ENDIF}
-    function Extract(Index: Integer): TObject; {$IFNDEF Lite} override; {$ENDIF}
-    procedure Insert(Index: Integer; Item: TObject); {$IFNDEF Lite} override; {$ENDIF}
+    function Append(Item: Pointer): Integer; {$IFNDEF Lite} override; {$ENDIF}
+    function Extract(Index: Integer): Pointer; {$IFNDEF Lite} override; {$ENDIF}
+    procedure Insert(Index: Integer; Item: Pointer); {$IFNDEF Lite} override; {$ENDIF}
   end;
 
   TStringArray = class(TDataHolder)
@@ -387,8 +387,8 @@ end;
 { EFixed }
 
 {$IFNDEF Lite}
-constructor EFixed.Create(Container: TObject; Capacity: Integer);
-var
+constructor EFixed.Create(Container: TObject; Capacity: Integer);
+var
   ClassName: TClassName;
 begin
   FriendlyClassName(ClassName, Container);
@@ -785,29 +785,29 @@ end;
 { TArray }
 
 constructor TArray.Create(Initial, Delta: Integer);
-begin
+begin
   FDelta := Delta;
   SetCapacity(Initial);
 end;
 
 function TArray.Append: Integer;
-begin
+begin
   Grow;
   Result := FCount;
   Inc(FCount);
 end;
 
 function TArray.Append(const Item): Integer;
-var
-  Bytes: Integer;
-begin
+var
+  Bytes: Integer;
+begin
   Result := Append;
   Bytes := ItemSize;
   Move(Item, TArrayCast(Self).Items[Result * Bytes], Bytes);
 end;
 
 procedure TArray.CheckIndex(Index: Integer);
-begin
+begin
   if TArrayCast(Self).Items = nil then
     raise EIndex.Create(Self, Index)
   else
@@ -815,16 +815,16 @@ procedure TArray.CheckIndex(Index: Integer);
 end;
 
 procedure TArray.Clear;
-begin
+begin
   SetCount(0);
 end;
 
 procedure TArray.Extract(Index: Integer);
-var
-  Idx, S: Integer;
-begin
-{$IFNDEF Lite}
-  CheckIndex(Index);
+var
+  Idx, S: Integer;
+begin
+{$IFNDEF Lite}
+  CheckIndex(Index);
 {$ENDIF}
   S := ItemSize;
   Idx := Index * S;
@@ -836,9 +836,9 @@ procedure TArray.Extract(Index: Integer);
 end;
 
 procedure TArray.Extract(Index: Integer; var Item);
-var
-  Bytes: Integer;
-begin
+var
+  Bytes: Integer;
+begin
   CheckIndex(Index);
   Bytes := ItemSize;
   Move(TArrayCast(Self).Items[Index * Bytes], Item, Bytes);
@@ -846,8 +846,8 @@ procedure TArray.Extract(Index: Integer; var Item);
 end;
 
 procedure TArray.Grow;
-begin
-  if (FCapacity = 0) or (FCapacity = FCount) then
+begin
+  if (FCapacity = 0) or (FCapacity = FCount) then
   begin
   {$IFNDEF Lite}
     if FDelta = 0 then
@@ -858,9 +858,9 @@ procedure TArray.Grow;
 end;
 
 procedure TArray.Insert(Index: Integer);
-var
-  Idx, S: Integer;
-begin
+var
+  Idx, S: Integer;
+begin
   CheckIndex(Index);
   Grow;
   S := ItemSize;
@@ -871,7 +871,7 @@ procedure TArray.Insert(Index: Integer);
 end;
 
 procedure TArray.Insert(Index: Integer; const Item);
-var
+var
   Bytes: Integer;
 begin
   Insert(Index);
@@ -880,12 +880,12 @@ begin
 end;
 
 class function TArray.ItemSize: Integer;
-begin
+begin
   Result := SizeOf(Pointer);
 end;
 
 procedure TArray.SetCapacity(Value: Integer);
-begin
+begin
   ReallocMem(TArrayCast(Self).Items, Value * ItemSize);
   FCapacity := Value;
   if FCount > FCapacity then
@@ -893,7 +893,7 @@ procedure TArray.SetCapacity(Value: Integer);
 end;
 
 procedure TArray.SetCount(Value: Integer);
-var
+var
   Bytes, Delta: Integer;
 begin
   if FCount <> Value then
@@ -913,7 +913,7 @@ begin
 end;
 
 function TArray.TranslateDelta: Integer;
-begin
+begin
   if FDelta < 0 then
   begin
     Result := FCapacity div Abs(FDelta);
@@ -929,8 +929,7 @@ end;
 { TSortedArray }
 
 {function TSortedArray.Insert: Integer;
-begin
-
+begin
 end;}
 
 { TDataHolder }
@@ -1024,9 +1023,10 @@ begin
 end;
 
 { TCollection }
-
-function TCollection.Append(Item: TObject): Integer;
-begin
+
+
+function TCollection.Append(Item: Pointer): Integer;
+begin
   if Item <> nil then
     TCollectionItem(Item).Extract;
   Result := inherited Append(Item);
@@ -1034,15 +1034,15 @@ function TCollection.Append(Item: TObject): Integer;
     TCollectionItemCast(Item).Owner := Self;
 end;
 
-function TCollection.Extract(Index: Integer): TObject;
-begin
+function TCollection.Extract(Index: Integer): Pointer;
+begin
   Result := inherited Extract(Index);
   if Result <> nil then
     TCollectionItemCast(Result).Owner := nil;
 end;
 
-procedure TCollection.Insert(Index: Integer; Item: TObject);
-begin
+procedure TCollection.Insert(Index: Integer; Item: Pointer);
+begin
   if Item <> nil then
     TCollectionItem(Item).Extract;
   inherited Insert(Index, Item);
@@ -1053,30 +1053,30 @@ end;
 { TStringArray }
 
 class procedure TStringArray.FreeItem(const Item);
-begin
+begin
   FreeMem(TCoreStringRec(Item).Value);
 end;
 
 class function TStringArray.ItemSize: Integer;
-begin
+begin
   Result := SizeOf(TCoreStringRec);
 end;
 
 { TLegacyStringArray }
-
+
 function TLegacyStringArray.Append(const Item: TLegacyStringRec): Integer;
-begin
+begin
   Result := inherited Append;
   FItems[Result] := Item;
 end;
 
 function TLegacyStringArray.Append(Str: PLegacyChar): Integer;
-begin
+begin
   Result := Append(Str, StrLen(Str));
 end;
 
 function TLegacyStringArray.Append(Str: PLegacyChar; Count: Integer): Integer;
-begin
+begin
   Result := inherited Append;
   with FItems[Result] do
   begin
@@ -1086,21 +1086,21 @@ function TLegacyStringArray.Append(Str: PLegacyChar; Count: Integer): Integer;
 end;
 
 function TLegacyStringArray.Extract(Index: Integer): TLegacyStringRec;
-begin
+begin
   CheckIndex(Index);
   Result := FItems[Index];
   Extract(Index);
 end;
 
 function TLegacyStringArray.IndexOf(Str: PLegacyChar; IgnoreFlags, Locale: LongWord): Integer;
-begin
+begin
   Result := IndexOf(Str, StrLen(Str), IgnoreFlags, Locale);
 end;
 
 function TLegacyStringArray.IndexOf(Str: PLegacyChar; Count: Integer;
-  IgnoreFlags, Locale: LongWord): Integer;
-begin
-  for Result := 0 to Count - 1 do
+  IgnoreFlags, Locale: LongWord): Integer;
+begin
+  for Result := 0 to Count - 1 do
     with FItems[Result] do
       if StrComp(Value, Length, Str, Count, IgnoreFlags, Locale) = 0 then
         Exit;
@@ -1108,18 +1108,18 @@ function TLegacyStringArray.IndexOf(Str: PLegacyChar; Count: Integer;
 end;
 
 procedure TLegacyStringArray.Insert(Index: Integer; const Item: TLegacyStringRec);
-begin
+begin
   inherited Insert(Index);
   FItems[Index] := Item;
 end;
 
 procedure TLegacyStringArray.Insert(Index: Integer; Str: PLegacyChar);
-begin
+begin
   Insert(Index, Str, StrLen(Str));
 end;
 
 procedure TLegacyStringArray.Insert(Index: Integer; Str: PLegacyChar; Count: Integer);
-begin
+begin
   inherited Insert(Index);
   with FItems[Index] do
   begin
@@ -1129,20 +1129,20 @@ procedure TLegacyStringArray.Insert(Index: Integer; Str: PLegacyChar; Count: Int
 end;
 
 { TWideStringArray }
-
+
 function TWideStringArray.Append(const Item: TWideStringRec): Integer;
-begin
+begin
   Result := inherited Append;
   FItems[Result] := Item;
 end;
 
 function TWideStringArray.Append(Str: PWideChar): Integer;
-begin
+begin
   Result := Append(Str, WideStrLen(Str));
 end;
 
 function TWideStringArray.Append(Str: PWideChar; Count: Integer): Integer;
-begin
+begin
   Result := inherited Append;
   with FItems[Result] do
   begin
@@ -1152,21 +1152,21 @@ function TWideStringArray.Append(Str: PWideChar; Count: Integer): Integer;
 end;
 
 function TWideStringArray.Extract(Index: Integer): TWideStringRec;
-begin
+begin
   CheckIndex(Index);
   Result := FItems[Index];
   Extract(Index);
 end;
 
 function TWideStringArray.IndexOf(Str: PWideChar; IgnoreFlags, Locale: LongWord): Integer;
-begin
+begin
   Result := IndexOf(Str, WideStrLen(Str), IgnoreFlags, Locale);
 end;
 
 function TWideStringArray.IndexOf(Str: PWideChar; Count: Integer;
-  IgnoreFlags, Locale: LongWord): Integer;
-begin
-  for Result := 0 to Count - 1 do
+  IgnoreFlags, Locale: LongWord): Integer;
+begin
+  for Result := 0 to Count - 1 do
     with FItems[Result] do
       if WideStrComp(Value, Length, Str, Count, IgnoreFlags, Locale) = 0 then
         Exit;
@@ -1174,18 +1174,18 @@ function TWideStringArray.IndexOf(Str: PWideChar; Count: Integer;
 end;
 
 procedure TWideStringArray.Insert(Index: Integer; const Item: TWideStringRec);
-begin
+begin
   inherited Insert(Index);
   FItems[Index] := Item;
 end;
 
 procedure TWideStringArray.Insert(Index: Integer; Str: PWideChar);
-begin
+begin
   Insert(Index, Str, WideStrLen(Str));
 end;
 
 procedure TWideStringArray.Insert(Index: Integer; Str: PWideChar; Count: Integer);
-begin
+begin
   inherited Insert(Index);
   with FItems[Index] do
   begin
@@ -1195,12 +1195,12 @@ procedure TWideStringArray.Insert(Index: Integer; Str: PWideChar; Count: Integer
 end;
 
 { TCRC32 }
-
+
 constructor TCRC32.Create(Polynomial: LongWord);
-var
-  I, J: Integer;
-  T: LongWord;
-begin
+var
+  I, J: Integer;
+  T: LongWord;
+begin
   for I := Low(FTable) to High(FTable) do
   begin
     T := I;
@@ -1214,9 +1214,9 @@ constructor TCRC32.Create(Polynomial: LongWord);
 end;
 
 function TCRC32.CalcChecksum(const Buf; Count: Integer; Initial: LongWord): LongWord;
-var
-  I: Integer;
-begin
+var
+  I: Integer;
+begin
   Result := not Initial;
   for I := 0 to Count - 1 do
     Result := FTable[(Result xor TByteArray(Buf)[I]) and $FF] xor (Result shr 8);
@@ -1224,4 +1224,3 @@ function TCRC32.CalcChecksum(const Buf; Count: Integer; Initial: LongWord): Long
 end;
 
 end.
-
