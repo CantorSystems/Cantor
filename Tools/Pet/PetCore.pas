@@ -1,5 +1,5 @@
 (*
-    PE Tool core
+    PE Tool's core
 
     Copyright (c) 2013 Vladislav Javadov (Freeman)
 *)
