@@ -1,0 +1,67 @@
+public class [Word bits] with inner of
+
+  class Class with static of
+    out Word InstanceSize;  // final for final classes
+    out String ClassName;
+  end;
+
+  class Enumerable[Word bits] with static of
+    out Word[bits] Min;
+    out Word[bits] Max;
+  end;
+
+  class Boolean = [False, True]; // non-final, allowing platform-specific align by bits
+
+  class Integer[Word bits] of
+  end;
+
+  class Word[Word bits] of
+  end;
+
+  class Real[Word bits] of
+  end;
+
+  class Currency of
+  end;
+
+  class Character of
+  end;
+
+  class Enumeration of
+  end;
+
+  class List of
+  end;
+
+  class Inner of
+  end;
+
+  inner final of
+    class Integer = Integer[bits];
+    class Word = Word[bits];
+
+    class ByteInt = Integer[8];
+    class ShortInt = Integer[16];
+    class LongInt = Integer[32];
+    class QuadInt = Integer[64];
+
+    class Byte = Word[8];
+    class ShortWord = Word[16];
+    class LongWord = Word[32];
+    class QuadWord = Word[64];
+
+    //class HalfReal = Real[16];
+    class SingleReal = Real[32];
+    class DoubleReal = Real[64];
+    //class ExtendedReal = Real[80];
+    class QuadReal = Real[128];
+
+    class LegacyChar = Byte;
+    class WideChar = ShortWord;
+    class QuadChar = LongWord;
+
+    class LegacyString = LegacyChar[Word];
+    class WideString = WideChar[Word];
+    class QuadString = QuadChar[Word];
+  end;
+end;

@@ -1,0 +1,54 @@
+public class Platform[:Core:Word bits] with inner of // with inner public
+  class BOOL from :Core:Boolean align by bits;
+  class DWORD = :Core:Word[32];
+  class UINT = :Core:Word[32];
+
+  class Kernel32 /*handle by Kernel32.FreeLibrary*/ inner stdcall of
+    static of
+      out BOOL FreeLibrary;
+      out DWORD GetLastError;
+
+      out UINT GetConsoleCP;
+      out UINT GetConsoleOutputCP;
+      out BOOL SetConsoleCP[UINT codePage];
+      out BOOL SetConsoleOutputCP[UINT codePage];
+    end;
+  end;
+end;
+
+public class Core:Wrappers of
+  public class EPlatform; // still abstract
+
+  public class CodePaged of
+    public out ShortWord CodePage;
+    public CodePage(ShortWord);
+
+    public class Input from CodePaged of
+      public out CodePage = :Platform:Kernel32.GetConsoleCP.Words[0];
+      public CodePage(ShortWord value) of
+        if not :Platform:Kernel32:SetConsoleCP[value] then
+          raise new EPlatform;
+      end;
+    end;
+
+    public class Output from CodePaged of
+      public out CodePage = :Platform:Kernel32.GetConsoleOutputCP.Words[0];
+      public CodePage(ShortWord value) of
+        if not :Platform:Kernel32:SetConsoleOutputCP[value] then
+          raise new EPlatform;
+      end;
+    end;
+  end;
+
+  public class
+
+  public class ConsoleCodePage from CodePaged of
+    ConsoleInput input;
+    ConsoleOutput output;
+    public out CodePage = output.CodePage;
+    public CodePage(ShortWord value) of
+      input.CodePage = value;
+      output.CodePage = value;
+    end;
+  end;
+end;

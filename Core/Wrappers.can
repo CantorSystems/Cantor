@@ -1,0 +1,34 @@
+public class of
+  public class EPlatform; // still abstract
+
+  public class CodePaged with inner of
+    out ShortWord CodePage;
+    CodePage(ShortWord);
+  end;
+
+  public class CodePaged:Input from CodePaged with inner of
+    out CodePage = :Windows:Kernel32.GetConsoleCP.Words[0];
+    CodePage(ShortWord value) of
+      if not :Windows:Kernel32.SetConsoleCP[value] then
+        raise new EPlatform;
+    end;
+  end;
+
+  public class CodePaged:Output from CodePaged with inner of
+    out CodePage = :Windows:Kernel32.GetConsoleOutputCP.Words[0];
+    CodePage(ShortWord value) of
+      if not :Windows:Kernel32.SetConsoleOutputCP[value] then
+        raise new EPlatform;
+    end;
+  end;
+
+  public class CodePaged:Console from CodePaged of
+    Input input;
+    Output output;
+    public out CodePage = output.CodePage;
+    public CodePage(ShortWord value) of
+      input.CodePage = value;
+      output.CodePage = value;
+    end;
+  end;
+end;

@@ -1,0 +1,19 @@
+public class of
+  public class CodePaged with of
+    out :Core:ShortWord CodePage;
+    CodePage(:Core:ShortWord);
+  end;
+
+  public class CodePaged:Input from CodePaged;
+  public class CodePaged:Output from CodePaged;
+
+  public class CodePaged:Console from CodePaged of
+    var Input input;
+    var Output output;
+    public out CodePage = output.CodePage;
+    public CodePage(ShortWord value) of
+      input.CodePage = value;
+      output.CodePage = value;
+    end;
+  end;
+end;
