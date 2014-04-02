@@ -3,7 +3,7 @@
 
     Typecast and platform-based non-OOP utilites
 
-    Copyright (c) 2007-2013 Vladislav Javadov (Freeman)
+    Copyright (c) 2007-2014 Vladislav Javadov (Freeman)
 
     Conditional defines:
       * Compat -- allow ShortString, AnsiString and WideString at EstimateArgs
@@ -140,7 +140,7 @@ function MMX_Supported: Boolean;
 
 { Memory service }
 
-function AllocMem(Count: CoreInt): Pointer;
+function AllocMem(Count: CoreInt; FillingByte: Byte = 0): Pointer;
 procedure FreeMemAndNil(var P);
 procedure FreeAndNil(var Obj);
 
@@ -260,10 +260,10 @@ implementation
 
 { Memory service }
 
-function AllocMem(Count: CoreInt): Pointer;
+function AllocMem(Count: CoreInt; FillingByte: Byte): Pointer;
 begin
   GetMem(Result, Count);
-  FillChar(Result^, Count, 0);
+  FillChar(Result^, Count, FillingByte);
 end;
 
 procedure FreeMemAndNil(var P);
