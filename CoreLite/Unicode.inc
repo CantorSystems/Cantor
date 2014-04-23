@@ -1,9 +1,9 @@
 (*
     Lite Core Library (CoreLite)
 
-    Unicode 6.1 code blocks
+    Unicode 6.3 code blocks
 
-    Copyright (c) 2009-2013 Vladislav Javadov (Freeman)
+    Copyright (c) 2009-2014 Vladislav Javadov (Freeman)
 
     Used abbreviations:
       * Aboriginal -> (removed)
