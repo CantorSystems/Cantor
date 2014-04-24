@@ -53,7 +53,7 @@ const
   BOM_UTF32_BE        = QuadChar($FFFE0000);
   BOM_UTF32_LE        = QuadChar($0000FEFF);
 
-  Unknown_Latin       = #$1A;
+  Unknown_Latin       = #$7F; // thank Sourcerer for suggest
 
   Unknown_UTF7        = '+//0-';
   Unknown_UTF7_Bytes  = Cardinal(Length(Unknown_UTF7));
