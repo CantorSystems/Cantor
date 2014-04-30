@@ -3,14 +3,13 @@
 
     Core exceptions implementation
 
-    Copyright (c) 2008-2014 Vladislav Javadov (Freeman)
+    Copyright (c) 2008-2014 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
-      * Compat -- use IDE friendly and SysUtils compatible exceptions
-                  with additional message (DelphiMsg)
-      * ForceMMX -- EMMX exception            
+      * Compat -- IDE friendly and SysUtils compatible exceptions and
+          abstract method call diagnostic exceptions 
+      * ForceMMX -- EMMX exception
       * Interfaces -- interface support
-      * Lite -- don't raise EAbstract descendants on abstract method call
 *)
 
 unit CoreExceptions;
@@ -55,7 +54,7 @@ type
     property Options: TExceptionOptions read FOptions;
   end;
 
-{$IFNDEF Lite}
+{$IFNDEF Compat}
   EAbstract = class(Exception)
   private
     procedure MethodCall(ClassType: TClass);
@@ -373,7 +372,7 @@ begin
   ExceptClsProc := @GetExceptionClass;
   ExceptObjProc := @GetExceptionObject;
 
-{$IFNDEF Lite}
+{$IFNDEF Compat}
   @AbstractErrorProc := @EAbstract.MethodCall;
 {$ENDIF}
 
@@ -392,7 +391,7 @@ begin
   AssertErrorProc := nil;
 {$ENDIF}
 
-{$IFNDEF Lite}
+{$IFNDEF Compat}
   AbstractErrorProc := nil;
 {$ENDIF}
 
@@ -622,8 +621,8 @@ begin
   begin
     GetMem(FDelphiMsg, StrLen(Msg) + EstimateArgs(Args) + 1 + SizeOf(Integer));
     L := FormatBuf(Msg, Args, FDelphiMsg + SizeOf(Integer));
-    PInteger(FDelphiMsg)^ := L;
     ReallocMem(FDelphiMsg, L + 1 + SizeOf(Integer));
+    PInteger(FDelphiMsg)^ := L;
     Inc(FDelphiMsg, SizeOf(Integer));
     FMessage := Pointer(FDelphiMsg);
     FOptions := [eoCanFree];
@@ -697,7 +696,7 @@ begin
     inherited FreeInstance;
 end;
 
-{$IFNDEF Lite}
+{$IFNDEF Compat}
 procedure EAbstract.MethodCall(ClassType: TClass);
 begin
   if {dirty hack!} Pointer(Self) = ClassType then

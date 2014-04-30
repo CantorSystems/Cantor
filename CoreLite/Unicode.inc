@@ -3,7 +3,7 @@
 
     Unicode 6.3 code blocks
 
-    Copyright (c) 2009-2014 Vladislav Javadov (Freeman)
+    Copyright (c) 2009-2014 Vladislav Javadov (aka Freeman)
 
     Used abbreviations:
       * Aboriginal -> (removed)
@@ -56,7 +56,7 @@ const
   Unknown_Latin       = #$7F; // thank Sourcerer for suggest
 
   Unknown_UTF7        = '+//0-';
-  Unknown_UTF7_Bytes  = Cardinal(Length(Unknown_UTF7));
+  Unknown_UTF7_Bytes  = LongWord(Length(Unknown_UTF7));
   UnknownUTF7: array[0..Unknown_UTF7_Bytes - 1] of LegacyChar = Unknown_UTF7;
 
   Unknown_UTF8        = $BDBFEF;  // byte sequence is platform-dependent
