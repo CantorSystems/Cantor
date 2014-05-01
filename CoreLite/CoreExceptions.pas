@@ -145,7 +145,7 @@ type
 {$IFDEF ForceMMX}
   EMMX = class(Exception)
   private
-    // possible getting module name is unsafe because of using MMX-powered procedures
+    // possible getting module name is unsafe because of use of MMX-powered procedures
   public
     constructor Create;
   end;
@@ -433,7 +433,7 @@ asm
 
         MOV ECX, EAX  // Length
         SHL ECX, 1
-        ADD ECX, EAX  // 3 bytes per char for UTF-8
+        ADD ECX, EAX  // 3 bytes per char for possible UTF-8
         ADD ECX, 3
         AND ECX, $FFFFFFFC
         SUB ESP, ECX
