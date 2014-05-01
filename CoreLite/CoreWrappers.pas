@@ -3,10 +3,10 @@
 
     OOP-style platform-dependent wrappers
 
-    Copyright (c) 2007-2013 Vladislav Javadov (Freeman)
+    Copyright (c) 2007-2014 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
-      * Lite -- allow lite TStream implementation -- without virtual methods
+      * Lite -- allow lite TStream implementation -- without virtual methods,
                 but only THandleStream descendant
 *)
 
@@ -136,13 +136,15 @@ type
     property Stream: TFileStream read FStream;
   end;
 
-  TConsole = class(TObject)
+  TConsole = class
   private
     FInput, FOutput: THandle;
+    FInputCP, FOutputCP: Word;
     function GetCodePage: Word;
     procedure SetCodePage(Value: Word);
   public
     constructor Create(ErrorOutput: Boolean = False);
+    destructor Destroy; override;
 
     property CodePage: Word read GetCodePage write SetCodePage;
     property Input: THandle read FInput;
@@ -153,7 +155,6 @@ type
   public
   {$IFDEF Compat}
     constructor Create(ErrorOutput: Boolean = False);
-    destructor Destroy; override;
   {$ENDIF}
     procedure ReadLn(Prompt: PLegacyChar; LineBreaks: Integer = 1); overload;
     procedure ReadLn(Prompt: PLegacyChar; Count, LineBreaks: Integer); overload;
@@ -582,6 +583,15 @@ begin
   FOutput := {$IFDEF Tricks} System. {$ENDIF} GetStdHandle(STD_OUTPUT_HANDLE - Byte(ErrorOutput));
 end;
 
+destructor TConsole.Destroy;
+begin
+  if FInputCP <> 0 then
+    SetConsoleCP(FInputCP);
+  if FOutputCP <> 0 then
+    SetConsoleOutputCP(FOutputCP);
+  inherited;
+end;
+
 function TConsole.GetCodePage: Word;
 begin
   Result := GetConsoleOutputCP;
@@ -589,8 +599,12 @@ end;
 
 procedure TConsole.SetCodePage(Value: Word);
 begin
-  SetConsoleCP(Value);
-  SetConsoleOutputCP(Value);
+  if FInputCP = 0 then
+    FInputCP := GetConsoleCP;
+  if FOutputCP = 0 then
+    FOutputCP := GetConsoleOutputCP;
+  if not SetConsoleCP(Value) or not SetConsoleOutputCP(Value) then
+    RaiseLastPlatformError;
 end;
 
 { TStreamConsole }
@@ -600,12 +614,6 @@ constructor TStreamConsole.Create;
 begin
   inherited;
   SetCodePage(GetACP); // SysUtils-compatible exceptions are ANSI
-end;
-
-destructor TStreamConsole.Destroy;
-begin
-  SetCodePage(GetOEMCP); // restore OEM code page for the caller like cmd or FAR
-  inherited;
 end;
 {$ENDIF}
 
