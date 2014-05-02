@@ -32,36 +32,25 @@ type
     Hi, Lo: WideChar; // fixed word order, always big-endian
   end;
 
-  PUTF16Char = ^UTF16Char;
-  UTF16Char = packed record
-    case Word of
-      0: (BasicChar: WideChar);
-      1: (Surrogates: TSurrogates);
-  end;
-
 const
-  BOM_UTF7            = $762F2B;      // byte sequence is platform-dependent
-  BOM_UTF7_LastBytes  = [$38, $39, $2B, $2F];
+//  BOM_UTF7            = $762F2B;      // byte sequence is platform-dependent
+//  BOM_UTF7_LastBytes  = [$38, $39, $2B, $2F];
 
   BOM_UTF8            = $BFBBEF;      // byte sequence is platform-dependent
-
-  BOM_UTF16           = $FEFF;        // platform-dependent
 
   BOM_UTF16_BE        = WideChar($FFFE);
   BOM_UTF16_LE        = WideChar($FEFF);
 
+  BOM_UTF16           = BOM_UTF16_LE; // platform-dependent
+
   BOM_UTF32_BE        = QuadChar($FFFE0000);
   BOM_UTF32_LE        = QuadChar($0000FEFF);
 
-  Unknown_Latin       = #$7F; // thank Sourcerer for suggest
+  EncodedZero_UTF8    = $80C0;
 
-  Unknown_UTF7        = '+//0-';
-  Unknown_UTF7_Bytes  = LongWord(Length(Unknown_UTF7));
-  UnknownUTF7: array[0..Unknown_UTF7_Bytes - 1] of LegacyChar = Unknown_UTF7;
-
-  Unknown_UTF8        = $BDBFEF;  // byte sequence is platform-dependent
-  Unknown_UTF8_Bytes  = 3;
-  UnknownUTF8: array[0..Unknown_UTF8_Bytes - 1] of Byte = ($EF, $BF, $BD);
+//  Unknown_UTF7        = '+//0-';
+  Unknown_Latin       = #$7F;      // thank Sourcerer for suggest
+  Unknown_UTF8        = $BDBFEF;   // byte sequence is platform-dependent
 
   Unknown_UTF16_LE    = WideChar($FFFD);
   Unknown_UTF16_BE    = WideChar($FDFF);
@@ -73,14 +62,9 @@ const
   Unknown_UTF32_LE    = QuadChar($0000FFFD);
   Unknown_UTF32_BE    = QuadChar($FDFF0000);
 
-  Unknown_UTF32       = Unknown_UTF32_LE;  // platform-dependent
-
   UnknownUTF32: array[Boolean] of QuadChar = (Unknown_UTF32_LE, Unknown_UTF32_BE);
 
-  UTF7_MaxCharBytes   = 7;
-  UTF8_MaxCharBytes   = 4;
-  UTF16_MaxCharBytes  = SizeOf(UTF16Char);
-  UTF32_MaxCharBytes  = SizeOf(QuadChar);
+//  UTF7_MaxCharBytes   = 7;
 
 type
   TCharBlock = (
