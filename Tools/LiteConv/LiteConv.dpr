@@ -1,13 +1,14 @@
 (*
     Lite charset conversion utility (LiteConv)
 
-    Copyright (c) 2013 Vladislav Javadov (Freeman)
+    Copyright (c) 2013-2014 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
       * Compat -- use Delphi IDE friendly exceptions
       * ForceMMX -- allow MMX with FastCode
       * Lite -- commonly lite version of code
       * Tricks  -- use tricky lite System unit
+      * UTF32 -- enable UTF-32 and Unicode character blocks support
 
     Search path:  ..\..\CoreLite
 *)
