@@ -1,7 +1,7 @@
 (*
     PE Tool's core
 
-    Copyright (c) 2013 Vladislav Javadov (Freeman)
+    Copyright (c) 2013 Vladislav Javadov (aka Freeman)
 *)
 
 unit PetCore;

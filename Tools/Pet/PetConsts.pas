@@ -1,7 +1,7 @@
 (*
     PE Tool's strings and messages
 
-    Copyright (c) 2012-2013 Vladislav Javadov (Freeman)
+    Copyright (c) 2012-2013 Vladislav Javadov (aka Freeman)
 *)
 
 unit PetConsts;
