@@ -6,7 +6,7 @@
     Copyright (c) 2008-2014 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
-      * Compat -- IDE friendly and SysUtils compatible exceptions and
+      * Debug -- IDE friendly and SysUtils compatible exceptions and
           abstract method call diagnostic exceptions 
       * ForceMMX -- EMMX exception
       * Interfaces -- interface support
@@ -34,7 +34,7 @@ type
 
   Exception = class
   private
-  {$IFDEF Compat}
+  {$IFDEF Debug}
     FDelphiMsg: PLegacyChar;
   {$ENDIF}
     FMessage: PWideChar;
@@ -47,14 +47,14 @@ type
     destructor Destroy; override;
     procedure FreeInstance; override;
 
-  {$IFDEF Compat}
+  {$IFDEF Debug}
     property DelphiMsg: PLegacyChar read FDelphiMsg;
   {$ENDIF}
     property Message: PWideChar read FMessage;
     property Options: TExceptionOptions read FOptions;
   end;
 
-{$IFNDEF Compat}
+{$IFNDEF Debug}
   EAbstract = class(Exception)
   private
     procedure MethodCall(ClassType: TClass);
@@ -131,7 +131,7 @@ type
     FErrorSource: PCoreChar;
   public
     constructor Create(ErrorCode: LongWord; ErrorSource: PCoreChar = nil);
-  {$IFNDEF Compat}
+  {$IFNDEF Debug}
     destructor Destroy; override;
   {$ENDIF}
     property ErrorCode: LongWord read FErrorCode;
@@ -159,7 +159,7 @@ procedure RaiseLastPlatformError(ErrorSource: PCoreChar = nil);
 { Exception handling }
 
 procedure DefaultExceptionMessage(Msg: PWideChar);
-procedure ShowException(E: {$IFDEF Compat} TObject {$ELSE} Exception {$ENDIF});
+procedure ShowException(E: {$IFDEF Debug} TObject {$ELSE} Exception {$ENDIF});
 procedure UseExceptionMessageBox;
 procedure UseExceptionMessageWrite;
 
@@ -250,7 +250,7 @@ end;
 procedure ExceptionHandler(ExceptObject: TObject; ExceptAddr: Pointer);
 begin
   // "as" typecast -- CoreLite exceptions only: build with runtime packages or die!
-  ShowException(ExceptObject {$IFNDEF Compat} as Exception {$ENDIF});
+  ShowException(ExceptObject {$IFNDEF Debug} as Exception {$ENDIF});
   Halt(1);
 end;
 
@@ -372,7 +372,7 @@ begin
   ExceptClsProc := @GetExceptionClass;
   ExceptObjProc := @GetExceptionObject;
 
-{$IFNDEF Compat}
+{$IFNDEF Debug}
   @AbstractErrorProc := @EAbstract.MethodCall;
 {$ENDIF}
 
@@ -391,7 +391,7 @@ begin
   AssertErrorProc := nil;
 {$ENDIF}
 
-{$IFNDEF Compat}
+{$IFNDEF Debug}
   AbstractErrorProc := nil;
 {$ENDIF}
 
@@ -565,9 +565,9 @@ end;
 
 { Exception handling }
 
-procedure ShowException(E: {$IFDEF Compat} TObject {$ELSE} Exception {$ENDIF});
+procedure ShowException(E: {$IFDEF Debug} TObject {$ELSE} Exception {$ENDIF});
 begin
-{$IFDEF Compat}
+{$IFDEF Debug}
   if (E is Exception) and (eoWideChar in Exception(E).Options) then
     ExceptionMessage(Exception(E).Message)
   else // treat as compatible or SysUtils exception, unsafe with 3rd-party exceptions
@@ -592,17 +592,25 @@ end;
 
 { Exception}
 
+const
+  DelphiStringBytes = SizeOf(LongInt) {$IF RTLVersion >= 20} * 3 {$IFEND};
+  LegacyCharACP = CP_ACP or (SizeOf(LegacyChar) shl SizeOf(Word));
+
 constructor Exception.Create(Msg: PLegacyChar);
-{$IFDEF Compat}
+{$IFDEF Debug}
 var
   L: Integer;
 begin
   L := StrLen(Msg);
   if L <> 0 then
   begin
-    GetMem(FDelphiMsg, L + 1 + SizeOf(Integer));
-    PInteger(FDelphiMsg)^ := L;
-    Inc(FDelphiMsg, SizeOf(Integer));
+    GetMem(FDelphiMsg, L + 1 + DelphiStringBytes);
+  {$IF RTLVersion >= 20}
+    PLongWord(FDelphiMsg)^ := LegacyCharACP;
+    Inc(FDelphiMsg, SizeOf(LongInt) * 2);
+  {$IFEND}
+    PLongInt(FDelphiMsg)^ := L;
+    Inc(FDelphiMsg, SizeOf(LongInt));
     Move(Msg^, FDelphiMsg^, L + 1);
   end;
 {$ELSE}
@@ -613,17 +621,21 @@ begin
 end;
 
 constructor Exception.Create(Msg: PLegacyChar; const Args: array of const);
-{$IFDEF Compat}
+{$IFDEF Debug}
 var
   L: Integer;
 begin
   if Msg <> nil then
   begin
-    GetMem(FDelphiMsg, StrLen(Msg) + EstimateArgs(Args) + 1 + SizeOf(Integer));
-    L := FormatBuf(Msg, Args, FDelphiMsg + SizeOf(Integer));
-    ReallocMem(FDelphiMsg, L + 1 + SizeOf(Integer));
-    PInteger(FDelphiMsg)^ := L;
-    Inc(FDelphiMsg, SizeOf(Integer));
+    GetMem(FDelphiMsg, StrLen(Msg) + EstimateArgs(Args) + 1 + DelphiStringBytes);
+    L := FormatBuf(Msg, Args, FDelphiMsg + DelphiStringBytes);
+    ReallocMem(FDelphiMsg, L + 1 + DelphiStringBytes);
+  {$IF RTLVersion >= 20}
+    PLongWord(FDelphiMsg)^ := LegacyCharACP;
+    Inc(FDelphiMsg, SizeOf(LongInt) * 2);
+  {$IFEND}
+    PLongInt(FDelphiMsg)^ := L;
+    Inc(FDelphiMsg, SizeOf(LongInt));
     FMessage := Pointer(FDelphiMsg);
     FOptions := [eoCanFree];
   end;
@@ -642,7 +654,11 @@ begin
     WideCharToMultiByte(CP_ACP, 0, Msg, Count, nil, 0, nil, nil);
   if L <> 0 then
   begin
-    GetMem(Result, L + 1 + SizeOf(Integer));
+    GetMem(Result, L + 1 + DelphiStringBytes);
+  {$IF RTLVersion >= 20}
+    PLongWord(FDelphiMsg)^ := LegacyCharACP;
+    Inc(FDelphiMsg, SizeOf(LongInt) * 2);
+  {$IFEND}
     PInteger(Result)^ := L;
     Inc(Result, SizeOf(Integer));
   {$IFDEF Tricks} System. {$ENDIF}
@@ -661,7 +677,7 @@ begin
     Move(Msg^, FMessage^, Count * SizeOf(WideChar));
     FMessage[Count] := WideChar(0);
     FOptions := [eoWideChar, eoFreeMessage];
-  {$IFDEF Compat}
+  {$IFDEF Debug}
     FDelphiMsg := LegacyString(Msg, Count);
   {$ENDIF}
   end;
@@ -671,7 +687,7 @@ end;
 constructor Exception.Create(Msg: PLegacyChar; CodePage: Word; const Args: array of const);
 begin
   FMessage := LegacyFormat(Msg, CodePage, Args);
-{$IFDEF Compat}
+{$IFDEF Debug}
   FDelphiMsg := LegacyString(FMessage, WideStrLen(FMessage));
 {$ENDIF}
   FOptions := [eoWideChar, eoFreeMessage, eoCanFree];
@@ -681,7 +697,7 @@ destructor Exception.Destroy;
 begin
   if eoFreeMessage in FOptions then
     FreeMem(FMessage);
-{$IFDEF Compat}
+{$IFDEF Debug}
   if FDelphiMsg <> nil then
   begin
     Dec(FDelphiMsg, SizeOf(Integer));
@@ -696,7 +712,7 @@ begin
     inherited FreeInstance;
 end;
 
-{$IFNDEF Compat}
+{$IFNDEF Debug}
 procedure EAbstract.MethodCall(ClassType: TClass);
 begin
   if {dirty hack!} Pointer(Self) = ClassType then
@@ -728,7 +744,7 @@ end;
 constructor EPlatform.Create(ErrorCode: LongWord; ErrorSource: PCoreChar);
 var
   W: PCoreChar;
-{$IFDEF Compat}
+{$IFDEF Debug}
 begin
   W := SysErrorMessage(ErrorCode);
   try
@@ -754,7 +770,7 @@ begin
   FErrorSource := ErrorSource;
 end;
 
-{$IFNDEF Compat}
+{$IFNDEF Debug}
 destructor EPlatform.Destroy;
 begin
   if FErrorSource = nil then
