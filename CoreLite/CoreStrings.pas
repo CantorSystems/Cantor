@@ -628,34 +628,34 @@ type
 
   TCodePages = class;
 
-  TCodePagesItem = class(TRedBlackTreeItem)
+  TCodePagesNode = class(TRedBlackTreeNode)
   private
   { hold } FOwner: TCodePages;
-  { hold } FLeft, FRight, FParent: TCodePagesItem;
+  { hold } FLeft, FRight, FParent: TCodePagesNode;
   { hold } FRed: Boolean;
     FCodePage: TCodePage;
   public
     destructor Destroy; override;
-    function Compare(Item: TBalancedTreeItem): Integer; override;
+    function Compare(Item: TBalancedTreeNode): Integer; override;
 
     property CodePage: TCodePage read FCodePage;
-    property Left: TCodePagesItem read FLeft;
-    property Parent: TCodePagesItem read FParent;
+    property Left: TCodePagesNode read FLeft;
+    property Parent: TCodePagesNode read FParent;
     property Owner: TCodePages read FOwner;
     property Red: Boolean read FRed;
-    property Right: TCodePagesItem read FRight;
+    property Right: TCodePagesNode read FRight;
   end;
 
   TCodePages = class(TRedBlackTree)
   private
-  { hold } FRoot: TCodePagesItem;
+  { hold } FRoot: TCodePagesNode;
     FNewCodePageFunc: TNewCodePageFunc;
     function GetItem(CodePage: Word): TCodePage;
   public
     constructor Create(NewCodePageFunc: TNewCodePageFunc);
 
     property Items[CodePage: Word]: TCodePage read GetItem; default;
-    property Root: TCodePagesItem read FRoot;
+    property Root: TCodePagesNode read FRoot;
   end;
 
 { Exceptions }
@@ -1227,8 +1227,8 @@ begin
 end;
 
 var
-  W, T: Word;
   Q: QuadChar;
+  T, W: Word;
 {$IFDEF UTF32}
   Block: TCharBlock;
 {$ENDIF}
@@ -1240,13 +1240,12 @@ begin
 
   while Result.SourceCount < Count do
   begin
-    W := ExtractChar(Result.SourceCount);
-    Q := W;
+    Q := ExtractChar(Result.SourceCount);
 
-    case W of
+    case Word(Q) of
       $00..$7F:
         begin
-          if (W = 0) and (DestOptions * [coCESU8, coEncodeZero] = [coCESU8, coEncodeZero]) then
+          if (Q = 0) and (DestOptions * [coCESU8, coEncodeZero] = [coCESU8, coEncodeZero]) then
           begin
             PWord(Dest)^ := EncodedZero_UTF8; // Fast core
             Inc(Dest, SizeOf(Word));
@@ -1254,7 +1253,7 @@ begin
           end
           else
           begin
-            Dest^ := LegacyChar(W);
+            Dest^ := LegacyChar(Q);
             Inc(Dest);
             Inc(Result.DestCount);
           end;
@@ -1278,10 +1277,11 @@ begin
           case T of
             Low(TLowSurrogates)..High(TLowSurrogates):
               begin
-                Q := (W - Low(THighSurrogates)) shl 10 + Low(TUnicodeSMP) +
+                Q := (Q - Low(THighSurrogates)) shl 10 + Low(TUnicodeSMP) +
                      T - Low(TLowSurrogates);
                 if coCESU8 in DestOptions then
                 begin
+                  W := Q;
                   PLongWord(Dest)^ := // Fast core
                     ($E0 or Byte(W shr 12)) or
                     (($80 or (Byte(W shr 6) and $3F)) shl 8) or
@@ -1366,16 +1366,16 @@ begin
         end
         else
         begin
-          Result.InvalidChar.Value := W;
+          Result.InvalidChar.Value := Q;
           Break;
         end;
     else
       if DestOptions * [coCESU8, coLatin1] = [coLatin1] then
       begin
-        case W of
+        case Word(Q) of
           $80..$FF:
             begin
-              Dest^ := LegacyChar(W);
+              Dest^ := LegacyChar(Q);
             {$IFDEF UTF32}
               if coRangeBlocks in DestOptions then
                 Include(Info.Blocks, cbLatin1Supplement); // Fast core
@@ -1393,7 +1393,7 @@ begin
           end
           else
           begin
-            Result.InvalidChar.Value := W;
+            Result.InvalidChar.Value := Q;
             Break;
           end;
         end;
@@ -1405,6 +1405,8 @@ begin
         Continue;
       end
       else
+      begin
+        W := Q;
         case W of
           $80..$7FF:
             begin
@@ -1422,6 +1424,7 @@ begin
           Inc(Dest, 3);
           Inc(Result.DestCount, 3);
         end;
+      end;
     end;
 
     Inc(Info.CharCount);
@@ -3308,20 +3311,20 @@ begin
 end;
 {$ENDIF}
 
-{ TCodePagesItem }
+{ TCodePagesNode }
 
-destructor TCodePagesItem.Destroy;
+destructor TCodePagesNode.Destroy;
 begin
   FCodePage.Free;
   inherited;
 end;
 
-function TCodePagesItem.Compare(Item: TBalancedTreeItem): Integer;
+function TCodePagesNode.Compare(Item: TBalancedTreeNode): Integer;
 begin
   Result := 0;
-  if TCodePagesItem(Item).CodePage.Number < FCodePage.Number then
+  if TCodePagesNode(Item).CodePage.Number < FCodePage.Number then
     Dec(Result)
-  else if TCodePagesItem(Item).CodePage.Number > FCodePage.Number then
+  else if TCodePagesNode(Item).CodePage.Number > FCodePage.Number then
     Inc(Result);
 end;
 
@@ -3334,7 +3337,7 @@ end;
 
 function TCodePages.GetItem(CodePage: Word): TCodePage;
 var
-  Item: TCodePagesItem;
+  Item: TCodePagesNode;
 begin
   CodePage := TranslateCodePage(CodePage);
   Item := Root;
@@ -3351,7 +3354,7 @@ begin
     end;
   end;
 
-  Item := TCodePagesItem.Create;
+  Item := TCodePagesNode.Create;
   Item.FCodePage := FNewCodePageFunc(CodePage);
   Insert(Item);
   Result := Item.CodePage;

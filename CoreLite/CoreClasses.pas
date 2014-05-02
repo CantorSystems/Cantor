@@ -1,9 +1,9 @@
 (*
     Lite Core Library (CoreLite)
 
-    Non-platform general classes
+    Platform independent general purpose classes
 
-    Copyright (c) 2013-2014 Vladislav Javadov (Freeman)
+    Copyright (c) 2013-2014 Vladislav Javadov (aka Freeman)
 *)
 
 unit CoreClasses;
@@ -65,40 +65,40 @@ type
     procedure Prepend(Item: TListItem);
   end;
 
-  TBalancedTreeItem = class(TEnumerableItem)
+  TBalancedTreeNode = class(TEnumerableItem)
   private         // Parent at the end for TListItem compliance
-  { placeholder } // FLeft, FRight, FParent: TBalancedTreeItem;
+  { placeholder } // FLeft, FRight, FParent: TBalancedTreeNode;
   protected
-    function RotateLeft(Parent, Item: TBalancedTreeItem): TBalancedTreeItem; virtual; abstract;
-    function RotateRight(Parent, Item: TBalancedTreeItem): TBalancedTreeItem; virtual; abstract;
+    function RotateLeft(Parent, Item: TBalancedTreeNode): TBalancedTreeNode; virtual; abstract;
+    function RotateRight(Parent, Item: TBalancedTreeNode): TBalancedTreeNode; virtual; abstract;
   public
-    function Compare(Item: TBalancedTreeItem): Integer; virtual; abstract;
+    function Compare(Item: TBalancedTreeNode): Integer; virtual; abstract;
     function Depth: Integer;
     procedure Extract; override;
-    function Find(Item: TBalancedTreeItem): TBalancedTreeItem;
-    function Insert(Item: TBalancedTreeItem; FreeDuplicates: Boolean = True): Boolean;
+    function Find(Item: TBalancedTreeNode): TBalancedTreeNode;
+    function Insert(Item: TBalancedTreeNode; FreeDuplicates: Boolean = True): Boolean;
     function Level: Integer;
-    function Rebalance(FreeDuplicates: Boolean = True): TBalancedTreeItem;
-    function Root: TBalancedTreeItem;
+    function Rebalance(FreeDuplicates: Boolean = True): TBalancedTreeNode;
+    function Root: TBalancedTreeNode;
   end;
 
   TBalancedTree = class(TEnumerable)
-  { placeholder } // FRoot: TBalancedTreeItem;
+  { placeholder } // FRoot: TBalancedTreeNode;
   public
     procedure Clear; override;
     function Depth: Integer;
-    function Find(Item: TBalancedTreeItem): TBalancedTreeItem;
-    function Insert(Item: TBalancedTreeItem; FreeDuplicates: Boolean = True): Boolean;
-    function Rebalance(FreeDuplicates: Boolean = True): TBalancedTreeItem;
+    function Find(Item: TBalancedTreeNode): TBalancedTreeNode;
+    function Insert(Item: TBalancedTreeNode; FreeDuplicates: Boolean = True): Boolean;
+    function Rebalance(FreeDuplicates: Boolean = True): TBalancedTreeNode;
   end;
 
-  TRedBlackTreeItem = class(TBalancedTreeItem)
+  TRedBlackTreeNode = class(TBalancedTreeNode)
   { placeholder } // FRed: Boolean;
   private
     procedure Invert;
   protected
-    function RotateLeft(Parent, Item: TBalancedTreeItem): TBalancedTreeItem; override;
-    function RotateRight(Parent, Item: TBalancedTreeItem): TBalancedTreeItem; override;
+    function RotateLeft(Parent, Item: TBalancedTreeNode): TBalancedTreeNode; override;
+    function RotateRight(Parent, Item: TBalancedTreeNode): TBalancedTreeNode; override;
   end;
 
   TRedBlackTree = TBalancedTree;
@@ -290,25 +290,25 @@ type
 
   TBalancedTreeCast = class;
 
-  TBalancedTreeItemCast = class(TBalancedTreeItem)
+  TBalancedTreeNodeCast = class(TBalancedTreeNode)
     Owner: TBalancedTreeCast;
-    Left, Right, Parent: TBalancedTreeItemCast;
+    Left, Right, Parent: TBalancedTreeNodeCast;
   end;
 
   TBalancedTreeCast = class(TBalancedTree)
-    Root: TBalancedTreeItemCast;
+    Root: TBalancedTreeNodeCast;
   end;
 
   TRedBlackTreeCast = class;
 
-  TRedBlackTreeItemCast = class(TRedBlackTreeItem)
+  TRedBlackTreeNodeCast = class(TRedBlackTreeNode)
     Owner: TRedBlackTreeCast;
-    Left, Right, Parent: TRedBlackTreeItemCast;
+    Left, Right, Parent: TRedBlackTreeNodeCast;
     Red: Boolean;
   end;
 
   TRedBlackTreeCast = class(TRedBlackTree)
-    Root: TRedBlackTreeItemCast;
+    Root: TRedBlackTreeNodeCast;
   end;
 
   TArrayCast = class(TArray)
@@ -564,11 +564,11 @@ begin
       Grab(Item);
 end;
 
-{ TBalancedTreeItem }
+{ TBalancedTreeNode }
 
-function TBalancedTreeItem.Depth: Integer;
+function TBalancedTreeNode.Depth: Integer;
 
-function DepthFrom(Item: TBalancedTreeItemCast; Value: Integer): Integer;
+function DepthFrom(Item: TBalancedTreeNodeCast; Value: Integer): Integer;
 begin
   Inc(Value);
   if Item.Left <> nil then
@@ -583,15 +583,15 @@ begin
 end;
 
 begin
-  Result := DepthFrom(TBalancedTreeItemCast(Self), 0);
+  Result := DepthFrom(TBalancedTreeNodeCast(Self), 0);
 end;
 
-procedure TBalancedTreeItem.Extract;
+procedure TBalancedTreeNode.Extract;
 begin
   inherited; // TODO
 end;
 
-function TBalancedTreeItem.Find(Item: TBalancedTreeItem): TBalancedTreeItem;
+function TBalancedTreeNode.Find(Item: TBalancedTreeNode): TBalancedTreeNode;
 var
   Cmp: Integer;
 begin
@@ -600,23 +600,23 @@ begin
   begin
     Cmp := Result.Compare(Item);
     if Cmp < 0 then
-      Result := TBalancedTreeItemCast(Result).Left
+      Result := TBalancedTreeNodeCast(Result).Left
     else if Cmp > 0 then
-      Result := TBalancedTreeItemCast(Result).Right
+      Result := TBalancedTreeNodeCast(Result).Right
     else
       Break;
   end;
 end;
 
-function TBalancedTreeItem.Insert(Item: TBalancedTreeItem; FreeDuplicates: Boolean): Boolean;
+function TBalancedTreeNode.Insert(Item: TBalancedTreeNode; FreeDuplicates: Boolean): Boolean;
 var
   Cmp: Integer;
-  P: TBalancedTreeItemCast;
+  P: TBalancedTreeNodeCast;
 begin
   if Item <> nil then
   begin
     Item.Extract;
-    P := TBalancedTreeItemCast(Root);
+    P := TBalancedTreeNodeCast(Root);
 
     while P <> nil do
     begin
@@ -645,19 +645,19 @@ begin
       end;
     end;
 
-    Inc(TBalancedTreeItemCast(Self).Owner.FCount);
+    Inc(TBalancedTreeNodeCast(Self).Owner.FCount);
     Result := True;
   end
   else
     Result := False;
 end;
 
-function TBalancedTreeItem.Level: Integer;
+function TBalancedTreeNode.Level: Integer;
 var
-  P: TBalancedTreeItemCast;
+  P: TBalancedTreeNodeCast;
 begin
   Result := 0;
-  P := TBalancedTreeItemCast(Self).Parent;
+  P := TBalancedTreeNodeCast(Self).Parent;
   while P <> nil do
   begin
     Inc(Result);
@@ -666,14 +666,14 @@ begin
   Inc(Result); // small core
 end;
 
-function TBalancedTreeItem.Rebalance(FreeDuplicates: Boolean): TBalancedTreeItem;
+function TBalancedTreeNode.Rebalance(FreeDuplicates: Boolean): TBalancedTreeNode;
 begin
   Result := nil; // TODO
 end;
 
-function TBalancedTreeItem.Root: TBalancedTreeItem;
+function TBalancedTreeNode.Root: TBalancedTreeNode;
 begin
-  with TBalancedTreeItemCast(Self) do
+  with TBalancedTreeNodeCast(Self) do
     if Owner <> nil then
       Result := Owner.Root
     else
@@ -688,7 +688,7 @@ end;
 
 procedure TBalancedTree.Clear;
 
-procedure ClearItem(Item: TBalancedTreeItemCast);
+procedure ClearItem(Item: TBalancedTreeNodeCast);
 begin
   with Item do
   begin
@@ -718,7 +718,7 @@ begin
       Result := 0;
 end;
 
-function TBalancedTree.Find(Item: TBalancedTreeItem): TBalancedTreeItem;
+function TBalancedTree.Find(Item: TBalancedTreeNode): TBalancedTreeNode;
 begin
   with TBalancedTreeCast(Self) do
     if Root <> nil then
@@ -727,14 +727,14 @@ begin
       Result := nil;
 end;
 
-function TBalancedTree.Insert(Item: TBalancedTreeItem; FreeDuplicates: Boolean): Boolean;
+function TBalancedTree.Insert(Item: TBalancedTreeNode; FreeDuplicates: Boolean): Boolean;
 begin
   with TBalancedTreeCast(Self) do
     if Root <> nil then
       Result := Root.Insert(Item, FreeDuplicates)
     else if Item <> nil then
     begin
-      Root := TBalancedTreeItemCast(Item);
+      Root := TBalancedTreeNodeCast(Item);
       Root.Owner := TBalancedTreeCast(Self);
       Inc(FCount);
       Result := True;
@@ -743,7 +743,7 @@ begin
       Result := False;
 end;
 
-function TBalancedTree.Rebalance(FreeDuplicates: Boolean): TBalancedTreeItem;
+function TBalancedTree.Rebalance(FreeDuplicates: Boolean): TBalancedTreeNode;
 begin
   with TBalancedTreeCast(Self) do
     if Root <> nil then
@@ -752,11 +752,11 @@ begin
       Result := nil; // no duplicates
 end;
 
-{ TRedBlackTreeItem }
+{ TRedBlackTreeNode }
 
-procedure TRedBlackTreeItem.Invert;
+procedure TRedBlackTreeNode.Invert;
 begin
-  with TRedBlackTreeItemCast(Self) do
+  with TRedBlackTreeNodeCast(Self) do
   begin
     Red := not Red;
     if Left <> nil then
@@ -766,19 +766,19 @@ begin
   end;
 end;
 
-function TRedBlackTreeItem.RotateLeft(Parent, Item: TBalancedTreeItem): TBalancedTreeItem;
+function TRedBlackTreeNode.RotateLeft(Parent, Item: TBalancedTreeNode): TBalancedTreeNode;
 begin
-  TRedBlackTreeItemCast(Parent).Left := TRedBlackTreeItemCast(Item);
-  TRedBlackTreeItemCast(Item).Parent := TRedBlackTreeItemCast(Parent);
-  TRedBlackTreeItemCast(Item).Owner := TRedBlackTreeItemCast(Parent).Owner;
+  TRedBlackTreeNodeCast(Parent).Left := TRedBlackTreeNodeCast(Item);
+  TRedBlackTreeNodeCast(Item).Parent := TRedBlackTreeNodeCast(Parent);
+  TRedBlackTreeNodeCast(Item).Owner := TRedBlackTreeNodeCast(Parent).Owner;
   Result := Parent;
 end;
 
-function TRedBlackTreeItem.RotateRight(Parent, Item: TBalancedTreeItem): TBalancedTreeItem;
+function TRedBlackTreeNode.RotateRight(Parent, Item: TBalancedTreeNode): TBalancedTreeNode;
 begin
-  TRedBlackTreeItemCast(Parent).Right := TRedBlackTreeItemCast(Item);
-  TRedBlackTreeItemCast(Item).Parent := TRedBlackTreeItemCast(Parent);
-  TRedBlackTreeItemCast(Item).Owner := TRedBlackTreeItemCast(Parent).Owner;
+  TRedBlackTreeNodeCast(Parent).Right := TRedBlackTreeNodeCast(Item);
+  TRedBlackTreeNodeCast(Item).Parent := TRedBlackTreeNodeCast(Parent);
+  TRedBlackTreeNodeCast(Item).Owner := TRedBlackTreeNodeCast(Parent).Owner;
   Result := Parent;
 end;
 
