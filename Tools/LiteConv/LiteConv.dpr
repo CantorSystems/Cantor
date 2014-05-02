@@ -4,7 +4,7 @@
     Copyright (c) 2013-2014 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
-      * Compat -- use Delphi IDE friendly exceptions
+      * Debug -- use Delphi IDE friendly exceptions
       * ForceMMX -- allow MMX with FastCode
       * Lite -- commonly lite version of code
       * Tricks  -- use tricky lite System unit
