@@ -10,6 +10,7 @@
       * Non-Unicode GB18030, ISO-2022 (also TRON?)
 
     Conditional defines:
+      * Debug -- some debugging features and diagnostic exceptions
       * Lite -- remove support of:
         * TString.Length(Source, MaxLength)
         * TString.Format coming soon...
@@ -119,6 +120,8 @@ type
   {$IFDEF UTF32}
     FBlocks: TUnicodeBlocks;
   {$ENDIF}
+  protected
+    function Accept(const Info: TStringInfo): Boolean;
   public
     class function MaxCharBytes: Byte; virtual; abstract;
 
@@ -687,7 +690,7 @@ type
   private
     FInvalidChar: TInvalidChar;
     FSourceSite, FDestSite: TConvertSite;
-  {$IFDEF UTF32}
+  {$IFDEF Debug}
     FBlock: TCharBlock;
   {$ENDIF}
     function CatchInvalidDest(const InvalidChar: TInvalidChar; Site: TCharSet): Boolean; overload;
@@ -703,7 +706,7 @@ type
     constructor Create(const InvalidChar: TInvalidChar; SourceSite: TCodePage; DestSite: TCharSet); overload;
     constructor Create(const InvalidChar: TInvalidChar; SourceSite: TCharSet; DestSite: TCodePage); overload;
     constructor Create(const InvalidChar: TInvalidChar; SourceSite: TCodePage; DestSite: TCodePage); overload;
-  {$IFDEF UTF32}
+  {$IFDEF Debug}
     property Block: TCharBlock read FBlock;
   {$ENDIF}
     property DestSite: TConvertSite read FDestSite;
@@ -723,13 +726,18 @@ function FindCharBlock(Source: QuadChar; PrevBlock: TCharBlock = cbNonUnicode): 
 function TranslateCodePage(Source: Word): Word;
 function PlatformCodePage(CodePage: Word = CP_ACP): TPlatformCodePage;
 
-function IsUTF8(Source: PLegacyChar; Count: Integer; DestOptions: TEncodeUTF16 = [];
-  ThresholdBytes: Integer = 4): Boolean;
+function FromLatin(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; Latin1: Boolean;
+  Dest: PWideChar; DestOptions: TEncodeUTF16 = []): TNextLegacyChar; overload;
+function FromLatin(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; Latin1: Boolean;
+  Dest: PQuadChar; DestOptions: TEncodeUTF32 = []): TNextLegacyChar; overload;
 
 function FromUTF8(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; Dest: PWideChar;
   DestOptions: TEncodeUTF16 = []; ThresholdBytes: Integer = MaxInt): TNextLegacyChar; overload;
 function FromUTF8(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; Dest: PQuadChar;
   DestOptions: TEncodeUTF32 = []; ThresholdBytes: Integer = MaxInt): TNextLegacyChar; overload;
+
+function IsUTF8(Source: PLegacyChar; Count: Integer; DestOptions: TEncodeUTF16 = [];
+  ThresholdBytes: Integer = 4): Boolean;
 
 function ToLegacy(var Info: TStringInfo; Source: PWideChar; Count: Integer; BigEndian: Boolean;
   Dest: PLegacyChar; DestOptions: TEncodeLegacy = []): TNextWideChar; overload;
@@ -915,55 +923,19 @@ begin
     raise ECodePage.Create(Info);
 end;
 
-function IsUTF8(Source: PLegacyChar; Count: Integer; DestOptions: TEncodeUTF16;
-  ThresholdBytes: Integer): Boolean;
-var
-  Info: TStringInfo;
-  UTF8: TNextLegacyChar;
-  Chunk: TWideCharBuf;
-  Cnt: Integer;
-  Opt: TEncodeUTF16;
+function FromLatin(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; Latin1: Boolean;
+  Dest: PWideChar; DestOptions: TEncodeUTF16 = []): TNextLegacyChar;
 begin
-{$IFDEF Compat}
-  FillChar(Info, SizeOf(Info), 0);
-{$ENDIF}
-
-  if coSurrogates in DestOptions then
-    Cnt := Length(Chunk) div 2
-  else
-    Cnt := Length(Chunk);
-
-  Opt := DestOptions + [coContinuous];
-
-  repeat
-    if Count < Cnt then
-    begin
-      Cnt := Count;
-      Opt := DestOptions;
-    end;
-
-    UTF8 := FromUTF8(Info, Source, Cnt, Chunk, Opt, ThresholdBytes);
-    if UTF8.InvalidChar.Value <> 0 then
-    begin
-      Result := False;
-      Exit;
-    end;
-    if UTF8.SuccessBytes >= ThresholdBytes then
-    begin
-      Result := True;
-      Exit;
-    end;
-    with UTF8 do
-    begin
-      Inc(Source, SourceCount);
-      Dec(Count, SourceCount);
-    end;
-  until Count = 0;
-
-  Result := Info.SequenceCount >= ThresholdBytes div 2; // per 2-byte sequences
+  FillChar(Result, SizeOf(Result), 0); // TODO
 end;
 
-function ExtractChar(var Source: PLegacyChar; Limit: PLegacyChar;
+function FromLatin(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; Latin1: Boolean;
+  Dest: PQuadChar; DestOptions: TEncodeUTF32 = []): TNextLegacyChar;
+begin
+  FillChar(Result, SizeOf(Result), 0); // TODO
+end;
+
+function ExtractUTF8Char(var Source: PLegacyChar; Limit: PLegacyChar;
   DestOptions: TEncodeOptions): QuadChar; // low-level UTF-8 decoding
 var
   FirstByte, Bytes, B, C: Byte;
@@ -1052,14 +1024,14 @@ begin
     if T <> 0 then
       Q := T
     else
-      Q := ExtractChar(Source, Limit, DestOptions);
+      Q := ExtractUTF8Char(Source, Limit, DestOptions);
 
     if Q and InvalidUTF8Mask = 0 then
       case Q of
         Low(THighSurrogates)..High(THighSurrogates):
           if coSurrogates in DestOptions then
           begin
-            T := ExtractChar(Source, Limit, DestOptions);
+            T := ExtractUTF8Char(Source, Limit, DestOptions);
             if T and InvalidUTF8Mask = 0 then
               case T of
                 Low(TLowSurrogates)..High(TLowSurrogates): // CESU-8
@@ -1213,6 +1185,54 @@ function FromUTF8(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; De
   DestOptions: TEncodeUTF32 = []; ThresholdBytes: Integer = MaxInt): TNextLegacyChar;
 begin
   FillChar(Result, SizeOf(Result), 0); // TODO
+end;
+
+function IsUTF8(Source: PLegacyChar; Count: Integer; DestOptions: TEncodeUTF16;
+  ThresholdBytes: Integer): Boolean;
+var
+  Info: TStringInfo;
+  UTF8: TNextLegacyChar;
+  Chunk: TWideCharBuf;
+  Cnt: Integer;
+  Opt: TEncodeUTF16;
+begin
+{$IFDEF Debug}
+  FillChar(Info, SizeOf(Info), 0);
+{$ENDIF}
+
+  if coSurrogates in DestOptions then
+    Cnt := Length(Chunk) div 2
+  else
+    Cnt := Length(Chunk);
+
+  Opt := DestOptions + [coContinuous];
+
+  repeat
+    if Count < Cnt then
+    begin
+      Cnt := Count;
+      Opt := DestOptions;
+    end;
+
+    UTF8 := FromUTF8(Info, Source, Cnt, Chunk, Opt, ThresholdBytes);
+    if UTF8.InvalidChar.Value <> 0 then
+    begin
+      Result := False;
+      Exit;
+    end;
+    if UTF8.SuccessBytes >= ThresholdBytes then
+    begin
+      Result := True;
+      Exit;
+    end;
+    with UTF8 do
+    begin
+      Inc(Source, SourceCount);
+      Dec(Count, SourceCount);
+    end;
+  until Count = 0;
+
+  Result := Info.SequenceCount >= ThresholdBytes div 2; // per 2-byte sequences
 end;
 
 function ToLegacy(var Info: TStringInfo; Source: PWideChar; Count: Integer; BigEndian: Boolean;
@@ -1659,6 +1679,11 @@ end;
 
 constructor EConvert.Create(const InvalidChar: TInvalidChar; SourceSite, DestSite: TCharSet);
 begin
+{$IFDEF Debug}
+  if InvalidChar.Value = 0 then
+    Create(sCannotMixCharSetAndCharSet, [CharSets[SourceSite], CharSets[DestSite]])
+  else
+{$ENDIF}
   if not CatchInvalidSource(InvalidChar, SourceSite) then
   {$IFDEF UTF32}
     if not CatchInvalidDest(InvalidChar, DestSite) then
@@ -1666,6 +1691,9 @@ begin
   {$ELSE}
     Create(sInvalidCharSetToCharSet, [CharSets[SourceSite], CharSets[DestSite]]);
   {$ENDIF}
+{$IFDEF Debug}
+  FBlock := FindCharBlock(InvalidChar.Value);
+{$ENDIF}
   FInvalidChar := InvalidChar;
   FSourceSite.CharSet := SourceSite;
   FDestSite.CharSet := DestSite;
@@ -1673,6 +1701,11 @@ end;
 
 constructor EConvert.Create(const InvalidChar: TInvalidChar; SourceSite: TCodePage; DestSite: TCharSet);
 begin
+{$IFDEF Debug}
+  if InvalidChar.Value = 0 then
+    Create(sCannotMixCodePageAndCharSet, CP_LEGACY, [SourceSite.Number, SourceSite.Name, CharSets[DestSite]])
+  else
+{$ENDIF}
   if not CatchInvalidSource(InvalidChar, SourceSite) then
   {$IFDEF UTF32}
     if not CatchInvalidDest(InvalidChar, DestSite) then
@@ -1680,6 +1713,9 @@ begin
   {$ELSE}
     Create(sInvalidCodePageToCharSet, CP_LEGACY, [SourceSite.Number, SourceSite.Name, CharSets[DestSite]]);
   {$ENDIF}
+{$IFDEF Debug}
+  FBlock := FindCharBlock(InvalidChar.Value);
+{$ENDIF}
   FInvalidChar := InvalidChar;
   FSourceSite.CodePage := SourceSite;
   FDestSite.CharSet := DestSite;
@@ -1687,6 +1723,11 @@ end;
 
 constructor EConvert.Create(const InvalidChar: TInvalidChar; SourceSite: TCharSet; DestSite: TCodePage);
 begin
+{$IFDEF Debug}
+  if InvalidChar.Value = 0 then
+    Create(sCannotMixCharSetAndCodePage, CP_LEGACY, [CharSets[SourceSite], DestSite.Number, DestSite.Name])
+  else
+{$ENDIF}
   if not CatchInvalidSource(InvalidChar, SourceSite) then
   {$IFDEF UTF32}
     if not CatchInvalidDest(InvalidChar, DestSite) then
@@ -1694,6 +1735,9 @@ begin
   {$ELSE}
     Create(sInvalidCharSetToCodePage, CP_LEGACY, [CharSets[SourceSite], DestSite.Number, DestSite.Name]);
   {$ENDIF}
+{$IFDEF Debug}
+  FBlock := FindCharBlock(InvalidChar.Value);
+{$ENDIF}
   FInvalidChar := InvalidChar;
   FSourceSite.CharSet := SourceSite;
   FDestSite.CodePage := DestSite;
@@ -1701,6 +1745,11 @@ end;
 
 constructor EConvert.Create(const InvalidChar: TInvalidChar; SourceSite, DestSite: TCodePage);
 begin
+{$IFDEF Debug}
+  if InvalidChar.Value = 0 then
+    Create(sCannotMixCodePageAndCodePage, CP_LEGACY, [SourceSite.Number, SourceSite.Name, DestSite.Number, DestSite.Name])
+  else
+{$ENDIF}
   if not CatchInvalidSource(InvalidChar, SourceSite) then
   {$IFDEF UTF32}
     if not CatchInvalidDest(InvalidChar, DestSite) then
@@ -1708,12 +1757,21 @@ begin
   {$ELSE}
     Create(sInvalidCodePageToCodePage, CP_LEGACY, [SourceSite.Number, SourceSite.Name, DestSite.Number, DestSite.Name]);
   {$ENDIF}
+{$IFDEF Debug}
+  FBlock := FindCharBlock(InvalidChar.Value);
+{$ENDIF}
   FInvalidChar := InvalidChar;
   FSourceSite.CodePage := SourceSite;
   FDestSite.CodePage := DestSite;
 end;
 
 { TCodePage }
+
+function TCodePage.Accept(const Info: TStringInfo): Boolean;
+begin
+  with Info do
+    Result := (Count = 0) or ((CodePage <> nil) and (CodePage.FNumber = FNumber));
+end;
 
 function TCodePage.FromLegacy(Source: PLegacyChar; Count: Integer; CodePage: TCodePage;
   SourceOptions: TLegacySource; Dest: PLegacyChar; DestOptions: TEncodeLegacy): TNextLegacyChar;
@@ -1981,7 +2039,7 @@ begin
   end
   else
   begin
-  {$IFDEF Compat}
+  {$IFDEF Debug}
     FillChar(Info, SizeOf(Info), 0);
   {$ELSE}
     Info.CodePage := nil;
@@ -2019,7 +2077,7 @@ begin
   end
   else
   begin
-  {$IFDEF Compat}
+  {$IFDEF Debug}
     FillChar(Info, SizeOf(Info), 0);
   {$ELSE}
     Info.CodePage := nil;
@@ -2052,7 +2110,7 @@ begin
   end
   else
   begin
-  {$IFDEF Compat}
+  {$IFDEF Debug}
     FillChar(Info, SizeOf(Info), 0);
   {$ELSE}
     Info.CodePage := nil;
@@ -2844,7 +2902,7 @@ begin
   begin
     FillChar(Result, SizeOf(Result), 0);
     DestInfo := Info;
-  {$IFDEF Compat}
+  {$IFDEF Debug}
     FillChar(ChunkInfo, SizeOf(ChunkInfo), 0);
   {$ENDIF}
     Cnt := Length(Chunk);
@@ -2893,7 +2951,7 @@ begin
   if CodePage <> nil then
   begin
     DestInfo := Info;
-  {$IFDEF Compat}
+  {$IFDEF Debug}
     FillChar(ChunkInfo, SizeOf(ChunkInfo), 0);
   {$ENDIF}
     Cnt := Length(Chunk);

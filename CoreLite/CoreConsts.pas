@@ -10,9 +10,7 @@ unit CoreConsts;
 
 interface
 
-{$IFDEF UTF32}
-  {$I UnicodeBlocks.inc}
-{$ENDIF}
+{$I UnicodeBlocks.inc}
 
 const
   CP_LEGACY = 1252; // we're using “”, but only in exception messages
@@ -87,6 +85,11 @@ const
   sInvalidCharSetToCodePage = 'Cannot convert %hs string'#10'into code page %u (%s)';
   sInvalidCodePageToCharSet = 'Cannot convert string between code page %u (%s)'#10'and %hs character set';
   sInvalidCodePageToCodePage = 'Cannot convert string between code page %u (%s)'#10'and code page %u (%s)';
+
+  sCannotMixCharSetAndCharSet = 'Cannot mix %s and %s characters at the same target';
+  sCannotMixCharSetAndCodePage = 'Cannot mix %hs and %u (%s) characters at the same target';
+  sCannotMixCodePageAndCharSet = 'Cannot mix %u (%s) and %hs characters at the same target';
+  sCannotMixCodePageAndCodePage = 'Cannot mix %u (%s) and %u (%s) characters at the same target';
 
   sInvalidCharSetChar = 'Cannot convert %hs character (U+%04X)'#10'into %hs character set';
   sInvalidCodePageChar = 'Cannot convert %hs character (U+%04X)'#10'into code page %u (%s)';

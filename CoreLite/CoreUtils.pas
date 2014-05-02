@@ -3,10 +3,10 @@
 
     Typecast and platform-based non-OOP utilites
 
-    Copyright (c) 2007-2014 Vladislav Javadov (Freeman)
+    Copyright (c) 2007-2014 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
-      * Compat -- allow ShortString, AnsiString and WideString at EstimateArgs
+      * Debug -- allow ShortString, AnsiString and WideString at EstimateArgs
 *)
 
 unit CoreUtils;
@@ -435,7 +435,7 @@ begin
         Inc(Result);
       vtExtended, vtCurrency:
         Inc(Result, DecimalExtended);
-    {$IFDEF Compat}
+    {$IFDEF Debug}
       vtString:
         Inc(Result, PByte(TVarRec(Args[I]).VString)^);
       vtAnsiString:

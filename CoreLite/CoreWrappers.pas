@@ -6,6 +6,7 @@
     Copyright (c) 2007-2014 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
+      * Debug -- force ANSI code page for TStreamConsole
       * Lite -- allow lite TStream implementation -- without virtual methods,
                 but only THandleStream descendant
 *)
@@ -153,7 +154,7 @@ type
 
   TStreamConsole = class(TConsole)
   public
-  {$IFDEF Compat}
+  {$IFDEF Debug}
     constructor Create(ErrorOutput: Boolean = False);
   {$ENDIF}
     procedure ReadLn(Prompt: PLegacyChar; LineBreaks: Integer = 1); overload;
@@ -609,7 +610,7 @@ end;
 
 { TStreamConsole }
 
-{$IFDEF Compat}
+{$IFDEF Debug}
 constructor TStreamConsole.Create;
 begin
   inherited;
