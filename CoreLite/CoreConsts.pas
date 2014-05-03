@@ -86,6 +86,8 @@ const
   sInvalidCodePageToCharSet = 'Cannot convert string between code page %u (%s)'#10'and %hs character set';
   sInvalidCodePageToCodePage = 'Cannot convert string between code page %u (%s)'#10'and code page %u (%s)';
 
+  sInvalidChar = '%scontains invalid character (U+%04X)';
+
   sCannotMixCharSetAndCharSet = 'Cannot mix %s and %s characters at the same target';
   sCannotMixCharSetAndCodePage = 'Cannot mix %hs and %u (%s) characters at the same target';
   sCannotMixCodePageAndCharSet = 'Cannot mix %u (%s) and %hs characters at the same target';
