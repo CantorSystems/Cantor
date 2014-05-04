@@ -131,7 +131,7 @@ type
       SourceOptions: TLegacySource; Dest: PLegacyChar; DestOptions: TEncodeLegacy = []): TNextLegacyChar; overload;
 
     function ToLegacy(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; SourceOptions: TLegacySource;
-      Dest: PLegacyChar; DestOptions: TEncodeLegacy = []): TNextLegacyChar; overload; virtual; abstract;
+      Dest: PLegacyChar; CodePage: TCodePage = nil; DestOptions: TEncodeLegacy = []): TNextLegacyChar; overload; virtual; abstract;
     function ToLegacy(Source: PLegacyChar; Count: Integer; SourceOptions: TLegacySource;
       Dest: PLegacyChar; CodePage: TCodePage = nil; DestOptions: TEncodeLegacy = []): TNextLegacyChar; overload;
 
@@ -560,7 +560,7 @@ type
     function FromLegacy(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; CodePage: TCodePage;
       SourceOptions: TLegacySource; Dest: PLegacyChar; DestOptions: TEncodeLegacy = []): TNextLegacyChar; override;
     function ToLegacy(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; SourceOptions: TLegacySource;
-      Dest: PLegacyChar; DestOptions: TEncodeLegacy = []): TNextLegacyChar; override;
+      Dest: PLegacyChar; CodePage: TCodePage = nil; DestOptions: TEncodeLegacy = []): TNextLegacyChar; override;
 
     function FromUTF16(var Info: TStringInfo; Source: PWideChar; Count: Integer; SourceOptions: TEndianSource;
       Dest: PLegacyChar; DestOptions: TEncodeLegacy = []): TNextWideChar; override;
@@ -608,7 +608,7 @@ type
     function FromLegacy(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; CodePage: TCodePage;
       SourceOptions: TLegacySource; Dest: PLegacyChar; DestOptions: TEncodeLegacy = []): TNextLegacyChar; override;
     function ToLegacy(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; SourceOptions: TLegacySource;
-      Dest: PLegacyChar; DestOptions: TEncodeLegacy = []): TNextLegacyChar; override;
+      Dest: PLegacyChar; CodePage: TCodePage = nil; DestOptions: TEncodeLegacy = []): TNextLegacyChar; override;
 
     function FromUTF16(var Info: TStringInfo; Source: PWideChar; Count: Integer; SourceOptions: TEndianSource;
       Dest: PLegacyChar; DestOptions: TEncodeLegacy = []): TNextWideChar; override;
@@ -729,20 +729,20 @@ function PlatformCodePage(CodePage: Word = CP_ACP): TPlatformCodePage;
 function FromLatin1(var Info: TStringInfo; Source: PLegacyChar; Count: Integer;
   Dest: PWideChar; DestOptions: TEncodeUTF16 = []): TNextLegacyChar; overload;
 function FromLatin1(Source: PLegacyChar; Count: Integer; Dest: PWideChar;
-  DestOptions: TEncodeUTF16 = []): Integer; overload;
+  DestOptions: TEncodeUTF16 = []): TNextLegacyChar; overload;
 function FromLatin1(var Info: TStringInfo; Source: PLegacyChar; Count: Integer;
   Dest: PQuadChar; DestOptions: TEncodeUTF32 = []): TNextLegacyChar; overload;
 function FromLatin1(Source: PLegacyChar; Count: Integer; Dest: PQuadChar;
-  DestOptions: TEncodeUTF32 = []): Integer; overload;
+  DestOptions: TEncodeUTF32 = []): TNextLegacyChar; overload;
 
 function FromUTF8(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; Dest: PWideChar;
   DestOptions: TEncodeUTF16 = []; ThresholdBytes: Integer = MaxInt): TNextLegacyChar; overload;
 function FromUTF8(Source: PLegacyChar; Count: Integer; Dest: PWideChar;
-  DestOptions: TEncodeUTF16 = []; ThresholdBytes: Integer = MaxInt): Integer; overload;
+  DestOptions: TEncodeUTF16 = []; ThresholdBytes: Integer = MaxInt): TNextLegacyChar; overload;
 function FromUTF8(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; Dest: PQuadChar;
   DestOptions: TEncodeUTF32 = []; ThresholdBytes: Integer = MaxInt): TNextLegacyChar; overload;
 function FromUTF8(Source: PLegacyChar; Count: Integer; Dest: PQuadChar;
-  DestOptions: TEncodeUTF32 = []; ThresholdBytes: Integer = MaxInt): Integer; overload;
+  DestOptions: TEncodeUTF32 = []; ThresholdBytes: Integer = MaxInt): TNextLegacyChar; overload;
 
 function IsUTF8(Source: PLegacyChar; Count: Integer; DestOptions: TEncodeUTF16 = [];
   ThresholdBytes: Integer = 4): Boolean;
@@ -750,21 +750,21 @@ function IsUTF8(Source: PLegacyChar; Count: Integer; DestOptions: TEncodeUTF16 =
 function ToLegacy(var Info: TStringInfo; Source: PWideChar; Count: Integer; BigEndian: Boolean;
   Dest: PLegacyChar; DestOptions: TEncodeLegacy = []): TNextWideChar; overload;
 function ToLegacy(Source: PWideChar; Count: Integer; BigEndian: Boolean;
-  Dest: PLegacyChar; DestOptions: TEncodeLegacy = []): Integer; overload;
+  Dest: PLegacyChar; DestOptions: TEncodeLegacy = []): TNextWideChar; overload;
 function ToLegacy(var Info: TStringInfo; Source: PQuadChar; Count: Integer; BigEndian: Boolean;
   Dest: PLegacyChar; DestOptions: TEncodeLegacy = []): TNextQuadChar; overload;
 function ToLegacy(Source: PQuadChar; Count: Integer; BigEndian: Boolean;
-  Dest: PLegacyChar; DestOptions: TEncodeLegacy = []): Integer; overload;
+  Dest: PLegacyChar; DestOptions: TEncodeLegacy = []): TNextQuadChar; overload;
 
 function FromUTF16(var Info: TStringInfo; Source: PWideChar; Count: Integer; BigEndian: Boolean;
   Dest: PQuadChar; DestOptions: TEncodeUTF32 = []): TNextQuadChar; overload;
 function FromUTF16(Source: PWideChar; Count: Integer; BigEndian: Boolean;
-  Dest: PQuadChar; DestOptions: TEncodeUTF32 = []): Integer; overload;
+  Dest: PQuadChar; DestOptions: TEncodeUTF32 = []): TNextQuadChar; overload;
 
 function ToUTF16(var Info: TStringInfo; Source: PQuadChar; Count: Integer; BigEndian: Boolean;
   Dest: PWideChar; DestOptions: TEncodeUTF16 = []): TNextWideChar; overload;
 function ToUTF16(Source: PQuadChar; Count: Integer; BigEndian: Boolean;
-  Dest: PWideChar; DestOptions: TEncodeUTF16): Integer; overload;
+  Dest: PWideChar; DestOptions: TEncodeUTF16): TNextWideChar; overload;
 
 { Text splitting and merging }
 
@@ -999,18 +999,15 @@ begin
 end;
 
 function FromLatin1(Source: PLegacyChar; Count: Integer; Dest: PWideChar;
-  DestOptions: TEncodeUTF16): Integer;
+  DestOptions: TEncodeUTF16): TNextLegacyChar;
 var
   Info: TStringInfo;
 begin
   FillChar(Info, SizeOf(Info), 0);
-  with FromLatin1(Info, Source, Count, Dest, DestOptions
-    {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF}) do
-  begin
-    if InvalidChar.Value <> 0 then
-      raise EConvert.Create(InvalidChar, csLatin1, csUTF16);
-    Result := DestCount;
-  end;
+  Result := FromLatin1(Info, Source, Count, Dest, DestOptions
+    {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF});
+  if Result.InvalidChar.Value <> 0 then
+    raise EConvert.Create(Result.InvalidChar, csLatin1, csUTF16);
 end;
 
 function FromLatin1(var Info: TStringInfo; Source: PLegacyChar; Count: Integer;
@@ -1020,18 +1017,15 @@ begin
 end;
 
 function FromLatin1(Source: PLegacyChar; Count: Integer; Dest: PQuadChar;
-  DestOptions: TEncodeUTF32): Integer;
+  DestOptions: TEncodeUTF32): TNextLegacyChar;
 var
   Info: TStringInfo;
 begin
   FillChar(Info, SizeOf(Info), 0);
-  with FromLatin1(Info, Source, Count, Dest, DestOptions
-    {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF}) do
-  begin
-    if InvalidChar.Value <> 0 then
-      raise EConvert.Create(InvalidChar, csLatin1, csUTF32);
-    Result := DestCount;
-  end;
+  Result := FromLatin1(Info, Source, Count, Dest, DestOptions
+    {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF});
+  if Result.InvalidChar.Value <> 0 then
+    raise EConvert.Create(Result.InvalidChar, csLatin1, csUTF32);
 end;
 
 function ExtractUTF8Char(var Source: PLegacyChar; Limit: PLegacyChar;
@@ -1281,18 +1275,15 @@ begin
 end;
 
 function FromUTF8(Source: PLegacyChar; Count: Integer; Dest: PWideChar;
-  DestOptions: TEncodeUTF16; ThresholdBytes: Integer): Integer;
+  DestOptions: TEncodeUTF16; ThresholdBytes: Integer): TNextLegacyChar;
 var
   Info: TStringInfo;
 begin
   FillChar(Info, SizeOf(Info), 0);
-  with FromUTF8(Info, Source, Count, Dest, DestOptions
-    {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF}, ThresholdBytes) do
-  begin
-    if InvalidChar.Value <> 0 then
-      raise EConvert.Create(InvalidChar, csUTF8, csUTF16);
-    Result := DestCount;
-  end;
+  Result := FromUTF8(Info, Source, Count, Dest, DestOptions
+    {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF}, ThresholdBytes);
+  if Result.InvalidChar.Value <> 0 then
+    raise EConvert.Create(Result.InvalidChar, csUTF8, csUTF16);
 end;
 
 function FromUTF8(var Info: TStringInfo; Source: PLegacyChar; Count: Integer;
@@ -1302,18 +1293,15 @@ begin
 end;
 
 function FromUTF8(Source: PLegacyChar; Count: Integer; Dest: PQuadChar;
-  DestOptions: TEncodeUTF32; ThresholdBytes: Integer): Integer;
+  DestOptions: TEncodeUTF32; ThresholdBytes: Integer): TNextLegacyChar;
 var
   Info: TStringInfo;
 begin
   FillChar(Info, SizeOf(Info), 0);
-  with FromUTF8(Info, Source, Count, Dest, DestOptions
-    {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF}, ThresholdBytes) do
-  begin
-    if InvalidChar.Value <> 0 then
-      raise EConvert.Create(InvalidChar, csUTF8, csUTF32);
-    Result := DestCount;
-  end;
+  Result := FromUTF8(Info, Source, Count, Dest, DestOptions
+    {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF}, ThresholdBytes);
+  if Result.InvalidChar.Value <> 0 then
+    raise EConvert.Create(Result.InvalidChar, csUTF8, csUTF32);
 end;
 
 function IsUTF8(Source: PLegacyChar; Count: Integer; DestOptions: TEncodeUTF16;
@@ -1590,18 +1578,15 @@ begin
 end;
 
 function ToLegacy(Source: PWideChar; Count: Integer; BigEndian: Boolean;
-  Dest: PLegacyChar; DestOptions: TEncodeLegacy): Integer;
+  Dest: PLegacyChar; DestOptions: TEncodeLegacy): TNextWideChar;
 var
   Info: TStringInfo;
 begin
   FillChar(Info, SizeOf(Info), 0);
-  with ToLegacy(Info, Source, Count, BigEndian, Dest, DestOptions
-    {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF}) do
-  begin
-    if InvalidChar.Value <> 0 then
-      raise EConvert.Create(InvalidChar, csUTF16, TCharSet(coLatin1 in DestOptions));
-    Result := DestCount;
-  end;
+  Result := ToLegacy(Info, Source, Count, BigEndian, Dest, DestOptions
+    {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF});
+  if Result.InvalidChar.Value <> 0 then
+    raise EConvert.Create(Result.InvalidChar, csUTF16, TCharSet(coLatin1 in DestOptions));
 end;
 
 function ToLegacy(var Info: TStringInfo; Source: PQuadChar; Count: Integer;
@@ -1611,18 +1596,15 @@ begin
 end;
 
 function ToLegacy(Source: PQuadChar; Count: Integer; BigEndian: Boolean;
-  Dest: PLegacyChar; DestOptions: TEncodeLegacy): Integer;
+  Dest: PLegacyChar; DestOptions: TEncodeLegacy): TNextQuadChar;
 var
   Info: TStringInfo;
 begin
   FillChar(Info, SizeOf(Info), 0);
-  with ToLegacy(Info, Source, Count, BigEndian, Dest, DestOptions
-    {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF}) do
-  begin
-    if InvalidChar.Value <> 0 then
-      raise EConvert.Create(InvalidChar, csUTF32, TCharSet(coLatin1 in DestOptions));
-    Result := DestCount;
-  end;
+  Result := ToLegacy(Info, Source, Count, BigEndian, Dest, DestOptions
+    {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF});
+  if Result.InvalidChar.Value <> 0 then
+    raise EConvert.Create(Result.InvalidChar, csUTF32, TCharSet(coLatin1 in DestOptions));
 end;
 
 function FromUTF16(var Info: TStringInfo; Source: PWideChar; Count: Integer;
@@ -1632,18 +1614,15 @@ begin
 end;
 
 function FromUTF16(Source: PWideChar; Count: Integer; BigEndian: Boolean;
-  Dest: PQuadChar; DestOptions: TEncodeUTF32): Integer;
+  Dest: PQuadChar; DestOptions: TEncodeUTF32): TNextWideChar;
 var
   Info: TStringInfo;
 begin
   FillChar(Info, SizeOf(Info), 0);
-  with FromUTF16(Info, Source, Count, BigEndian, Dest, DestOptions
-    {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF}) do
-  begin
-    if InvalidChar.Value <> 0 then
-      raise EConvert.Create(InvalidChar, csUTF16, csUTF32);
-    Result := DestCount;
-  end;
+  Result := FromUTF16(Info, Source, Count, BigEndian, Dest, DestOptions
+    {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF});
+  if Result.InvalidChar.Value <> 0 then
+    raise EConvert.Create(Result.InvalidChar, csUTF16, csUTF32);
 end;
 
 function ToUTF16(var Info: TStringInfo; Source: PQuadChar; Count: Integer;
@@ -1653,18 +1632,15 @@ begin
 end;
 
 function ToUTF16(Source: PQuadChar; Count: Integer; BigEndian: Boolean;
-  Dest: PWideChar; DestOptions: TEncodeUTF16): Integer;
+  Dest: PWideChar; DestOptions: TEncodeUTF16): TNextQuadChar;
 var
   Info: TStringInfo;
 begin
   FillChar(Info, SizeOf(Info), 0);
-  with ToUTF16(Info, Source, Count, BigEndian, Dest, DestOptions
-    {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF}) do
-  begin
-    if InvalidChar.Value <> 0 then
-      raise EConvert.Create(InvalidChar, csUTF32, csUTF16);
-    Result := DestCount;
-  end;
+  Result := ToUTF16(Info, Source, Count, BigEndian, Dest, DestOptions
+    {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF});
+  if Result.InvalidChar.Value <> 0 then
+    raise EConvert.Create(Result.InvalidChar, csUTF32, csUTF16);
 end;
 
 { Text splitting and merging }
@@ -1976,13 +1952,13 @@ var
   Info: TStringInfo;
 begin
   FillChar(Info, SizeOf(Info), 0);
-  Result := FromLegacy(Info, Source, Count, CodePage, SourceOptions, Dest, DestOptions
-    {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF});
-{  if (Info.InvalidChar <> 0) and not (coForceInvalid in DestOptions) then
-    if Info.InvalidChar and InvalidUTF8Mask <> 0 then
-      raise EUTF.Create(Info.InvalidUTF)
+  Result := FromLegacy(Info, Source, Count, CodePage, SourceOptions, Dest,
+    DestOptions {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF});
+  if Result.InvalidChar.Value <> 0 then
+    if CodePage <> nil then
+      raise EConvert.Create(Result.InvalidChar, CodePage, Self)
     else
-      raise EConvert.Create(Info.InvalidChar, TCharSet(soLatin1 in SourceOptions), Self);}
+      raise EConvert.Create(Result.InvalidChar, TCharSet(soLatin1 in SourceOptions), Self);
 end;
 
 function TCodePage.ToLegacy(Source: PLegacyChar; Count: Integer; SourceOptions: TLegacySource;
@@ -1991,13 +1967,13 @@ var
   Info: TStringInfo;
 begin
   FillChar(Info, SizeOf(Info), 0);
-  Result := ToLegacy(Info, Source, Count, SourceOptions, Dest, DestOptions
-    {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF});
-{  if (Info.InvalidChar <> 0) and not (coForceInvalid in DestOptions) then
-    if Info.InvalidChar and InvalidUTF8Mask <> 0 then
-      raise EUTF.Create(Info.InvalidUTF)
+  Result := ToLegacy(Info, Source, Count, SourceOptions, Dest, CodePage,
+    DestOptions {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF});
+  if Result.InvalidChar.Value <> 0 then
+    if CodePage <> nil then
+      raise EConvert.Create(Result.InvalidChar, Self, CodePage)
     else
-      raise EConvert.Create(Info.InvalidChar, Self, TCharSet(coLatin1 in DestOptions));}
+      raise EConvert.Create(Result.InvalidChar, Self, TCharSet(soLatin1 in SourceOptions));
 end;
 
 function TCodePage.FromUTF16(Source: PWideChar; Count: Integer; SourceOptions: TEndianSource;
@@ -2006,13 +1982,10 @@ var
   Info: TStringInfo;
 begin
   FillChar(Info, SizeOf(Info), 0);
-  Result := FromUTF16(Info, Source, Count, SourceOptions, Dest, DestOptions
-    {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF});
-{  if (Info.InvalidChar <> 0) and not (coForceInvalid in DestOptions) then
-    if Info.InvalidChar and InvalidUTF8Mask <> 0 then
-      raise EUTF.Create(Info.InvalidUTF)
-    else
-      raise EConvert.Create(Info.InvalidChar, csUTF16, Self);}
+  Result := FromUTF16(Info, Source, Count, SourceOptions, Dest,
+    DestOptions {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF});
+  if Result.InvalidChar.Value <> 0 then
+    raise EConvert.Create(Result.InvalidChar, csUTF16, Self);
 end;
 
 function TCodePage.ToUTF16(Source: PLegacyChar; Count: Integer; SourceOptions: TLegacySource;
@@ -2021,13 +1994,10 @@ var
   Info: TStringInfo;
 begin
   FillChar(Info, SizeOf(Info), 0);
-  Result := ToUTF16(Info, Source, Count, SourceOptions, Dest, DestOptions
-    {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF});
-{  if (Info.InvalidChar <> 0) and not (coForceInvalid in DestOptions) then
-    if Info.InvalidChar and InvalidUTF8Mask <> 0 then
-      raise EUTF.Create(Info.InvalidUTF)
-    else
-      raise EConvert.Create(Info.InvalidChar, Self, csUTF16);}
+  Result := ToUTF16(Info, Source, Count, SourceOptions, Dest,
+    DestOptions {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF});
+  if Result.InvalidChar.Value <> 0 then
+    raise EConvert.Create(Result.InvalidChar, Self, csUTF16);
 end;
 
 {$IFDEF UTF32}
@@ -2037,13 +2007,10 @@ var
   Info: TStringInfo;
 begin
   FillChar(Info, SizeOf(Info), 0);
-  Result := FromUTF32(Info, Source, Count, SourceOptions, Dest, DestOptions
-    {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF});
-{  if (Info.InvalidChar <> 0) and not (coForceInvalid in DestOptions) then
-    if Info.InvalidChar and InvalidUTF8Mask <> 0 then
-      raise EUTF.Create(Info.InvalidUTF)
-    else
-      raise EConvert.Create(Info.InvalidChar, csUTF32, Self);}
+  Result := FromUTF32(Info, Source, Count, SourceOptions, Dest,
+    DestOptions {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF});
+  if Result.InvalidChar.Value <> 0 then
+    raise EConvert.Create(Result.InvalidChar, csUTF32, Self);
 end;
 
 function TCodePage.ToUTF32(Source: PLegacyChar; Count: Integer; SourceOptions: TLegacySource;
@@ -2052,13 +2019,10 @@ var
   Info: TStringInfo;
 begin
   FillChar(Info, SizeOf(Info), 0);
-  Result := ToUTF32(Info, Source, Count, SourceOptions, Dest, DestOptions
-    {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF});
-{  if (Info.InvalidChar <> 0) and not (coForceInvalid in DestOptions) then
-    if Info.InvalidChar and InvalidUTF8Mask <> 0 then
-      raise EUTF.Create(Info.InvalidUTF)
-    else
-      raise EConvert.Create(Info.InvalidChar, Self, csUTF32);}
+  Result := ToUTF32(Info, Source, Count, SourceOptions, Dest,
+    DestOptions {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF});
+  if Result.InvalidChar.Value <> 0 then
+    raise EConvert.Create(Result.InvalidChar, Self, csUTF32);
 end;
 {$ENDIF}
 
@@ -2241,8 +2205,8 @@ begin
   {$ELSE}
     Info.CodePage := nil;
   {$ENDIF}
-    Result := Insert(Info, Source, Count, CodePage, SourceOptions, DestIndex, DestOptions
-      {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF});
+    Result := Insert(Info, Source, Count, CodePage, SourceOptions, DestIndex,
+      DestOptions {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF});
     if Result.InvalidChar.Value <> 0 then
       if CodePage <> nil then
         if Info.CodePage <> nil then
@@ -2279,8 +2243,8 @@ begin
   {$ELSE}
     Info.CodePage := nil;
   {$ENDIF}
-    Result := Insert(Info, Source, Count, SourceOptions, DestIndex, DestOptions
-      {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF});
+    Result := Insert(Info, Source, Count, SourceOptions, DestIndex,
+      DestOptions {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF});
     if Result.InvalidChar.Value <> 0 then
       if Info.CodePage <> nil then
         raise EConvert.Create(Result.InvalidChar, csUTF16, Info.CodePage)
@@ -2312,8 +2276,8 @@ begin
   {$ELSE}
     Info.CodePage := nil;
   {$ENDIF}
-    Result := Insert(Info, Source, Count, SourceOptions, DestIndex, DestOptions
-      {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF});
+    Result := Insert(Info, Source, Count, SourceOptions, DestIndex,
+      DestOptions {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF});
     if Result.InvalidChar.Value <> 0 then
       if Info.CodePage <> nil then
         raise EConvert.Create(Result.InvalidChar, csUTF32, Info.CodePage)
@@ -3234,7 +3198,7 @@ begin
 end;
 
 function TSingleByteCodePage.ToLegacy(var Info: TStringInfo; Source: PLegacyChar; Count: Integer;
-  SourceOptions: TLegacySource; Dest: PLegacyChar; DestOptions: TEncodeLegacy): TNextLegacyChar;
+  SourceOptions: TLegacySource; Dest: PLegacyChar; CodePage: TCodePage; DestOptions: TEncodeLegacy): TNextLegacyChar;
 begin
   FillChar(Result, SizeOf(Result), 0); // TODO
 end;
@@ -3535,7 +3499,7 @@ begin
 end;
 
 function TDoubleByteCodePage.ToLegacy(var Info: TStringInfo; Source: PLegacyChar; Count: Integer;
-  SourceOptions: TLegacySource; Dest: PLegacyChar; DestOptions: TEncodeLegacy): TNextLegacyChar;
+  SourceOptions: TLegacySource; Dest: PLegacyChar; CodePage: TCodePage; DestOptions: TEncodeLegacy): TNextLegacyChar;
 begin
   FillChar(Result, SizeOf(Result), 0); // TODO
 end;
