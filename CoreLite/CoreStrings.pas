@@ -726,14 +726,14 @@ function FindCharBlock(Source: QuadChar; PrevBlock: TCharBlock = cbNonUnicode): 
 function TranslateCodePage(Source: Word): Word;
 function PlatformCodePage(CodePage: Word = CP_ACP): TPlatformCodePage;
 
-function FromLatin(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; Latin1: Boolean;
+function FromLatin1(var Info: TStringInfo; Source: PLegacyChar; Count: Integer;
   Dest: PWideChar; DestOptions: TEncodeUTF16 = []): TNextLegacyChar; overload;
-function FromLatin(Source: PLegacyChar; Count: Integer; Latin1: Boolean;
-  Dest: PWideChar; DestOptions: TEncodeUTF16 = []): Integer; overload;
-function FromLatin(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; Latin1: Boolean;
+function FromLatin1(Source: PLegacyChar; Count: Integer; Dest: PWideChar;
+  DestOptions: TEncodeUTF16 = []): Integer; overload;
+function FromLatin1(var Info: TStringInfo; Source: PLegacyChar; Count: Integer;
   Dest: PQuadChar; DestOptions: TEncodeUTF32 = []): TNextLegacyChar; overload;
-function FromLatin(Source: PLegacyChar; Count: Integer; Latin1: Boolean;
-  Dest: PQuadChar; DestOptions: TEncodeUTF32 = []): Integer; overload;
+function FromLatin1(Source: PLegacyChar; Count: Integer; Dest: PQuadChar;
+  DestOptions: TEncodeUTF32 = []): Integer; overload;
 
 function FromUTF8(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; Dest: PWideChar;
   DestOptions: TEncodeUTF16 = []; ThresholdBytes: Integer = MaxInt): TNextLegacyChar; overload;
@@ -942,8 +942,8 @@ begin
     raise ECodePage.Create(Info);
 end;
 
-function FromLatin(var Info: TStringInfo; Source: PLegacyChar; Count: Integer;
-  Latin1: Boolean; Dest: PWideChar; DestOptions: TEncodeUTF16): TNextLegacyChar;
+function FromLatin1(var Info: TStringInfo; Source: PLegacyChar; Count: Integer;
+  Dest: PWideChar; DestOptions: TEncodeUTF16): TNextLegacyChar;
 var
   C: LegacyChar;
 begin
@@ -954,7 +954,7 @@ begin
     C := Source[Result.SourceCount];
     Inc(Result.SourceCount);
 
-    if (C in [#$00..#$7F]) or (Latin1 and (C in [#$A0..#$FF])) then
+    if C in [#$00..#$7F, #$A0..#$FF] then
     begin
       PWord(Dest + Result.DestCount)^ := Byte(C) shl (Byte(coBigEndian in DestOptions) * 8);
 
@@ -998,13 +998,13 @@ begin
   end;
 end;
 
-function FromLatin(Source: PLegacyChar; Count: Integer; Latin1: Boolean;
-  Dest: PWideChar; DestOptions: TEncodeUTF16): Integer;
+function FromLatin1(Source: PLegacyChar; Count: Integer; Dest: PWideChar;
+  DestOptions: TEncodeUTF16): Integer;
 var
   Info: TStringInfo;
 begin
   FillChar(Info, SizeOf(Info), 0);
-  with FromLatin(Info, Source, Count, Latin1, Dest, DestOptions
+  with FromLatin1(Info, Source, Count, Dest, DestOptions
     {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF}) do
   begin
     if InvalidChar.Value <> 0 then
@@ -1013,19 +1013,19 @@ begin
   end;
 end;
 
-function FromLatin(var Info: TStringInfo; Source: PLegacyChar; Count: Integer;
-  Latin1: Boolean; Dest: PQuadChar; DestOptions: TEncodeUTF32): TNextLegacyChar;
+function FromLatin1(var Info: TStringInfo; Source: PLegacyChar; Count: Integer;
+  Dest: PQuadChar; DestOptions: TEncodeUTF32): TNextLegacyChar;
 begin
   FillChar(Result, SizeOf(Result), 0); // TODO
 end;
 
-function FromLatin(Source: PLegacyChar; Count: Integer; Latin1: Boolean;
-  Dest: PQuadChar; DestOptions: TEncodeUTF32): Integer;
+function FromLatin1(Source: PLegacyChar; Count: Integer; Dest: PQuadChar;
+  DestOptions: TEncodeUTF32): Integer;
 var
   Info: TStringInfo;
 begin
   FillChar(Info, SizeOf(Info), 0);
-  with FromLatin(Info, Source, Count, Latin1, Dest, DestOptions
+  with FromLatin1(Info, Source, Count, Dest, DestOptions
     {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF}) do
   begin
     if InvalidChar.Value <> 0 then
