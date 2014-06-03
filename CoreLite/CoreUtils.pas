@@ -147,6 +147,7 @@ procedure FreeAndNil(var Obj);
 procedure Exchange(var P1, P2: Pointer); overload;
 procedure Exchange(var P1, P2: Int64); overload;
 
+function CompareMem(P1, P2: Pointer; Count: Integer): Boolean;
 function SwapBytes(Source: LongWord): LongWord;
 function MulDiv(Multiplicand, Multiplier, Divisor: LongWord): LongWord;
 
@@ -194,13 +195,18 @@ function WideStrNew(Str: PWideChar; Length: Integer): PWideChar; overload;
 function QuadStrNew(Str: PQuadChar): PQuadChar; overload;
 function QuadStrNew(Str: PQuadChar; Length: Integer): PQuadChar; overload;
 
-function StrScan(Where: PLegacyChar; What: LegacyChar; Count: Integer): PLegacyChar;
-function WideStrScan(Where: PWideChar; What: WideChar; Count: Integer): PWideChar;
-function QuadStrScan(Where: PQuadChar; What: QuadChar; Count: Integer): PQuadChar;
+function StrScan(Where: PLegacyChar; Count: Integer; What: LegacyChar): PLegacyChar;
+function WideStrScan(Where: PWideChar; Count: Integer; What: WideChar): PWideChar;
+function QuadStrScan(Where: PQuadChar; Count: Integer; What: QuadChar): PQuadChar;
 
-function StrRScan(Where: PLegacyChar; What: LegacyChar; Count: Integer): PLegacyChar;
-function WideStrRScan(Where: PWideChar; What: WideChar; Count: Integer): PWideChar;
-function QuadStrRScan(Where: PQuadChar; What: QuadChar; Count: Integer): PQuadChar;
+function StrRScan(Where: PLegacyChar; Count: Integer; What: LegacyChar): PLegacyChar;
+function WideStrRScan(Where: PWideChar; Count: Integer; What: WideChar): PWideChar;
+function QuadStrRScan(Where: PQuadChar; Count: Integer; What: QuadChar): PQuadChar;
+
+{function StrPos(Where: PLegacyChar; WhereCount: Integer; What: PLegacyChar;
+  WhatCount: Integer): PLegacyChar;
+function StrRPos(Where: PLegacyChar; WhereCount: Integer; What: PLegacyChar;
+  WhatCount: Integer): PLegacyChar;}
 
 procedure SwapQuadCharBytes(Source: PQuadChar; Count: Integer; Dest: PQuadChar);
 procedure SwapWideCharBytes(Source: PWideChar; Count: Integer; Dest: PWideChar);
@@ -296,6 +302,13 @@ asm
         MOV EAX, [EAX]
    LOCK CMPXCHG8B [ECX]
 end;
+
+function CompareMem(P1, P2: Pointer; Count: Integer): Boolean;
+{$IFDEF CTRL_SHIFT_UP_CTRL_SHIFT_DOWN}
+asm
+end;
+{$ENDIF}
+{$I FastCode\CompareMem.inc}
 
 function SwapBytes(Source: LongWord): LongWord;
 asm
@@ -481,7 +494,7 @@ end;
 
 procedure StrCopy(Dest, Source: PLegacyChar);
 {$IFDEF CTRL_SHIFT_UP_CTRL_SHIFT_DOWN}
-begin
+asm
 end;
 {$ENDIF}
 {$I FastCode\StrCopy.inc}
@@ -516,7 +529,7 @@ end;
 
 function StrLen(Str: PLegacyChar): Integer;
 {$IFDEF CTRL_SHIFT_UP_CTRL_SHIFT_DOWN}
-begin
+asm
 end;
 {$ENDIF}
 {$I FastCode\StrLen.inc}
@@ -694,10 +707,11 @@ begin
     Result := nil;
 end;
 
-function StrScan(Where: PLegacyChar; What: LegacyChar; Count: Integer): PLegacyChar;
+function StrScan(Where: PLegacyChar; Count: Integer; What: LegacyChar): PLegacyChar;
 asm
-        TEST ECX, ECX
+        TEST EDX, EDX
         JZ @@null
+        XCHG ECX, EDX
         XCHG EAX, EDX
         XCHG EDI, EDX
         REPNE SCASB
@@ -712,10 +726,11 @@ asm
         XOR EAX, EAX
 end;
 
-function WideStrScan(Where: PWideChar; What: WideChar; Count: Integer): PWideChar;
+function WideStrScan(Where: PWideChar; Count: Integer; What: WideChar): PWideChar;
 asm
-        TEST ECX, ECX
+        TEST EDX, EDX
         JZ @@null
+        XCHG ECX, EDX
         XCHG EAX, EDX
         XCHG EDI, EDX
         REPNE SCASW
@@ -731,10 +746,11 @@ asm
         XOR EAX, EAX
 end;
 
-function QuadStrScan(Where: PQuadChar; What: QuadChar; Count: Integer): PQuadChar;
+function QuadStrScan(Where: PQuadChar; Count: Integer; What: QuadChar): PQuadChar;
 asm
-        TEST ECX, ECX
+        TEST EDX, EDX
         JZ @@null
+        XCHG ECX, EDX
         XCHG EAX, EDX
         XCHG EDI, EDX
         REPNE SCASD
@@ -749,11 +765,12 @@ asm
         XOR EAX, EAX
 end;
 
-function StrRScan(Where: PLegacyChar; What: LegacyChar; Count: Integer): PLegacyChar;
+function StrRScan(Where: PLegacyChar; Count: Integer; What: LegacyChar): PLegacyChar;
 asm
-        TEST ECX, ECX
+        TEST EDX, EDX
         JZ @@null
-        ADD EAX, ECX
+        XCHG ECX, EDX
+        ADD EAX, EDX
 
         XCHG EAX, EDX
         XCHG EDI, EDX
@@ -771,14 +788,14 @@ asm
         XOR EAX, EAX
 end;
 
-function WideStrRScan(Where: PWideChar; What: WideChar; Count: Integer): PWideChar;
+function WideStrRScan(Where: PWideChar; Count: Integer; What: WideChar): PWideChar;
 asm
-        TEST ECX, ECX
+        TEST EDX, EDX
         JZ @@null
-        PUSH ECX
+        XCHG ECX, EDX
         SHL ECX, 1
         ADD EAX, ECX
-        POP ECX
+        SHR ECX, 1
 
         XCHG EAX, EDX
         XCHG EDI, EDX
@@ -797,14 +814,14 @@ asm
         XOR EAX, EAX
 end;
 
-function QuadStrRScan(Where: PQuadChar; What: QuadChar; Count: Integer): PQuadChar;
+function QuadStrRScan(Where: PQuadChar; Count: Integer; What: QuadChar): PQuadChar;
 asm
-        TEST ECX, ECX
+        TEST EDX, EDX
         JZ @@null
-        PUSH ECX
+        XCHG ECX, EDX
         SHL ECX, 2
         ADD EAX, ECX
-        POP ECX
+        SHR ECX, 2
 
         XCHG EAX, EDX
         XCHG EDI, EDX
@@ -821,6 +838,148 @@ asm
 @@null:
         XOR EAX, EAX
 end;
+
+{function StrPos(Where: PLegacyChar; WhereCount: Integer; What: PLegacyChar;
+  WhatCount: Integer): PLegacyChar;
+asm
+        TEST EDX, EDX
+        JZ @@nowhere
+
+        PUSH EDI
+        MOV EDI, EAX
+
+        MOV EAX, WhatCount
+        TEST EAX, EAX
+        JZ @@nowhat
+
+        ADD EDI, EDX
+        PUSH ESI
+        MOV ESI, ECX
+
+        SHR EAX, 2
+        JZ @@tail
+
+        MOV ECX, EDX
+        SHR ECX, 2
+        JZ @@tail
+
+@@next:
+        MOV EAX, [ESI]
+        STD
+        REPNE SCASD
+        CLD
+        JNE @@notfound
+
+        ADD EDI, SizeOf(LongWord)
+        MOV EDX, EDI
+
+        MOV ECX, WhatCount
+        SHR ECX, 2
+        MOV EAX, ESI
+        REPE CMPSD
+        MOV ESI, EAX
+        JNE @@notfound
+
+        MOVZX ECX, byte ptr WhatCount
+        AND CL, $03
+        REPE CMPSB
+        JE @@found
+
+        MOV EDI, EDX
+        JMP @@next
+
+@@found:
+        MOV EAX, EDX
+        JMP @@final
+
+@@tail:
+        STD
+        REPNE SCASB
+        CLD
+        JE @@found
+
+@@notfound:
+        XOR EAX, EAX
+@@final:
+        POP ESI
+@@nowhat:
+        POP EDI
+        JMP @@end
+@@nowhere:
+        XOR EAX, EAX
+@@end:
+end;
+
+function StrRPos(Where: PLegacyChar; WhereCount: Integer; What: PLegacyChar;
+  WhatCount: Integer): PLegacyChar;
+asm
+        TEST EDX, EDX
+        JZ @@nowhere
+
+        PUSH EDI
+        MOV EDI, EAX
+
+        MOV EAX, WhatCount
+        TEST EAX, EAX
+        JZ @@nowhat
+
+        ADD EDI, EDX
+        PUSH ESI
+        MOV ESI, ECX
+
+        SHR EAX, 2
+        JZ @@tail
+
+        MOV ECX, EDX
+        SHR ECX, 2
+        JZ @@tail
+
+@@next:
+        MOV EAX, [ESI]
+        STD
+        REPNE SCASD
+        CLD
+        JNE @@notfound
+
+        ADD EDI, SizeOf(LongWord)
+        MOV EDX, EDI
+
+        MOV ECX, WhatCount
+        SHR ECX, 2
+        MOV EAX, ESI
+        REPE CMPSD
+        MOV ESI, EAX
+        JNE @@notfound
+
+        MOVZX ECX, byte ptr WhatCount
+        AND CL, $03
+        REPE CMPSB
+        JE @@found
+
+        MOV EDI, EDX
+        JMP @@next
+
+@@found:
+        MOV EAX, EDX
+        JMP @@final
+
+@@tail:
+        STD
+        REPNE SCASB
+        CLD
+        JE @@found
+
+@@notfound:
+        XOR EAX, EAX
+@@final:
+        POP ESI
+@@nowhat:
+        POP EDI
+        JMP @@end
+@@nowhere:
+        XOR EAX, EAX
+@@end:
+end;}
 
 procedure SwapQuadCharBytes(Source: PQuadChar; Count: Integer; Dest: PQuadChar);
 asm
@@ -901,7 +1060,7 @@ begin
     begin
       Inc(CommandLine);
       L := StrLen(CommandLine);
-      P := StrScan(CommandLine, '"', L); // TODO: MBCS
+      P := StrScan(CommandLine, L, '"'); // TODO: MBCS
       if P <> nil then
         L := P - CommandLine;
       Result.Quoted := True;
@@ -940,7 +1099,7 @@ begin
     begin
       Inc(CommandLine);
       L := WideStrLen(CommandLine);
-      P := WideStrScan(CommandLine, CoreChar('"'), L);
+      P := WideStrScan(CommandLine, L, CoreChar('"'));
       if P <> nil then
         L := P - CommandLine;
       Result.Quoted := True;

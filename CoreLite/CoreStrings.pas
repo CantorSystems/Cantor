@@ -1791,7 +1791,7 @@ begin
           DestEvent(Source, P - Source, DestOptions);
           Inc(Result.Count);
 
-          P := StrScan(Next, LineBreakChars[B], Limit - Next);
+          P := StrScan(Next, Limit - Next, LineBreakChars[B]);
           if P = nil then
           begin
             DestEvent(Next, Limit - Next, DestOptions);
