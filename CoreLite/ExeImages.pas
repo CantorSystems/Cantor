@@ -62,7 +62,7 @@ type
     procedure Load(Source: TReadableStream);
     procedure Save(Dest: TWritableStream);
     function Size: LongWord;
-    procedure Strip;
+    procedure Strip(StripPadding: Boolean = True);
 
     property Data: Pointer read FData;
     property Handler: TExeSectionHandler read FHandler write SetHandler;
@@ -70,7 +70,7 @@ type
   end;
 
   TStripOptions = set of (soStub, soDataDirectory, soRelocations, soCleanVersionInfo,
-    soSectionData, soEmptySections, soOrphanedSections);
+    soSectionData, soPadding, soEmptySections, soOrphanedSections);
 
   PExeSectionArray = ^TExeSectionArray;
   TExeSectionArray = array[0..MaxInt div SizeOf(TExeSection) - 1] of TExeSection;
@@ -411,11 +411,11 @@ begin
         begin
           Limit := PLegacyChar(FData) + L;
           P := PLegacyChar(FData) + FHeader.HeaderParagraphs * LegacyParagraphBytes - SizeOf(FHeader);
-          P := StrScan(P, #$4C, Limit - P);               // MOV AX, 4C01h
+          P := StrScan(P, Limit - P, #$4C);               // MOV AX, 4C01h
           if (P <> nil) and (PWord(P + 1)^ = $21CD) then  // INT 21h
           begin
             Inc(P, 3);
-            P := StrScan(P, '$', Limit - P);
+            P := StrScan(P, Limit - P, '$');
             if P <> nil then
               NewSize := P - PLegacyChar(FData) + 1;
           end;
@@ -511,12 +511,62 @@ begin
     Result := FHeader.RawDataSize;
 end;
 
-procedure TExeSection.Strip;
+procedure TExeSection.Strip(StripPadding: Boolean);
+type
+  PPadding = ^TPadding;
+  TPadding = array[0..3] of LongWord; // 'PADDINGXXPADDING'
+const
+  PADDINGXXPADDING: array[$0..$F] of LegacyChar = 'PADDINGXXPADDING';
+var
+  Padding: PPadding;
+  P, Limit: PLegacyChar;
 begin
   if (FHandler = nil) and (FData <> nil) then
-    with FHeader do
-      while (RawDataSize <> 0) and (PLegacyChar(FData)[RawDataSize - 1] = #0) do
-        Dec(RawDataSize);
+  begin
+    while (FHeader.RawDataSize <> 0) and (PLegacyChar(FData)[FHeader.RawDataSize - 1] = #0) do
+      Dec(FHeader.RawDataSize);
+
+    if StripPadding then
+    begin
+      P := PLegacyChar(FData) + FHeader.RawDataSize;
+      Limit := P - SizeOf(PADDINGXXPADDING);
+      Padding := Pointer(Limit);
+      while (P > PLegacyChar(FData)) and (P > Limit) do
+      begin
+        Dec(P);
+        if CompareMem(P, @PADDINGXXPADDING, Limit + SizeOf(PADDINGXXPADDING) - P) then
+          Padding := Pointer(P - SizeOf(PADDINGXXPADDING));
+      end;
+
+      P := nil;
+
+      while PLegacyChar(Padding) > PLegacyChar(FData) do
+        if (Padding[0] = $44444150) and (Padding[1] = $58474E49) and // 'PADDINGXXPADDING'
+          (Padding[2] = $44415058) and (Padding[3] = $474E4944) then
+        begin
+          Dec(Padding);
+          P := PLegacyChar(Padding);
+        end
+        else
+        begin
+          if P <> nil then
+          begin
+            Limit := P;
+            Inc(P, SizeOf(PADDINGXXPADDING));
+            Padding := nil;
+            while (P > PLegacyChar(FData)) and (P > Limit) do
+            begin
+              Dec(P);
+              if CompareMem(P, @PADDINGXXPADDING, Limit + SizeOf(PADDINGXXPADDING) - P) then
+                Padding := Pointer(P);
+            end;
+            if Padding <> nil then
+              FHeader.RawDataSize := PLegacyChar(Padding) - PLegacyChar(FData);
+          end;
+          Break;
+        end;
+    end;
+  end;
 end;
 
 { TExeImage }
@@ -797,7 +847,7 @@ begin
       with Sections[I] do
       begin
         if soSectionData in Options then
-          Strip;
+          Strip(soPadding in Options);
         if ((soEmptySections in Options) and (Header.RawDataSize = 0)) or
           ((soOrphanedSections in Options) and IsOrphaned(FHeaders.OptionalHeader))
         then

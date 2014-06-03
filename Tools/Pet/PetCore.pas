@@ -133,13 +133,13 @@ begin
 
   with WideParamStr(CommandLine) do
   begin
-    FAppName := WideStrRScan(Param, PathDelimiter, Length);
+    FAppName := WideStrRScan(Param, Length, PathDelimiter);
     if FAppName <> nil then
       Inc(FAppName)
     else
       FAppName := Param;
 
-    Dot := WideStrScan(FAppName, '.', Length - (PLegacyChar(FAppName) - PLegacyChar(Param)) div SizeOf(CoreChar));
+    Dot := WideStrScan(FAppName, Length - (PLegacyChar(FAppName) - PLegacyChar(Param)) div SizeOf(CoreChar), '.');
     if Dot <> nil then
       Dot^ := CoreChar(0) // unsafe
     else
@@ -228,7 +228,7 @@ begin
             P.Param := nil;
           end
           else
-            raise ECommandLine.Create(sMissingParam, [sOSVersion]);
+            raise ECommandLine.Create(sMissingParam, [PLegacyChar(sOSVersion)]);
         end
         else if SameKey(sDropSect) then
         begin
@@ -250,7 +250,7 @@ begin
             FDropSections.Append(EncodeLegacy(Head, Current - Head, CP_ACP));
           end;
           if FDropSections = nil then
-            raise ECommandLine.Create(sMissingParam, [sSectionNames]);
+            raise ECommandLine.Create(sMissingParam, [PLegacyChar(sSectionNames)]);
           P.Param := nil;
         end
         else if SameKey(sDropRes) then
@@ -273,7 +273,7 @@ begin
             FDropResources.Append(Head, Current - Head);
           end;
           if FDropResources = nil then
-            raise ECommandLine.Create(sMissingParam, [sResourceNames]);
+            raise ECommandLine.Create(sMissingParam, [PLegacyChar(sResourceNames)]);
           P.Param := nil;
         end
         else if SameKey(sLocale) then
@@ -314,7 +314,7 @@ begin
               end;
             end;
             if FLocaleMap = nil then
-              raise ECommandLine.Create(sMissingParam, [sLocaleMap]);
+              raise ECommandLine.Create(sMissingParam, [PLegacyChar(sLocaleMap)]);
             P.Param := nil;
           end;
         {end
@@ -342,7 +342,7 @@ begin
             P.Param := nil;
           end
           else
-            raise ECommandLine.Create(sMissingParam, [sImageBase]);
+            raise ECommandLine.Create(sMissingParam, [PLegacyChar(sImageBase)]);
         end
         else if SameKey(sMenuet) then
         begin
