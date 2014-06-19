@@ -2068,6 +2068,7 @@ var
   Info: TStringInfo;
 begin
   FillChar(Info, SizeOf(Info), 0);
+  Info.CodePage := Self;
   Result := ToLegacy(Info, Source, Count, CodePage, SourceOptions, Dest,
     DestOptions {$IFDEF UTF32} - [coRangeBlocks] {$ENDIF});
   if Result.InvalidChar.Value <> 0 then
@@ -3148,17 +3149,15 @@ var
   Block: TCharBlock;
 {$ENDIF}
 begin
-{  if Info.CodePage <> nil then
+  if Info.CodePage <> nil then
   begin
     if Info.CodePage.Number <> FNumber then
     begin
-      Result := Info.CodePage.FromLegacy(Info, Source, Count, CodePage, SourceOptions,
+      Result := Info.CodePage.ToLegacy(Info, Source, Count, CodePage, SourceOptions,
         Dest, DestOptions);
       Exit;
     end;
-  end
-  else
-    Info.CodePage := Self;}
+  end;
 
   if soDetectCharSet in SourceOptions then
   begin

@@ -1,7 +1,7 @@
 (*
     Lite Core Library (CoreLite)
 
-    Unicode 6.3 code blocks
+    Unicode 7.0 character blocks
 
     Copyright (c) 2009-2014 Vladislav Javadov (aka Freeman)
 
@@ -124,6 +124,7 @@ type
     cbKhmerSymbols,
     cbBuginese,
     cbTaiTham,
+    cbCombiDiacriticalMarksExt,
     cbBalinese,
     cbSundanese,
     cbBatak,
@@ -202,11 +203,13 @@ type
     cbRejang,
     cbHangulJamoExtA,
     cbJavanese,
+    cbMyanmarExtB,
     cbCham,
     cbMyanmarExtA,
     cbTaiViet,
     cbMeeteiMayekExt,
     cbEthiopicExtA,
+    cbLatinExtE,
     cbMeeteiMayek,
     cbHangulSyllables,
     cbHangulJamoExtB,
@@ -227,50 +230,76 @@ type
     cbSpecials,
     cbLinearBSyllabary,
     cbLinearBIdeograms,
-    cbAegeanNums,
-    cbAncientGreekNums,
+    cbAegeanNumbers,
+    cbAncientGreekNumbers,
     cbAncientSymbols,
     cbPhaistosDisc,
     cbLycian,
     cbCarian,
+    cbCopticEpactNumbers,
     cbOldItalic,
     cbGothic,
+    cbOldPermic,
     cbUgaritic,
     cbOldPersian,
     cbDeseret,
     cbShavian,
     cbOsmanya,
+    cbElbasan,
+    cbCaucasianAlbanian,
+    cbLinearA,
     cbCypriotSyllabary,
     cbImperialAramaic,
+    cbPalmyrene,
+    cbNabataean,
     cbPhoenician,
     cbLydian,
     cbMeroiticHieroglyphs,
     cbMeroiticCursive,
     cbKharoshthi,
     cbOldSouthArabian,
+    cbOldNorthArabian,
+    cbManichaean,
     cbAvestan,
     cbInscriptionalParthian,
     cbInscriptionalPahlavi,
+    cbPsalterPahlavi,
     cbOldTurkic,
     cbRumiNumeralSymbols,
     cbBrahmi,
     cbKaithi,
     cbSoraSompeng,
     cbChakma,
+    cbMahajani,
     cbSharada,
+    cbSinhalaArchaicNumbers,
+    cbKhojki,
+    cbKhudawadi,
+    cbGrantha,
+    cbTirhuta,
+    cbSiddham,
+    cbModi,
     cbTakri,
+    cbWarangCiti,
+    cbPauCinHau,
     cbCuneiform,
-    cbCuneiformNumsAndPunctuation,
+    cbCuneiformNumbersAndPunctuation,
     cbEgyptianHieroglyphs,
     cbBamumSupplement,
+    cbMro,
+    cbBassaVah,
+    cbPahawhHmong,
     cbMiao,
     cbKanaSupplement,
+    cbDuployan,
+    cbShorthandFormatControls,
     cbByzantineMusicalSymbols,
     cbMusicalSymbols,
     cbAncientGreekMusicalNotation,
     cbTaiXuanJingSymbols,
     cbCountingRodNumerals,
     cbMathAlphanumSymbols,
+    cbMendeKikakui,
     cbArabicMathAlphabeticSymbols,
     cbMahjongTiles,
     cbDominoTiles,
@@ -279,8 +308,11 @@ type
     cbEnclosedIdeographicSupplement,
     cbMiscSymbolsAndPictographs,
     cbEmoticons,
+    cbOrnamentalDingbats,
     cbTransportAndMapSymbols,
     cbAlchemicalSymbols,
+    cbGeometricShapesExt,
+    cbSupplementalArrowsC,
     cbCJKUniIdeographsExtB,
     cbCJKUniIdeographsExtC,
     cbCJKUniIdeographsExtD,
@@ -385,6 +417,7 @@ const
     (Lo: $19E0; Hi: $19FF), // Khmer Symbols
     (Lo: $1A00; Hi: $1A1F), // Buginese
     (Lo: $1A20; Hi: $1AAF), // Tai Tham
+    (Lo: $1AB0; Hi: $1AFF), // Combining Diacritical Marks Extended
     (Lo: $1B00; Hi: $1B7F), // Balinese
     (Lo: $1B80; Hi: $1BBF), // Sundanese
     (Lo: $1BC0; Hi: $1BFF), // Batak
@@ -463,11 +496,13 @@ const
     (Lo: $A930; Hi: $A95F), // Rejang
     (Lo: $A960; Hi: $A97F), // Hangul Jamo Extended-A
     (Lo: $A980; Hi: $A9DF), // Javanese
+    (Lo: $A9E0; Hi: $A9FF), // Myanmar Extended-B 
     (Lo: $AA00; Hi: $AA5F), // Cham
     (Lo: $AA60; Hi: $AA7F), // Myanmar Extended-A
     (Lo: $AA80; Hi: $AADF), // Tai Viet
     (Lo: $AAE0; Hi: $AAFF), // Meetei Mayek Extensions
     (Lo: $AB00; Hi: $AB2F), // Ethiopic Extended-A
+    (Lo: $AB30; Hi: $AB6F), // Latin Extended-E
     (Lo: $ABC0; Hi: $ABFF), // Meetei Mayek
     (Lo: $AC00; Hi: $D7AF), // Hangul Syllables
     (Lo: $D7B0; Hi: $D7FF), // Hangul Jamo Extended-B
@@ -494,54 +529,83 @@ const
     (Lo: $101D0; Hi: $101FF), // Phaistos Disc
     (Lo: $10280; Hi: $1029F), // Lycian
     (Lo: $102A0; Hi: $102DF), // Carian
+    (Lo: $102E0; Hi: $102FF), // Coptic Epact Numbers
     (Lo: $10300; Hi: $1032F), // Old Italic
     (Lo: $10330; Hi: $1034F), // Gothic
+    (Lo: $10350; Hi: $1037F), // Old Permic
     (Lo: $10380; Hi: $1039F), // Ugaritic
     (Lo: $103A0; Hi: $103DF), // Old Persian
     (Lo: $10400; Hi: $1044F), // Deseret
     (Lo: $10450; Hi: $1047F), // Shavian
     (Lo: $10480; Hi: $104AF), // Osmanya
+    (Lo: $10500; Hi: $1052F), // Elbasan
+    (Lo: $10530; Hi: $1056F), // Caucasian Albanian
+    (Lo: $10600; Hi: $1077F), // Linear A
     (Lo: $10800; Hi: $1083F), // Cypriot Syllabary
     (Lo: $10840; Hi: $1085F), // Imperial Aramaic
+    (Lo: $10860; Hi: $1087F), // Palmyrene
+    (Lo: $10880; Hi: $108AF), // Nabataean
     (Lo: $10900; Hi: $1091F), // Phoenician
     (Lo: $10920; Hi: $1093F), // Lydian
     (Lo: $10980; Hi: $1099F), // Meroitic Hieroglyphs
     (Lo: $109A0; Hi: $109FF), // Meroitic Cursive
     (Lo: $10A00; Hi: $10A5F), // Kharoshthi
     (Lo: $10A60; Hi: $10A7F), // Old South Arabian
+    (Lo: $10A80; Hi: $10A9F), // Old North Arabian
+    (Lo: $10AC0; Hi: $10AFF), // Manichaean
     (Lo: $10B00; Hi: $10B3F), // Avestan
     (Lo: $10B40; Hi: $10B5F), // Inscriptional Parthian
     (Lo: $10B60; Hi: $10B7F), // Inscriptional Pahlavi
+    (Lo: $10B80; Hi: $10BAF), // Psalter Pahlavi
     (Lo: $10C00; Hi: $10C4F), // Old Turkic
     (Lo: $10E60; Hi: $10E7F), // Rumi Numeral Symbols
     (Lo: $11000; Hi: $1107F), // Brahmi
     (Lo: $11080; Hi: $110CF), // Kaithi
     (Lo: $110D0; Hi: $110FF), // Sora Sompeng
     (Lo: $11100; Hi: $1114F), // Chakma
+    (Lo: $11150; Hi: $1117F), // Mahajani
     (Lo: $11180; Hi: $111DF), // Sharada
+    (Lo: $111E0; Hi: $111FF), // Sinhala Archaic Numbers
+    (Lo: $11200; Hi: $1124F), // Khojki
+    (Lo: $112B0; Hi: $112FF), // Khudawadi
+    (Lo: $11300; Hi: $1137F), // Grantha
+    (Lo: $11480; Hi: $114DF), // Tirhuta
+    (Lo: $11580; Hi: $115FF), // Siddham
+    (Lo: $11600; Hi: $1165F), // Modi
     (Lo: $11680; Hi: $116CF), // Takri
+    (Lo: $118A0; Hi: $118FF), // Warang Citi
+    (Lo: $11AC0; Hi: $11AFF), // Pau Cin Hau
     (Lo: $12000; Hi: $123FF), // Cuneiform
     (Lo: $12400; Hi: $1247F), // Cuneiform Numbers and Punctuation
     (Lo: $13000; Hi: $1342F), // Egyptian Hieroglyphs
     (Lo: $16800; Hi: $16A3F), // Bamum Supplement
+    (Lo: $16A40; Hi: $16A6F), // Mro
+    (Lo: $16AD0; Hi: $16AFF), // Bassa Vah
+    (Lo: $16B00; Hi: $16B8F), // Pahawh Hmong
     (Lo: $16F00; Hi: $16F9F), // Miao
     (Lo: $1B000; Hi: $1B0FF), // Kana Supplement
+    (Lo: $1BC00; Hi: $1BC9F), // Duployan
+    (Lo: $1BCA0; Hi: $1BCAF), // Shorthand Format Controls
     (Lo: $1D000; Hi: $1D0FF), // Byzantine Musical Symbols
     (Lo: $1D100; Hi: $1D1FF), // Musical Symbols
     (Lo: $1D200; Hi: $1D24F), // Ancient Greek Musical Notation
     (Lo: $1D300; Hi: $1D35F), // Tai Xuan Jing Symbols
     (Lo: $1D360; Hi: $1D37F), // Counting Rod Numerals
     (Lo: $1D400; Hi: $1D7FF), // Mathematical Alphanumeric Symbols
+    (Lo: $1E800; Hi: $1E8DF), // Mende Kikakui
     (Lo: $1EE00; Hi: $1EEFF), // Arabic Mathematical Alphabetic Symbols
     (Lo: $1F000; Hi: $1F02F), // Mahjong Tiles
     (Lo: $1F030; Hi: $1F09F), // Domino Tiles
     (Lo: $1F0A0; Hi: $1F0FF), // Playing Cards
     (Lo: $1F100; Hi: $1F1FF), // Enclosed Alphanumeric Supplement
     (Lo: $1F200; Hi: $1F2FF), // Enclosed Ideographic Supplement
-    (Lo: $1F300; Hi: $1F5FF), // Miscellaneous Symbols And Pictographs
+    (Lo: $1F300; Hi: $1F5FF), // Miscellaneous Symbols and Pictographs
     (Lo: $1F600; Hi: $1F64F), // Emoticons
+    (Lo: $1F650; Hi: $1F67F), // Ornamental Dingbats
     (Lo: $1F680; Hi: $1F6FF), // Transport And Map Symbols
     (Lo: $1F700; Hi: $1F77F), // Alchemical Symbols
+    (Lo: $1F780; Hi: $1F7FF), // Geometric Shapes Extended
+    (Lo: $1F800; Hi: $1F8FF), // Supplemental Arrows-C
     (Lo: $20000; Hi: $2A6DF), // CJK Unified Ideographs Extension B
     (Lo: $2A700; Hi: $2B73F), // CJK Unified Ideographs Extension C
     (Lo: $2B740; Hi: $2B81F), // CJK Unified Ideographs Extension D
@@ -608,6 +672,7 @@ const
     sKhmerSymbols,
     sBuginese,
     sTaiTham,
+    sCombiDiacriticalMarksExt,
     sBalinese,
     sSundanese,
     sBatak,
@@ -686,11 +751,13 @@ const
     sRejang,
     sHangulJamoExtA,
     sJavanese,
+    sMyanmarExtB,
     sCham,
     sMyanmarExtA,
     sTaiViet,
     sMeeteiMayekExt,
     sEthiopicExtA,
+    sLatinExtE,
     sMeeteiMayek,
     sHangulSyllables,
     sHangulJamoExtB,
@@ -711,50 +778,76 @@ const
     sSpecials,
     sLinearBSyllabary,
     sLinearBIdeograms,
-    sAegeanNums,
-    sAncientGreekNums,
+    sAegeanNumbers,
+    sAncientGreekNumbers,
     sAncientSymbols,
     sPhaistosDisc,
     sLycian,
     sCarian,
+    sCopticEpactNumbers,
     sOldItalic,
     sGothic,
+    sOldPermic,
     sUgaritic,
     sOldPersian,
     sDeseret,
     sShavian,
     sOsmanya,
+    sElbasan,
+    sCaucasianAlbanian,
+    sLinearA,
     sCypriotSyllabary,
     sImperialAramaic,
+    sPalmyrene,
+    sNabataean,
     sPhoenician,
     sLydian,
     sMeroiticHieroglyphs,
     sMeroiticCursive,
     sKharoshthi,
     sOldSouthArabian,
+    sOldNorthArabian,
+    sManichaean,
     sAvestan,
     sInscriptionalParthian,
     sInscriptionalPahlavi,
+    sPsalterPahlavi,
     sOldTurkic,
     sRumiNumeralSymbols,
     sBrahmi,
     sKaithi,
     sSoraSompeng,
     sChakma,
+    sMahajani,
     sSharada,
+    sSinhalaArchaicNumbers,
+    sKhojki,
+    sKhudawadi,
+    sGrantha,
+    sTirhuta,
+    sSiddham,
+    sModi,
     sTakri,
+    sWarangCiti,
+    sPauCinHau,
     sCuneiform,
-    sCuneiformNumsAndPunctuation,
+    sCuneiformNumbersAndPunctuation,
     sEgyptianHieroglyphs,
     sBamumSupplement,
+    sMro,
+    sBassaVah,
+    sPahawhHmong,
     sMiao,
     sKanaSupplement,
+    sDuployan,
+    sShorthandFormatControls,
     sByzantineMusicalSymbols,
     sMusicalSymbols,
     sAncientGreekMusicalNotation,
     sTaiXuanJingSymbols,
     sCountingRodNumerals,
     sMathAlphanumSymbols,
+    sMendeKikakui,
     sArabicMathAlphabeticSymbols,
     sMahjongTiles,
     sDominoTiles,
@@ -763,8 +856,11 @@ const
     sEnclosedIdeographicSupplement,
     sMiscSymbolsAndPictographs,
     sEmoticons,
+    sOrnamentalDingbats,
     sTransportAndMapSymbols,
     sAlchemicalSymbols,
+    sGeometricShapesExt,
+    sSupplementalArrowsC,
     sCJKUniIdeographsExtB,
     sCJKUniIdeographsExtC,
     sCJKUniIdeographsExtD,

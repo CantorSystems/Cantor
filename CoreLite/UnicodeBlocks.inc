@@ -1,7 +1,7 @@
 (*
     Lite Core Library (CoreLite)
 
-    Unicode 6.3 block name constants
+    Unicode 7.0 character block constants
 
     Copyright (c) 2014 Vladislav Javadov (aka Freeman)
 *)
@@ -62,6 +62,7 @@ const
   sKhmerSymbols                    = 'Khmer Symbols';
   sBuginese                        = 'Buginese';
   sTaiTham                         = 'Tai Tham';
+  sCombiDiacriticalMarksExt        = 'Combining Diacritical Marks Extended';
   sBalinese                        = 'Balinese';
   sSundanese                       = 'Sundanese';
   sBatak                           = 'Batak';
@@ -140,11 +141,13 @@ const
   sRejang                          = 'Rejang';
   sHangulJamoExtA                  = 'Hangul Jamo Extended-A';
   sJavanese                        = 'Javanese';
+  sMyanmarExtB                     = 'Myanmar Extended-B';
   sCham                            = 'Cham';
   sMyanmarExtA                     = 'Myanmar Extended-A';
   sTaiViet                         = 'Tai Viet';
   sMeeteiMayekExt                  = 'Meetei Mayek Extensions';
   sEthiopicExtA                    = 'Ethiopic Extended-A';
+  sLatinExtE                       = 'Latin Extended-E';
   sMeeteiMayek                     = 'Meetei Mayek';
   sHangulSyllables                 = 'Hangul Syllables';
   sHangulJamoExtB                  = 'Hangul Jamo Extended-B';
@@ -165,58 +168,87 @@ const
   sSpecials                        = 'Specials';
   sLinearBSyllabary                = 'Linear B Syllabary';
   sLinearBIdeograms                = 'Linear B Ideograms';
-  sAegeanNums                      = 'Aegean Numbers';
-  sAncientGreekNums                = 'Ancient Greek Numbers';
+  sAegeanNumbers                   = 'Aegean Numbers';
+  sAncientGreekNumbers             = 'Ancient Greek Numbers';
   sAncientSymbols                  = 'Ancient Symbols';
   sPhaistosDisc                    = 'Phaistos Disc';
   sLycian                          = 'Lycian';
   sCarian                          = 'Carian';
+  sCopticEpactNumbers              = 'Coptic Epact Numbers';
   sOldItalic                       = 'Old Italic';
   sGothic                          = 'Gothic';
+  sOldPermic                       = 'Old Permic';
   sUgaritic                        = 'Ugaritic';
   sOldPersian                      = 'Old Persian';
   sDeseret                         = 'Deseret';
   sShavian                         = 'Shavian';
   sOsmanya                         = 'Osmanya';
+  sElbasan                         = 'Elbasan';
+  sCaucasianAlbanian               = 'Caucasian Albanian';
+  sLinearA                         = 'Linear A';                         
   sCypriotSyllabary                = 'Cypriot Syllabary';
   sImperialAramaic                 = 'Imperial Aramaic';
+  sPalmyrene                       = 'Palmyrene';
+  sNabataean                       = 'Nabataean';
   sPhoenician                      = 'Phoenician';
   sLydian                          = 'Lydian';
   sMeroiticHieroglyphs             = 'Meroitic Hieroglyphs';
   sMeroiticCursive                 = 'Meroitic Cursive';
   sKharoshthi                      = 'Kharoshthi';
   sOldSouthArabian                 = 'Old South Arabian';
+  sOldNorthArabian                 = 'Old North Arabian';
+  sManichaean                      = 'Manichaean';
   sAvestan                         = 'Avestan';
   sInscriptionalParthian           = 'Inscriptional Parthian';
   sInscriptionalPahlavi            = 'Inscriptional Pahlavi';
+  sPsalterPahlavi                  = 'Psalter Pahlavi';
   sOldTurkic                       = 'Old Turkic';
   sRumiNumeralSymbols              = 'Rumi Numeral Symbols';
   sBrahmi                          = 'Brahmi';
   sKaithi                          = 'Kaithi';
   sSoraSompeng                     = 'Sora Sompeng';
   sChakma                          = 'Chakma';
+  sMahajani                        = 'Mahajani';
   sSharada                         = 'Sharada';
+  sSinhalaArchaicNumbers           = 'Sinhala Archaic Numbers';
+  sKhojki                          = 'Khojki';
+  sKhudawadi                       = 'Khudawadi';
+  sGrantha                         = 'Grantha';
+  sTirhuta                         = 'Tirhuta';
+  sSiddham                         = 'Siddham';
+  sModi                            = 'Modi';
   sTakri                           = 'Takri';
+  sWarangCiti                      = 'Warang Citi';
+  sPauCinHau                       = 'Pau Cin Hau';
   sCuneiform                       = 'Cuneiform';
-  sCuneiformNumsAndPunctuation     = 'Cuneiform Numbers and Punctuation';
+  sCuneiformNumbersAndPunctuation  = 'Cuneiform Numbers and Punctuation';
   sEgyptianHieroglyphs             = 'Egyptian Hieroglyphs';
   sBamumSupplement                 = 'Bamum Supplement';
+  sMro                             = 'Mro';
+  sBassaVah                        = 'Bassa Vah';
+  sPahawhHmong                     = 'Pahawh Hmong';
   sMiao                            = 'Miao';
   sKanaSupplement                  = 'Kana Supplement';
+  sDuployan                        = 'Duployan';
+  sShorthandFormatControls         = 'Shorthand Format Controls';
   sByzantineMusicalSymbols         = 'Byzantine Musical Symbols';
   sMusicalSymbols                  = 'Musical Symbols';
   sAncientGreekMusicalNotation     = 'Ancient Greek Musical Notation';
   sTaiXuanJingSymbols              = 'Tai Xuan Jing Symbols';
   sCountingRodNumerals             = 'Counting Rod Numerals';
   sMathAlphanumSymbols             = 'Mathematical Alphanumeric Symbols';
+  sMendeKikakui                    = 'Mende Kikakui';
   sArabicMathAlphabeticSymbols     = 'Arabic Mathematical Alphabetic Symbols';
   sMahjongTiles                    = 'Mahjong Tiles';
   sDominoTiles                     = 'Domino Tiles';
   sPlayingCards                    = 'Playing Cards';
-  sMiscSymbolsAndPictographs       = 'Miscellaneous Symbols And Pictographs';
+  sMiscSymbolsAndPictographs       = 'Miscellaneous Symbols and Pictographs';
   sEmoticons                       = 'Emoticons';
-  sTransportAndMapSymbols          = 'Transport And Map Symbols';
+  sOrnamentalDingbats              = 'Ornamental Dingbats';
+  sTransportAndMapSymbols          = 'Transport and Map Symbols';
   sAlchemicalSymbols               = 'Alchemical Symbols';
+  sGeometricShapesExt              = 'Geometric Shapes Extended';
+  sSupplementalArrowsC             = 'Supplemental Arrows-C';
   sEnclosedAlphanumSupplement      = 'Enclosed Alphanumeric Supplement';
   sEnclosedIdeographicSupplement   = 'Enclosed Ideographic Supplement';
   sCJKUniIdeographsExtB            = 'CJK Unified Ideographs Extension B';
