@@ -99,7 +99,7 @@ const
   sCharSetSource = 'Source %s string ';
   sCodePageSource = 'Source string encoded with code page %u (%s)'#10;
 
-  sNonUnicode = '%scontains characters outside of Unicode range';
+  sNonUnicode = '%scontains characters outside of Unicode ranges';
   sDisallowedSurrogates = '%scontains characters outside of Basic Multilingual Plane,'#10 +
     'but surrogate pairs are not allowed here';
 
