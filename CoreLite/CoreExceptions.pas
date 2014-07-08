@@ -744,8 +744,8 @@ end;
 constructor EPlatform.Create(ErrorCode: LongWord; ErrorSource: PCoreChar);
 var
   W: PCoreChar;
-{$IFDEF Debug}
 begin
+{$IFDEF Debug}
   W := SysErrorMessage(ErrorCode);
   try
     if ErrorSource <> nil then
@@ -756,7 +756,6 @@ begin
     LocalFree(THandle(W));
   end;
 {$ELSE}
-begin
   if ErrorSource <> nil then
   begin
     W := SysErrorMessage(ErrorCode);
