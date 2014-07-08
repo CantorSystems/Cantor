@@ -20,7 +20,7 @@ public class Core:Wrappers of
   public class EPlatform; // still abstract
 
   public class CodePaged of
-    public out ShortWord CodePage;
+    public CodePage(out ShortWord);
     public CodePage(ShortWord);
 
     public class Input from CodePaged of
@@ -28,6 +28,7 @@ public class Core:Wrappers of
       public CodePage(ShortWord value) of
         if not :Platform:Kernel32:SetConsoleCP[value] then
           raise new EPlatform;
+        end;
       end;
     end;
 
@@ -36,6 +37,7 @@ public class Core:Wrappers of
       public CodePage(ShortWord value) of
         if not :Platform:Kernel32:SetConsoleOutputCP[value] then
           raise new EPlatform;
+        end;
       end;
     end;
   end;
