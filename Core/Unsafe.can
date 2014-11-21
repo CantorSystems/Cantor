@@ -1,0 +1,17 @@
+/*
+    Cantor programming language core
+
+    Copyright © 2014 Vladislav Javadov (aka Freeman)
+*/
+
+public class with inner of
+  class Char[Byte charBytes] from Integer[charBytes, Word] of
+
+  end;
+
+  inner final of
+    class LegacyChar = Char[1];
+    class WideChar = Char[2];
+    class QuadChar = Char[4];
+  end;
+end;

@@ -1,67 +1,42 @@
-public class [Word bits] with inner of
+/*
+    Cantor programming language core
 
-  class Class with static of
-    out Word InstanceSize;  // final for final classes
-    out String ClassName;
-  end;
+    Copyright © 2014 Vladislav Javadov (aka Freeman)
+*/
 
-  class Enumerable[Word bits] with static of
-    out Word[bits] Min;
-    out Word[bits] Max;
-  end;
+public class [Byte bitDepth] with inner of
 
-  class Boolean = [False, True]; // non-final, allowing platform-specific align by bits
+//  class Boolean = [False, True]; // non-final, allowing platform-specific align by bits
 
-  class Integer[Word bits] of
-  end;
-
-  class Word[Word bits] of
-  end;
-
-  class Real[Word bits] of
-  end;
-
-  class Currency of
-  end;
-
-  class Character of
-  end;
-
-  class Enumeration of
-  end;
-
-  class List of
-  end;
-
-  class Inner of
-  end;
+  class BitDepth = Byte;
 
   inner final of
-    class Integer = Integer[bits];
-    class Word = Word[bits];
+    class Integer[BitDepth scale] from Typecast:Integer[scale];
+    class Word[BitDepth scale] from Typecast:Word[scale];
 
-    class ByteInt = Integer[8];
-    class ShortInt = Integer[16];
-    class LongInt = Integer[32];
-    class QuadInt = Integer[64];
+    class Real[BitDepth scale]] from Typecast:Real[scale];
 
-    class Byte = Word[8];
-    class ShortWord = Word[16];
-    class LongWord = Word[32];
-    class QuadWord = Word[64];
-
-    //class HalfReal = Real[16];
-    class SingleReal = Real[32];
-    class DoubleReal = Real[64];
-    //class ExtendedReal = Real[80];
-    class QuadReal = Real[128];
-
-    class LegacyChar = Byte;
-    class WideChar = ShortWord;
-    class QuadChar = LongWord;
-
-    class LegacyString = LegacyChar[Word];
-    class WideString = WideChar[Word];
-    class QuadString = QuadChar[Word];
+    class Character from Typecast:Character;
   end;
+
+  class Integer = Integer[bitDepth];
+  class Word = Word[bitDepth];
+
+  class ByteInt = Integer[8];
+  class ShortInt = Integer[16];
+  class LongInt = Integer[32];
+  class QuadInt = Integer[64];
+
+  class Byte = Word[8];
+  class ShortWord = Word[16];
+  class LongWord = Word[32];
+  class QuadWord = Word[64];
+
+  class SingleReal = Real[32];
+  class DoubleReal = Real[64];
+  class ExtendedReal = Real[80];
+
+  class LegacyChar = Byte;
+  class WideChar = ShortWord;
+  class QuadChar = LongWord;
 end;

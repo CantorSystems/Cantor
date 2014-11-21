@@ -1,0 +1,161 @@
+/*
+    Cantor programming language core
+
+    Copyright © 2014 Vladislav Javadov (aka Freeman)
+*/
+
+public class with inner of
+  class ByteArray[BitDepth scale] of
+    static granularity = const 8;
+    if scale <= granularity then
+      public out Core:Byte RawByte;
+      public RawByte[Core:Byte];
+    else
+      public final class Bytes = 0..[scale +/ granularity]--;
+      public out Core:Byte RawBytes[Bytes];
+      public RawBytes[Core:Byte; Bytes];
+    end;
+  end;
+
+  class ShortWordArray[BitDepth scale] of
+    static granularity = const 16;
+    if scale <= granularity then
+      public out Core:ShortWord RawShortWord;
+      public RawShortWord[Core:ShortWord];
+    else
+      public final class ShortWords = 0..[scale +/ granularity]--;
+      public out Core:ShortWord RawShortWords[ShortWords];
+      public RawShortWords[ShortWords; Core:ShortWord];
+    end;
+  end;
+
+  class LongWordArray[BitDepth scale] of
+    static granularity = const 32;
+    if scale <= granularity then
+      public out Core:LongWord RawLongWord;
+      public RawLongWord[Core:LongWord];
+    else
+      public final class LongWords = 0..[scale +/ granularity]--;
+      public out Core:LongWord RawLongWords[LongWords];
+      public RawLongWords[LongWords; Core:LongWord];
+    end;
+  end;
+
+  class QuadWordArray[BitDepth scale] of
+    static granularity = const 64;
+    if scale <= granularity then
+      public out Core:QuadWord RawQuadWord;
+      public RawQuadWord[Core:QuadWord];
+    else
+      public final class QuadWords = 0..(scale +\ granularity)--;
+      public out Core:QuadWord RawQuadWords[QuadWords];
+      public RawQuadWords[QuadWords; Core:QuadWord];
+    end;
+  end;
+
+  class SingleRealArray[BitDepth scale] of
+    static granularity = const 32;
+    if scale <= granularity then
+      public out Core:SingleReal RawSingleReal;
+      public RawSingleReal[Core:SingleReal];
+    else
+      public inner class SingleReals = 0..[scale +/ granularity]--;
+      public out Core:SingleReal RawSingleReals[SingleReals];
+      public RawSingleReals[SingleReals; Core:SingleReal];
+    end;
+  end;
+
+  class DoubleRealArray[BitDepth scale] of
+    static granularity = const 64;
+    if scale <= granularity then
+      public out Core:DoubleReal RawDoubleReal;
+      public RawDoubleReal[Core:DoubleReal];
+    else
+      public final class DoubleReals = 0..[scale +/ granularity]--;
+      public out Core:DoubleReal RawDoubleReals[DoubleReals];
+      public RawDoubleReals[DoubleReals; Core:DoubleReal];
+    end;
+  end;
+
+  class Number[BitDepth scale] from
+    ByteArray[scale], ShortWordArray[scale], LongWordArray[scale], QuadWordArray[scale],
+    SingleRealArray[scale], DoubleRealArray[scale]
+  of
+    public final class Nibble = Core:Word[scale \ 2];
+
+    case Nibble
+      when Core:Byte then
+        public LowNibble = curry RawBytes[0];
+        public HighNibble = curry RawBytes[1];
+      when Core:ShortWord then
+        public LowNibble = curry RawShortWords[0];
+        public HighNibble = curry RawShortWords[1];
+      when Core:LongWord then
+        public LowNibble = curry RawLongWords[0];
+        public HighNibble = curry RawLongWords[1];
+      when Core:QuadWord then
+        public LowNibble = curry RawQuadWords[0];
+        public HighNibble = curry RawQuadWords[1];
+    end;
+
+    public out Core:Boolean AsBoolean;
+    public AsBoolean[Core:Boolean];
+
+    public out Core:Byte AsByte;
+    public AsByte[Core:Byte];
+
+    public out Core:ByteInt AsByteInt;
+    public AsByteInt[Core:ByteInt];
+
+    public out Core:ShortWord AsShortWord;
+    public AsShortWord[Core:ShortWord];
+
+    public out Core:ShortInt AsShortInt;
+    public AsShortInt[Core:ShortInt];
+
+    public out Core:LongWord AsLongWord;
+    public AsLongWord[Core:LongWord];
+
+    public out Core:LongInt AsLongInt;
+    public AsLongInt[Core:LongInt];
+
+    public out Core:QuadWord AsQuadWord;
+    public AsQuadWord[Core:QuadWord];
+
+    public out Core:QuadInt AsQuadInt;
+    public AsQuadInt[Core:QuadInt];
+
+    public out Core:SingleReal AsSingleReal;
+    public out Core:DoubleReal AsDoubleReal;
+    public out Core:ExtendedReal AsExtendedReal;
+  end;
+
+  class Any[BitDepth scale] from Number[scale] of
+    if scale <= 32 then
+      public out Core:Character RawCharacter;
+      public RawCharacter[Core:Character];
+    end;
+  end;
+
+  class Integer[BitDepth scale] = Number[scale];
+  class Word[BitDepth scale] = Any[scale];
+  class Real[BitDepth scale] = Number[scale];
+
+  class Boolean = Number[1];
+  class Character = Number[32];
+
+  class ByteInt = Integer[8];
+  class Byte = Word[8];
+
+  class ShortInt = Integer[16];
+  class ShortWord = Word[16];
+
+  class LongInt = Integer[16];
+  class LongWord = Word[16];
+
+  class QuadInt = Integer[16];
+  class QuadWord = Word[16];
+
+  class SingleReal = Real[32];
+  class DoubleReal = Real[64];
+end;
