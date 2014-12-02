@@ -85,17 +85,17 @@ public class with inner of
 
     case Nibble
       when Core:Byte then
-        public LowNibble = curry RawBytes[0];
-        public HighNibble = curry RawBytes[1];
+        public LowNibble = partial RawBytes[0];
+        public HighNibble = partial RawBytes[1];
       when Core:ShortWord then
-        public LowNibble = curry RawShortWords[0];
-        public HighNibble = curry RawShortWords[1];
+        public LowNibble = partial RawShortWords[0];
+        public HighNibble = partial RawShortWords[1];
       when Core:LongWord then
-        public LowNibble = curry RawLongWords[0];
-        public HighNibble = curry RawLongWords[1];
+        public LowNibble = partial RawLongWords[0];
+        public HighNibble = partial RawLongWords[1];
       when Core:QuadWord then
-        public LowNibble = curry RawQuadWords[0];
-        public HighNibble = curry RawQuadWords[1];
+        public LowNibble = partial RawQuadWords[0];
+        public HighNibble = partial RawQuadWords[1];
     end;
 
     public out Core:Boolean AsBoolean;
