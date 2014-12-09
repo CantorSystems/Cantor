@@ -2,28 +2,32 @@
     Cantor launcher configuration sample
 */
 
+//Core = 'Core.can';
+return 'Core.can';
+
+class Texter of
+  Producer = :CantorSys:Texter;
+//  FileNameExtension = '.can';
+//  SyntaxPreference = Pascal;
+end;
+
 class Sources of
   class Cantor of
-    Handler = :CantorSys:Cantor;
+    Parser = :CantorSys:Cantor;
     FileNameExtensions = {'.can'};
     DSLs = {{'=', :CantorSys:Wiki}, {'@', :CantorSys:Wiki}, {'<', :CantorSys:HTML}};
-    TextHandlers = DSLs;
-    CommentHandlers = DSLs;
+    TextParsers = DSLs;
+    CommentParsers = DSLs;
   end;
 
   class Pascal of
-    Handler = :CantorSys:Pascal;
+    Parser = :CantorSys:Pascal;
     FileNameExtensions = {'.pas', '.dpr', '.dpk', '.pp'};
 //    CommentHandlers = {{'*', :KOL:GenDoc}};
   end;
 
   class C of
     FileNameExtensions = {'.c', '.h'};
-  end;
-
-  class Texter of
-    Handler = :CantorSys:Texter;
-//    FileNameExtenstion = '.can';
   end;
 end;
 
