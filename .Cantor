@@ -1,0 +1,94 @@
+/*
+    Cantor launcher configuration sample
+*/
+
+class Sources of
+  class Cantor of
+    Handler = :CantorSys:Cantor;
+    FileNameExtensions = {'.can'};
+    DSLs = {{'=', :CantorSys:Wiki}, {'@', :CantorSys:Wiki}, {'<', :CantorSys:HTML}};
+    TextHandlers = DSLs;
+    CommentHandlers = DSLs;
+  end;
+
+  class Pascal of
+    Handler = :CantorSys:Pascal;
+    FileNameExtensions = {'.pas', '.dpr', '.dpk', '.pp'};
+//    CommentHandlers = {{'*', :KOL:GenDoc}};
+  end;
+
+  class C of
+    FileNameExtensions = {'.c', '.h'};
+  end;
+
+  class Texter of
+    Handler = :CantorSys:Texter;
+//    FileNameExtenstion = '.can';
+  end;
+end;
+
+class Targets of
+/*
+  Pentium4 = new x86 of
+    SysEnter.On;
+    SysCall.Off;
+    SSE = 4;
+    AVX.Off;
+  end;
+*/
+
+  class Windows of
+  //  Archtecture = this.Archtecture;
+    SysCall = $2E;
+    Platform = :Windows[NT]; // compiler's current
+//    Output = ?Architecture{x86, :Core:ExeImages:PE, x64, :Core:ExeImages:PE64};
+    Output = new :Core:ExeImages:PE[Architecture];
+  end;
+
+  class Win32 from Windows of
+    Architecture = x86;
+    Output = new :Core:ExeImages:PE;
+  end;
+
+  class Windows_9x from Win32 of
+    Architecture = x86;
+    Platform = :Windows[False];  // new with
+  end;
+
+  class Win9x = Windows_9x;
+  class Windows_x86 = Win32;
+
+  class Windows_x64 from Windows of
+    Architecture = x64;
+    SysCall = x64.SysCall; // probably null, just for a name
+    StdCall = Windows; // x64:StdCall.Windows
+    Output = new :Core:ExeImages:PE64;
+  end;
+
+  class Kolibri of
+    Architecture = x86;
+    Platform = :Kolibri;
+    Output = new :Core:ExeImages:Menuet01;
+  end;
+
+  class KolibriPE from Kolibri of
+    Output = new :Core:ExeImages:PE;
+  end;
+
+  class Linux of
+    SysCall = $80;
+    Platform = :Linux;
+    Output = new :Core:ExeImages:ELF;
+  end;
+
+  class Linux_x64 from Linux of
+    Architecture = x64;
+  //  SysCall = x64.SysCall;  // not sure now
+    StdCall = SystemV; // x64:StdCall.SystemV
+  end;
+
+  class Linux_ARM from Linux of
+    Architecture = ARM;
+    SysCall = 0;
+  end;
+end;
