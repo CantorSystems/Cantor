@@ -1,0 +1,78 @@
+/**
+ * SyntaxHighlighter theme
+ *
+ * @copyright
+ * Copyright © 2014 Vladislav Javadov
+ *
+ * @license
+ * Licensed under the MIT license
+ */
+@import url("shThemeBorland.css");
+
+.syntaxhighlighter .line.highlighted.number {
+  color: inherit !important;
+}
+.syntaxhighlighter table caption {
+  color: inherit !important;
+}
+div.container {
+  margin-left: 1.5em !important;
+  padding-left: 1.5em !important;
+  border-left: 2px solid silver !important;
+}
+.syntaxhighlighter .gutter .line {
+  border-right: 2px solid silver !important;
+}
+.syntaxhighlighter .gutter .line.highlighted {
+  background-color: #999999 !important;
+}
+.syntaxhighlighter.collapsed .toolbar {
+  background: inherit !important;
+  border: 1px solid silver !important;
+}
+.syntaxhighlighter.collapsed .toolbar a {
+  color: #6E874B !important;
+}
+.syntaxhighlighter.collapsed .toolbar a:hover {
+  color: #3E5524 !important;
+}
+.syntaxhighlighter .toolbar {
+  background: #BBBBBB !important;
+}
+.syntaxhighlighter .toolbar a {
+  color: white !important;
+}
+.syntaxhighlighter .toolbar a:hover {
+  color: #3E5524 !important;
+}
+.syntaxhighlighter .plain, .syntaxhighlighter .plain a {
+  color: inherit !important;
+  white-space: normal;
+}
+.syntaxhighlighter .comments, .syntaxhighlighter .comments a {
+  color: #999999 !important;
+}
+.syntaxhighlighter .preprocessor {
+  color: #249924 !important;
+}
+.syntaxhighlighter .string, .syntaxhighlighter .string a {
+  color: #242499 !important;
+}
+.syntaxhighlighter .keyword {
+  color: inherit !important;
+}
+.syntaxhighlighter .variable {
+  color: inherit !important;
+}
+.syntaxhighlighter .value {
+  color: #990099 !important;
+}
+.syntaxhighlighter .functions {
+  color: inherit !important;
+}
+.syntaxhighlighter .constants {
+  color: inherit !important;
+}
+.syntaxhighlighter .script {
+  color: inherit !important;
+}

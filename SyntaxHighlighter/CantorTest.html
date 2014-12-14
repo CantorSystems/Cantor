@@ -1,0 +1,168 @@
+<!doctype html>
+<html>
+<head>
+<meta charset=windows-1251">
+<title>Cantor syntax highlighter</title>
+<link href="styles/shCore.css" rel="stylesheet" type="text/css">
+<link href="shThemeBorland.css" rel="stylesheet" type="text/css">
+<script type="text/javascript" src="scripts/shCore.js"></script>
+<script type="text/javascript" src="shBrushCantor.js"></script>
+<script type="text/javascript" src="shBrushDelphi.js"></script>
+<script type="text/javascript">
+  SyntaxHighlighter.defaults['collapse'] = true;
+  SyntaxHighlighter.all();
+</script>
+</head>
+<body style="font-family: Helvetica, Arial; font-size: 90%;">
+<h1>Подсветка синтаксиса</h1>
+<p>Используется подсветчик синтаксиса Алекса Горбачева. &shy;</p>
+
+<h2>На Delphi</h2>
+<pre class="brush:Delphi">
+{$WARNINGS ON}
+const
+  sPascal = 'Паскаль';
+  Паскаль12 = 12;  // JS fail
+  Pi = 3.14529;
+  Avogadro = 6.022e26;
+  PlanckTime = 5.39106e-44;
+  Hex = $AF;
+
+  MinusOnePointTwelve = -1.12;
+  Cantor1 = ^A;
+
+  QuotesWithin = 'don''t';
+  CtrlC = ^C;
+  Delete = #127;
+  DeleteHex = #$7F;
+  ComplexString = 'Enter'^M'a code of '#127^J'and don''t flood';
+
+type
+  TSomeClass = class
+  strict private
+    A: Integer;
+  end;
+
+  TBounds = record
+    Left, Top, Width, Height: Integer;
+  end;
+
+  TSubControl = 0..1;
+
+  TControl = class
+  private
+    FSubControlBounds: array[TSubControl] of TBounds;
+  public
+    procedure GetSubControlBounds(Index: TSubControl;
+      var Left, Top, Width, Height: Integer); virtual;
+    procedure SetSubControlBounds(Index: TSubControl;
+      Left, Top, Width, Height: Integer); virtual;
+  end;
+
+procedure TControl.GetSubControlBounds(Index: TSubControl;
+  var Left, Top, Width, Height: Integer);
+begin
+  Left := FSubControlBounds[Index].Left;
+  Top := FSubControlBounds[Index].Top;
+  Width := FSubControlBounds[Index].Width;
+  Height := FSubControlBounds[Index].Height;
+end;
+
+procedure TControl.SetSubControlBounds(Index: TSubControl;
+  Left, Top, Width, Height: Integer);
+begin
+  FSubControlBounds[Index].Left := Left;
+  FSubControlBounds[Index].Top := Top;
+  FSubControlBounds[Index].Width := Width;
+  FSubControlBounds[Index].Height := Height;
+end;
+
+// использование
+procedure MoveSubControl(Control: TControl);
+var
+  X, Y, W, H: Integer;
+begin
+  Control.GetSubControlBounds(1, X, Y, W, H);
+  Inc(X, W);
+  Inc(Y, H div 2);
+  Control.SetSubControlBounds(1, X, Y, W, H);
+end;
+</pre>
+
+<h2>На Канторе</h2>
+<pre class="brush:Cantor">
+public final class Bounds of
+  public final var Core:LongInt Left, Top, Width, Height;
+end;
+
+public final class SubControl = 0..1;
+
+public class Control of
+  var Bounds[SubControl] subControlBounds;
+  // либо var Bounds subControlBounds[SubControl];
+  // кантование применимо и здесь
+
+  public final Bounds(SubControl index; // out-свойство
+    out Core:LongInt left, top, width, height)
+  of
+    scb = subControlBounds[index];
+    return scb.left, scb.top, scb.width, scb.height;
+  end;
+
+  public Bounds(SubControl index; // in-свойство
+    Core:LongInt left, top, width, height)
+  of
+    scb partial subControlBounds(index);
+    scb.left = left;
+    scb.top = top;
+    scb.width = width;
+    scb.height = height;
+  end;
+end;
+
+// использование
+moveSubControl(Control control) of
+  var (x, y, w, h) = control.Bounds[1]; // кантование out-свойства
+  x += w;
+  y += h \ 2;
+  control.Bounds(1) = [x, y, w, h]; // кантование in-свойства
+end;
+
+a = +22K;
+b = +38Bh;
+char1280 = #1.25K;
+
+pi = 3.14;
+avogadro = 6.022e26;
+planckTime = 5.39106e-44;
+"minus""1.12" = -1.12;
+cantor1 = #1;
+кантор2 = 'Кантор!'; // JS fail
+
+quotesWithin = 'don''t';
+endOfFile = #EOF;
+endOfText = #EOT;
+endOfMore = #EOM; // yes, not an entity!
+
+delete = #127;
+deleteHex = #$7F;
+complexString = 'Enter'#CR'a code of '#127#LF'and don''t flood';
+
+txt = {'
+  Тут можно писать цитаты великих писателей.
+  Это же текст?
+'};
+
+wiki = {=
+  == Вики ==
+  Тут доступно //форматирование//.
+=};
+
+html = {&lt;strong&gt;Да!&lt;strong&gt;};
+rtf = {{\bMicrosoft
+ Office.}};
+
+</pre>
+
+</body>
+</html>
