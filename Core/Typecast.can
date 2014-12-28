@@ -47,7 +47,7 @@ public class with inner of
       public out Core:QuadWord RawQuadWord;
       public RawQuadWord[Core:QuadWord];
     else
-      public final class QuadWords = 0..(scale +\ granularity)--;
+      public final class QuadWords = 0..[scale +\ granularity]--;
       public out Core:QuadWord RawQuadWords[QuadWords];
       public RawQuadWords[QuadWords; Core:QuadWord];
     end;
