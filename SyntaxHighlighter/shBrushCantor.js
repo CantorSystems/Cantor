@@ -15,7 +15,7 @@
 	function Brush()
 	{
 		var keywords =
-			'align all alter and any as by case class const do else elsif end except external ' +
+			'align all alter and any as by case class const do else end except external ' +
 			'final finally for from group handle if in inherited inner into is level ' +
 			'memorysize new node not null of on or order out outer outside override '+
 			'partial path protected public raise ref return root row select static ' +
