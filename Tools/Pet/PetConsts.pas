@@ -1,7 +1,10 @@
 (*
     PE Tool's strings and messages
 
-    Copyright (c) 2012-2013 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2012-2015 Vladislav Javadov (aka Freeman)
+
+    Conditional defines:
+      * Kolibri -- proposed KOLIBRI format support
 *)
 
 unit PetConsts;
@@ -57,11 +60,13 @@ const
             #9'-deep'#9#9#9'Strip orphaned sections too (unsafe!)'#10 +
             #9'-dropres <r1,r2,...>'#9'Drop resources <r1>, <r2>, etc.'#10 +
             #9'-dropsect <s1,s2,...>'#9'Drop sections <s1>, <s2>, etc.'#10 +
+          {$IFDEF Kolibri}
             #9'-kolibri'#9#9'Save to KOLIBRI format'#10 +
+          {$ENDIF}
             #9'-locale <a1,a2,...>'#9'Set resource locales to <a1>, <a2>, etc.'#10 +
             #9#9#9#9'Each <a> has form of <#=#> or <#>'#10 +
-            #9'-mainicon'#9#9'Strip name of MAINICON resource (not for VCL'#10 +
-            #9#9#9#9'applications!)'#10 +
+            #9'-mainicon'#9#9'Strip the name of MAINICON resource (not for'#10 +
+            #9#9#9#9'VCL applications!)'#10 +
           //  #9'-menuet'#9#9#9'Save to MENUET01 format'#10 +
           //  #9'-rebase <#>'#9#9'Change image base to <#> (hexadecimal value)'#10 +
             #9'-osver <#[.#]>'#9#9'Set required OS version to <#.#> or only <#>'#10 +
@@ -84,9 +89,9 @@ const
   sCannotRebaseImage = 'Cannot rebase image: %s';
 
   FileNameWidth = 48;
-  FileNameOffset = 11;
+  FileNameOffset = 12;
 
-  sProcessing     = '%-16s %-32@s %8u bytes';
+  sProcessing     = '%-16hs %-32@s %8u bytes';
 
   sLoadingSource    = 'Loading source';
   sImageData        = 'Image data';

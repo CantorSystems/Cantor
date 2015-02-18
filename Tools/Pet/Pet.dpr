@@ -1,13 +1,13 @@
 (*
     Portable Executable (PE) Tool
 
-    Copyright (c) 2013 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2013-2015 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
       * Debug -- use Delphi IDE friendly exceptions
       * ForceMMX -- allow MMX with FastCode
+      * Kolibri -- proposed KOLIBRI format support
       * Lite -- commonly lite version of code
-      * NoCodePages -- disable code page support for TString
       * Tricks  -- use tricky lite System unit
 
     Search path:  ..\..\CoreLite

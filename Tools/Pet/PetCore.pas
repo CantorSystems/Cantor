@@ -1,7 +1,7 @@
 (*
     PE Tool's core
 
-    Copyright (c) 2013 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2013-2015 Vladislav Javadov (aka Freeman)
 *)
 
 unit PetCore;
@@ -49,7 +49,9 @@ type
     FImageBase: CoreInt;
     FMajorVersion, FMinorVersion: Word;
     FOptions: TRunOptions;
+  {$IFDEF Kolibri}
     FMenuetKolibri: TMenuetKolibri;
+  {$ENDIF}
   public
     constructor Create(CommandLine: PCoreChar);
     destructor Destroy; override;
@@ -113,7 +115,7 @@ begin
   FConsole := TStreamConsole.Create;
   with FConsole do
   begin
-    CodePage := GetACP;
+    CodePage := CP_UTF8;
     WriteLn;
   end;
 
@@ -123,7 +125,7 @@ begin
   try
     FormatVersion(Ver);
     if TranslationCount <> 0 then
-      FConsole.WriteLn('%ws %s  %ws', [StringInfo(0, 'ProductName'), Ver,
+      FConsole.WriteLn('%s %hs  %s', [StringInfo(0, 'ProductName'), Ver,
         StringInfo(0, 'LegalCopyright')], 2);
   finally
     Free;
@@ -350,12 +352,14 @@ begin
           if FImageBase < 0 then
             FImageBase := 8;
           P.Param := nil;}
-        end  
+        end
+      {$IFDEF Kolibri}
         else if SameKey(sKolibri) then
         begin
           FMenuetKolibri := mkKolibri;
           P.Param := nil;
         end;
+      {$ENDIF}  
     end;
 
     if P.Param <> nil then
@@ -536,6 +540,7 @@ begin
             RaiseLastPlatformError(FFileNames[fkBackup]);
         end;
 
+      {$IFDEF Kolibri}
         case FMenuetKolibri of
           mkKolibri:
             with TKolibriImage.Create do
@@ -563,6 +568,7 @@ begin
               Free;
             end;
         else
+      {$ENDIF}
           with Image do
           begin
             if FMajorVersion <> 0 then
@@ -596,7 +602,9 @@ begin
               FreeMem(TmpFileName);
             end;
           end;
+      {$IFDEF Kolibri}
         end;
+      {$ENDIF}
 
         FConsole.WriteLn;
         Processing([sTotal, Percentage(NewSize / OldSize), OldSize - NewSize], False);
