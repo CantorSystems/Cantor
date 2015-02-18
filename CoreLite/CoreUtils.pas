@@ -247,11 +247,14 @@ function EncodeLegacy(Source: PWideChar; CodePage: Word{;
 function EncodeLegacy(Source: PWideChar; Count: Integer; CodePage: Word{;
   UseDefaultChar: Boolean = True}): TLegacyStringRec; overload;
 
-function Format(Fmt: PLegacyChar; const Args: array of const): PLegacyChar;
-function WideFormat(Fmt: PWideChar; const Args: array of const): PWideChar;
+function Format(Fmt: PLegacyChar; FixedWidth: Integer;
+  const Args: array of const): TLegacyStringRec;
+function WideFormat(Fmt: PWideChar; FixedWidth: Integer;
+  const Args: array of const): TWideStringRec;
 
 //function LatinFormat(Fmt: PLegacyChar; const Args: array of const): PWideChar;
-function LegacyFormat(Fmt: PLegacyChar; CodePage: Word; const Args: array of const): PWideChar;
+function LegacyFormat(Fmt: PLegacyChar; CodePage: Word; FixedWidth: Integer;
+  const Args: array of const): TWideStringRec;
 
 { User-friendly class names }
 
@@ -1229,14 +1232,14 @@ end;
 
 function EncodeLegacy(Source: PWideChar; Count: Integer; CodePage: Word{;
   UseDefaultChar: Boolean}): TLegacyStringRec;
-var
-  DefaultCharUsed: Bool;
+{var
+  DefaultCharUsed: Bool;}
 begin
   with Result do
   begin
     Length := {$IFDEF Tricks} System. {$ENDIF}
-      WideCharToMultiByte(CodePage, 0, Source, Count, nil, 0, nil, @DefaultCharUsed);
-    if (Length <> 0) and ({not UseDefaultChar or} not DefaultCharUsed) then
+      WideCharToMultiByte(CodePage, 0, Source, Count, nil, 0, nil, nil);//@DefaultCharUsed);
+    if (Length <> 0) {and (not UseDefaultChar or not DefaultCharUsed)} then
     begin
       GetMem(Value, Length + 1);
     {$IFDEF Tricks} System. {$ENDIF}
@@ -1248,25 +1251,36 @@ begin
   end;
 end;
 
-function Format(Fmt: PLegacyChar; const Args: array of const): PLegacyChar;
+function Format(Fmt: PLegacyChar; FixedWidth: Integer;
+  const Args: array of const): TLegacyStringRec;
 begin
-  GetMem(Result, StrLen(Fmt) + EstimateArgs(Args) + 1);
-  ReallocMem(Result, FormatBuf(Fmt, Args, Result) + 1);
+  with Result do
+  begin
+    GetMem(Value, StrLen(Fmt) + FixedWidth + EstimateArgs(Args) + 1);
+    Length := FormatBuf(Fmt, Args, Value);
+//    ReallocMem(Value, Length + 1);
+  end;
 end;
 
-function WideFormat(Fmt: PWideChar; const Args: array of const): PWideChar;
+function WideFormat(Fmt: PWideChar; FixedWidth: Integer;
+  const Args: array of const): TWideStringRec;
 begin
-  GetMem(Result, (WideStrLen(Fmt) + EstimateArgs(Args) + 1) * SizeOf(WideChar));
-  ReallocMem(Result, (WideFormatBuf(Fmt, Args, Result) + 1) * SizeOf(WideChar));
+  with Result do
+  begin
+    GetMem(Value, (WideStrLen(Fmt) + FixedWidth + EstimateArgs(Args) + 1) * SizeOf(WideChar));
+    Length := WideFormatBuf(Fmt, Args, Value);
+//    ReallocMem(Value, (Length + 1) * SizeOf(WideChar));
+  end;
 end;
 
-function LegacyFormat(Fmt: PLegacyChar; CodePage: Word; const Args: array of const): PWideChar;
+function LegacyFormat(Fmt: PLegacyChar; CodePage: Word; FixedWidth: Integer;
+  const Args: array of const): TWideStringRec;
 var
   W: PWideChar;
 begin
   W := DecodeLegacy(Fmt, CodePage).Value;
   try
-    Result := WideFormat(W, Args);
+    Result := WideFormat(W, FixedWidth, Args);
   finally
     FreeMem(W);
   end;

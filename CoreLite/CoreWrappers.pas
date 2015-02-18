@@ -3,7 +3,7 @@
 
     OOP-style platform-dependent wrappers
 
-    Copyright (c) 2007-2014 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2007-2015 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
       * Debug -- force ANSI code page for TStreamConsole
@@ -165,8 +165,9 @@ type
     procedure WriteLn(Text: PLegacyChar; Count, LineBreaks: Integer); overload;
     procedure WriteLn(Fmt: PLegacyChar; const Args: array of const;
       LineBreaks: Integer = 1); overload;
-    procedure WriteLn(Fmt: PLegacyChar; FixedWidth: Integer; const Args: array of const;
-      LineBreaks: Integer = 1); overload;
+    procedure WriteLn(Fmt: PLegacyChar; FixedWidth: Integer;
+      const Args: array of const; LineBreaks: Integer = 1); overload;
+    procedure WriteLn(Text: PWideChar; Count, LineBreaks: Integer); overload;
   end;
 
   TScreenConsole = class(TConsole)
@@ -630,7 +631,7 @@ var
   BytesRead: LongWord;
 begin
   WriteLn(Prompt, Count, 0);
-  WriteLn(@Ellipsis, SizeOf(Ellipsis), 0);
+  WriteLn(PLegacyChar(@Ellipsis), SizeOf(Ellipsis), 0);
 {$IFDEF Tricks} System. {$ENDIF}
   ReadFile(FInput, Dummy, SizeOf(Dummy), BytesRead, nil);
   WriteLn(LineBreaks - 1);
@@ -669,13 +670,38 @@ end;
 procedure TStreamConsole.WriteLn(Fmt: PLegacyChar; FixedWidth: Integer;
   const Args: array of const; LineBreaks: Integer);
 var
-  P: PLegacyChar;
+  S: TLegacyStringRec;
+  W: TWideStringRec;
 begin
-  GetMem(P, StrLen(Fmt) + FixedWidth + EstimateArgs(Args) + 1);
+  if CodePage = CP_UTF8 then
+  begin
+    W := LegacyFormat(Fmt, CP_LEGACY, FixedWidth, Args);
+    try
+      WriteLn(W.Value, W.Length, LineBreaks);
+    finally
+      FreeMem(W.Value);
+    end;
+  end
+  else
+  begin
+    S := Format(Fmt, FixedWidth, Args);
+    try
+      WriteLn(S.Value, S.Length, LineBreaks);
+    finally
+      FreeMem(S.Value);
+    end;
+  end;
+end;
+
+procedure TStreamConsole.WriteLn(Text: PWideChar; Count, LineBreaks: Integer);
+var
+  S: TLegacyStringRec;
+begin
+  S := EncodeLegacy(Text, Count, CodePage);
   try
-    WriteLn(P, FormatBuf(Fmt, Args, P), LineBreaks);
+    WriteLn(S.Value, S.Length, LineBreaks);
   finally
-    FreeMem(P);
+    FreeMem(S.Value);
   end;
 end;
 
@@ -882,7 +908,7 @@ var
   W: PWideChar;
 begin
   with FTranslations[TranslationIndex] do
-    W := LegacyFormat('\StringFileInfo\%04X%04X\%hs', CP_LEGACY, [Locale, CodePage, Ident]);
+    W := LegacyFormat('\StringFileInfo\%04X%04X\%hs', CP_LEGACY, 0, [Locale, CodePage, Ident]).Value;
   try
     Result := VerQueryValueW(FData, W, Pointer(Info), Length);
     if Result then

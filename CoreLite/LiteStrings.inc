@@ -3,7 +3,7 @@
 
     Lite strings declaration -- no character set translation and code page support
 
-    Copyright (c) 2012-2013 Vladislav Javadov (Freeman)
+    Copyright (c) 2012-2015 Vladislav Javadov (Freeman)
 *)
 
 type
@@ -108,13 +108,13 @@ type
     {class} function Length(Source: Pointer; MaxLength: Integer): Integer; override;
   {$ENDIF}
 
-    function Insert(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; CodePage: TCodePage = nil;
-      SourceOptions: TLegacySource = []; DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload;
+    function Insert(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; SourceOptions: TLegacySource = [];
+      DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): TNextLegacyChar; overload;
     function Insert(var Info: TStringInfo; Source: PWideChar; Count: Integer; SourceOptions: TEndianSource = [];
-      DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload;
+      DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): TNextWideChar; overload;
   {$IFDEF UTF32}
     function Insert(var Info: TStringInfo; Source: PQuadChar; Count: Integer; SourceOptions: TEndianSource = [];
-      DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): Integer; overload;
+      DestIndex: Integer = 0; DestOptions: TEncodeOptions = []): TNextQuadChar; overload;
   {$ENDIF}
 
     property AsCoreChar: PWideChar read GetAsWideChar write SetAsWideChar; // TODO: non-Unicode

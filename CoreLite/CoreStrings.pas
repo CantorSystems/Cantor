@@ -221,7 +221,7 @@ type
 { Strings }
 
 {$IFDEF NoCodePages}
-  {$I NoCodePages.inc}
+  {$I LiteStrings.inc}
 {$ELSE}
   TString = class(TSubstring)
   private
@@ -1975,7 +1975,7 @@ begin
     if SourceSite <> DestSite then
       Create(sInvalidCharSetToCharSet, [CharSets[SourceSite], CharSets[DestSite]])
     else
-      InvalidSource(sInvalidCharacter, SourceSite, InvalidChar.Value);
+      InvalidSource(sInvalidChar, SourceSite, InvalidChar.Value);
   {$ENDIF}
 {$IFDEF Debug}
   FBlock := FindCharBlock(InvalidChar.Value);
@@ -2044,7 +2044,7 @@ begin
     if SourceSite.Number <> DestSite.Number then
       Create(sInvalidCodePageToCodePage, CP_LEGACY, [SourceSite.Number, SourceSite.Name, DestSite.Number, DestSite.Name])
     else
-      InvalidSource(sInvalidCharacter, SourceSite, InvalidChar.Value);
+      InvalidSource(sInvalidChar, SourceSite, InvalidChar.Value);
   {$ENDIF}
 {$IFDEF Debug}
   FBlock := FindCharBlock(InvalidChar.Value);
@@ -2743,10 +2743,12 @@ begin
   FCount := 0;
 end;
 
+{$IFNDEF NoCodePages} // TODO
 function TSharedString.IsUnique: Boolean;
 begin
-  Result := (FParent = nil)
+  Result := (FParent = nil);
 end;
+{$ENDIF}
 
 function TSharedString.GetAsLegacyChar: PLegacyChar;
 begin
@@ -2780,7 +2782,8 @@ begin
 end;
 {$ENDIF}
 
-function TSharedString.Insert(var Info: TStringInfo; Source: PLegacyChar; Count: Integer; CodePage: TCodePage;
+function TSharedString.Insert(var Info: TStringInfo; Source: PLegacyChar; Count: Integer;
+  {$IFNDEF NoCodePages} CodePage: TCodePage; {$ENDIF}
   SourceOptions: TLegacySource; DestIndex: Integer; DestOptions: TEncodeOptions): TNextLegacyChar;
 begin
   FillChar(Result, SizeOf(Result), 0); // TODO
