@@ -3,7 +3,7 @@
 
     Core exceptions implementation
 
-    Copyright (c) 2008-2014 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2008-2015 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
       * Debug -- IDE friendly and SysUtils compatible exceptions and
@@ -54,7 +54,7 @@ type
     property Options: TExceptionOptions read FOptions;
   end;
 
-{$IFNDEF Debug}
+{$IFDEF Debug}
   EAbstract = class(Exception)
   private
     procedure MethodCall(ClassType: TClass);
@@ -372,7 +372,7 @@ begin
   ExceptClsProc := @GetExceptionClass;
   ExceptObjProc := @GetExceptionObject;
 
-{$IFNDEF Debug}
+{$IFDEF Debug}
   @AbstractErrorProc := @EAbstract.MethodCall;
 {$ENDIF}
 
@@ -712,7 +712,7 @@ begin
     inherited FreeInstance;
 end;
 
-{$IFNDEF Debug}
+{$IFDEF Debug}
 procedure EAbstract.MethodCall(ClassType: TClass);
 begin
   if {dirty hack!} Pointer(Self) = ClassType then

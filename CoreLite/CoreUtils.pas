@@ -3,10 +3,11 @@
 
     Typecast and platform-based non-OOP utilites
 
-    Copyright (c) 2007-2014 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2007-2015 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
-      * Debug -- allow ShortString, AnsiString and WideString at EstimateArgs
+      * Debug -- allow ShortString, AnsiString and WideString at EstimateArgs,
+                 catch exceptions at FriendlyClassName
 *)
 
 unit CoreUtils;
@@ -266,6 +267,9 @@ function FriendlyClassName(var Dest: TClassName; Source: TClass): Byte; overload
 function FriendlyClassName(var Dest: TClassName; Source: TObject): Byte; overload;
 
 implementation
+
+uses
+  CoreConsts;
 
 { Memory service }
 
@@ -1290,13 +1294,18 @@ function FriendlyClassName(var Dest: TClassName; Source: TClass): Byte;
 var
   P: PLegacyChar;
 begin
-  P := PPointer(PLegacyChar(Source) + vmtClassName)^;
-  Result := PByte(P)^; // Length(P^);
-  Inc(P);
-  if (Result > 1) and (P^ in ['T', 't']) then
-  begin
+  try
+    P := PPointer(PLegacyChar(Source) + vmtClassName)^;
+    Result := PByte(P)^; // Length(P^);
     Inc(P);
-    Dec(Result);
+    if (Result > 1) and (P^ in ['T', 't']) then
+    begin
+      Inc(P);
+      Dec(Result);
+    end;
+  except
+    P := sInlineObject;
+    Result := StrLen(P);
   end;
   Move(P^, Dest, Result);
   Dest[Result] := #0;

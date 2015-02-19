@@ -3,14 +3,12 @@
 
     Core library string messages
 
-    Copyright (c) 2008-2014 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2008-2015 Vladislav Javadov (aka Freeman)
 *)
 
 unit CoreConsts;
 
 interface
-
-{$I UnicodeBlocks.inc}
 
 const
   CP_LEGACY = 1252; // we're using “”, but only in exception messages
@@ -40,8 +38,9 @@ const
   sAccessViolation = 'Access violation at address %p. %hs of address %p';
   sModuleAccessViolation = 'Access violation at address %p in module “%ws”.'#10'%hs of address %p';
 
-  sAbstractInstance = '%hs instance abstract method call';
-  sAbstractClass    = '%hs abstract class method call';
+  sAbstractInstance = '%s instance abstract method call';
+  sAbstractClass    = '%s abstract class method call';
+  sInlineObject     = 'Inline object';
   
   sNotImplemented     = '%s support is not yet implemented';
   sGeneralFault       = 'General fault %#02X';  // e. g. 0x0F for 15
