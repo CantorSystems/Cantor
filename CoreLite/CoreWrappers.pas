@@ -163,8 +163,6 @@ type
     procedure WriteLn(LineBreaks: Integer = 1); overload;
     procedure WriteLn(Text: PLegacyChar; LineBreaks: Integer = 1); overload;
     procedure WriteLn(Text: PLegacyChar; Count, LineBreaks: Integer); overload;
-    procedure WriteLn(Fmt: PLegacyChar; const Args: array of const;
-      LineBreaks: Integer = 1); overload;
     procedure WriteLn(Fmt: PLegacyChar; FixedWidth: Integer;
       const Args: array of const; LineBreaks: Integer = 1); overload;
     procedure WriteLn(Text: PWideChar; Count, LineBreaks: Integer); overload;
@@ -176,15 +174,12 @@ type
   public
     procedure ReadLn(Prompt: PLegacyChar; LineBreaks: Integer = 1); overload;
     procedure ReadLn(Prompt: PLegacyChar; Count, LineBreaks: Integer); overload;
-
     procedure ReadLn(Prompt: PWideChar; LineBreaks: Integer = 1); overload;
     procedure ReadLn(Prompt: PWideChar; Count, LineBreaks: Integer); overload;
 
     procedure WriteLn(LineBreaks: Integer = 1); overload;
-
     procedure WriteLn(Text: PLegacyChar; LineBreaks: Integer = 1); overload;
     procedure WriteLn(Text: PLegacyChar; Count, LineBreaks: Integer); overload;
-
     procedure WriteLn(Text: PWideChar; LineBreaks: Integer = 1); overload;
     procedure WriteLn(Text: PWideChar; Count, LineBreaks: Integer); overload;
 
@@ -659,12 +654,6 @@ begin
 {$IFDEF Tricks} System. {$ENDIF}
   WriteFile(FOutput, Text^, Count, BytesWritten, nil);  // TODO: Windows x64
   WriteLn(LineBreaks);
-end;
-
-procedure TStreamConsole.WriteLn(Fmt: PLegacyChar; const Args: array of const;
-  LineBreaks: Integer);
-begin
-  WriteLn(Fmt, 0, Args, LineBreaks);
 end;
 
 procedure TStreamConsole.WriteLn(Fmt: PLegacyChar; FixedWidth: Integer;
