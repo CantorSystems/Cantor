@@ -1,9 +1,9 @@
 (*
-    Lite Core Library (CoreLite)
+    Lite Core Library (CoreLite mini)
 
-    Platform independent general purpose classes
+    Platform-independent general purpose classes
 
-    Copyright (c) 2013-2014 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2015 Vladislav Javadov (aka Freeman)
 *)
 
 unit CoreClasses;
@@ -14,6 +14,14 @@ uses
   Windows, CoreUtils, CoreExceptions;
 
 type
+  PCoreObject = ^TCoreObject;
+  TCoreObject = object
+  public
+    constructor Create;
+    destructor Destroy; virtual;
+    procedure Free;
+  end;
+
   TContainedItem = class
   private
   { placeholder } // FOwner: TContainer;
@@ -396,6 +404,27 @@ begin
   FContainer := Container;
 end;
 {$ENDIF}
+
+{ TCoreObject }
+
+constructor TCoreObject.Create;
+begin
+end;
+
+destructor TCoreObject.Destroy;
+begin
+end;
+
+procedure TCoreObject.Free;
+var
+  Instance: PCoreObject;
+begin
+  if @Self <> nil then
+  begin
+    Instance := @Self;
+    Dispose(Instance, Destroy);
+  end;
+end;
 
 { TContainedItem }
 

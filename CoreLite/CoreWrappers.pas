@@ -1,5 +1,5 @@
 (*
-    Lite Core Library (CoreLite)
+    Lite Core Library (CoreLite mini)
 
     OOP-style platform-dependent wrappers
 
@@ -16,7 +16,7 @@ unit CoreWrappers;
 interface
 
 uses
-  Windows, CoreUtils, CoreExceptions;
+  Windows, CoreUtils, CoreExceptions, CoreClasses;
 
 type
   TFileAccess = set of (faShareRead, faShareWrite, faShareDelete, // ordered
@@ -40,7 +40,8 @@ const
   {$I LiteStreams.inc}
 {$ELSE}
 type
-  TReadableStream = class
+  PReadableStream = ^TReadableStream;
+  TReadableStream = object(TCoreObject)
   protected
     function GetPosition: QuadWord; virtual; abstract;
     function GetSize: QuadWord; virtual; abstract;
@@ -53,7 +54,8 @@ type
     property Size: QuadWord read GetSize;
   end;
 
-  TWritableStream = class(TReadableStream)
+  PWritableStream = ^TWritableStream;
+  TWritableStream = object(TReadableStream)
   protected
     procedure SetSize(Value: QuadWord); virtual; abstract;
   public
@@ -63,7 +65,8 @@ type
     property Size write SetSize;
   end;
 
-  THandleStream = class(TWritableStream)
+  PHandleStream = ^THandleStream;
+  THandleStream = object(TWritableStream)
   private
     FHandle: THandle;
   protected
@@ -74,7 +77,7 @@ type
   public
     constructor Create(FileName: PCoreChar; Access: TFileAccess;
       Attributes: TFileAttributes = [faNormal]); overload;
-    destructor Destroy; override;
+    destructor Destroy; virtual;
 
     function Open(FileName: PCoreChar; Access: TFileAccess;
       Attributes: TFileAttributes = [faNormal]): Boolean; overload;
@@ -90,17 +93,19 @@ type
   end;
 {$ENDIF}
 
+  PStream = PWritableStream;
   TStream = TWritableStream;
 
+  PFileStream = PHandleStream;
   TFileStream = THandleStream;
-  TStdStream = THandleStream;
 
   TMappingOption = (maRead, maWrite, maCopy, maExecute, maImage, maReserve, maNoCache);
   TCreateFileMapping = set of maWrite..maNoCache;
   TOpenFileMapping = set of maRead..maCopy;
   TMapViewAccess = maRead..maCopy{maExecute};
 
-  TFileMapping = class
+  PFileMapping = ^TFileMapping;
+  TFileMapping = object(TCoreObject)
   private
     FHandle: THandle;
     function AssignHandle(Value: THandle): Boolean;
@@ -110,7 +115,7 @@ type
     constructor Create(MappingName: PCoreChar; Options: TOpenFileMapping;
       InheritHandle: Boolean = True); overload;
 
-    destructor Destroy; override;
+    destructor Destroy; virtual;
 
     function Open(hFile: THandle; Options: TCreateFileMapping;
       Size: QuadWord = 0; MappingName: PCoreChar = nil): Boolean; overload;
@@ -124,20 +129,22 @@ type
     property Handle: THandle read FHandle;
   end;
 
-  TFileStreamMapping = class(TFileMapping)
+  PFileStreamMapping = ^TFileStreamMapping;
+  TFileStreamMapping = object(TFileMapping)
   private
     FStream: TFileStream;
   public
     constructor Create(FileName: PCoreChar; Options: TCreateFileMapping;
       Size: QuadWord = 0; MappingName: PCoreChar = nil); overload;
-    destructor Destroy; override;
+    destructor Destroy; virtual;
     function Open(FileName: PCoreChar; Options: TCreateFileMapping;
       Size: QuadWord = 0; MappingName: PCoreChar = nil): Boolean; overload;
 
     property Stream: TFileStream read FStream;
   end;
 
-  TConsole = class
+  PConsole = ^TConsole;
+  TConsole = object(TCoreObject)
   private
     FInput, FOutput: THandle;
     FInputCP, FOutputCP: Word;
@@ -145,14 +152,15 @@ type
     procedure SetCodePage(Value: Word);
   public
     constructor Create(ErrorOutput: Boolean = False);
-    destructor Destroy; override;
+    destructor Destroy; virtual;
 
     property CodePage: Word read GetCodePage write SetCodePage;
     property Input: THandle read FInput;
     property Output: THandle read FOutput;
   end;
 
-  TStreamConsole = class(TConsole)
+  PStreamConsole = ^TStreamConsole;
+  TStreamConsole = object(TConsole)
   public
   {$IFDEF Debug}
     constructor Create(ErrorOutput: Boolean = False);
@@ -168,7 +176,8 @@ type
     procedure WriteLn(Text: PWideChar; Count, LineBreaks: Integer); overload;
   end;
 
-  TScreenConsole = class(TConsole)
+  PScreenConsole = ^TScreenConsole;
+  TScreenConsole = object(TConsole)
   private
     procedure SetTextAttribute(Value: Word);
   public
@@ -186,7 +195,8 @@ type
     property TextAttribute: Word write SetTextAttribute;
   end;
 
-  TPerformanceCounter = class
+  PPerformanceCounter = ^TPerformanceCounter;
+  TPerformanceCounter = object
   private
     FFrequency: QuadWord;
     function GetValue: QuadWord;
@@ -233,13 +243,14 @@ type
   TVersionBuffer = array[0..39] of LegacyChar;
   TFormatVersionOptions = set of (fvProductVersion, fvSkipZeroRelease);
 
-  TVersionInfo = class
+  PVersionInfo = ^TVersionInfo;
+  TVersionInfo = object(TCoreObject)
   private
     FData: Pointer;
     FTranslations: PTranslationArray;
   public
     constructor Create(FileName: PCoreChar); overload;
-    destructor Destroy; override;
+    destructor Destroy; virtual;
     function Open(FileName: PCoreChar): Boolean;
 
     function FixedInfo: TFixedVersionInfo; overload;
@@ -546,14 +557,14 @@ end;
 constructor TFileStreamMapping.Create(FileName: PCoreChar; Options: TCreateFileMapping;
   Size: QuadWord; MappingName: PCoreChar);
 begin
-  FStream := TFileStream.Create;
+  FStream.Create;
   if not Open(FileName, Options, Size, MappingName) then
     RaiseLastPlatformError(FileName);
 end;
 
 destructor TFileStreamMapping.Destroy;
 begin
-  FStream.Free;
+  FStream.Destroy;
   inherited;
 end;
 
@@ -586,7 +597,6 @@ begin
     SetConsoleCP(FInputCP);
   if FOutputCP <> 0 then
     SetConsoleOutputCP(FOutputCP);
-  inherited;
 end;
 
 function TConsole.GetCodePage: Word;
