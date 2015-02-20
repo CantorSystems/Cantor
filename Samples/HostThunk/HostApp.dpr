@@ -1,5 +1,5 @@
 (*
-    Host application using core library sample
+    Host application using core library sample (CoreLite mini)
 
     Copyright (c) 2013, 2015 Vladislav Javadov (aka Freeman)
 
@@ -32,6 +32,8 @@ const
 procedure InitCore(const Thunk: TThunk); external CoreLib name '@@Init';
 procedure Fall; external CoreLib;
 
+var
+  Console: TStreamConsole;
 begin
 {$IFDEF Tricks}
   UseErrorMessageWrite;
@@ -57,13 +59,15 @@ begin
     end;
   end;
 
-  with TStreamConsole.Create(True) do
-  try
-    //CodePage := CP_UTF8;
-    ReadLn('Press ENTER to exit');
-  finally
-    Free;
+  with Console do
+  begin
+    Create(True);
+    try
+      //CodePage := CP_UTF8;
+      ReadLn('Press ENTER to exit');
+    finally
+      Destroy;
+    end;
   end;
-
 end.
 
