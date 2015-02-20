@@ -641,7 +641,7 @@ begin
   end;
 {$ELSE}
 begin
-  FMessage := Pointer(Format(Msg, Args));
+  FMessage := Pointer(Format(Msg, 0, Args).Value);
   FOptions := [eoFreeMessage, eoCanFree];
 {$ENDIF}
 end;

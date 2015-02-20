@@ -1,7 +1,7 @@
 (*
     CoreLite host program thunk
 
-    Copyright (c) 2013 Vladislav Javadov (Freeman)
+    Copyright (c) 2013, 2015 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
       * ForceMMX -- check for MMX support on initialization
@@ -37,12 +37,12 @@ type
     SuppressErrorMessages: Boolean;
   end;
 
-{ Server side }
+{ Core library side }
 
-procedure StdInit(const Thunk: THostThunk); stdcall;
-procedure FastInit(const Thunk: TThunk);
+procedure StdCallInit(const Thunk: THostThunk); stdcall;
+procedure FastCallInit(const Thunk: TThunk);
 
-{ Client side }
+{ Host application side }
 
 function MakeThunk: TThunk;
 
@@ -97,17 +97,17 @@ asm
         JMP HostApp.ExceptionMessage
 end;
 
-procedure StdInit(const Thunk: THostThunk);
+procedure StdCallInit(const Thunk: THostThunk);
 var
   MM: TMemoryManager;
 begin
   HostApp := Thunk;
   ErrorMessage := ErrorMessageThunk;
   ExceptionMessage := ExceptionMessageThunk;
-{$IFDEF ForceMMX}
+{$IF Defined(ForceMMX) and not Defined(Tricks)}
   if not MMX_Supported then
     raise EMMX.Create; // until memory manager isn't set yet
-{$ENDIF}
+{$IFEND}
   NoErrMsg := Thunk.SuppressErrorMessages;
   with MM do
   begin
@@ -118,14 +118,14 @@ begin
   SetMemoryManager(MM);
 end;
 
-procedure FastInit(const Thunk: TThunk);
+procedure FastCallInit(const Thunk: TThunk);
 begin
   ErrorMessage := Thunk.ErrorMessage;
   ExceptionMessage := Thunk.ExceptionMessage;
-{$IFDEF ForceMMX}
+{$IF Defined(ForceMMX) and not Defined(Tricks)}
   if not MMX_Supported then
     raise EMMX.Create; // until memory manager isn't set yet
-{$ENDIF}
+{$IFEND}
   NoErrMsg := Thunk.SuppressErrorMessages;
   SetMemoryManager(Thunk.MemoryManager);
 end;
@@ -154,5 +154,3 @@ finalization
   ExceptionMessage := nil;
 
 end.
-
-

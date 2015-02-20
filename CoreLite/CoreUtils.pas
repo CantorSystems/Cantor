@@ -1139,7 +1139,7 @@ var
   L: Integer;
 begin
   L := FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM or FORMAT_MESSAGE_ALLOCATE_BUFFER,
-    nil, ErrorCode, 0, @Result, 0, nil);
+    nil, ErrorCode, 0, Pointer(@Result), 0, nil);
   while (L <> 0) and
     ((Result[L] >= WideChar(0)) and (Result[L] <= WideChar(32)) or
      (Result[L] = WideChar('.')))
