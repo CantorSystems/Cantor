@@ -60,6 +60,10 @@ type
   TLeadByte = #$80..#$FF;
   TTrailByte = #$20..#$FF;
 
+  TSurrogatePair = packed record
+    HighSurrogate, LowSurrogate: WideChar; // always big-endian
+  end;
+
   TLeadBytes = set of TLeadByte;
   TTrailBytes = set of TTrailByte;
 
@@ -212,6 +216,23 @@ type
 
 { Helper functions }
 
+type
+  THighSurrogates = $D800..$DBFF;
+  TLowSurrogates  = $DC00..$DFFF;
+
+  TUnicodeBMP = $000000..$00FFFF;  // Basic Multilingual Plane
+  TUnicodeSMP = $010000..$01FFFF;  // Supplementary Multilingual Plane
+  TUnicodeSIP = $020000..$02FFFF;  // Supplementary Ideographic Plane
+  TUnicodeSSP = $0E0000..$0EFFFF;  // Supplementary Special-purpose Plane
+  TUnicodePUA = $0F0000..$10FFFF;  // Private Use Area
+
+  TNonUnicode = $110000..$FFFFFFFF;
+
+  TSurrogatePairOptions = set of (poBigEndian, poEncodeBigEndian);
+
+function DecodeSurrogatePair(Source: QuadChar; Options: TSurrogatePairOptions = []): QuadChar;
+function EncodeSurrogatePair(Source: QuadChar; Options: TSurrogatePairOptions = []): QuadChar;
+
 function TranslateCodePage(Source: Word): Word;
 
 { Legacy Windows service }
@@ -243,6 +264,40 @@ const
 type
   TLegacyCharBuf = array[0..$3FF] of LegacyChar;
   TWideCharBuf = array[0..$3FF] of WideChar;
+
+function DecodeSurrogatePair(Source: QuadChar; Options: TSurrogatePairOptions): QuadChar;
+begin
+  if poBigEndian in Options then
+    Result := (Swap(Source) - Low(THighSurrogates)) * $400 +
+      Low(TUnicodeSMP) + Swap(Source shr 16) - Low(TLowSurrogates)
+  else
+    Result := (Word(Source) - Low(THighSurrogates)) * $400 +
+      Low(TUnicodeSMP) + Word(Source shr 16) - Low(TLowSurrogates);
+
+  if poEncodeBigEndian in Options then
+  asm
+      MOV EAX, Result
+      BSWAP EAX
+      MOV Result, EAX
+  end;
+end;
+
+function EncodeSurrogatePair(Source: QuadChar; Options: TSurrogatePairOptions): QuadChar;
+begin
+  if poBigEndian in Options then
+  asm
+      MOV EAX, Source
+      BSWAP EAX
+      MOV Source, EAX
+  end;
+
+  if poEncodeBigEndian in Options then
+    Result := (Swap((Low(TLowSurrogates) + Source mod $400)) shl 16) or
+      Swap(Low(THighSurrogates) + Source div $400)
+  else
+    Result := (Word((Low(TLowSurrogates) + Source mod $400)) shl 16) or
+      Word(Low(THighSurrogates) + Source div $400);
+end;
 
 function TranslateCodePage(Source: Word): Word;
 begin
