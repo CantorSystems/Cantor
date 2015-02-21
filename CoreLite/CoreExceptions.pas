@@ -125,17 +125,24 @@ type
   ESafecall = class(EInterface);
 {$ENDIF}
 
+  TErrorSource = record
+    case Byte of
+      0: (Source: PCoreChar);
+      1: (TextParam: PLegacyChar; IntParam: Integer);
+  end;
+
   EPlatform = class(Exception)
   private
     FErrorCode: LongWord;
-    FErrorSource: PCoreChar;
+    FErrorSource: TErrorSource;
   public
-    constructor Create(ErrorCode: LongWord; ErrorSource: PCoreChar = nil);
+    constructor Create(ErrorCode: LongWord; ErrorSource: PCoreChar {$IFNDEF Debug} = nil {$ENDIF}); overload;
+    constructor Create(ErrorCode: LongWord; TextParam: PLegacyChar; IntParam: Integer); overload;
   {$IFNDEF Debug}
     destructor Destroy; override;
   {$ENDIF}
     property ErrorCode: LongWord read FErrorCode;
-    property ErrorSource: PCoreChar read FErrorSource;
+    property ErrorSource: TErrorSource read FErrorSource;
   end;
 
 {$IFNDEF Tricks}
@@ -154,7 +161,8 @@ type
 { Exception raising }
 
 procedure Abort;
-procedure RaiseLastPlatformError(ErrorSource: PCoreChar = nil);
+procedure RaiseLastPlatformError(ErrorSource: PCoreChar {$IFNDEF Debug} = nil {$ENDIF} ); overload;
+procedure RaiseLastPlatformError(TextParam: PLegacyChar; IntParam: Integer); overload;
 
 { Exception handling }
 
@@ -563,6 +571,15 @@ begin
     raise EPlatform.Create(LastError, ErrorSource);
 end;
 
+procedure RaiseLastPlatformError(TextParam: PLegacyChar; IntParam: Integer);
+var
+  LastError: LongWord;
+begin
+  LastError := GetLastError;
+  if LastError <> 0 then
+    raise EPlatform.Create(LastError, TextParam, IntParam);
+end;
+
 { Exception handling }
 
 procedure ShowException(E: {$IFDEF Debug} TObject {$ELSE} Exception {$ENDIF});
@@ -766,7 +783,37 @@ begin
   FOptions := [eoWideChar, eoCanFree];
 {$ENDIF}
   FErrorCode := ErrorCode;
-  FErrorSource := ErrorSource;
+  FErrorSource.Source := ErrorSource;
+end;
+
+constructor EPlatform.Create(ErrorCode: LongWord; TextParam: PLegacyChar; IntParam: Integer);
+const
+  FmtLen = Length(sPlatformError2);
+var
+  Fmt: array[0..FmtLen] of LegacyChar;
+  P: PLegacyChar;
+  W: PCoreChar;
+begin
+  Fmt := sPlatformError2;
+  P := Fmt;
+  Inc(P, FmtLen);
+  if IntParam = 0 then
+    Dec(P, 3); // ' %d'
+  P^ := #0;
+{$IFDEF Debug}
+  W := SysErrorMessage(ErrorCode);
+  try
+    inherited Create(Fmt, CP_LEGACY, [W, TextParam, IntParam])
+  finally
+    LocalFree(THandle(W));
+  end;
+{$ELSE}
+  inherited Create(Fmt, CP_LEGACY, [W, TextParam, IntParam])
+  FOptions := [eoWideChar, eoCanFree];
+{$ENDIF}
+  FErrorCode := ErrorCode;
+  FErrorSource.TextParam := TextParam;
+  FErrorSource.IntParam := IntParam;
 end;
 
 {$IFNDEF Debug}

@@ -449,7 +449,7 @@ end;
 procedure THandleStream.SetPosition(Value: QuadWord);
 begin
   if not SetFilePointerEx(FHandle, Value, nil, FILE_BEGIN) then
-    RaiseLastPlatformError;
+    RaiseLastPlatformError(sPosition, Value);
 end;
 
 procedure THandleStream.SetSize(Value: QuadWord);
@@ -483,7 +483,7 @@ constructor TFileMapping.Create(hFile: THandle; Options: TCreateFileMapping;
   Size: QuadWord; MappingName: PCoreChar);
 begin
   if not Open(hFile, Options, Size, MappingName) then
-    RaiseLastPlatformError;
+    RaiseLastPlatformError(MappingName);
 end;
 
 constructor TFileMapping.Create(MappingName: PCoreChar; Options: TOpenFileMapping;
@@ -673,7 +673,7 @@ begin
   if FOutputCP = 0 then
     FOutputCP := GetConsoleOutputCP;
   if not SetConsoleCP(Value) or not SetConsoleOutputCP(Value) then
-    RaiseLastPlatformError;
+    RaiseLastPlatformError {$IFDEF Debug} (sConsoleCodePage, Value) {$ENDIF} ;
 end;
 
 { TStreamConsole }
@@ -847,7 +847,7 @@ end;
 constructor TPerformanceCounter.Create;
 begin
   if not QueryPerformanceFrequency(FFrequency) then
-    RaiseLastPlatformError;
+    RaiseLastPlatformError {$IFDEF Debug} (sPerformanceFrequency, 0) {$ENDIF} ;
 end;
 
 function TPerformanceCounter.ElapsedMilliseconds(StartValue: QuadWord): Double;
@@ -858,7 +858,7 @@ end;
 function TPerformanceCounter.GetValue: QuadWord;
 begin
   if not QueryPerformanceCounter(Result) then
-    RaiseLastPlatformError;
+    RaiseLastPlatformError {$IFDEF Debug} (sPerformanceCounter, 0) {$ENDIF} ;
 end;
 
 function TPerformanceCounter.MillisecondsBetween(Value1, Value2: QuadWord): Double;
@@ -871,7 +871,7 @@ end;
 constructor TVersionInfo.Create(FileName: PCoreChar);
 begin
   if not Open(FileName) then
-    RaiseLastPlatformError(sVS_VERSION_INFO);
+    RaiseLastPlatformError(sVS_VERSION_INFO, 0);
 end;
 
 destructor TVersionInfo.Destroy;
@@ -896,7 +896,7 @@ end;
 function TVersionInfo.FixedInfo: TFixedVersionInfo;
 begin
   if not FixedInfo(Result) then
-    RaiseLastPlatformError;
+    RaiseLastPlatformError(sFixedVersionInfo, 0);
 end;
 
 function TVersionInfo.FixedInfo(var Info: TFixedVersionInfo): Boolean;

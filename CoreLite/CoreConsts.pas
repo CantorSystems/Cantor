@@ -50,9 +50,17 @@ const
 
   sMMX = 'This program requires MMX';
 
-  sPlatformError = '%s: “%s”';
+  sPlatformError  = '%s: “%s”';
+  sPlatformError2 = '%s: %hs %d';
+
+  sPosition = 'position';
+  sCodePage = 'code page';
+  sConsoleCodePage = 'console code page';
+  sPerformanceCounter = 'performance counter';
+  sPerformanceFrequency = 'performance frequency';
 
   sVS_VERSION_INFO = 'VS_VERSION_INFO';
+  sFixedVersionInfo = 'fixed version info';
   sVersionAndBuild = '%s build %u';
 
   sStreamRead = 'read';

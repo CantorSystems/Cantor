@@ -57,7 +57,7 @@ type
 //  TEncodeUTF32 = set of coContinuous..coBigEndian;
 
 type
-  TLeadByte = #$7F..#$FF;
+  TLeadByte = #$80..#$FF;
   TTrailByte = #$20..#$FF;
 
   TLeadBytes = set of TLeadByte;
@@ -160,9 +160,9 @@ type
 
     function InsertString(Source: PLegacyChar; Length: Integer; CodePage: PCodePage = nil;
       SourceOptions: TLegacySource = []; DestIndex: Integer = 0;
-      DestOptions: TEncodeLegacy = []): TNextLegacyChar; virtual; //overload; virtual; abstract;
+      DestOptions: TEncodeLegacy = []): TNextLegacyChar; virtual; abstract;
     function InsertWideString(Source: PWideChar; Length: Integer; SourceOptions: TEndianSource = [];
-      DestIndex: Integer = 0; DestOptions: TEncodeUTF16 = []): TNextWideChar; virtual; //overload; virtual; abstract;
+      DestIndex: Integer = 0; DestOptions: TEncodeUTF16 = []): TNextWideChar; virtual; abstract;
   end;
 
   PRawByteString = ^TRawByteString;
@@ -256,28 +256,93 @@ begin
   end;
 end;
 
+type
+  TCodePageName = record
+    Str: PCoreChar;
+    Len: Integer;
+  end;
+
+function ExtractCodePageName(var Info: TCPInfoEx): TCodePageName;
+var
+  I: Integer;
+  P: PCoreChar;
+begin
+  with Info do
+  begin
+    for I := Low(CodePageName) to High(CodePageName) do
+      case CodePageName[I] of
+        CoreChar(0)..CoreChar(32), CoreChar('0')..CoreChar('9'):
+          ; 
+        CoreChar('('):
+          begin
+            with Result do
+            begin
+              Str := @CodePageName[I];
+              Len := WideStrLen(Str, Length(CodePageName) - I);
+              P := Str + Len - 1;
+              if P^ = CoreChar(')') then
+              begin
+                Inc(Str);
+                Dec(Len);
+                P^ := CoreChar(0);
+              end;
+            end;
+            Exit;
+          end;
+      else
+        Break;
+      end;
+    with Result do
+    begin
+      Str := @CodePageName[I];
+      Len := WideStrLen(Str, Length(CodePageName) - I);
+    end;
+  end;
+end;
+
 { TCodePage }
 
 constructor TCodePage.Create(CodePage: Word);
+var
+  Info: TCPInfoEx;
+  P: PLegacyChar;
 begin
+  if not GetCPInfoEx(CodePage, 0, Info) then
+    RaiseLastPlatformError {$IFDEF Debug} (sCodePage, CodePage) {$ENDIF} ;
 
-end;
+  with Info do
+  begin
+    FNumber := CodePage;
+    FMaxCharBytes := MaxCharSize;
 
-function TCodePage.Decode(Source: PLegacyChar; Count: Integer;
-  CodePage: TCodePage; SourceOptions: TLegacySource; Dest: PLegacyChar;
-  DestOptions: TEncodeLegacy): TNextLegacyChar;
-begin
+    P := Pointer(@LeadByte);
+    while P < P + SizeOf(LeadByte) do
+      if (P[0] <> #0) and (P[1] <> #0) then
+      begin
+        FLeadBytes := FLeadBytes + [P[0]..P[1]];
+        Inc(P, 2);
+      end
+      else
+        Break;
+  end;
 
-end;
-
-function TCodePage.Decode(Source: PWideChar; Count: Integer;
-  SourceOptions: TEndianSource; Dest: PLegacyChar;
-  DestOptions: TEncodeLegacy): TNextWideChar;
-begin
-
+  with ExtractCodePageName(Info) do
+    FName := WideStrNew(Str, Len);
 end;
 
 destructor TCodePage.Destroy;
+begin
+  FreeMem(FName);
+end;
+
+function TCodePage.Decode(Source: PLegacyChar; Count: Integer; CodePage: TCodePage;
+  SourceOptions: TLegacySource; Dest: PLegacyChar; DestOptions: TEncodeLegacy): TNextLegacyChar;
+begin
+
+end;
+
+function TCodePage.Decode(Source: PWideChar; Count: Integer; SourceOptions: TEndianSource;
+  Dest: PLegacyChar; DestOptions: TEncodeLegacy): TNextWideChar;
 begin
 
 end;
@@ -299,20 +364,6 @@ end;
 { TString }
 
 procedure TString.Clear;
-begin
-
-end;
-
-function TString.InsertString(Source: PLegacyChar; Length: Integer;
-  CodePage: PCodePage; SourceOptions: TLegacySource; DestIndex: Integer;
-  DestOptions: TEncodeLegacy): TNextLegacyChar;
-begin
-
-end;
-
-function TString.InsertWideString(Source: PWideChar; Length: Integer;
-  SourceOptions: TEndianSource; DestIndex: Integer;
-  DestOptions: TEncodeUTF16): TNextWideChar;
 begin
 
 end;
