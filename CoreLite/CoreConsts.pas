@@ -51,6 +51,7 @@ const
   sMMX = 'This program requires MMX';
 
   sPlatformError = '%s: “%s”';
+
   sVS_VERSION_INFO = 'VS_VERSION_INFO';
   sVersionAndBuild = '%s build %u';
 
@@ -61,9 +62,11 @@ const
   sStreamError = '%hs: %hs only %u bytes of %u required';
 
   sIndexOutOfBounds = 'Index %hs[%d] out of bounds %d..%d';
-  sIndexOfNull      = 'Index %hs[%d] where container is null';
+  sIndexOfNull      = 'Access on index [%d] when container is null';
   sRangeOutOfBounds = 'Range %hs[%d..%d] out of bounds %d..%d';
+  sRangeOfNull      = 'Access on range [%d..%d] when container is null';
   sFixedCapacity    = 'This %hs object can contain only %d items';
+  sNullCapacity     = 'Cannot add an item into null container';
 
   sUnsupportedCodePage = 'Code page %u (%s) is not yet supported';
 
@@ -108,30 +111,6 @@ const
   sBadSurrogate = 'Bad %s surrogate pair starting with a low surrogate (U+%04X)'; // UTF-16 or CESU-8
   sBrokenSurrogate = 'Broken %s surrogate pair or unexpected end of string:'#10 + // UTF-16 or CESU-8
     'high surrogate (U+%04X) is not complemented by a low surrogate';
-
-  sNotExecutableImage = 'Not an executable image';
-  sNotValidWin32Image = 'Not valid Win32 image';
-  sDotNETAssembly = '.NET assemblies cannot be handled';
-  sUnknownExeImage = 'Unknown image signature: %c%c';
-  sBadExeImage = 'Bad image: %s';
-
-  sStrong       = 'strong';
-  sEmphasis     = 'emphasis';
-  sInsert       = 'insert';
-  sDelete       = 'delete';
-  sSmall        = 'small';
-  sMark         = 'mark';
-  sSubscript    = 'subscript';
-  sSuperscript  = 'superscript';
-  sNoWrap       = 'nowrap';
-  sKeyboard     = 'keyboard';
-  sSample       = 'sample';
-  sVariable     = 'variable';
-  sDefinition   = 'definition';
-  sCite         = 'cite';
-  sQuote        = 'quote';
-  sEmotion      = 'emotion';
-  sSpelling     = 'spelling';
 
 implementation
 

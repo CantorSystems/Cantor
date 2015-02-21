@@ -8,7 +8,7 @@
 
 type
   PHandleStream = ^THandleStream;
-  THandleStream = object(TCoreObject)
+  THandleStream = object(TObject)
   private
     FHandle: THandle;
   protected
@@ -19,7 +19,7 @@ type
   public
     constructor Create(FileName: PWideChar; Access: TFileAccess;
       Attributes: TFileAttributes = [faNormal]); overload;
-    destructor Destroy; virtual;
+    destructor Destroy; 
 
     function Open(FileName: PWideChar; Access: TFileAccess;
       Attributes: TFileAttributes = [faNormal]): Boolean; overload;

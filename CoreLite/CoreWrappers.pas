@@ -36,6 +36,9 @@ const
   faSequentialRead = faRead + [faSequential];
   faSequentialRewrite = faRewrite + [faSequential];
 
+  faRandomRead = faRead + [faRandom];
+  faRandomRewrite = faRewrite + [faRandom];
+
 {$IFDEF Lite}
   {$I LiteStreams.inc}
 {$ELSE}
@@ -143,8 +146,25 @@ type
     property Stream: TFileStream read FStream;
   end;
 
+  TReadableStreamEvent = procedure(const Stream: TReadableStream) of object;
+  TWritableStreamEvent = procedure(const Stream: TWritableStream) of object;
+
+  PLoadHelper = ^TLoadHelper;
+  TLoadHelper = object
+    BeforeLoad, AfterLoad: TReadableStreamEvent;
+    procedure Load(HostLoad: TReadableStreamEvent; FileName: PCoreChar;
+      Access: TFileAccess = faSequentialRead);
+  end;
+
+  PSaveHelper = ^TSaveHelper;
+  TSaveHelper = object
+    BeforeSave, AfterSave: TReadableStreamEvent;
+    procedure Save(HostSave: TReadableStreamEvent; FileName: PCoreChar;
+      Access: TFileAccess = faSequentialRewrite; Attributes: TFileAttributes = [faNormal]);
+  end;
+
   PConsole = ^TConsole;
-  TConsole = object(TCoreObject)
+  TConsole = object
   private
     FInput, FOutput: THandle;
     FInputCP, FOutputCP: Word;
@@ -152,7 +172,7 @@ type
     procedure SetCodePage(Value: Word);
   public
     constructor Create(ErrorOutput: Boolean = False);
-    destructor Destroy; virtual;
+    destructor Destroy;
 
     property CodePage: Word read GetCodePage write SetCodePage;
     property Input: THandle read FInput;
@@ -244,13 +264,13 @@ type
   TFormatVersionOptions = set of (fvProductVersion, fvSkipZeroRelease);
 
   PVersionInfo = ^TVersionInfo;
-  TVersionInfo = object(TCoreObject)
+  TVersionInfo = object(TObject)
   private
     FData: Pointer;
     FTranslations: PTranslationArray;
   public
     constructor Create(FileName: PCoreChar); overload;
-    destructor Destroy; virtual;
+    destructor Destroy;
     function Open(FileName: PCoreChar): Boolean;
 
     function FixedInfo: TFixedVersionInfo; overload;
@@ -564,8 +584,12 @@ end;
 
 destructor TFileStreamMapping.Destroy;
 begin
-  FStream.Destroy;
   inherited;
+{$IFDEF Lite}
+  FStream.Destroy;
+{$ELSE}
+  FStream.Finalize;
+{$ENDIF}
 end;
 
 function TFileStreamMapping.Open(FileName: PCoreChar; Options: TCreateFileMapping;
@@ -581,6 +605,44 @@ begin
   end
   else
     Result := False;
+end;
+
+{ TLoadHelper }
+
+procedure TLoadHelper.Load(HostLoad: TReadableStreamEvent; FileName: PCoreChar;
+  Access: TFileAccess);
+var
+  F: TFileStream;
+begin
+  F.Create(FileName, Access);
+  try
+    if Assigned(BeforeLoad) then
+      BeforeLoad(F);
+    HostLoad(F);
+    if Assigned(AfterLoad) then
+      AfterLoad(F);
+  finally
+    F.Destroy;
+  end;
+end;
+
+{ TSaveHelper }
+
+procedure TSaveHelper.Save(HostSave: TReadableStreamEvent; FileName: PCoreChar;
+  Access: TFileAccess; Attributes: TFileAttributes);
+var
+  F: TFileStream;
+begin
+  F.Create(FileName, Access, Attributes);
+  try
+    if Assigned(BeforeSave) then
+      BeforeSave(F);
+    HostSave(F);
+    if Assigned(AfterSave) then
+      AfterSave(F);
+  finally
+    F.Destroy;
+  end;
 end;
 
 { TConsole }
