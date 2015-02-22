@@ -82,6 +82,8 @@ type
   PCoreChar     = PWideChar;
   PPCoreChar    = PPWideChar;
 
+  PAddress = PLegacyChar;  // for address arithmetic
+
   TLegacyStringRec = record
     Value: PLegacyChar;
     Length: Integer;
@@ -143,7 +145,7 @@ function MMX_Supported: Boolean;
 
 function AllocMem(Count: CoreInt; FillingByte: Byte = 0): Pointer;
 procedure FreeMemAndNil(var P);
-procedure FreeAndNil(var Obj);
+// procedure FreeAndNil(var Obj); --> moved to CoreClasses
 
 procedure Exchange(var P1, P2: Pointer); overload;
 procedure Exchange(var P1, P2: Int64); overload;
@@ -459,9 +461,9 @@ begin
       vtString:
         Inc(Result, PByte(TVarRec(Args[I]).VString)^);
       vtAnsiString:
-        Inc(Result, PInteger(PLegacyChar(TVarRec(Args[I]).VAnsiString) - SizeOf(Integer))^);
+        Inc(Result, PInteger(PAddress(TVarRec(Args[I]).VAnsiString) - SizeOf(Integer))^);
       vtWideString:
-        Inc(Result, PLongInt(PLegacyChar(TVarRec(Args[I]).VWideString) - SizeOf(LongInt))^ div SizeOf(WideChar));
+        Inc(Result, PLongInt(PAddress(TVarRec(Args[I]).VWideString) - SizeOf(LongInt))^ div SizeOf(WideChar));
     {$ENDIF}
     end;
 end;
@@ -1295,7 +1297,7 @@ var
   P: PLegacyChar;
 begin
   try
-    P := PPointer(PLegacyChar(Source) + vmtClassName)^;
+    P := PPointer(PAddress(Source) + vmtClassName)^;
     Result := PByte(P)^; // Length(P^);
     Inc(P);
     if (Result > 1) and (P^ in ['T', 't']) then

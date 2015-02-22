@@ -235,6 +235,9 @@ type
     property Options: TEndianSource read FHelper.FData.WideStringOptions;
   end;
 
+  PCoreString = PWideString;
+  TCoreString = TWideString;
+
 { Helper functions }
 
 type
@@ -482,7 +485,7 @@ begin
         Dec(ByteCount, FHelper.BytesPerChar);
         Move(Source^, RawString^, ByteCount);
       end;
-      FillChar(PLegacyChar(RawString)[Length], FHelper.BytesPerChar, 0);
+      FillChar(PAddress(RawString)[ByteCount], FHelper.BytesPerChar, 0);
       RawOptions := Options;
     end;
     FCount := Length;
@@ -503,17 +506,20 @@ begin
     begin
       with FHelper.FData do
       begin
+        ByteCount := (Value + 1) * FHelper.BytesPerChar;
         if (RawString <> nil) and (soAttachBuffer in RawOptions) then
         begin
           S := RawString;
-          ByteCount := (Value + 1) * FHelper.BytesPerChar;
           GetMem(RawString, ByteCount);
           Dec(ByteCount, FHelper.BytesPerChar);
           Move(S^, RawString^, ByteCount);
         end
         else
-          ReallocMem(RawString, (Value + 1) * FHelper.BytesPerChar);
-        FillChar(PLegacyChar(RawString)[Value], FHelper.BytesPerChar, 0);
+        begin
+          ReallocMem(RawString, ByteCount);
+          Dec(ByteCount, FHelper.BytesPerChar);
+        end;
+        FillChar(PAddress(RawString)[ByteCount], FHelper.BytesPerChar, 0);
       end;
       FCount := Value;
     end
