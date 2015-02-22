@@ -53,25 +53,27 @@ const
   sPlatformError  = '%s: “%s”';
   sPlatformError2 = '%s: %hs %d';
 
-  sPosition = 'position';
-  sCodePage = 'code page';
-  sConsoleCodePage = 'console code page';
-  sPerformanceCounter = 'performance counter';
-  sPerformanceFrequency = 'performance frequency';
-
-  sVS_VERSION_INFO = 'VS_VERSION_INFO'; 
-  sFixedVersionInfo = 'fixed version info';
-  sVersionAndBuild = '%s build %u';
-
   sStreamRead = 'read';
   sStreamWrote = 'wrote';
   sStreamReadError = 'Unexpected end of stream';
   sStreamWriteError = 'Not enough space';
   sStreamError = '%hs: %hs only %u bytes of %u required';
 
-  sRawByteString = 'RawByteString';
-  sLegacyString = 'LegacyString';
-  sWideString = 'WideString';
+  sVS_VERSION_INFO = 'VS_VERSION_INFO';
+  sFixedVersionInfo = 'fixed version info';
+  sVersionAndBuild = '%s build %u';
+
+  sPerformanceCounter = 'performance counter';
+  sPerformanceFrequency = 'performance frequency';
+
+  sCastNull = 'Cannot cast null to %s';
+  sCastToNull = 'Cannot cast object to null %s';
+  sCastMistmatch = 'Cannot cast mismatch object to %s';
+  sCastUntyped = 'Cannot cast uninitialized object to %s';
+
+  sPosition = 'position';
+  sCodePage = 'code page';
+  sConsoleCodePage = 'console code page';
 
   sIndexOutOfBounds = 'Index %hs[%d] out of bounds %d..%d';
   sIndexOfNull      = 'Access on index [%d] when container is null';
@@ -79,6 +81,10 @@ const
   sRangeOfNull      = 'Access on range [%d..%d] when container is null';
   sFixedCapacity    = 'This %hs object can contain only %d items';
   sNullCapacity     = 'Cannot add an item into null container';
+
+  sRawByteString = 'RawByteString';
+  sLegacyString = 'LegacyString';
+  sWideString = 'WideString';
 
   sUnsupportedCodePage = 'Code page %u (%s) is not yet supported';
 

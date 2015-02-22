@@ -13,6 +13,9 @@ interface
 uses
   Windows, CoreUtils, CoreExceptions;
 
+const
+  InstanceSizeIndex = -8; // for Delphi 6, 7
+
 type
   PObject = ^TObject;
   TObject = object
@@ -21,16 +24,22 @@ type
 
   PCoreObject = ^TCoreObject;
   TCoreObject = object(TObject)
+  protected
+    procedure Cast(Name: PLegacyChar; Info: Pointer);
+    function TypeInfo: Pointer;
   public
     destructor Destroy; virtual;
     procedure Finalize;
     procedure Free;
+    function InstanceSize: Integer;
   end;
 
   PContainer = ^TContainer;
   TContainer = object(TCoreObject)
   private
     FClassName: PLegacyChar;
+  protected
+    procedure Cast(Source: PContainer);
   public
     constructor Create(Name: PLegacyChar);
     property ClassName: PLegacyChar read FClassName;
@@ -185,6 +194,18 @@ type
 
 { Exceptions }
 
+  ECast = class(Exception)
+  private
+    FInstance: PCoreObject;
+    FTypeInfo: Pointer;
+    FTypeName: PLegacyChar;
+  public
+    constructor Create(Instance: PCoreObject; Name: PLegacyChar; Info: Pointer);
+    property Instance: PCoreObject read FInstance;
+    property TypeInfo: Pointer read FTypeInfo;
+    property TypeName: PLegacyChar read FTypeName;
+  end;
+
   EContainer = class(Exception)
   end;
 
@@ -272,6 +293,28 @@ begin
     raise ERange.Create(Container, LowBound, HighBound);
 end;
 
+{ ECast }
+
+constructor ECast.Create(Instance: PCoreObject; Name: PLegacyChar; Info: Pointer);
+var
+  Msg: PLegacyChar;
+begin
+  if Instance <> nil then
+    if TypeOf(Instance^) <> nil then
+      if Info <> nil then
+        Msg := sCastMistmatch
+      else
+        Msg := sCastToNull
+    else
+      Msg := sCastUntyped
+  else
+    Msg := sCastNull;
+  inherited Create(Msg, [Name]);
+  FInstance := Instance;
+  FTypeInfo := Info;
+  FTypeName := Name;
+end;
+
 { EIndex }
 
 constructor EIndex.Create(Container: PEnumerable; Index: Integer);
@@ -320,9 +363,17 @@ destructor TCoreObject.Destroy;
 begin
 end;
 
+procedure TCoreObject.Cast(Name: PLegacyChar; Info: Pointer);
+begin
+  if (Info <> nil) and (InstanceSize = PInteger(PLegacyChar(Info) + InstanceSizeIndex)^) then
+    PPointer(@Self)^ := Info
+  else
+    raise ECast.Create(@Self, Name, Info);
+end;
+
 procedure TCoreObject.Finalize;
 begin
-  if PPointer(@Self)^ <> nil then
+  if TypeOf(Self) <> nil then
     Destroy;
 end;
 
@@ -330,11 +381,27 @@ procedure TCoreObject.Free;
 var
   Instance: PCoreObject;
 begin
-  if (@Self <> nil) and (PPointer(@Self)^ <> nil) then
+  if (@Self <> nil) and (TypeOf(Self) <> nil) then
   begin
     Instance := @Self;
     Dispose(Instance, Destroy);
   end;
+end;
+
+function TCoreObject.InstanceSize: Integer;
+begin
+  if (@Self <> nil) and (TypeOf(Self) <> nil) then  // Fast core
+    Result := PInteger(PLegacyChar(TypeOf(Self)) + InstanceSizeIndex)^
+  else
+    Result := 0;
+end;
+
+function TCoreObject.TypeInfo: Pointer;
+begin
+  if @Self <> nil then
+    Result := TypeOf(Self)
+  else
+    Result := nil;
 end;
 
 { TContainer }
@@ -342,6 +409,11 @@ end;
 constructor TContainer.Create(Name: PLegacyChar);
 begin
   FClassName := Name;
+end;
+
+procedure TContainer.Cast(Source: PContainer);
+begin
+  inherited Cast(FClassName, Source.TypeInfo);
 end;
 
 { TClearable }
