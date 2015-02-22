@@ -130,10 +130,8 @@ type
   TStringHelper = object
   protected // prevent stupid warnings
     FData: TStringData;
-    FBytesPerChar: Byte;
   public
     function IsUTF8(ThresholdBytes: Integer = 4): Boolean; // TODO: magic number
-    property BytesPerChar: Byte read FBytesPerChar;
   end;
 
   PSubstring = ^TSubstring;
@@ -167,12 +165,11 @@ type
 { Strings }
 
   PString = ^TString;
-  TString = object(TExpandable)
+  TString = object(TIndexed)
   protected // prevent stupid warnings
     FHelper: TStringHelper;
     procedure SetCount(Value: Integer); virtual;
   public
-    constructor Create(Name: PLegacyChar; BytesPerChar: Byte);
     procedure Clear; virtual;
     procedure Insert(Source: Pointer; Length: Integer; Options: TStringOptions = []);
 
@@ -442,12 +439,6 @@ end;
 
 { TString }
 
-constructor TString.Create(Name: PLegacyChar; BytesPerChar: Byte);
-begin
-  inherited Create(Name);
-  FHelper.FBytesPerChar := BytesPerChar;
-end;
-
 procedure TString.Clear;
 begin
   with FHelper.FData do
@@ -478,14 +469,14 @@ begin
     begin
       if not (soAttachBuffer in RawOptions) then
         FreeMem(RawString);
-      ByteCount := (Length + 1) * FHelper.BytesPerChar;
+      ByteCount := (Length + 1) * ItemSize;
       GetMem(RawString, ByteCount);
       if Source <> nil then
       begin
-        Dec(ByteCount, FHelper.BytesPerChar);
+        Dec(ByteCount, ItemSize);
         Move(Source^, RawString^, ByteCount);
       end;
-      FillChar(PAddress(RawString)[ByteCount], FHelper.BytesPerChar, 0);
+      FillChar(PAddress(RawString)[ByteCount], ItemSize, 0);
       RawOptions := Options;
     end;
     FCount := Length;
@@ -506,20 +497,20 @@ begin
     begin
       with FHelper.FData do
       begin
-        ByteCount := (Value + 1) * FHelper.BytesPerChar;
+        ByteCount := (Value + 1) * ItemSize;
         if (RawString <> nil) and (soAttachBuffer in RawOptions) then
         begin
           S := RawString;
           GetMem(RawString, ByteCount);
-          Dec(ByteCount, FHelper.BytesPerChar);
+          Dec(ByteCount, ItemSize);
           Move(S^, RawString^, ByteCount);
         end
         else
         begin
           ReallocMem(RawString, ByteCount);
-          Dec(ByteCount, FHelper.BytesPerChar);
+          Dec(ByteCount, ItemSize);
         end;
-        FillChar(PAddress(RawString)[ByteCount], FHelper.BytesPerChar, 0);
+        FillChar(PAddress(RawString)[ByteCount], ItemSize, 0);
       end;
       FCount := Value;
     end

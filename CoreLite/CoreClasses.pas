@@ -61,16 +61,20 @@ type
     procedure Clear; virtual; abstract;
   end;
 
-  PExpandable = ^TExpandable;
-  TExpandable = object(TEnumerable)
+  PIndexed = ^TIndexed;
+  TIndexed = object(TEnumerable)
+  private
+    FItemSize: Integer;
   protected
     procedure SetCount(Value: Integer); virtual; abstract;
   public
+    constructor Create(Name: PLegacyChar; BytesPerItem: Integer);
     property Count write SetCount;
+    property ItemSize: Integer read FItemSize;
   end;
 
   PCapable = ^TCapable;
-  TCapable = object(TExpandable)
+  TCapable = object(TIndexed)
   private
     FCapacity, FDelta: Integer;
   protected
@@ -93,11 +97,10 @@ type
     procedure Extract(Index: Integer); overload;
     class procedure FreeItem(const Item); virtual;
     procedure Insert(Index: Integer); overload;
-    class function ItemSize: Integer; virtual;
     procedure SetCapacity(Value: Integer); virtual;
     procedure SetCount(Value: Integer); virtual;
   public
-    constructor Create(ArrayName: PLegacyChar; Initial, GrowBy: Integer;
+    constructor Create(ArrayName: PLegacyChar; BytesPerItem, Initial, GrowBy: Integer;
       OwnerOfItems: Boolean = False);
     function Append(const Item): Integer; overload;
     procedure Clear; virtual;
@@ -126,7 +129,6 @@ type
   TStringArray = object(TArray)
   protected
     class procedure FreeItem(const Item); virtual;
-    class function ItemSize: Integer; virtual;
   end;
 
   PLegacyStringRecArray = ^TLegacyStringRecArray;
@@ -237,10 +239,10 @@ type
 
   EFixed = class(EContainer)
   private
-    FContainer: PExpandable;
+    FContainer: PIndexed;
   public
-    constructor Create(Container: PExpandable);
-    property Container: PExpandable read FContainer;
+    constructor Create(Container: PIndexed);
+    property Container: PIndexed read FContainer;
   end;
 
 { Helper functions }
@@ -363,7 +365,7 @@ end;
 
 { EFixed }
 
-constructor EFixed.Create(Container: PExpandable);
+constructor EFixed.Create(Container: PIndexed);
 begin
   if Container <> nil then
     inherited Create(sFixedCapacity, [Container.ClassName, Container.FCount])
@@ -457,6 +459,14 @@ begin
   Clear;
 end;
 
+{ TIndexed }
+
+constructor TIndexed.Create(Name: PLegacyChar; BytesPerItem: Integer);
+begin
+  inherited Create(Name);
+  FItemSize := BytesPerItem;
+end;
+
 { TCapable }
 
 procedure TCapable.Grow;
@@ -487,10 +497,10 @@ end;
 
 { TArray }
 
-constructor TArray.Create(ArrayName: PLegacyChar; Initial, GrowBy: Integer;
+constructor TArray.Create(ArrayName: PLegacyChar; BytesPerItem, Initial, GrowBy: Integer;
   OwnerOfItems: Boolean);
 begin
-  inherited Create(ArrayName);
+  inherited Create(ArrayName, BytesPerItem);
   with PArrayCast(@Self)^ do
   begin
     Delta := GrowBy;
@@ -580,11 +590,6 @@ begin
   Insert(Index);
   Bytes := ItemSize;
   Move(Item, PArrayCast(@Self).Items[Index * Bytes], Bytes);
-end;
-
-class function TArray.ItemSize: Integer;
-begin
-  Result := SizeOf(Pointer);
 end;
 
 procedure TArray.SetCapacity(Value: Integer);
@@ -677,11 +682,6 @@ end;
 class procedure TStringArray.FreeItem(const Item);
 begin
   FreeMem(TCoreStringRec(Item).Value);
-end;
-
-class function TStringArray.ItemSize: Integer;
-begin
-  Result := SizeOf(TCoreStringRec);
 end;
 
 { TLegacyStringArray }
