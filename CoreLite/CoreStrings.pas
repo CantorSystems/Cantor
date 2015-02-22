@@ -450,7 +450,7 @@ begin
       RawString := nil
     else
       FreeMemAndNil(RawString);
-  FCount := 0;
+  inherited;
 end;
 
 procedure TString.Insert(Source: Pointer; Length: Integer; Options: TStringOptions);
@@ -465,7 +465,7 @@ begin
       RawString := Source;
       RawOptions := Options;
     end;
-    FCount := Length;
+    inherited SetCount(Length);
   end
   else
   begin
@@ -483,7 +483,7 @@ begin
       FillChar(PAddress(RawString)[ByteCount], ItemSize, 0);
       RawOptions := Options;
     end;
-    FCount := Length;
+    inherited SetCount(Length);
   end;
 end;
 
@@ -495,10 +495,9 @@ begin
   if Value <> FCount then
   begin
     if Value < 0 then
-      Value := FCount - Value;
+      Inc(Value, FCount);
 
     if Value > 0 then
-    begin
       with FHelper.FData do
       begin
         ByteCount := (Value + 1) * ItemSize;
@@ -510,14 +509,10 @@ begin
           Move(S^, RawString^, ByteCount);
         end
         else
-        begin
-          ReallocMem(RawString, ByteCount);
           Dec(ByteCount, ItemSize);
-        end;
+        SetCapacity(Value + 1); // for the zero terminator
         FillChar(PAddress(RawString)[ByteCount], ItemSize, 0);
-      end;
-      FCount := Value;
-    end
+      end
     else
       Clear;
   end;
