@@ -59,7 +59,7 @@ const
   sPerformanceCounter = 'performance counter';
   sPerformanceFrequency = 'performance frequency';
 
-  sVS_VERSION_INFO = 'VS_VERSION_INFO';
+  sVS_VERSION_INFO = 'VS_VERSION_INFO'; 
   sFixedVersionInfo = 'fixed version info';
   sVersionAndBuild = '%s build %u';
 
@@ -68,6 +68,10 @@ const
   sStreamReadError = 'Unexpected end of stream';
   sStreamWriteError = 'Not enough space';
   sStreamError = '%hs: %hs only %u bytes of %u required';
+
+  sRawByteString = 'RawByteString';
+  sLegacyString = 'LegacyString';
+  sWideString = 'WideString';
 
   sIndexOutOfBounds = 'Index %hs[%d] out of bounds %d..%d';
   sIndexOfNull      = 'Access on index [%d] when container is null';
@@ -123,4 +127,3 @@ const
 implementation
 
 end.
-

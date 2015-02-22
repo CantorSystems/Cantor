@@ -32,7 +32,7 @@ type
   private
     FClassName: PLegacyChar;
   public
-    constructor Create(ClsName: PLegacyChar);
+    constructor Create(Name: PLegacyChar);
     property ClassName: PLegacyChar read FClassName;
   end;
 
@@ -41,7 +41,6 @@ type
   protected  // prevent "Internal error: SY2394"
     FCount: Integer;
   public
-  //  Clear override not needed, Count will be changed (also automatically) in the descendants
     property Count: Integer read FCount;
   end;
 
@@ -340,9 +339,9 @@ end;
 
 { TContainer }
 
-constructor TContainer.Create(ClsName: PLegacyChar);
+constructor TContainer.Create(Name: PLegacyChar);
 begin
-  FClassName := ClsName;
+  FClassName := Name;
 end;
 
 { TClearable }
