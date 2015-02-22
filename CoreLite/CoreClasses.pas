@@ -63,14 +63,10 @@ type
 
   PIndexed = ^TIndexed;
   TIndexed = object(TEnumerable)
-  private
-    FItemSize: Integer;
   protected
     procedure SetCount(Value: Integer); virtual; abstract;
   public
-    constructor Create(Name: PLegacyChar; BytesPerItem: Integer);
     property Count write SetCount;
-    property ItemSize: Integer read FItemSize;
   end;
 
   PCapable = ^TCapable;
@@ -90,27 +86,41 @@ type
   PArray = ^TArray;
   TArray = object(TCapable)
   private
+    FItemSize: Integer;
   { placeholder } // FItems: Pointer;
-  { placeholder } // FOwnsItems: Boolean;
   protected
     function Append: Integer; overload;
     procedure Extract(Index: Integer); overload;
-    class procedure FreeItem(const Item); virtual;
     procedure Insert(Index: Integer); overload;
     procedure SetCapacity(Value: Integer); virtual;
     procedure SetCount(Value: Integer); virtual;
   public
-    constructor Create(ArrayName: PLegacyChar; BytesPerItem, Initial, GrowBy: Integer;
-      OwnerOfItems: Boolean = False);
+    constructor Create(Name: PLegacyChar; BytesPerItem, Initial: Integer;
+      GrowBy: Integer = 0);
     function Append(const Item): Integer; overload;
     procedure Clear; virtual;
-    procedure Delete(Index: Integer);
+    procedure Delete(Index: Integer); virtual;
     procedure Extract(Index: Integer; var Item); overload;
     procedure Insert(Index: Integer; const Item); overload;
+
+    property ItemSize: Integer read FItemSize;
+  end;
+
+  PCollection = ^TCollection;
+  TCollection = object(TArray)
+  private
+  { placeholder } // FOwnsItems: Boolean;
+  protected
+    procedure FreeItem(const Item); virtual;
+    procedure SetCapacity(Value: Integer); virtual;
+  public
+    constructor Create(Name: PLegacyChar; BytesPerItem, Initial: Integer;
+      GrowBy: Integer = 0; OwnerOfItems: Boolean = True);
+    procedure Delete(Index: Integer); virtual;
   end;
 
   PPointers = ^TPointers;
-  TPointers = object(TArray)
+  TPointers = object(TCollection)
   public
     function Append(Item: Pointer): Integer;
     procedure Exchange(Index1, Index2: Integer);
@@ -122,13 +132,11 @@ type
   PObjects = ^TObjects;
   TObjects = object(TPointers)
   protected
-    class procedure FreeItem(const Item); virtual;
+    procedure FreeItem(const Item); virtual;
   end;
 
   PStringArray = ^TStringArray;
   TStringArray = object(TArray)
-  protected
-    class procedure FreeItem(const Item); virtual;
   end;
 
   PLegacyStringRecArray = ^TLegacyStringRecArray;
@@ -260,7 +268,12 @@ uses
 type
   PArrayCast = ^TArrayCast;
   TArrayCast = object(TArray)
-    Items: PLegacyChar;
+    Items: PAddress;
+  end;
+
+  PCollectionCast = ^TCollectionCast;
+  TCollectionCast = object(TCollection)
+    Items: PAddress;
     OwnsItems: Boolean;
   end;
 
@@ -459,14 +472,6 @@ begin
   Clear;
 end;
 
-{ TIndexed }
-
-constructor TIndexed.Create(Name: PLegacyChar; BytesPerItem: Integer);
-begin
-  inherited Create(Name);
-  FItemSize := BytesPerItem;
-end;
-
 { TCapable }
 
 procedure TCapable.Grow;
@@ -497,15 +502,11 @@ end;
 
 { TArray }
 
-constructor TArray.Create(ArrayName: PLegacyChar; BytesPerItem, Initial, GrowBy: Integer;
-  OwnerOfItems: Boolean);
+constructor TArray.Create(Name: PLegacyChar; BytesPerItem, Initial, GrowBy: Integer);
 begin
-  inherited Create(ArrayName, BytesPerItem);
-  with PArrayCast(@Self)^ do
-  begin
-    Delta := GrowBy;
-    OwnsItems := OwnerOfItems;
-  end;
+  inherited Create(Name);
+  FItemSize := BytesPerItem;
+  PArrayCast(@Self).Delta := GrowBy;
   SetCapacity(Initial);
 end;
 
@@ -517,12 +518,9 @@ begin
 end;
 
 function TArray.Append(const Item): Integer;
-var
-  Bytes: Integer;
 begin
   Result := Append;
-  Bytes := ItemSize;
-  Move(Item, PArrayCast(@Self).Items[Result * Bytes], Bytes);
+  Move(Item, PArrayCast(@Self).Items[Result * FItemSize], FItemSize);
 end;
 
 procedure TArray.Clear;
@@ -533,24 +531,18 @@ end;
 procedure TArray.Delete(Index: Integer);
 begin
   CheckIndex(@Self, Index);
-  with PArrayCast(@Self)^ do
-    if OwnsItems then
-      FreeItem(Items[Index * ItemSize]);
-  Extract(Index);    
+  Extract(Index);
 end;
 
 procedure TArray.Extract(Index: Integer);
 var
-  Idx, Bytes: Integer;
+  Idx: Integer;
 begin
-{$IFDEF Debug} // always after caller's check
-  CheckIndex(@Self, Index);
-{$ENDIF}
-  Bytes := ItemSize;
-  Idx := Index * Bytes;
+  // always after caller's check
+  Idx := Index * FItemSize;
   with PArrayCast(@Self)^ do
   begin
-    Move(Items[Idx + Bytes], Items[Idx], (FCount - Index - 1) * Bytes);
+    Move(Items[Idx + FItemSize], Items[Idx], (FCount - Index - 1) * FItemSize);
     Dec(FCount);
   end;
 end;
@@ -563,11 +555,6 @@ begin
   Bytes := ItemSize;
   Move(PArrayCast(@Self).Items[Index * Bytes], Item, Bytes);
   Extract(Index);
-end;
-
-class procedure TArray.FreeItem(const Item);
-begin
-  FreeMem(Pointer(Item));
 end;
 
 procedure TArray.Insert(Index: Integer);
@@ -594,18 +581,10 @@ end;
 
 procedure TArray.SetCapacity(Value: Integer);
 var
-  I, Bytes: Integer;
+  I: Integer;
 begin
-  if Value < FCount then
-  begin
-    CheckIndex(@Self, Value); // for negative values
-    if PArrayCast(@Self).OwnsItems then
-    begin
-      Bytes := ItemSize;
-      for I := FCount - 1 downto Value do
-        FreeItem(PArrayCast(@Self).Items[I * Bytes]);
-    end;
-  end;
+  if Value < 0 then
+    Value := FCapacity - Value;
   ReallocMem(PArrayCast(@Self).Items, Value * ItemSize);
   FCapacity := Value;
   if FCount > FCapacity then
@@ -630,6 +609,54 @@ begin
       FillChar(PArrayCast(@Self).Items[FCount * Bytes], (Value - FCount) * Bytes, 0);
     FCount := Value;
   end;
+end;
+
+{ TCollection }
+
+constructor TCollection.Create(Name: PLegacyChar; BytesPerItem, Initial,
+  GrowBy: Integer; OwnerOfItems: Boolean);
+begin
+
+end;
+
+procedure TCollection.Delete(Index: Integer);
+begin
+  CheckIndex(@Self, Index);
+  with PCollectionCast(@Self)^ do
+    if OwnsItems then
+      FreeItem(Items[Index * FItemSize]);
+  Extract(Index);
+end;
+
+procedure TCollection.FreeItem(const Item);
+begin
+  FreeMem(Pointer(Item), FItemSize);
+end;
+
+procedure TCollection.SetCapacity(Value: Integer);
+var
+  I: Integer;
+begin
+  if Value < 0 then
+    Value := FCapacity - Value;
+
+  if Value < FCount then
+  begin
+    CheckIndex(@Self, Value); // for negative values
+    with PCollectionCast(@Self)^ do
+      if OwnsItems then
+        for I := FCount - 1 downto Value do
+          FreeItem(Items[I * FItemSize]);
+  end;
+
+  if (Value > FCount) and PCollectionCast(@Self).OwnsItems then
+  begin
+    inherited;
+    FillChar(PCollectionCast(@Self).Items[Value * FItemSize],
+      (FCount - Value) * FItemSize, 0);
+  end
+  else
+    inherited;
 end;
 
 { TPointers }
@@ -672,16 +699,9 @@ end;
 
 { TObjects }
 
-class procedure TObjects.FreeItem(const Item);
+procedure TObjects.FreeItem(const Item);
 begin
   PCoreObject(Item).Free;
-end;
-
-{ TStringArray }
-
-class procedure TStringArray.FreeItem(const Item);
-begin
-  FreeMem(TCoreStringRec(Item).Value);
 end;
 
 { TLegacyStringArray }

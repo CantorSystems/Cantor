@@ -118,7 +118,7 @@ type
 
   TStringData = record
     case Byte of
-      0: (RawString: Pointer;
+      0: (RawString: Pointer; { hold to TArray! }
           RawOptions: TStringOptions);
       1: (LegacyString: PLegacyChar;
           LegacyStringOptions: TLegacySource;
@@ -137,9 +137,11 @@ type
   PSubstring = ^TSubstring;
   TSubstring = object(TEnumerable)
   protected // prevent stupid warnings
+    FItemSize: Integer; { hold to TArray! }
     FHelper: TStringHelper;
   public
     property Helper: TStringHelper read FHelper;
+    property ItemSize: Integer read FItemSize;
   end;
 
   PRawByteSubstring = ^TRawByteSubstring;
@@ -165,7 +167,7 @@ type
 { Strings }
 
   PString = ^TString;
-  TString = object(TIndexed)
+  TString = object(TArray)
   protected // prevent stupid warnings
     FHelper: TStringHelper;
     procedure SetCount(Value: Integer); virtual;
@@ -187,7 +189,8 @@ type
   private
     procedure SetData(Value: PLegacyChar);
   public
-    constructor Create(Source: PLegacyChar; Length: Integer; SourceOptions: TLegacySource = []);
+    constructor Create(Initial: Integer; GrowBy: Integer = 0); overload;
+    constructor Create(Source: PLegacyChar; Length: Integer; SourceOptions: TLegacySource = []); overload;
 
 {    function InsertString(Source: PLegacyChar; Length: Integer; CodePage: PCodePage = nil;
       SourceOptions: TLegacySource = []; DestIndex: Integer = 0;
@@ -203,7 +206,7 @@ type
   TLegacyString = object(TRawByteString)
   public
     constructor Create(Source: PLegacyChar; Length: Integer; CP: PCodePage;
-      SourceOptions: TLegacySource = []);
+      SourceOptions: TLegacySource = []); overload;
 
     property CodePage: PCodePage read FHelper.FData.CodePage;
   end;
@@ -220,7 +223,8 @@ type
   private
     procedure SetData(Value: PWideChar);
   public
-    constructor Create(Source: PWideChar; Length: Integer; SourceOptions: TEndianSource = []);
+    constructor Create(Initial: Integer; GrowBy: Integer = 0); overload;
+    constructor Create(Source: PWideChar; Length: Integer; SourceOptions: TEndianSource = []); overload;
 
 {    function InsertString(Source: PLegacyChar; Length: Integer; CodePage: PCodePage = nil;
       SourceOptions: TLegacySource = []; DestIndex: Integer = 0;
@@ -521,10 +525,15 @@ end;
 
 { TRawByteString }
 
+constructor TRawByteString.Create(Initial, GrowBy: Integer);
+begin
+  inherited Create(sRawByteString, SizeOf(LegacyChar), Initial, GrowBy);
+end;
+
 constructor TRawByteString.Create(Source: PLegacyChar; Length: Integer;
   SourceOptions: TLegacySource);
 begin
-  inherited Create(sRawByteString, SizeOf(LegacyChar));
+  inherited Create(sRawByteString, SizeOf(LegacyChar), 0);
   Insert(Source, Length, SourceOptions);
 end;
 
@@ -552,7 +561,7 @@ end;
 constructor TLegacyString.Create(Source: PLegacyChar; Length: Integer;
   CP: PCodePage; SourceOptions: TLegacySource);
 begin
-  TString.Create(sLegacyString, SizeOf(LegacyChar));
+  TString.Create(sLegacyString, SizeOf(LegacyChar), 0);
   Insert(Source, Length, SourceOptions);
   FHelper.FData.CodePage := CP;
 end;
@@ -577,10 +586,15 @@ end;
 
 { TWideString }
 
+constructor TWideString.Create(Initial, GrowBy: Integer);
+begin
+  inherited Create(sWideString, SizeOf(WideChar), Initial, GrowBy);
+end;
+
 constructor TWideString.Create(Source: PWideChar; Length: Integer;
   SourceOptions: TEndianSource);
 begin
-  inherited Create(sWideString, SizeOf(WideChar));
+  inherited Create(sWideString, SizeOf(WideChar), 0);
   Insert(Source, Length, SourceOptions);
 end;
 
