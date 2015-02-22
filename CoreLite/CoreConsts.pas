@@ -68,7 +68,9 @@ const
 
   sCastNull = 'Cannot cast null to %s';
   sCastToNull = 'Cannot cast object to null %s';
+  sCastToNull2 = 'Cannot cast %s to null %s';
   sCastMistmatch = 'Cannot cast mismatch object to %s';
+  sCastMistmatch2 = 'Cannot cast %s to %s';
   sCastUntyped = 'Cannot cast uninitialized object to %s';
 
   sPosition = 'position';

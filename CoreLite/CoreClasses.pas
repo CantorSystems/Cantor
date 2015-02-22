@@ -25,13 +25,14 @@ type
   PCoreObject = ^TCoreObject;
   TCoreObject = object(TObject)
   protected
-    procedure Cast(Name: PLegacyChar; Info: Pointer);
-    function TypeInfo: Pointer;
+    procedure Cast(DestName: PLegacyChar; DestInfo: Pointer);
   public
     destructor Destroy; virtual;
     procedure Finalize;
     procedure Free;
     function InstanceSize: Integer;
+    function IsType(Info: Pointer): Boolean; // null <> null :-)
+    function TypeInfo: Pointer;
   end;
 
   PContainer = ^TContainer;
@@ -197,13 +198,13 @@ type
   ECast = class(Exception)
   private
     FInstance: PCoreObject;
-    FTypeInfo: Pointer;
-    FTypeName: PLegacyChar;
+    FDestInfo: Pointer;
+    FDestName: PLegacyChar;
   public
-    constructor Create(Instance: PCoreObject; Name: PLegacyChar; Info: Pointer);
+    constructor Create(Instance: PCoreObject; DestName: PLegacyChar; DestInfo: Pointer);
     property Instance: PCoreObject read FInstance;
-    property TypeInfo: Pointer read FTypeInfo;
-    property TypeName: PLegacyChar read FTypeName;
+    property DestInfo: Pointer read FDestInfo;
+    property DestName: PLegacyChar read FDestName;
   end;
 
   EContainer = class(Exception)
@@ -244,6 +245,8 @@ type
 
 { Helper functions }
 
+procedure FreeAndNil(var Instance: PCoreObject);
+
 procedure CheckIndex(Container: PEnumerable; Index: Integer);
 procedure CheckRange(Container: PEnumerable; LowBound, HighBound: Integer);
 
@@ -279,6 +282,14 @@ type
 
 { Helper functions }
 
+procedure FreeAndNil(var Instance: PCoreObject);
+asm
+        XOR EDX, EDX
+        XCHG [EAX], EDX  // XCHG enforces LOCK
+        MOV EAX, EDX
+        JMP TCoreObject.Free
+end;
+
 procedure CheckIndex(Container: PEnumerable; Index: Integer);
 begin
   if (Container = nil) or (Index < 0) or (Index > Container.Count) then
@@ -295,24 +306,34 @@ end;
 
 { ECast }
 
-constructor ECast.Create(Instance: PCoreObject; Name: PLegacyChar; Info: Pointer);
+constructor ECast.Create(Instance: PCoreObject; DestName: PLegacyChar; DestInfo: Pointer);
 var
   Msg: PLegacyChar;
 begin
   if Instance <> nil then
     if TypeOf(Instance^) <> nil then
-      if Info <> nil then
-        Msg := sCastMistmatch
+      if Instance.IsType(TypeOf(TContainer)) then
+      begin
+        if DestInfo <> nil then
+          Msg := sCastMistmatch2
+        else
+          Msg := sCastToNull2;
+        inherited Create(Msg, [PContainer(Instance).ClassName, DestName]);
+        Msg := nil;
+      end
       else
-        Msg := sCastToNull
+        if DestInfo <> nil then
+          Msg := sCastMistmatch
+        else
+          Msg := sCastToNull
     else
       Msg := sCastUntyped
   else
     Msg := sCastNull;
-  inherited Create(Msg, [Name]);
+  inherited Create(Msg, [DestName]);
   FInstance := Instance;
-  FTypeInfo := Info;
-  FTypeName := Name;
+  FDestInfo := DestInfo;
+  FDestName := DestName;
 end;
 
 { EIndex }
@@ -363,12 +384,12 @@ destructor TCoreObject.Destroy;
 begin
 end;
 
-procedure TCoreObject.Cast(Name: PLegacyChar; Info: Pointer);
+procedure TCoreObject.Cast(DestName: PLegacyChar; DestInfo: Pointer);
 begin
-  if (Info <> nil) and (InstanceSize = PInteger(PLegacyChar(Info) + InstanceSizeIndex)^) then
-    PPointer(@Self)^ := Info
+  if (DestInfo <> nil) and (InstanceSize = PInteger(PAddress(DestInfo) + InstanceSizeIndex)^) then
+    PPointer(@Self)^ := DestInfo
   else
-    raise ECast.Create(@Self, Name, Info);
+    raise ECast.Create(@Self, DestName, DestInfo);
 end;
 
 procedure TCoreObject.Finalize;
@@ -391,9 +412,22 @@ end;
 function TCoreObject.InstanceSize: Integer;
 begin
   if (@Self <> nil) and (TypeOf(Self) <> nil) then  // Fast core
-    Result := PInteger(PLegacyChar(TypeOf(Self)) + InstanceSizeIndex)^
+    Result := PInteger(PAddress(TypeOf(Self)) + InstanceSizeIndex)^
   else
     Result := 0;
+end;
+
+function TCoreObject.IsType(Info: Pointer): Boolean;
+var
+  This: Pointer;
+begin
+  if Info <> nil then
+  begin
+    This := TypeInfo;
+    while (This <> nil) and (This <> Info) do
+      This := PPointer(This)^;
+  end;
+  Result := False;
 end;
 
 function TCoreObject.TypeInfo: Pointer;
