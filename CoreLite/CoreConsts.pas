@@ -77,16 +77,15 @@ const
   sCodePage = 'code page';
   sConsoleCodePage = 'console code page';
 
-  sIndexOutOfBounds = 'Index %hs[%d] out of bounds %d..%d';
+  sIndexOutOfBounds = 'Index [%d] of %hs out of bounds %d..%d';
   sIndexOfNull      = 'Access on index [%d] when container is null';
-  sRangeOutOfBounds = 'Range %hs[%d..%d] out of bounds %d..%d';
+  sRangeOutOfBounds = 'Range [%d..%d] of %hs out of bounds %d..%d';
   sRangeOfNull      = 'Access on range [%d..%d] when container is null';
   sFixedCapacity    = 'This %hs object can contain only %d items';
   sNullCapacity     = 'Cannot add an item into null container';
 
-  sRawByteString = 'RawByteString';
-  sLegacyString = 'LegacyString';
-  sWideString = 'WideString';
+  sLegacyString = 'legacy string';
+  sWideString = 'UTF-16 string';
 
   sUnsupportedCodePage = 'Code page %u (%s) is not yet supported';
 

@@ -249,7 +249,7 @@ end;
 constructor EIndex.Create(Collection: PCollection; Index: Integer);
 begin
   if Collection <> nil then
-    inherited Create(sIndexOutOfBounds, [Collection.ClassName, Index, 0, Collection.Count - 1])
+    inherited Create(sIndexOutOfBounds, [Index, Collection.ClassName, 0, Collection.Count - 1])
   else
     inherited Create(sIndexOfNull, [Index]);
   FCollection := Collection;
@@ -264,7 +264,7 @@ var
 begin
   LastIndex := Index + ItemCount - 1;
   if Collection <> nil then
-    inherited Create(sRangeOutOfBounds, [Collection.ClassName, Index, LastIndex, 0, Collection.Count - 1])
+    inherited Create(sRangeOutOfBounds, [Index, LastIndex, Collection.ClassName, 0, Collection.Count - 1])
   else
     inherited Create(sRangeOfNull, [Index, LastIndex]);
   FCollection := Collection;
