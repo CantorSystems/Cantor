@@ -136,14 +136,16 @@ type
   PLegacyString = ^TLegacyString;
   TLegacyString = object(TString)
   private
-    procedure SetData(Value: PLegacyChar);
+    function GetString: PLegacyChar;
+    procedure SetString(Value: PLegacyChar);
   public
     constructor Create(Initial, GrowBy: Integer; CP: PCodePage = nil); overload;
     constructor Create(Source: PLegacyChar; Length: Integer; CP: PCodePage;
       SourceOptions: TRawByteSource = []); overload;
 
+    property AsString: PLegacyChar read GetString write SetString;
     property CodePage: PCodePage read FData.CodePage;
-    property Data: PLegacyChar read FData.LegacyString write SetData;
+    property Data: PLegacyChar read FData.LegacyString write SetString;
     property Options: TRawByteOptions read FData.LegacyStringOptions;
   end;
 
@@ -157,12 +159,14 @@ type
   PWideString = ^TWideString;
   TWideString = object(TEndianString)
   private
-    procedure SetData(Value: PWideChar);
+    function GetString: PWideChar;
+    procedure SetString(Value: PWideChar);
   public
     constructor Create(Initial, GrowBy: Integer); overload;
     constructor Create(Source: PWideChar; Length: Integer; SourceOptions: TEndianSource = []); overload;
 
-    property Data: PWideChar read FData.WideString write SetData;
+    property AsString: PWideChar read GetString write SetString;
+    property Data: PWideChar read FData.WideString write SetString;
     property Options: TEndianOptions read FData.WideStringOptions;
   end;
 
@@ -404,7 +408,13 @@ begin
   FData.CodePage := CP;
 end;
 
-procedure TLegacyString.SetData(Value: PLegacyChar);
+function TLegacyString.GetString: PLegacyChar;
+begin
+  Capacity := Capacity; // detach buffer
+  Result := FData.LegacyString;
+end;
+
+procedure TLegacyString.SetString(Value: PLegacyChar);
 begin
   Assign(Value, StrLen(Value), [soDetectCharSet]);
 end;
@@ -443,7 +453,13 @@ begin
   Assign(Source, Length, SourceOptions);
 end;
 
-procedure TWideString.SetData(Value: PWideChar);
+function TWideString.GetString: PWideChar;
+begin
+  Capacity := Capacity; // detach buffer
+  Result := FData.WideString;
+end;
+
+procedure TWideString.SetString(Value: PWideChar);
 begin
   Assign(Value, WideStrLen(Value));
 end;
