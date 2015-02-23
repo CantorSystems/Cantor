@@ -112,7 +112,7 @@ type
   TRawOptions = TRawByteOptions;
   TStringData = record
     case Byte of
-      0: (RawString: Pointer; { hold to TArray! }
+      0: (RawString: Pointer; { hold to TCollection! }
           RawOptions: TRawByteOptions);
       1: (LegacyString: PLegacyChar;
           LegacyStringOptions: TRawByteOptions;
@@ -133,24 +133,18 @@ type
     property RawString: Pointer read FData.RawString;
   end;
 
-  PRawByteString = ^TRawByteString;
-  TRawByteString = object(TString)
+  PLegacyString = ^TLegacyString;
+  TLegacyString = object(TString)
   private
     procedure SetData(Value: PLegacyChar);
   public
     constructor Create(Initial, GrowBy: Integer; CP: PCodePage = nil); overload;
-    constructor Create(Source: PLegacyChar; Length: Integer; SourceOptions: TRawByteSource = []); overload;
-
-    property Data: PLegacyChar read FData.LegacyString write SetData;
-    property Options: TRawByteOptions read FData.LegacyStringOptions;
-  end;
-
-  PLegacyString = ^TLegacyString;
-  TLegacyString = object(TRawByteString)
-  public
     constructor Create(Source: PLegacyChar; Length: Integer; CP: PCodePage;
       SourceOptions: TRawByteSource = []); overload;
+
     property CodePage: PCodePage read FData.CodePage;
+    property Data: PLegacyChar read FData.LegacyString write SetData;
+    property Options: TRawByteOptions read FData.LegacyStringOptions;
   end;
 
   PEndianString = ^TEndianString;
@@ -392,30 +386,6 @@ begin
   Result := False; // TODO
 end;
 
-{ TRawByteString }
-
-constructor TRawByteString.Create(Initial, GrowBy: Integer; CP: PCodePage);
-const
-  ClassNames: array[Boolean] of PLegacyChar = (sRawByteString, sLegacyString);
-begin
-  inherited Create(ClassNames[CP <> nil], SizeOf(LegacyChar), imInline);
-  Capacity := Initial;
-  Delta := GrowBy;
-  FData.CodePage := CP;
-end;
-
-constructor TRawByteString.Create(Source: PLegacyChar; Length: Integer;
-  SourceOptions: TRawByteSource);
-begin
-  inherited Create(sRawByteString, SizeOf(LegacyChar), imInline);
-  Assign(Source, Length, SourceOptions);
-end;
-
-procedure TRawByteString.SetData(Value: PLegacyChar);
-begin
-  Assign(Value, StrLen(Value), [soDetectCharSet]);
-end;
-
 { TLegacyString }
 
 constructor TLegacyString.Create(Source: PLegacyChar; Length: Integer;
@@ -424,6 +394,19 @@ begin
   TString.Create(sLegacyString, SizeOf(LegacyChar), imInline);
   Assign(Source, Length, SourceOptions);
   FData.CodePage := CP;
+end;
+
+constructor TLegacyString.Create(Initial, GrowBy: Integer; CP: PCodePage);
+begin
+  inherited Create(sLegacyString, SizeOf(LegacyChar), imInline);
+  Capacity := Initial;
+  Delta := GrowBy;
+  FData.CodePage := CP;
+end;
+
+procedure TLegacyString.SetData(Value: PLegacyChar);
+begin
+  Assign(Value, StrLen(Value), [soDetectCharSet]);
 end;
 
 { TEndianString }
