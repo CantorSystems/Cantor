@@ -138,7 +138,7 @@ type
   private
     procedure SetData(Value: PLegacyChar);
   public
-    constructor Create(Initial: Integer; GrowBy: Integer); overload;
+    constructor Create(Initial, GrowBy: Integer; CP: PCodePage = nil); overload;
     constructor Create(Source: PLegacyChar; Length: Integer; SourceOptions: TRawByteSource = []); overload;
 
     property Data: PLegacyChar read FData.LegacyString write SetData;
@@ -165,7 +165,7 @@ type
   private
     procedure SetData(Value: PWideChar);
   public
-    constructor Create(Initial: Integer; GrowBy: Integer); overload;
+    constructor Create(Initial, GrowBy: Integer); overload;
     constructor Create(Source: PWideChar; Length: Integer; SourceOptions: TEndianSource = []); overload;
 
     property Data: PWideChar read FData.WideString write SetData;
@@ -394,11 +394,14 @@ end;
 
 { TRawByteString }
 
-constructor TRawByteString.Create(Initial, GrowBy: Integer);
+constructor TRawByteString.Create(Initial, GrowBy: Integer; CP: PCodePage);
+const
+  ClassNames: array[Boolean] of PLegacyChar = (sRawByteString, sLegacyString);
 begin
-  inherited Create(sRawByteString, SizeOf(LegacyChar), imInline);
+  inherited Create(ClassNames[CP <> nil], SizeOf(LegacyChar), imInline);
   Capacity := Initial;
   Delta := GrowBy;
+  FData.CodePage := CP;
 end;
 
 constructor TRawByteString.Create(Source: PLegacyChar; Length: Integer;

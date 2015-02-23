@@ -391,8 +391,6 @@ end;
 
 procedure TCollection.Assign(Source: Pointer; ItemCount, ItemsCapacity: Integer;
   Attach: Boolean);
-var
-  ByteCount: Integer;
 begin
   Clear;
   if Attach then
