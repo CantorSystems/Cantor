@@ -75,14 +75,13 @@ type
     procedure SetCapacity(Value: Integer);
   protected
     function Append(ItemCount: Integer = 1): Integer;
-    procedure Assign(Source: Pointer; ItemCount, ItemsCapacity: Integer;
-      Attach: Boolean); overload;
+    procedure Assign(Source: Pointer; ItemCount, ItemsCapacity: Integer; Attach: Boolean);
     procedure Insert(Index: Integer; ItemCount: Integer = 1);
   public
     constructor Create(Name: PLegacyChar; BytesPerItem: Integer;
       CollectionItemMode: TCollectionItemMode = imInline);
-    procedure Assign(Source: PCollection; Index: Integer); overload;
-    procedure Assign(Source: PCollection; Index, ItemCount: Integer); overload;
+    procedure AsRange(Source: PCollection; Index: Integer); overload;
+    procedure AsRange(Source: PCollection; Index, ItemCount: Integer); overload;
     destructor Destroy; virtual;
     procedure Clear; virtual;
     procedure Delete(Index: Integer; ItemCount: Integer = 1);
@@ -424,12 +423,12 @@ begin
   FCount := ItemCount;
 end;
 
-procedure TCollection.Assign(Source: PCollection; Index: Integer);
+procedure TCollection.AsRange(Source: PCollection; Index: Integer);
 begin
-  Assign(Source, Index, Source.Count - Index);
+  AsRange(Source, Index, Source.Count - Index);
 end;
 
-procedure TCollection.Assign(Source: PCollection; Index, ItemCount: Integer);
+procedure TCollection.AsRange(Source: PCollection; Index, ItemCount: Integer);
 begin
   CheckRange(Source, Index, ItemCount);
   Assign(PCollectionCast(Source).Items + Index * Source.ItemSize, ItemCount, ItemCount, True);

@@ -134,7 +134,7 @@ type
       MinWidth: Integer = 0; FillChar: WideChar = '0'): Integer; overload;
     function AsInteger(Index: Integer; Value: Int64; MinWidth: Integer = 0;
       FillChar: WideChar = #32): Integer; overload;
-    procedure RawAssign(Source: Pointer; Length: Integer; Options: TStringSource);
+    procedure Assign(Source: Pointer; Length: Integer; Options: TStringSource); overload;
   public
     procedure AsArray(const Values: array of const); overload;
 
@@ -537,6 +537,21 @@ begin
   PWideChar(PAddress(FData.RawString) + Length * ItemSize)^ := #0;
 end;
 
+procedure TString.Assign(Source: Pointer; Length: Integer; Options: TStringSource);
+begin
+  if Source <> nil then
+    if soAttachBuffer in Options then
+      inherited Assign(Source, Length, Length + Byte(soNullTerminated in Options), True)
+    else
+    begin
+      inherited Assign(Source, Length, Length + SizeOf(WideChar), False);
+      PWideChar(FData.LegacyString + Length * ItemSize)^ := #0;
+    end
+  else
+    Clear;
+  FData.RawOptions := Options;
+end;
+
 function TString.Estimate(const Values: array of const): Integer;
 begin
   Result := 0; // TODO
@@ -565,21 +580,6 @@ begin
       Dec(Result);
 end;
 
-procedure TString.RawAssign(Source: Pointer; Length: Integer; Options: TStringSource);
-begin
-  if Source <> nil then
-    if soAttachBuffer in Options then
-      inherited Assign(Source, Length, Length + Byte(soNullTerminated in Options), True)
-    else
-    begin
-      inherited Assign(Source, Length, Length + SizeOf(WideChar), False);
-      PWideChar(FData.LegacyString + Length * ItemSize)^ := #0;
-    end
-  else
-    Clear;
-  FData.RawOptions := Options;
-end;
-
 { TLegacyString }
 
 constructor TLegacyString.Create(CP: PCodePage);
@@ -590,13 +590,13 @@ end;
 
 procedure TLegacyString.AsString(Source: PLegacyChar; SourceOptions: TRawByteSource);
 begin
-  RawAssign(Source, StrLen(Source), SourceOptions + [soNullTerminated]);
+  Assign(Source, StrLen(Source), SourceOptions + [soNullTerminated]);
 end;
 
 procedure TLegacyString.AsStringLen(Source: PLegacyChar; Length: Integer;
   SourceOptions: TRawByteSource);
 begin
-  RawAssign(Source, Length, SourceOptions);
+  Assign(Source, Length, SourceOptions);
 end;
 
 procedure TLegacyString.AsWideString(Source: PWideChar; SourceOptions: TEndianSource);
@@ -662,7 +662,7 @@ end;
 
 procedure TLegacyString.SetString(Value: PLegacyChar);
 begin
-  RawAssign(Value, StrLen(Value), [soDetectCharSet]);
+  Assign(Value, StrLen(Value), [soDetectCharSet]);
 end;
 
 { TEndianString }
@@ -703,13 +703,13 @@ end;
 
 procedure TWideString.AsWideString(Source: PWideChar; SourceOptions: TEndianSource);
 begin
-  RawAssign(Source, WideStrLen(Source), SourceOptions + [soNullTerminated]);
+  Assign(Source, WideStrLen(Source), SourceOptions + [soNullTerminated]);
 end;
 
 procedure TWideString.AsWideStringLen(Source: PWideChar; Length: Integer;
   SourceOptions: TEndianSource);
 begin
-  RawAssign(Source, Length, SourceOptions);
+  Assign(Source, Length, SourceOptions);
 end;
 
 function TWideString.GetString: PWideChar;
@@ -764,7 +764,7 @@ end;
 
 procedure TWideString.SetString(Value: PWideChar);
 begin
-  RawAssign(Value, WideStrLen(Value), []);
+  Assign(Value, WideStrLen(Value), []);
 end;
 
 end.
