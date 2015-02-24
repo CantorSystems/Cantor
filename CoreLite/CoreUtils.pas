@@ -255,7 +255,6 @@ function Format(Fmt: PLegacyChar; FixedWidth: Integer;
 function WideFormat(Fmt: PWideChar; FixedWidth: Integer;
   const Args: array of const): TWideStringRec;
 
-//function LatinFormat(Fmt: PLegacyChar; const Args: array of const): PWideChar;
 function LegacyFormat(Fmt: PLegacyChar; CodePage: Word; FixedWidth: Integer;
   const Args: array of const): TWideStringRec;
 
