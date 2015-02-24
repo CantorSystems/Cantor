@@ -21,7 +21,7 @@ type
   soDetectCharSet:
     * try to decode source as UTF-8, continue as code page or Latin1 if code page is null
 }
-  TStringOption = (soDetectCharSet, soBigEndian, soAttachBuffer);
+  TStringOption = (soDetectCharSet, soBigEndian, soAttachBuffer, soNullTerminated);
 const
   soLatin1 = soBigEndian;
 
@@ -30,8 +30,8 @@ type
   TEndianOptions = set of soBigEndian..soBigEndian;
 
   TStringSource = set of TStringOption;
-  TRawByteSource = set of soDetectCharSet..soAttachBuffer;
-  TEndianSource = set of soBigEndian..soAttachBuffer;
+  TRawByteSource = set of soDetectCharSet..soNullTerminated;
+  TEndianSource = set of soBigEndian..soNullTerminated;
 {
   coForceInvalid -- replace invalid characters with:
     * U+007F -- for code page (used instead of U+001A to avoid compatibility issues)
@@ -569,7 +569,7 @@ procedure TString.RawAssign(Source: Pointer; Length: Integer; Options: TStringSo
 begin
   if Source <> nil then
     if soAttachBuffer in Options then
-      inherited Assign(Source, Length, Length + 1, True)
+      inherited Assign(Source, Length, Length + Byte(soNullTerminated in Options), True)
     else
     begin
       inherited Assign(Source, Length, Length + SizeOf(WideChar), False);
@@ -590,7 +590,7 @@ end;
 
 procedure TLegacyString.AsString(Source: PLegacyChar; SourceOptions: TRawByteSource);
 begin
-  RawAssign(Source, StrLen(Source), SourceOptions);
+  RawAssign(Source, StrLen(Source), SourceOptions + [soNullTerminated]);
 end;
 
 procedure TLegacyString.AsStringLen(Source: PLegacyChar; Length: Integer;
@@ -703,7 +703,7 @@ end;
 
 procedure TWideString.AsWideString(Source: PWideChar; SourceOptions: TEndianSource);
 begin
-  RawAssign(Source, WideStrLen(Source), SourceOptions);
+  RawAssign(Source, WideStrLen(Source), SourceOptions + [soNullTerminated]);
 end;
 
 procedure TWideString.AsWideStringLen(Source: PWideChar; Length: Integer;
