@@ -78,9 +78,11 @@ const
   sConsoleCodePage = 'console code page';
 
   sIndexOutOfBounds = 'Index %d out of bounds %d..%d of %s';
-  sIndexOfNull      = 'Access on index %d when container is null';
+  sIndexOutOfEmpty  = 'Index %d out of empty %s';
+  sIndexOutOfNull   = 'Index %d out of null container';
   sRangeOutOfBounds = 'Range %d..%d out of bounds %d..%d of %s';
-  sRangeOfNull      = 'Access on range %d..%d when container is null';
+  sRangeOutOfEmpty  = 'Range %d..%d out of empty %s';
+  sRangeOutOfNull   = 'Range %d..%d out of null container';
   sFixedCapacity    = 'This %s can contain only %d items';
   sNullCapacity     = 'Cannot add an item into null container';
 

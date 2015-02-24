@@ -253,9 +253,12 @@ end;
 constructor EIndex.Create(Collection: PCollection; Index: Integer);
 begin
   if Collection <> nil then
-    inherited Create(sIndexOutOfBounds, [Index, 0, Collection.Count - 1, Collection.ClassName])
+    if Collection.Count <> 0 then
+      inherited Create(sIndexOutOfBounds, [Index, 0, Collection.Count - 1, Collection.ClassName])
+    else
+      inherited Create(sIndexOutOfEmpty, [Index, Collection.ClassName])
   else
-    inherited Create(sIndexOfNull, [Index]);
+    inherited Create(sIndexOutOfNull, [Index]);
   FCollection := Collection;
   FIndex := Index;
 end;
@@ -268,9 +271,12 @@ var
 begin
   LastIndex := Index + ItemCount - 1;
   if Collection <> nil then
-    inherited Create(sRangeOutOfBounds, [Index, LastIndex, 0, Collection.Count - 1, Collection.ClassName])
+    if Collection.Count <> 0 then
+      inherited Create(sRangeOutOfBounds, [Index, LastIndex, 0, Collection.Count - 1, Collection.ClassName])
+    else
+      inherited Create(sRangeOutOfEmpty, [Index, LastIndex, Collection.ClassName])
   else
-    inherited Create(sRangeOfNull, [Index, LastIndex]);
+    inherited Create(sRangeOutOfNull, [Index, LastIndex]);
   FCollection := Collection;
   FLowBound := Index;
   FHighBound := LastIndex;
@@ -471,7 +477,7 @@ begin
     if FItemMode <> imInline then
       FreeItems(Index, ItemCount);
     with PCollectionCast(@Self)^ do
-      Move(Items[LastBytes], Items[FirstBytes], LastBytes);
+      Move(Items[LastBytes], Items[FirstBytes], (NewCount - Index) * FItemSize);
   end;
 
   FCount := NewCount;
