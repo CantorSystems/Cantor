@@ -37,7 +37,8 @@ type
     * U+007F -- for code page (used instead of U+001A to avoid compatibility issues)
     * U+FFFD -- for Unicode Transformation Formats (official Unicode replacement character)
 }
-  TConvertOption = (coContinuous, coForceInvalid, coBigEndian, coSurrogates);
+  TConvertOption = (coContinuous, coBigEndian, coSurrogates, coReplaceInvalid, 
+    coSysReplacementChar);
 const
   coLatin1 = coBigEndian; // only without coCESU8
 
@@ -47,9 +48,9 @@ const
   coModifiedUTF8 = [coCESU8, coEncodeZero];  // UTF-8 compliance
 
 type
-  TEncodeOptions = set of coContinuous..coSurrogates;
-  TEncodeLegacy = TEncodeOptions;
-  TEncodeUTF16 = TEncodeOptions;
+  TEncodeOptions = set of TConvertOption;
+  TEncodeLegacy = coContinuous..coSysReplacementChar;
+  TEncodeUTF16 = coContinuous..coSurrogates;
 //  TEncodeUTF32 = set of coContinuous..coBigEndian;
 
 type
@@ -91,8 +92,9 @@ type
     FName: PCoreChar;
     FNumber: Word;
     FMaxCharBytes: Byte;
+    FReplacementChar, FSysReplacementChar: LegacyChar;
   public
-    constructor Create(CodePage: Word = CP_ACP);
+    constructor Create(CodePage: Word = CP_ACP; DefaultReplacementChar: LegacyChar = #127);
     destructor Destroy;
 
 {    function Decode(Source: PLegacyChar; SourceCount: Integer; CodePage: TCodePage; SourceOptions: TLegacySource;
@@ -107,6 +109,8 @@ type
     property MaxCharBytes: Byte read FMaxCharBytes;
     property Name: PCoreChar read FName;
     property Number: Word read FNumber;
+    property ReplacementChar: LegacyChar read FReplacementChar write FReplacementChar;
+    property SysRelpacementChar: LegacyChar read FSysReplacementChar;
   end;
 
   TRawOptions = TRawByteOptions;
@@ -361,7 +365,7 @@ end;
 
 { TCodePage }
 
-constructor TCodePage.Create(CodePage: Word);
+constructor TCodePage.Create(CodePage: Word; DefaultReplacementChar: LegacyChar);
 var
   Info: TCPInfoEx;
   P: PLegacyChar;
@@ -373,6 +377,7 @@ begin
   begin
     FNumber := CodePage;
     FMaxCharBytes := MaxCharSize;
+    FSysReplacementChar := LegacyChar(DefaultChar[0]);
 
     P := Pointer(@LeadByte);
     while P < P + SizeOf(LeadByte) do
@@ -387,6 +392,7 @@ begin
 
   with ExtractCodePageName(Info) do
     FName := WideStrNew(Str, Len);
+  FReplacementChar := DefaultReplacementChar;
 end;
 
 destructor TCodePage.Destroy;
