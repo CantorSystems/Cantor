@@ -8,7 +8,7 @@
 
 type
   PHandleStream = ^THandleStream;
-  THandleStream = object(TObject)
+  THandleStream = object
   private
     FHandle: THandle;
   protected

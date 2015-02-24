@@ -577,7 +577,9 @@ end;
 constructor TFileStreamMapping.Create(FileName: PCoreChar; Options: TCreateFileMapping;
   Size: QuadWord; MappingName: PCoreChar);
 begin
+{$IFNDEF Lite}
   FStream.Create;
+{$ENDIF}
   if not Open(FileName, Options, Size, MappingName) then
     RaiseLastPlatformError(FileName);
 end;
