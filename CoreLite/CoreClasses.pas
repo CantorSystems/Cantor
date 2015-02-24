@@ -27,6 +27,7 @@ type
   protected
     procedure Cast(DestName: PLegacyChar; DestInfo: Pointer);
   public
+    constructor Create;
     destructor Destroy; virtual;
     procedure Finalize;
     procedure Free;
@@ -66,8 +67,8 @@ type
   TCollection = object(TClearable)
   private
     FCapacity, FDelta, FItemSize: Integer;
-    FAttachBuffer: Boolean;
     FItemMode: TCollectionItemMode;
+    FAttachBuffer: Boolean;
   { placeholder } // FItems: Pointer;
     procedure FreeItems(Index, ItemCount: Integer);
     procedure Resize(Index, ItemCount: Integer);
@@ -75,11 +76,13 @@ type
   protected
     function Append(ItemCount: Integer = 1): Integer;
     procedure Assign(Source: Pointer; ItemCount, ItemsCapacity: Integer;
-      Attach: Boolean = False);
+      Attach: Boolean); overload;
     procedure Insert(Index: Integer; ItemCount: Integer = 1);
   public
     constructor Create(Name: PLegacyChar; BytesPerItem: Integer;
-      CollectionItemMode: TCollectionItemMode);
+      CollectionItemMode: TCollectionItemMode = imInline);
+    procedure Assign(Source: PCollection; Index: Integer); overload;
+    procedure Assign(Source: PCollection; Index, ItemCount: Integer); overload;
     destructor Destroy; virtual;
     procedure Clear; virtual;
     procedure Delete(Index: Integer; ItemCount: Integer = 1);
@@ -203,10 +206,10 @@ end;
 
 procedure CheckRange(Collection: PCollection; Index, ItemCount: Integer);
 begin
-  if (Collection <> nil) and (Index > 0) and (Index < Collection.Count) then
+  if (Collection <> nil) and (Index >= 0) and (Index < Collection.Count) then
   begin
     Inc(Index, ItemCount - 1);
-    if (Index > 0) and (Index < Collection.Count) then
+    if (Index >= 0) and (Index < Collection.Count) then
       Exit;
   end;
   raise ERange.Create(Collection, Index, ItemCount);
@@ -249,7 +252,7 @@ end;
 constructor EIndex.Create(Collection: PCollection; Index: Integer);
 begin
   if Collection <> nil then
-    inherited Create(sIndexOutOfBounds, [Index, Collection.ClassName, 0, Collection.Count - 1])
+    inherited Create(sIndexOutOfBounds, [Index, 0, Collection.Count - 1, Collection.ClassName])
   else
     inherited Create(sIndexOfNull, [Index]);
   FCollection := Collection;
@@ -264,7 +267,7 @@ var
 begin
   LastIndex := Index + ItemCount - 1;
   if Collection <> nil then
-    inherited Create(sRangeOutOfBounds, [Index, LastIndex, Collection.ClassName, 0, Collection.Count - 1])
+    inherited Create(sRangeOutOfBounds, [Index, LastIndex, 0, Collection.Count - 1, Collection.ClassName])
   else
     inherited Create(sRangeOfNull, [Index, LastIndex]);
   FCollection := Collection;
@@ -290,6 +293,11 @@ begin
 end;
 
 { TCoreObject }
+
+constructor TCoreObject.Create;
+begin
+  FillChar(PContainer(@Self).FClassName, InstanceSize, 0);
+end;                         // ^--- first field after VMT
 
 destructor TCoreObject.Destroy;
 begin
@@ -353,6 +361,7 @@ end;
 
 constructor TContainer.Create(Name: PLegacyChar);
 begin
+  inherited Create;
   FClassName := Name;
 end;
 
@@ -394,7 +403,10 @@ procedure TCollection.Assign(Source: Pointer; ItemCount, ItemsCapacity: Integer;
 begin
   Clear;
   if Attach then
-    PCollectionCast(@Self).Items := Source
+  begin
+    PCollectionCast(@Self).Items := Source;
+    FCapacity := ItemsCapacity;
+  end
   else
   begin
     SetCapacity(ItemsCapacity);
@@ -403,7 +415,17 @@ begin
   FAttachBuffer := Attach;
   FItemMode := imInline;
   FCount := ItemCount;
-  FCapacity := ItemsCapacity;
+end;
+
+procedure TCollection.Assign(Source: PCollection; Index: Integer);
+begin
+  Assign(Source, Index, Source.Count - Index);
+end;
+
+procedure TCollection.Assign(Source: PCollection; Index, ItemCount: Integer);
+begin
+  CheckRange(Source, Index, ItemCount);
+  Assign(PCollectionCast(Source).Items + Index * Source.ItemSize, ItemCount, ItemCount, True);
 end;
 
 procedure TCollection.Clear;
@@ -523,11 +545,16 @@ begin
   if (Value < FCount) and (FItemMode <> imInline) and not FAttachBuffer then
     FreeItems(Value, FCount - Value);
 
-  if FAttachBuffer then
+  if AttachBuffer then
   begin
-    GetMem(NewItems, Value * FItemSize);
-    Move(PCollectionCast(@Self).Items^, NewItems^, FCount * FItemSize);
-    PCollectionCast(@Self).Items := NewItems;
+    if Value <> 0 then
+    begin
+      GetMem(NewItems, Value * FItemSize);
+      Move(PCollectionCast(@Self).Items^, NewItems^, FCount * FItemSize);
+      PCollectionCast(@Self).Items := NewItems;
+    end
+    else
+      PCollectionCast(@Self).Items := nil;
     FAttachBuffer := False;
   end
   else

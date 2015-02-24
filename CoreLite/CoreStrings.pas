@@ -126,7 +126,11 @@ type
   protected // prevent stupid warnings
     FData: TStringData;
   public
-    procedure Assign(Source: Pointer; Length: Integer; Options: TStringSource = []);
+    procedure Assign(Source: Pointer; Options: TStringSource = [];
+      CP: PCodePage = nil); overload;
+    procedure Assign(Source: Pointer; Length: Integer; Options: TStringSource = [];
+      CP: PCodePage = nil); overload;
+    class function LengthOf(Source: Pointer): Integer; virtual; abstract;
     function IsUTF8(ThresholdBytes: Integer = 4): Boolean; // TODO: magic number
 
     property RawOptions: TRawByteOptions read FData.RawOptions;
@@ -139,9 +143,8 @@ type
     function GetString: PLegacyChar;
     procedure SetString(Value: PLegacyChar);
   public
-    constructor Create(Initial, GrowBy: Integer; CP: PCodePage = nil); overload;
-    constructor Create(Source: PLegacyChar; Length: Integer; CP: PCodePage;
-      SourceOptions: TRawByteSource = []); overload;
+    constructor Create; overload;
+    class function LengthOf(Source: Pointer): Integer; virtual;
 
     property AsString: PLegacyChar read GetString write SetString;
     property CodePage: PCodePage read FData.CodePage;
@@ -162,8 +165,8 @@ type
     function GetString: PWideChar;
     procedure SetString(Value: PWideChar);
   public
-    constructor Create(Initial, GrowBy: Integer); overload;
-    constructor Create(Source: PWideChar; Length: Integer; SourceOptions: TEndianSource = []); overload;
+    constructor Create; overload;
+    class function LengthOf(Source: Pointer): Integer; virtual;
 
     property AsString: PWideChar read GetString write SetString;
     property Data: PWideChar read FData.WideString write SetString;
@@ -349,28 +352,15 @@ begin
   FreeMem(FName);
 end;
 
-{function TCodePage.Decode(Source: PLegacyChar; SourceCount: Integer; CodePage: TCodePage;
-  SourceOptions: TLegacySource; Dest: PLegacyChar; DestCount: Integer;
-  DestOptions: TEncodeLegacy): TNextLegacyChar;
-begin
-
-end;
-
-function TCodePage.Decode(Source: PWideChar; SourceCount: Integer; SourceOptions: TEndianSource;
-  Dest: PLegacyChar; DestCount: Integer; DestOptions: TEncodeLegacy): TNextWideChar;
-begin
-
-end;
-
-function TCodePage.Encode(Source: PLegacyChar; SourceCount: Integer; SourceOptions: TLegacySource;
-  Dest: PWideChar; DestCount: Integer; DestOptions: TEncodeUTF16): TNextLegacyChar;
-begin
-
-end;}
-
 { TString }
 
-procedure TString.Assign(Source: Pointer; Length: Integer; Options: TStringSource);
+procedure TString.Assign(Source: Pointer; Options: TStringSource; CP: PCodePage);
+begin
+  Assign(Source, LengthOf(Source), Options, CP);
+end;
+
+procedure TString.Assign(Source: Pointer; Length: Integer; Options: TStringSource;
+  CP: PCodePage);
 begin
   if Source <> nil then
     if soAttachBuffer in Options then
@@ -383,6 +373,7 @@ begin
   else
     Clear;
   FData.RawOptions := Options;
+  FData.CodePage := CP;
 end;
 
 function TString.IsUTF8(ThresholdBytes: Integer): Boolean;
@@ -392,26 +383,21 @@ end;
 
 { TLegacyString }
 
-constructor TLegacyString.Create(Source: PLegacyChar; Length: Integer;
-  CP: PCodePage; SourceOptions: TRawByteSource);
+constructor TLegacyString.Create;
 begin
-  TString.Create(sLegacyString, SizeOf(LegacyChar), imInline);
-  Assign(Source, Length, SourceOptions);
-  FData.CodePage := CP;
-end;
-
-constructor TLegacyString.Create(Initial, GrowBy: Integer; CP: PCodePage);
-begin
-  inherited Create(sLegacyString, SizeOf(LegacyChar), imInline);
-  Capacity := Initial;
-  Delta := GrowBy;
-  FData.CodePage := CP;
+  inherited Create(sLegacyString, SizeOf(LegacyChar));
 end;
 
 function TLegacyString.GetString: PLegacyChar;
 begin
   Capacity := Capacity; // detach buffer
+  FData.LegacyString[Count] := #0;
   Result := FData.LegacyString;
+end;
+
+class function TLegacyString.LengthOf(Source: Pointer): Integer;
+begin
+  Result := StrLen(Source);
 end;
 
 procedure TLegacyString.SetString(Value: PLegacyChar);
@@ -439,24 +425,21 @@ end;
 
 { TWideString }
 
-constructor TWideString.Create(Initial, GrowBy: Integer);
+constructor TWideString.Create;
 begin
-  inherited Create(sWideString, SizeOf(WideChar), imInline);
-  Capacity := Initial;
-  Delta := GrowBy;
-end;
-
-constructor TWideString.Create(Source: PWideChar; Length: Integer;
-  SourceOptions: TEndianSource);
-begin
-  inherited Create(sWideString, SizeOf(WideChar), imInline);
-  Assign(Source, Length, SourceOptions);
+  inherited Create(sWideString, SizeOf(WideChar));
 end;
 
 function TWideString.GetString: PWideChar;
 begin
   Capacity := Capacity; // detach buffer
+  FData.WideString[Count] := #0;
   Result := FData.WideString;
+end;
+
+class function TWideString.LengthOf(Source: Pointer): Integer;
+begin
+  Result := WideStrLen(Source);
 end;
 
 procedure TWideString.SetString(Value: PWideChar);
