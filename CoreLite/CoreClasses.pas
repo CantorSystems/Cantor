@@ -88,6 +88,7 @@ type
     procedure Delete(Index: Integer; ItemCount: Integer = 1);
     function TranslateCapacity(NewCount: Integer): Integer;
     function TranslateDelta: Integer;
+    procedure Truncate(ItemCount: Integer);
 
     property AttachBuffer: Boolean read FAttachBuffer;
     property Capacity: Integer read FCapacity write SetCapacity;
@@ -585,6 +586,32 @@ begin
   end
   else
     Result := FDelta;
+end;
+
+procedure TCollection.Truncate(ItemCount: Integer);
+var
+  NewCount, NewCapacity: Integer;
+  NewItems: Pointer;
+begin
+  NewCount := FCount - ItemCount;
+
+  if FAttachBuffer then
+  begin
+    NewCapacity := TranslateCapacity(NewCount);
+    GetMem(NewItems, NewCapacity * FItemSize);
+    with PCollectionCast(@Self)^ do
+    begin
+      Move(Items^, NewItems^, NewCount * FItemSize);
+      Items := NewItems;
+    end;
+    FCapacity := NewCapacity;
+    FAttachBuffer := False;
+  end
+  else
+    if FItemMode <> imInline then
+      FreeItems(FCount - ItemCount, ItemCount);
+
+  FCount := NewCount;
 end;
 
 { TPointers }
