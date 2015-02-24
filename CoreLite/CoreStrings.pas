@@ -125,11 +125,25 @@ type
   TString = object(TCollection)
   protected // prevent stupid warnings
     FData: TStringData;
+    function AsArray(Index: Integer; const Values: array of const): Integer; overload;
+    function AsHexadecimal(Index: Integer; const Value; Length: Integer;
+      MinWidth: Integer = 0; FillChar: WideChar = '0'): Integer; overload;
+    function AsInteger(Index: Integer; Value: Int64; MinWidth: Integer = 0;
+      FillChar: WideChar = #32): Integer; overload;
+    procedure RawAssign(Source: Pointer; Length: Integer; Options: TStringSource);
   public
-    procedure Assign(Source: Pointer; Options: TStringSource = [];
-      CP: PCodePage = nil); overload;
-    procedure Assign(Source: Pointer; Length: Integer; Options: TStringSource = [];
-      CP: PCodePage = nil); overload;
+    procedure AsArray(const Values: array of const); overload;
+
+    procedure AsHexadecimal(const Value; Length: Integer; MinWidth: Integer = 0; FillChar: WideChar = '0'); overload;
+    procedure AsHexadecimal(Value: Int64; MinWidth: Integer = 0; FillChar: WideChar = '0'); overload;
+    procedure AsInteger(Value: Int64; MinWidth: Integer = 0; FillChar: WideChar = #32); overload;
+
+    procedure AsString(Source: PLegacyChar; SourceOptions: TRawByteSource = []); virtual; abstract;
+    procedure AsStringLen(Source: PLegacyChar; Length: Integer; SourceOptions: TRawByteSource = []); virtual; abstract;
+    procedure AsWideString(Source: PWideChar; SourceOptions: TEndianSource = []); virtual; abstract;
+    procedure AsWideStringLen(Source: PWideChar; Length: Integer; SourceOptions: TEndianSource = []); virtual; abstract;
+
+    function Estimate(const Values: array of const): Integer;
     class function LengthOf(Source: Pointer): Integer; virtual; abstract;
     function IsUTF8(ThresholdBytes: Integer = 4): Boolean; // TODO: magic number
 
@@ -137,19 +151,34 @@ type
     property RawString: Pointer read FData.RawString;
   end;
 
+  TNumberFormat = (nfFillChar, nfThousandsSeparator, nfDecimalSeparator);
+  TIntegerFormat = nfFillChar..nfThousandsSeparator;
+
+  TLegacyCharNumberFormat = array[TNumberFormat] of LegacyChar;
+  TLegacyCharIntegerFormat = array[TIntegerFormat] of LegacyChar;
+
   PLegacyString = ^TLegacyString;
   TLegacyString = object(TString)
   private
     function GetString: PLegacyChar;
     procedure SetString(Value: PLegacyChar);
   public
-    constructor Create; overload;
-    class function LengthOf(Source: Pointer): Integer; virtual;
+    constructor Create(CP: PCodePage = nil);
 
-    property AsString: PLegacyChar read GetString write SetString;
+    procedure AsString(Source: PLegacyChar; SourceOptions: TRawByteSource = []); virtual;
+    procedure AsStringLen(Source: PLegacyChar; Length: Integer; SourceOptions: TRawByteSource = []); virtual;
+    procedure AsWideString(Source: PWideChar; SourceOptions: TEndianSource = []); virtual;
+    procedure AsWideStringLen(Source: PWideChar; Length: Integer; SourceOptions: TEndianSource = []); virtual;
+
+    class function LengthOf(Source: Pointer): Integer; virtual;
+    function NextIndex(Value: LegacyChar; StartIndex: Integer = 0): Integer;
+    function PrevIndex(Value: LegacyChar): Integer; overload;
+    function PrevIndex(Value: LegacyChar; StartIndex: Integer): Integer; overload;
+
     property CodePage: PCodePage read FData.CodePage;
-    property Data: PLegacyChar read FData.LegacyString write SetString;
+    property Data: PLegacyChar read GetString write SetString;
     property Options: TRawByteOptions read FData.LegacyStringOptions;
+    property RawData: PLegacyChar read FData.LegacyString write SetString;
   end;
 
   PEndianString = ^TEndianString;
@@ -159,18 +188,31 @@ type
     procedure SwapByteOrder; overload;
   end;
 
+  TWideCharNumberFormat = array[TNumberFormat] of WideChar;
+  TWideCharIntegerFormat = array[TIntegerFormat] of WideChar;
+
   PWideString = ^TWideString;
   TWideString = object(TEndianString)
   private
     function GetString: PWideChar;
     procedure SetString(Value: PWideChar);
+  protected
   public
-    constructor Create; overload;
-    class function LengthOf(Source: Pointer): Integer; virtual;
+    constructor Create; 
 
-    property AsString: PWideChar read GetString write SetString;
-    property Data: PWideChar read FData.WideString write SetString;
+    procedure AsString(Source: PLegacyChar; SourceOptions: TRawByteSource = []); virtual;
+    procedure AsStringLen(Source: PLegacyChar; Length: Integer; SourceOptions: TRawByteSource = []); virtual;
+    procedure AsWideString(Source: PWideChar; SourceOptions: TEndianSource = []); virtual;
+    procedure AsWideStringLen(Source: PWideChar; Length: Integer; SourceOptions: TEndianSource = []); virtual;
+
+    class function LengthOf(Source: Pointer): Integer; virtual;
+    function NextIndex(Value: WideChar; StartIndex: Integer = 0): Integer;
+    function PrevIndex(Value: WideChar): Integer; overload;
+    function PrevIndex(Value: WideChar; StartIndex: Integer): Integer; overload;
+
+    property Data: PWideChar read GetString write SetString;
     property Options: TEndianOptions read FData.WideStringOptions;
+    property RawData: PWideChar read FData.WideString write SetString;
   end;
 
   PCoreString = PWideString;
@@ -354,13 +396,149 @@ end;
 
 { TString }
 
-procedure TString.Assign(Source: Pointer; Options: TStringSource; CP: PCodePage);
+function TString.AsArray(Index: Integer; const Values: array of const): Integer;
 begin
-  Assign(Source, LengthOf(Source), Options, CP);
+  Result := 0; // TODO
 end;
 
-procedure TString.Assign(Source: Pointer; Length: Integer; Options: TStringSource;
-  CP: PCodePage);
+procedure TString.AsArray(const Values: array of const);
+var
+  Length: Integer;
+begin
+  Clear;
+  Capacity := Estimate(Values) + SizeOf(WideChar);
+  Length := AsArray(0, Values);
+  Append(Length);
+  PWideChar(PAddress(FData.RawString) + Length * ItemSize)^ := #0;
+end;
+
+function TString.AsHexadecimal(Index: Integer; const Value; Length,
+  MinWidth: Integer; FillChar: WideChar): Integer;
+begin
+  Result := 0; // TODO
+end;
+
+procedure TString.AsHexadecimal(const Value; Length, MinWidth: Integer; FillChar: WideChar);
+var
+  W: Integer;
+begin
+  Clear;
+  W := Length * 2;
+  if W < Abs(MinWidth) then
+    W := Abs(MinWidth);
+  Capacity := W + SizeOf(WideChar);
+  W := AsHexadecimal(0, Value, Length, W, FillChar);
+  Append(W);
+  PWideChar(PAddress(FData.RawString) + W * ItemSize)^ := #0;
+end;
+
+procedure TString.AsHexadecimal(Value: Int64; MinWidth: Integer; FillChar: WideChar);
+begin
+  AsHexadecimal(Value, SizeOf(Value), MinWidth, FillChar);
+end;
+
+const
+  MaxDigits = 20;
+
+function TString.AsInteger(Index: Integer; Value: Int64; MinWidth: Integer;
+  FillChar: WideChar): Integer;
+var
+  Buf: array[1..MaxDigits] of LegacyChar;
+  Digits: PLegacyChar;
+  Minus: Boolean;
+  W: PWideChar;
+  I: Integer;
+begin
+  if Value < 0 then
+  begin
+    Minus := True;
+    Value := Abs(Value);
+  end
+  else
+    Minus := False;
+
+  Digits := @Buf[High(Buf)];
+  for Result := Low(Buf) to High(Buf) do
+  begin
+    Digits^ := LegacyChar(Value mod 10 + Byte('0'));
+    Value := Value div 10;
+    if Value = 0 then
+      Break;
+    Dec(Digits);
+  end;
+
+  if Minus then
+  begin
+    Dec(Digits);
+    Digits^ := '-';
+    Inc(Result);
+  end;
+
+  if ItemSize = SizeOf(LegacyChar) then
+    if Result < Abs(MinWidth) then
+    begin
+      if MinWidth < 0 then
+      begin
+        System.FillChar(FData.LegacyString[Index], Abs(MinWidth) - Result, FillChar);
+        Move(Digits^, FData.LegacyString[Index + Abs(MinWidth) - Result], Result);
+      end
+      else
+      begin
+        Move(Digits^, FData.LegacyString[Index], Result);
+        System.FillChar(FData.LegacyString[Index + Result], MinWidth - Result, FillChar);
+      end;
+      Result := Abs(MinWidth);
+    end
+    else
+      Move(Digits^, FData.LegacyString[Index], Result)
+  else
+  begin
+    W := FData.WideString + Index;
+    if Result < MinWidth then
+    begin
+      for I := Result to MinWidth - Result - 1 do
+      begin
+        W^ := FillChar;
+        Inc(W);
+      end;
+      Result := MinWidth;
+    end;
+    for I := 0 to Result - 1 do
+    begin
+      W^ := WideChar(Digits^);
+      Inc(W);
+      Inc(Digits);
+    end;
+    if Result < MinWidth then
+      Result := MinWidth;
+  end;
+end;
+
+procedure TString.AsInteger(Value: Int64; MinWidth: Integer; FillChar: WideChar);
+var
+  Length: Integer;
+begin
+  Clear;
+  Length := MaxDigits;
+  if Length < Abs(MinWidth) then
+    Length := Abs(MinWidth);
+  Capacity := Length + SizeOf(WideChar);
+  Length := AsInteger(0, Value, MinWidth, FillChar);
+  Append(Length);
+  PWideChar(PAddress(FData.RawString) + Length * ItemSize)^ := #0;
+end;
+
+function TString.Estimate(const Values: array of const): Integer;
+begin
+  Result := 0; // TODO
+end;
+
+function TString.IsUTF8(ThresholdBytes: Integer): Boolean;
+begin
+  Result := False; // TODO
+end;
+
+procedure TString.RawAssign(Source: Pointer; Length: Integer; Options: TStringSource);
 begin
   if Source <> nil then
     if soAttachBuffer in Options then
@@ -373,25 +551,45 @@ begin
   else
     Clear;
   FData.RawOptions := Options;
-  FData.CodePage := CP;
-end;
-
-function TString.IsUTF8(ThresholdBytes: Integer): Boolean;
-begin
-  Result := False; // TODO
 end;
 
 { TLegacyString }
 
-constructor TLegacyString.Create;
+constructor TLegacyString.Create(CP: PCodePage);
 begin
   inherited Create(sLegacyString, SizeOf(LegacyChar));
+  FData.CodePage := CP;
+end;
+
+procedure TLegacyString.AsString(Source: PLegacyChar; SourceOptions: TRawByteSource);
+begin
+  RawAssign(Source, StrLen(Source), SourceOptions);
+end;
+
+procedure TLegacyString.AsStringLen(Source: PLegacyChar; Length: Integer;
+  SourceOptions: TRawByteSource);
+begin
+  RawAssign(Source, Length, SourceOptions);
+end;
+
+procedure TLegacyString.AsWideString(Source: PWideChar; SourceOptions: TEndianSource);
+begin
+  // TODO: Encode
+end;
+
+procedure TLegacyString.AsWideStringLen(Source: PWideChar; Length: Integer;
+  SourceOptions: TEndianSource);
+begin
+  // TODO: Encode
 end;
 
 function TLegacyString.GetString: PLegacyChar;
 begin
-  Capacity := Capacity; // detach buffer
-  FData.LegacyString[Count] := #0;
+  if Capacity <> 0 then
+  begin
+    Capacity := Capacity; // detach buffer
+    FData.LegacyString[Count] := #0;
+  end;
   Result := FData.LegacyString;
 end;
 
@@ -400,9 +598,44 @@ begin
   Result := StrLen(Source);
 end;
 
+function TLegacyString.NextIndex(Value: LegacyChar; StartIndex: Integer): Integer;
+var
+  S: PLegacyChar;
+begin
+  CheckIndex(@Self, StartIndex);
+  S := StrScan(FData.LegacyString, Count, Value);
+  if S <> nil then
+    Result := S - FData.LegacyString
+  else
+    Result := -1;
+end;
+
+function TLegacyString.PrevIndex(Value: LegacyChar): Integer;
+var
+  S: PLegacyChar;
+begin
+  S := StrRScan(FData.LegacyString, Count, Value);
+  if S <> nil then
+    Result := S - FData.LegacyString
+  else
+    Result := -1;
+end;
+
+function TLegacyString.PrevIndex(Value: LegacyChar; StartIndex: Integer): Integer;
+var
+  S: PLegacyChar;
+begin
+  CheckIndex(@Self, StartIndex);
+  S := StrRScan(FData.LegacyString, Count - StartIndex, Value);
+  if S <> nil then
+    Result := S - FData.LegacyString
+  else
+    Result := -1;
+end;
+
 procedure TLegacyString.SetString(Value: PLegacyChar);
 begin
-  Assign(Value, StrLen(Value), [soDetectCharSet]);
+  RawAssign(Value, StrLen(Value), [soDetectCharSet]);
 end;
 
 { TEndianString }
@@ -430,10 +663,35 @@ begin
   inherited Create(sWideString, SizeOf(WideChar));
 end;
 
+procedure TWideString.AsString(Source: PLegacyChar; SourceOptions: TRawByteSource);
+begin
+  // TODO: Encode
+end;
+
+procedure TWideString.AsStringLen(Source: PLegacyChar; Length: Integer;
+  SourceOptions: TRawByteSource);
+begin
+  // TODO: Encode
+end;
+
+procedure TWideString.AsWideString(Source: PWideChar; SourceOptions: TEndianSource);
+begin
+  RawAssign(Source, WideStrLen(Source), SourceOptions);
+end;
+
+procedure TWideString.AsWideStringLen(Source: PWideChar; Length: Integer;
+  SourceOptions: TEndianSource);
+begin
+  RawAssign(Source, Length, SourceOptions);
+end;
+
 function TWideString.GetString: PWideChar;
 begin
-  Capacity := Capacity; // detach buffer
-  FData.WideString[Count] := #0;
+  if Capacity <> 0 then
+  begin
+    Capacity := Capacity; // detach buffer
+    FData.WideString[Count] := #0;
+  end;
   Result := FData.WideString;
 end;
 
@@ -442,9 +700,44 @@ begin
   Result := WideStrLen(Source);
 end;
 
+function TWideString.NextIndex(Value: WideChar; StartIndex: Integer): Integer;
+var
+  W: PWideChar;
+begin
+  CheckIndex(@Self, StartIndex);
+  W := WideStrScan(FData.WideString, Count, Value);
+  if W <> nil then
+    Result := W - FData.WideString
+  else
+    Result := -1;
+end;
+
+function TWideString.PrevIndex(Value: WideChar): Integer;
+var
+  W: PWideChar;
+begin
+  W := WideStrRScan(FData.WideString, Count, Value);
+  if W <> nil then
+    Result := W - FData.WideString
+  else
+    Result := -1;
+end;
+
+function TWideString.PrevIndex(Value: WideChar; StartIndex: Integer): Integer;
+var
+  W: PWideChar;
+begin
+  CheckIndex(@Self, StartIndex);
+  W := WideStrRScan(FData.WideString, Count - StartIndex, Value);
+  if W <> nil then
+    Result := W - FData.WideString
+  else
+    Result := -1;
+end;
+
 procedure TWideString.SetString(Value: PWideChar);
 begin
-  Assign(Value, WideStrLen(Value));
+  RawAssign(Value, WideStrLen(Value), []);
 end;
 
 end.
