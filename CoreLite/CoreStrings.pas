@@ -151,6 +151,9 @@ type
     class function LengthOf(Source: Pointer): Integer; virtual; abstract;
     function IsUTF8(ThresholdBytes: Integer = 4): Boolean; // TODO: magic number
 
+    function NextIndex(Index: Integer): Integer;
+    function PrevIndex(Index: Integer): Integer; 
+
     property RawOptions: TRawByteOptions read FData.RawOptions;
     property RawString: Pointer read FData.RawString;
   end;
@@ -175,7 +178,7 @@ type
     procedure AsWideStringLen(Source: PWideChar; Length: Integer; SourceOptions: TEndianSource = []); virtual;
 
     class function LengthOf(Source: Pointer): Integer; virtual;
-    function NextIndex(Value: LegacyChar; StartIndex: Integer = 0): Integer;
+    function NextIndex(Value: LegacyChar; StartIndex: Integer = 0): Integer; overload;
     function PrevIndex(Value: LegacyChar): Integer; overload;
     function PrevIndex(Value: LegacyChar; StartIndex: Integer): Integer; overload;
 
@@ -210,7 +213,7 @@ type
     procedure AsWideStringLen(Source: PWideChar; Length: Integer; SourceOptions: TEndianSource = []); virtual;
 
     class function LengthOf(Source: Pointer): Integer; virtual;
-    function NextIndex(Value: WideChar; StartIndex: Integer = 0): Integer;
+    function NextIndex(Value: WideChar; StartIndex: Integer = 0): Integer; overload;
     function PrevIndex(Value: WideChar): Integer; overload;
     function PrevIndex(Value: WideChar; StartIndex: Integer): Integer; overload;
 
@@ -542,6 +545,24 @@ end;
 function TString.IsUTF8(ThresholdBytes: Integer): Boolean;
 begin
   Result := False; // TODO
+end;
+
+function TString.NextIndex(Index: Integer): Integer;
+begin
+  CheckIndex(@Self, Index);
+  Result := Index + 1;
+  if FData.CodePage <> nil then
+    while not (FData.LegacyString[Index] in [#0..#127] + FData.CodePage.LeadBytes) do
+      Inc(Result);
+end;
+
+function TString.PrevIndex(Index: Integer): Integer;
+begin
+  CheckIndex(@Self, Index);
+  Result := Index - 1;
+  if FData.CodePage <> nil then
+    while FData.LegacyString[Index] in [#0..#127] + FData.CodePage.LeadBytes do
+      Dec(Result);
 end;
 
 procedure TString.RawAssign(Source: Pointer; Length: Integer; Options: TStringSource);
