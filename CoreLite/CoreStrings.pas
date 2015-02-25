@@ -130,17 +130,13 @@ type
   protected // prevent stupid warnings
     FData: TStringData;
     function AsArray(Index: Integer; const Values: array of const): Integer; overload;
-    function AsHexadecimal(Index: Integer; const Value; Length: Integer;
-      MinWidth: Integer = 0; FillChar: WideChar = '0'): Integer; overload;
-    function AsInteger(Index: Integer; Value: Int64; MinWidth: Integer = 0;
-      FillChar: WideChar = #32): Integer; overload;
+    function AsInteger(Index: Integer; Value: Int64; Hexadecimal: Boolean = False;
+      MinWidth: Integer = 0; FillChar: WideChar = #32): Integer; overload;
     procedure Assign(Source: Pointer; Length: Integer; Options: TStringSource); overload;
   public
     procedure AsArray(const Values: array of const); overload;
-
-    procedure AsHexadecimal(const Value; Length: Integer; MinWidth: Integer = 0; FillChar: WideChar = '0'); overload;
-    procedure AsHexadecimal(Value: Int64; MinWidth: Integer = 0; FillChar: WideChar = '0'); overload;
-    procedure AsInteger(Value: Int64; MinWidth: Integer = 0; FillChar: WideChar = #32); overload;
+    procedure AsInteger(Value: Int64; Hexadecimal: Boolean = False; MinWidth: Integer = 0;
+      FillChar: WideChar = #32); overload;
 
     procedure AsString(Source: PLegacyChar; SourceOptions: TRawByteSource = []); virtual; abstract;
     procedure AsStringLen(Source: PLegacyChar; Length: Integer; SourceOptions: TRawByteSource = []); virtual; abstract;
@@ -366,6 +362,68 @@ begin
   end;
 end;
 
+procedure FillWideChar(var Buf; Count: Integer; Value: WideChar);
+var
+  P: PWideChar;
+begin
+  P := @Buf;
+  while Count <> 0 do
+  begin
+    P^ := Value;
+    Inc(P);
+    Dec(Count);
+  end;
+end;
+
+procedure MoveZeroExpand(const Source; var Dest; Count: Integer);
+var
+  S: PByte;
+  D: PWord;
+begin
+  S := @Source;
+  D := @Dest;
+  while Count <> 0 do
+  begin
+    D^ := S^;
+    Inc(S);
+    Inc(D);
+    Dec(Count);
+  end;
+end;
+
+procedure PutHexDigits(const Source; var Dest; Count: Integer; WideChar: Boolean); // don't used here
+var
+  S: PByte;
+  W: PWord;
+  L: PLongWord;
+begin
+  S := @Source;
+  if WideChar then
+  begin
+    L := @Dest;
+    Inc(L, Count - 1); // platform
+    while Count <> 0 do
+    begin
+      L^ := Byte(HexDigits[S^ and $F]) or (Byte(HexDigits[S^ shr 4]) shl 16);
+      Inc(S);
+      Dec(L);
+      Dec(Count);
+    end;
+  end
+  else
+  begin
+    W := @Dest;
+    Inc(W, Count - 1); // platform
+    while Count <> 0 do
+    begin
+      W^ := Byte(HexDigits[S^ and $F]) or (Byte(HexDigits[S^ shr 4]) shl 8);
+      Inc(S);
+      Dec(W);
+      Dec(Count);
+    end;
+  end;
+end;
+
 { TCodePage }
 
 constructor TCodePage.Create(CodePage: Word; DefaultReplacementChar: LegacyChar);
@@ -421,66 +479,62 @@ begin
   PWideChar(PAddress(FData.RawString) + Length * ItemSize)^ := #0;
 end;
 
-function TString.AsHexadecimal(Index: Integer; const Value; Length,
-  MinWidth: Integer; FillChar: WideChar): Integer;
-begin
-  Result := 0; // TODO
-end;
-
-procedure TString.AsHexadecimal(const Value; Length, MinWidth: Integer; FillChar: WideChar);
-var
-  W: Integer;
-begin
-  Clear;
-  W := Length * 2;
-  if W < Abs(MinWidth) then
-    W := Abs(MinWidth);
-  Capacity := W + SizeOf(WideChar);
-  W := AsHexadecimal(0, Value, Length, W, FillChar);
-  Append(W);
-  PWideChar(PAddress(FData.RawString) + W * ItemSize)^ := #0;
-end;
-
-procedure TString.AsHexadecimal(Value: Int64; MinWidth: Integer; FillChar: WideChar);
-begin
-  AsHexadecimal(Value, SizeOf(Value), MinWidth, FillChar);
-end;
-
 const
   MaxDigits = 20;
 
-function TString.AsInteger(Index: Integer; Value: Int64; MinWidth: Integer;
-  FillChar: WideChar): Integer;
+function TString.AsInteger(Index: Integer; Value: Int64; Hexadecimal: Boolean;
+  MinWidth: Integer; FillChar: WideChar): Integer;
 var
   Buf: array[1..MaxDigits] of LegacyChar;
   Digits: PLegacyChar;
   Minus: Boolean;
-  W: PWideChar;
-  I: Integer;
 begin
-  if Value < 0 then
+  if Hexadecimal then
   begin
-    Minus := True;
-    Value := Abs(Value);
+    Digits := @Buf[High(Buf) - SizeOf(Word)];
+    Result := 0;
+    repeat
+      PWord(Digits)^ := Byte(HexDigits[Byte(Value) shr 4]) or (Byte(HexDigits[Byte(Value) and $F]) shl 8);
+      Inc(Result);
+      Value := Value shr 8;
+      if Value = 0 then
+        Break;
+      Dec(Digits, SizeOf(Word));
+    until False;
+    Result := Result * SizeOf(Word);
+    if Digits^ = '0' then
+    begin
+      Inc(Digits);
+      Dec(Result);
+    end;
   end
   else
-    Minus := False;
-
-  Digits := @Buf[High(Buf)];
-  for Result := Low(Buf) to High(Buf) do
   begin
-    Digits^ := LegacyChar(Value mod 10 + Byte('0'));
-    Value := Value div 10;
-    if Value = 0 then
-      Break;
-    Dec(Digits);
-  end;
+    if Value < 0 then
+    begin
+      Minus := True;
+      Value := Abs(Value);
+    end
+    else
+      Minus := False;
 
-  if Minus then
-  begin
-    Dec(Digits);
-    Digits^ := '-';
-    Inc(Result);
+    Digits := @Buf[High(Buf)];
+    Result := 0;
+    repeat
+      Digits^ := LegacyChar(Value mod 10 + Byte('0'));
+      Inc(Result);
+      Value := Value div 10;
+      if Value = 0 then
+        Break;
+      Dec(Digits);
+    until False;
+
+    if Minus then
+    begin
+      Dec(Digits);
+      Digits^ := '-';
+      Inc(Result);
+    end;
   end;
 
   if ItemSize = SizeOf(LegacyChar) then
@@ -501,38 +555,35 @@ begin
     else
       Move(Digits^, FData.LegacyString[Index], Result)
   else
-  begin
-    W := FData.WideString + Index;
-    if Result < MinWidth then
+    if Result < Abs(MinWidth) then
     begin
-      for I := Result to MinWidth - Result - 1 do
+      if MinWidth < 0 then
       begin
-        W^ := FillChar;
-        Inc(W);
+        FillWideChar(FData.WideString[Index], Abs(MinWidth) - Result, FillChar);
+        MoveZeroExpand(Digits^, FData.WideString[Index + Abs(MinWidth) - Result], Result);
+      end
+      else
+      begin
+        MoveZeroExpand(Digits^, FData.WideString[Index], Result);
+        FillWideChar(FData.LegacyString[Index + Result], MinWidth - Result, FillChar);
       end;
-      Result := MinWidth;
-    end;
-    for I := 0 to Result - 1 do
-    begin
-      W^ := WideChar(Digits^);
-      Inc(W);
-      Inc(Digits);
-    end;
-    if Result < MinWidth then
-      Result := MinWidth;
-  end;
+      Result := Abs(MinWidth);
+    end
+    else
+      MoveZeroExpand(Digits^, FData.WideString[Index], Result);
 end;
 
-procedure TString.AsInteger(Value: Int64; MinWidth: Integer; FillChar: WideChar);
+procedure TString.AsInteger(Value: Int64; Hexadecimal: Boolean; MinWidth: Integer; FillChar: WideChar);
 var
   Length: Integer;
 begin
   Clear;
-  Length := MaxDigits;
-  if Length < Abs(MinWidth) then
-    Length := Abs(MinWidth);
+  if Abs(MinWidth) > MaxDigits then
+    Length := Abs(MinWidth)
+  else
+    Length := MaxDigits;
   Capacity := Length + SizeOf(WideChar);
-  Length := AsInteger(0, Value, MinWidth, FillChar);
+  Length := AsInteger(0, Value, Hexadecimal, MinWidth, FillChar);
   Append(Length);
   PWideChar(PAddress(FData.RawString) + Length * ItemSize)^ := #0;
 end;
