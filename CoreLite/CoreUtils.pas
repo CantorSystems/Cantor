@@ -116,6 +116,7 @@ var
 
 const
   PathDelimiter = WideChar('\'); // platform;
+  LegacyReplacementChar = #127;
 
   CRLF: array[0..1] of LegacyChar = #13#10;
   WideCRLF: array[0..1] of WideChar = (WideChar(13), WideChar(10));
@@ -235,27 +236,37 @@ const
   CSTR_EQUAL        = 2;
   CSTR_GREATER_THAN = 3;
 
+  MB_ERR_INVALID_CHARS = 8;
+  WC_NO_BEST_FIT_CHARS = $400;
+
+  CP_GB18030 = 54936;
+
 function FormatBuf(Fmt: PLegacyChar; const Args: array of const;
   Buf: PLegacyChar): Integer;
 function WideFormatBuf(Fmt: PWideChar; const Args: array of const;
   Buf: PWideChar): Integer;
 
+{ MaxCharBytes(5022x, 52936) = 0, e. g. estimate on each string }
+function MaxCharBytes(CodePage: Word; AcceptSurrogatePairs: Boolean = True): Byte;
+
 { FreeMem finalization required }
 
-function DecodeLegacy(Source: PLegacyChar; CodePage: Word): TWideStringRec; overload;
-function DecodeLegacy(Source: PLegacyChar; Count: Integer; CodePage: Word): TWideStringRec; overload;
-
-function EncodeLegacy(Source: PWideChar; CodePage: Word{;
-  UseDefaultChar: Boolean = True}): TLegacyStringRec; overload;
-function EncodeLegacy(Source: PWideChar; Count: Integer; CodePage: Word{;
-  UseDefaultChar: Boolean = True}): TLegacyStringRec; overload;
+function DecodeString(Source: PLegacyChar; CodePage: Word;
+  ReplaceInvalidChars: Boolean = True): TWideStringRec; overload;
+function DecodeString(Source: PLegacyChar; Count: Integer; CodePage: Word;
+  ReplaceInvalidChars: Boolean = True): TWideStringRec; overload;
+                    // guess GB18030 users could make cheaper and capacious memory chips :-)
+function EncodeString(Source: PWideChar; CodePage: Word; AcceptSurrogatePairs: Boolean = True;
+  ReplacementChar: LegacyChar = LegacyReplacementChar): TLegacyStringRec; overload;
+function EncodeString(Source: PWideChar; Count: Integer; CodePage: Word;
+  AcceptSurrogatePairs: Boolean = True; ReplacementChar: LegacyChar = LegacyReplacementChar): TLegacyStringRec; overload;
 
 function Format(Fmt: PLegacyChar; FixedWidth: Integer;
   const Args: array of const): TLegacyStringRec;
 function WideFormat(Fmt: PWideChar; FixedWidth: Integer;
   const Args: array of const): TWideStringRec;
 
-function LegacyFormat(Fmt: PLegacyChar; CodePage: Word; FixedWidth: Integer;
+function FormatString(Fmt: PLegacyChar; CodePage: Word; FixedWidth: Integer;
   const Args: array of const): TWideStringRec;
 
 { User-friendly class names }
@@ -1205,54 +1216,91 @@ asm
         POP EDI
 end;
 
-{ FreeMem finalization required }
-
-function DecodeLegacy(Source: PLegacyChar; CodePage: Word): TWideStringRec;
+function MaxCharBytes(CodePage: Word; AcceptSurrogatePairs: Boolean): Byte;
 begin
-  Result := DecodeLegacy(Source, StrLen(Source), CodePage);
+  if
+    (CodePage - 900 in [0..99]) or      // ANSI/OEM CJK
+    (CodePage - 1300 in [0..99]) or     // Johab
+    (CodePage - 10000 in [1..5, 8]) or  // X-Mac
+    (CodePage - 20000 in [1..9]) or     // X-CP, CNS, Eten
+    (CodePage - 20900 in [0..99]) or    // EUC-JP, GB2312, Wansung
+    (CodePage - 50900 in [30..50])      // EBCDIC, EUC
+  then
+    Result := 2
+  else if CodePage = CP_GB18030 then  
+    Result := 2 * Byte(AcceptSurrogatePairs)
+  else if CodePage = CP_UTF8 then
+    Result := 3 + Byte(AcceptSurrogatePairs)
+  else if CodePage = CP_UTF7 then
+    Result := 5 + Byte(AcceptSurrogatePairs) * 2
+  else if
+    (CodePage - 50220 in [0..9]) or     // ISO-2022
+    (CodePage = 52936)                  // HZ-GB2312
+  then
+    Result := 0
+  else
+    Result := 1;
 end;
 
-function DecodeLegacy(Source: PLegacyChar; Count: Integer; CodePage: Word): TWideStringRec;
+{ FreeMem finalization required }
+
+function DecodeString(Source: PLegacyChar; CodePage: Word;
+  ReplaceInvalidChars: Boolean): TWideStringRec;
+begin
+  Result := DecodeString(Source, StrLen(Source), CodePage);
+end;
+
+function DecodeString(Source: PLegacyChar; Count: Integer; CodePage: Word;
+  ReplaceInvalidChars: Boolean): TWideStringRec;
 begin
   with Result do
   begin
-    Length := {$IFDEF Tricks} System. {$ENDIF}
-      MultiByteToWideChar(CodePage, 0, Source, Count, nil, 0);
-    if Length <> 0 then
-    begin
-      GetMem(Value, (Length + 1) * SizeOf(WideChar));
-    {$IFDEF Tricks} System. {$ENDIF}
-      MultiByteToWideChar(CodePage, 0, Source, Count, Value, Length);
-      Value[Length] := WideChar(0);
-    end
-    else
-      Value := nil;
+    Length := Count; // because it real for all code pages
+    GetMem(Value, (Length + 1) * SizeOf(WideChar));
+    {$IFDEF Tricks} System. {$ENDIF} MultiByteToWideChar(CodePage,
+      MB_ERR_INVALID_CHARS and LongWord(ReplaceInvalidChars), Source, Count, Value, Length);
+    Value[Length] := #0;
   end;
 end;
 
-function EncodeLegacy(Source: PWideChar; CodePage: Word{; UseDefaultChar: Boolean}): TLegacyStringRec;
+function EncodeString(Source: PWideChar; CodePage: Word; AcceptSurrogatePairs: Boolean;
+  ReplacementChar: LegacyChar): TLegacyStringRec;
 begin
-  Result := EncodeLegacy(Source, WideStrLen(Source), CodePage{, UseDefaultChar});
+  Result := EncodeString(Source, WideStrLen(Source), CodePage, AcceptSurrogatePairs, ReplacementChar);
 end;
 
-function EncodeLegacy(Source: PWideChar; Count: Integer; CodePage: Word{;
-  UseDefaultChar: Boolean}): TLegacyStringRec;
-{var
-  DefaultCharUsed: Bool;}
+function EncodeString(Source: PWideChar; Count: Integer; CodePage: Word;
+  AcceptSurrogatePairs: Boolean; ReplacementChar: LegacyChar): TLegacyStringRec;
+var
+  Flags: LongWord;
+  Replacement: PLegacyChar;
 begin
+  if CodePage - CP_UTF7 in [0..1] then
+  begin
+    Flags := 0;
+    Replacement := nil;
+  end
+  else
+  begin
+    Flags := WC_NO_BEST_FIT_CHARS;
+    Replacement := @ReplacementChar;
+  end;
+
   with Result do
   begin
-    Length := {$IFDEF Tricks} System. {$ENDIF}
-      WideCharToMultiByte(CodePage, 0, Source, Count, nil, 0, nil, nil);//@DefaultCharUsed);
-    if (Length <> 0) {and (not UseDefaultChar or not DefaultCharUsed)} then
-    begin
-      GetMem(Value, Length + 1);
-    {$IFDEF Tricks} System. {$ENDIF}
-      WideCharToMultiByte(CodePage, 0, Source, Count, Value, Length, nil, nil);
-      Value[Length] := #0;
-    end
+    Length := MaxCharBytes(CodePage, AcceptSurrogatePairs);
+    if Length <> 0 then
+      Length := Count * Length
     else
-      Value := nil;
+    begin
+      Length := {$IFDEF Tricks} System. {$ENDIF}
+        WideCharToMultiByte(CodePage, WC_NO_BEST_FIT_CHARS, Source, Count, nil, 0, nil, nil);
+      Replacement := nil;
+    end;
+    GetMem(Value, Length + 1);
+    Length := {$IFDEF Tricks} System. {$ENDIF}
+      WideCharToMultiByte(CodePage, Flags, Source, Count, Value, Length, Replacement, nil);
+    Value[Length] := #0;
   end;
 end;
 
@@ -1278,12 +1326,12 @@ begin
   end;
 end;
 
-function LegacyFormat(Fmt: PLegacyChar; CodePage: Word; FixedWidth: Integer;
+function FormatString(Fmt: PLegacyChar; CodePage: Word; FixedWidth: Integer;
   const Args: array of const): TWideStringRec;
 var
   W: PWideChar;
 begin
-  W := DecodeLegacy(Fmt, CodePage).Value;
+  W := DecodeString(Fmt, CodePage).Value;
   try
     Result := WideFormat(W, FixedWidth, Args);
   finally

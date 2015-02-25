@@ -738,7 +738,7 @@ var
 begin
   if CodePage = CP_UTF8 then
   begin
-    W := LegacyFormat(Fmt, CP_LEGACY, FixedWidth, Args);
+    W := FormatString(Fmt, CP_LEGACY, FixedWidth, Args);
     try
       WriteLn(W.Value, W.Length, LineBreaks);
     finally
@@ -760,7 +760,7 @@ procedure TStreamConsole.WriteLn(Text: PWideChar; Count, LineBreaks: Integer);
 var
   S: TLegacyStringRec;
 begin
-  S := EncodeLegacy(Text, Count, CodePage);
+  S := EncodeString(Text, Count, CodePage);
   try
     WriteLn(S.Value, S.Length, LineBreaks);
   finally
@@ -971,7 +971,7 @@ var
   W: PWideChar;
 begin
   with FTranslations[TranslationIndex] do
-    W := LegacyFormat('\StringFileInfo\%04X%04X\%hs', CP_LEGACY, 0, [Locale, CodePage, Ident]).Value;
+    W := FormatString('\StringFileInfo\%04X%04X\%hs', CP_LEGACY, 0, [Locale, CodePage, Ident]).Value;
   try
     Result := VerQueryValueW(FData, W, Pointer(Info), Length);
     if Result then

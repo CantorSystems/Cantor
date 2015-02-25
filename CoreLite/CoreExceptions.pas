@@ -703,7 +703,7 @@ end;
 
 constructor Exception.Create(Msg: PLegacyChar; CodePage: Word; const Args: array of const);
 begin
-  FMessage := LegacyFormat(Msg, CodePage, 0, Args).Value;
+  FMessage := FormatString(Msg, CodePage, 0, Args).Value;
 {$IFDEF Debug}
   FDelphiMsg := LegacyString(FMessage, WideStrLen(FMessage));
 {$ENDIF}

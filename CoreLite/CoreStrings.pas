@@ -94,7 +94,7 @@ type
     FMaxCharBytes: Byte;
     FReplacementChar, FSysReplacementChar: LegacyChar;
   public
-    constructor Create(CodePage: Word = CP_ACP; DefaultReplacementChar: LegacyChar = #127);
+    constructor Create(CodePage: Word = CP_ACP; DefaultReplacementChar: LegacyChar = LegacyReplacementChar);
     destructor Destroy;
 
 {    function Decode(Source: PLegacyChar; SourceCount: Integer; CodePage: TCodePage; SourceOptions: TLegacySource;
