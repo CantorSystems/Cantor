@@ -158,8 +158,8 @@ type
 
   PSaveHelper = ^TSaveHelper;
   TSaveHelper = object
-    BeforeSave, AfterSave: TReadableStreamEvent;
-    procedure Save(HostSave: TReadableStreamEvent; FileName: PCoreChar;
+    BeforeSave, AfterSave: TWritableStreamEvent;
+    procedure Save(HostSave: TWritableStreamEvent; FileName: PCoreChar; FileSize: Int64;
       Access: TFileAccess = faSequentialRewrite; Attributes: TFileAttributes = [faNormal]);
   end;
 
@@ -630,8 +630,8 @@ end;
 
 { TSaveHelper }
 
-procedure TSaveHelper.Save(HostSave: TReadableStreamEvent; FileName: PCoreChar;
-  Access: TFileAccess; Attributes: TFileAttributes);
+procedure TSaveHelper.Save(HostSave: TWritableStreamEvent; FileName: PCoreChar;
+  FileSize: Int64; Access: TFileAccess; Attributes: TFileAttributes);
 var
   F: TFileStream;
 begin
@@ -639,6 +639,7 @@ begin
   try
     if Assigned(BeforeSave) then
       BeforeSave(F);
+    F.Size := FileSize;  
     HostSave(F);
     if Assigned(AfterSave) then
       AfterSave(F);
