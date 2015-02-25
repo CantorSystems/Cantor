@@ -250,16 +250,16 @@ function WideFormatBuf(Fmt: PWideChar; const Args: array of const;
 function MaxCharBytes(CodePage: Word; AcceptSurrogatePairs: Boolean = True): Byte;
 
 { FreeMem finalization required }
-
-function DecodeString(Source: PLegacyChar; CodePage: Word;
-  ReplaceInvalidChars: Boolean = True): TWideStringRec; overload;
-function DecodeString(Source: PLegacyChar; Count: Integer; CodePage: Word;
-  ReplaceInvalidChars: Boolean = True): TWideStringRec; overload;
                     // guess GB18030 users could make cheaper and capacious memory chips :-)
-function EncodeString(Source: PWideChar; CodePage: Word; AcceptSurrogatePairs: Boolean = True;
+function DecodeUTF16(Source: PWideChar; CodePage: Word; AcceptSurrogatePairs: Boolean = True;
   ReplacementChar: LegacyChar = LegacyReplacementChar): TLegacyStringRec; overload;
-function EncodeString(Source: PWideChar; Count: Integer; CodePage: Word;
-  AcceptSurrogatePairs: Boolean = True; ReplacementChar: LegacyChar = LegacyReplacementChar): TLegacyStringRec; overload;
+function DecodeUTF16(Source: PWideChar; Count: Integer; CodePage: Word; AcceptSurrogatePairs: Boolean = True;
+  ReplacementChar: LegacyChar = LegacyReplacementChar): TLegacyStringRec; overload;
+
+function EncodeUTF16(Source: PLegacyChar; CodePage: Word;
+  ReplaceInvalidChars: Boolean = True): TWideStringRec; overload;
+function EncodeUTF16(Source: PLegacyChar; Count: Integer; CodePage: Word;
+  ReplaceInvalidChars: Boolean = True): TWideStringRec; overload;
 
 function Format(Fmt: PLegacyChar; FixedWidth: Integer;
   const Args: array of const): TLegacyStringRec;
@@ -1244,32 +1244,13 @@ end;
 
 { FreeMem finalization required }
 
-function DecodeString(Source: PLegacyChar; CodePage: Word;
-  ReplaceInvalidChars: Boolean): TWideStringRec;
-begin
-  Result := DecodeString(Source, StrLen(Source), CodePage);
-end;
-
-function DecodeString(Source: PLegacyChar; Count: Integer; CodePage: Word;
-  ReplaceInvalidChars: Boolean): TWideStringRec;
-begin
-  with Result do
-  begin
-    Length := Count; // because it real for all code pages
-    GetMem(Value, (Length + 1) * SizeOf(WideChar));
-    {$IFDEF Tricks} System. {$ENDIF} MultiByteToWideChar(CodePage,
-      MB_ERR_INVALID_CHARS and LongWord(ReplaceInvalidChars), Source, Count, Value, Length);
-    Value[Length] := #0;
-  end;
-end;
-
-function EncodeString(Source: PWideChar; CodePage: Word; AcceptSurrogatePairs: Boolean;
+function DecodeUTF16(Source: PWideChar; CodePage: Word; AcceptSurrogatePairs: Boolean;
   ReplacementChar: LegacyChar): TLegacyStringRec;
 begin
-  Result := EncodeString(Source, WideStrLen(Source), CodePage, AcceptSurrogatePairs, ReplacementChar);
+  Result := DecodeUTF16(Source, WideStrLen(Source), CodePage, AcceptSurrogatePairs, ReplacementChar);
 end;
 
-function EncodeString(Source: PWideChar; Count: Integer; CodePage: Word;
+function DecodeUTF16(Source: PWideChar; Count: Integer; CodePage: Word;
   AcceptSurrogatePairs: Boolean; ReplacementChar: LegacyChar): TLegacyStringRec;
 var
   Flags: LongWord;
@@ -1304,6 +1285,25 @@ begin
   end;
 end;
 
+function EncodeUTF16(Source: PLegacyChar; CodePage: Word;
+  ReplaceInvalidChars: Boolean): TWideStringRec;
+begin
+  Result := EncodeUTF16(Source, StrLen(Source), CodePage);
+end;
+
+function EncodeUTF16(Source: PLegacyChar; Count: Integer; CodePage: Word;
+  ReplaceInvalidChars: Boolean): TWideStringRec;
+begin
+  with Result do
+  begin
+    Length := Count; // because it real for all code pages
+    GetMem(Value, (Length + 1) * SizeOf(WideChar));
+    {$IFDEF Tricks} System. {$ENDIF} MultiByteToWideChar(CodePage,
+      MB_ERR_INVALID_CHARS and LongWord(ReplaceInvalidChars), Source, Count, Value, Length);
+    Value[Length] := #0;
+  end;
+end;
+
 function Format(Fmt: PLegacyChar; FixedWidth: Integer;
   const Args: array of const): TLegacyStringRec;
 begin
@@ -1331,7 +1331,7 @@ function FormatString(Fmt: PLegacyChar; CodePage: Word; FixedWidth: Integer;
 var
   W: PWideChar;
 begin
-  W := DecodeString(Fmt, CodePage).Value;
+  W := EncodeUTF16(Fmt, CodePage).Value;
   try
     Result := WideFormat(W, FixedWidth, Args);
   finally

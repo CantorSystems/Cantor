@@ -761,7 +761,7 @@ procedure TStreamConsole.WriteLn(Text: PWideChar; Count, LineBreaks: Integer);
 var
   S: TLegacyStringRec;
 begin
-  S := EncodeString(Text, Count, CodePage);
+  S := DecodeUTF16(Text, Count, CodePage);
   try
     WriteLn(S.Value, S.Length, LineBreaks);
   finally
