@@ -672,6 +672,7 @@ begin
     FOutputCP := GetConsoleOutputCP;
   if not SetConsoleCP(Value) or not SetConsoleOutputCP(Value) then
     RaiseLastPlatformError {$IFDEF Debug} (sConsoleCodePage, Value) {$ENDIF} ;
+  FCodePage := Value;
 end;
 
 { TStreamConsole }
@@ -706,12 +707,12 @@ procedure TStreamConsole.WriteLn(LineBreaks: Integer);
 var
   I: Integer;
   BytesWritten, LFx4: LongWord;
-begin
-  LFx4 := Byte(LF) or (Byte(LF) shr 8) or (Byte(LF) shr 16) or (Byte(LF) shr 24);
-  for I := 0 to LineBreaks div SizeOf(LFx4) - 1 do {$IFDEF Tricks} System. {$ENDIF}
-    WriteFile(FOutput, LFx4, SizeOf(LFx4), BytesWritten, nil);
-  if LineBreaks mod SizeOf(LFx4) <> 0 then {$IFDEF Tricks} System. {$ENDIF}
-    WriteFile(FOutput, LFx4, LineBreaks mod SizeOf(LFx4), BytesWritten, nil);
+begin // Fast core
+  LFx4 := Byte(LF) or (Byte(LF) shl 8) or (Byte(LF) shl 16) or (Byte(LF) shl 24);
+  for I := 0 to LineBreaks div 4 - 1 do {$IFDEF Tricks} System. {$ENDIF}
+    WriteFile(FOutput, LFx4, 4, BytesWritten, nil);
+  if LineBreaks mod 4 <> 0 then {$IFDEF Tricks} System. {$ENDIF}
+    WriteFile(FOutput, LFx4, LineBreaks mod 4, BytesWritten, nil);
 end;
 
 procedure TStreamConsole.WriteLn(Text: PLegacyChar; LineBreaks: Integer);
@@ -812,10 +813,10 @@ var
   I: Integer;
   Written: LongWord;
   WideLFx4: QuadRec;
-begin
+begin // Fast core
   with WideLFx4 do
   begin
-    Lo := Word(WideLF) or (Word(WideLF) shr 16);
+    Lo := Word(WideLF) or (Word(WideLF) shl 16);
     Hi := Lo;
   end;
   for I := 0 to LineBreaks div 4 - 1 do

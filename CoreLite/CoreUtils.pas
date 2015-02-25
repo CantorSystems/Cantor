@@ -121,9 +121,9 @@ const
   CRLF: array[0..1] of LegacyChar = #13#10;
   WideCRLF: array[0..1] of WideChar = (WideChar(13), WideChar(10));
 
-  WideLF: WideChar = WideChar(10);
+  LF = #10;
+  WideLF = WideChar(10);
 {$IFNDEF Tricks}
-  LF: LegacyChar = #10;
   HexDigits: array [$0..$F] of LegacyChar = '0123456789ABCDEF';
 var
   MainWindow: THandle;
@@ -1299,7 +1299,7 @@ begin
     Length := Count; // because it real for all code pages
     GetMem(Value, (Length + 1) * SizeOf(WideChar));
     {$IFDEF Tricks} System. {$ENDIF} MultiByteToWideChar(CodePage,
-      MB_ERR_INVALID_CHARS and LongWord(ReplaceInvalidChars), Source, Count, Value, Length);
+      MB_ERR_INVALID_CHARS and (Integer(ReplaceInvalidChars) - 1), Source, Count, Value, Length);
     Value[Length] := #0;
   end;
 end;
