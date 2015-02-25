@@ -167,14 +167,13 @@ type
   TConsole = object
   private
     FInput, FOutput: THandle;
-    FInputCP, FOutputCP: Word;
-    function GetCodePage: Word;
+    FCodePage, FInputCP, FOutputCP: Word;
     procedure SetCodePage(Value: Word);
   public
     constructor Create(ErrorOutput: Boolean = False);
     destructor Destroy;
 
-    property CodePage: Word read GetCodePage write SetCodePage;
+    property CodePage: Word read FCodePage write SetCodePage;
     property Input: THandle read FInput;
     property Output: THandle read FOutput;
   end;
@@ -654,6 +653,7 @@ constructor TConsole.Create(ErrorOutput: Boolean);
 begin
   FInput := {$IFDEF Tricks} System. {$ENDIF} GetStdHandle(STD_INPUT_HANDLE);
   FOutput := {$IFDEF Tricks} System. {$ENDIF} GetStdHandle(STD_OUTPUT_HANDLE - Byte(ErrorOutput));
+  FCodePage := GetConsoleOutputCP;
 end;
 
 destructor TConsole.Destroy;
@@ -662,11 +662,6 @@ begin
     SetConsoleCP(FInputCP);
   if FOutputCP <> 0 then
     SetConsoleOutputCP(FOutputCP);
-end;
-
-function TConsole.GetCodePage: Word;
-begin
-  Result := GetConsoleOutputCP;
 end;
 
 procedure TConsole.SetCodePage(Value: Word);
@@ -710,11 +705,13 @@ end;
 procedure TStreamConsole.WriteLn(LineBreaks: Integer);
 var
   I: Integer;
-  BytesWritten: LongWord;
+  BytesWritten, LFx4: LongWord;
 begin
-  for I := 0 to LineBreaks - 1 do
-  {$IFDEF Tricks} System. {$ENDIF}
-    WriteFile(FOutput, LF, SizeOf(LF), BytesWritten, nil);
+  LFx4 := Byte(LF) or (Byte(LF) shr 8) or (Byte(LF) shr 16) or (Byte(LF) shr 24);
+  for I := 0 to LineBreaks div SizeOf(LFx4) - 1 do {$IFDEF Tricks} System. {$ENDIF}
+    WriteFile(FOutput, LFx4, SizeOf(LFx4), BytesWritten, nil);
+  if LineBreaks mod SizeOf(LFx4) <> 0 then {$IFDEF Tricks} System. {$ENDIF}
+    WriteFile(FOutput, LFx4, LineBreaks mod SizeOf(LFx4), BytesWritten, nil);
 end;
 
 procedure TStreamConsole.WriteLn(Text: PLegacyChar; LineBreaks: Integer);
@@ -737,7 +734,7 @@ var
   S: TLegacyStringRec;
   W: TWideStringRec;
 begin
-  if CodePage = CP_UTF8 then
+  if FCodePage = CP_UTF8 then
   begin
     W := FormatString(Fmt, CP_LEGACY, FixedWidth, Args);
     try
@@ -761,7 +758,7 @@ procedure TStreamConsole.WriteLn(Text: PWideChar; Count, LineBreaks: Integer);
 var
   S: TLegacyStringRec;
 begin
-  S := DecodeUTF16(Text, Count, CodePage);
+  S := DecodeUTF16(Text, Count, FCodePage);
   try
     WriteLn(S.Value, S.Length, LineBreaks);
   finally
@@ -814,9 +811,17 @@ procedure TScreenConsole.WriteLn(LineBreaks: Integer);
 var
   I: Integer;
   Written: LongWord;
+  WideLFx4: QuadRec;
 begin
-  for I := 0 to LineBreaks - 1 do
-    WriteConsoleW(FOutput, @WideLF, 1, Written, nil);  // TODO: Unicode
+  with WideLFx4 do
+  begin
+    Lo := Word(WideLF) or (Word(WideLF) shr 16);
+    Hi := Lo;
+  end;
+  for I := 0 to LineBreaks div 4 - 1 do
+    WriteConsoleW(FOutput, @WideLFx4, 4, Written, nil);
+  if LineBreaks mod 4 <> 0 then
+    WriteConsoleW(FOutput, @WideLFx4, LineBreaks mod 4, Written, nil);
 end;
 
 procedure TScreenConsole.WriteLn(Text: PLegacyChar; LineBreaks: Integer);
