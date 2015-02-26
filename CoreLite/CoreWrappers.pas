@@ -73,10 +73,10 @@ type
   private
     FHandle: THandle;
   protected
-    function GetPosition: QuadWord; override;
-    function GetSize: QuadWord; override;
-    procedure SetPosition(Value: QuadWord); override;
-    procedure SetSize(Value: QuadWord); override;
+    function GetPosition: QuadWord; virtual;
+    function GetSize: QuadWord; virtual;
+    procedure SetPosition(Value: QuadWord); virtual;
+    procedure SetSize(Value: QuadWord); virtual;
   public
     constructor Create(FileName: PCoreChar; Access: TFileAccess;
       Attributes: TFileAttributes = [faNormal]); overload;
@@ -86,8 +86,8 @@ type
       Attributes: TFileAttributes = [faNormal]): Boolean; overload;
 
     function Seek(Offset: QuadWord; Origin: TSeekOrigin): QuadWord;
-    function Read(var Data; Count: LongWord): LongWord; override;
-    function Write(const Data; Count: LongWord): LongWord; override;
+    function Read(var Data; Count: LongWord): LongWord; virtual;
+    function Write(const Data; Count: LongWord): LongWord; virtual;
 
     function Lock(Offset, Count: QuadWord): Boolean;
     function Unlock(Offset, Count: QuadWord): Boolean;
@@ -108,7 +108,7 @@ type
   TMapViewAccess = maRead..maCopy{maExecute};
 
   PFileMapping = ^TFileMapping;
-  TFileMapping = object(TCoreObject)
+  TFileMapping = object
   private
     FHandle: THandle;
     function AssignHandle(Value: THandle): Boolean;
@@ -118,7 +118,7 @@ type
     constructor Create(MappingName: PCoreChar; Options: TOpenFileMapping;
       InheritHandle: Boolean = True); overload;
 
-    destructor Destroy; virtual;
+    destructor Destroy;
 
     function Open(hFile: THandle; Options: TCreateFileMapping;
       Size: QuadWord = 0; MappingName: PCoreChar = nil): Boolean; overload;
@@ -481,6 +481,7 @@ end;
 constructor TFileMapping.Create(hFile: THandle; Options: TCreateFileMapping;
   Size: QuadWord; MappingName: PCoreChar);
 begin
+  FHandle := 0;
   if not Open(hFile, Options, Size, MappingName) then
     RaiseLastPlatformError(MappingName);
 end;
@@ -488,6 +489,7 @@ end;
 constructor TFileMapping.Create(MappingName: PCoreChar; Options: TOpenFileMapping;
   InheritHandle: Boolean);
 begin
+  FHandle := 0;
   if not Open(MappingName, Options, InheritHandle) then
     RaiseLastPlatformError(MappingName);
 end;
@@ -601,7 +603,7 @@ begin
   if FStream.Open(FileName, MapOptions[maWrite in Options] + [faRandom]) then
   begin
     if maWrite in Options then
-      FStream.Size := Size;
+      FStream.SetSize(Size);
     Result := Open(FStream.Handle, Options, Size, MappingName);
   end
   else
@@ -638,7 +640,7 @@ begin
   try
     if Assigned(BeforeSave) then
       BeforeSave(F);
-    F.Size := FileSize;  
+    F.SetSize(FileSize);  
     HostSave(F);
     if Assigned(AfterSave) then
       AfterSave(F);
@@ -654,6 +656,8 @@ begin
   FInput := {$IFDEF Tricks} System. {$ENDIF} GetStdHandle(STD_INPUT_HANDLE);
   FOutput := {$IFDEF Tricks} System. {$ENDIF} GetStdHandle(STD_OUTPUT_HANDLE - Byte(ErrorOutput));
   FCodePage := GetConsoleOutputCP;
+  FInputCP := 0;
+  FOutputCP := 0;
 end;
 
 destructor TConsole.Destroy;
@@ -759,7 +763,7 @@ procedure TStreamConsole.WriteLn(Text: PWideChar; Count, LineBreaks: Integer);
 var
   S: TLegacyStringRec;
 begin
-  S := DecodeUTF16(Text, Count, FCodePage);
+  S := DecodeUTF16(Text, Count, True, FCodePage);
   try
     WriteLn(S.Value, S.Length, LineBreaks);
   finally
