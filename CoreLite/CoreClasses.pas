@@ -62,6 +62,7 @@ type
   end;
 
   TCollectionItemMode = (imInline, imFreeMem, imFinalize, imFree);
+  TAttachMode = (amCopy, amAttach, amCapture);
 
   PCollection = ^TCollection;
   TCollection = object(TClearable)
@@ -75,7 +76,8 @@ type
     procedure SetCapacity(Value: Integer);
   protected
     function Append(ItemCount: Integer = 1): Integer;
-    procedure Assign(Source: Pointer; ItemCount, ItemsCapacity: Integer; Attach: Boolean);
+    procedure Assign(Source: Pointer; ItemCount, ItemsCapacity: Integer; Attach: Boolean); overload;
+    procedure Assign(Source: PCollection; Attach: TAttachMode); overload;
     procedure Insert(Index: Integer; ItemCount: Integer = 1);
   public
     constructor Create(Name: PLegacyChar; BytesPerItem: Integer;
@@ -92,7 +94,7 @@ type
     property AttachBuffer: Boolean read FAttachBuffer;
     property Capacity: Integer read FCapacity write SetCapacity;
     property Delta: Integer read FDelta write FDelta;
-    property FreeMode: TCollectionItemMode read FItemMode;
+    property ItemMode: TCollectionItemMode read FItemMode;
     property ItemSize: Integer read FItemSize;
   end;
 
@@ -421,6 +423,22 @@ begin
   FAttachBuffer := Attach;
   FItemMode := imInline;
   FCount := ItemCount;
+end;
+
+procedure TCollection.Assign(Source: PCollection; Attach: TAttachMode);
+begin
+  if Source <> nil then
+  begin
+    Assign(PCollectionCast(@Source).Items, Source.FCount, Source.FCapacity, Attach <> amCopy);
+    if (Attach = amCapture) and not Source.AttachBuffer then
+    begin
+      FItemMode := Source.FItemMode;
+      FAttachBuffer := False;
+      Source.FAttachBuffer := True;
+    end;
+  end
+  else
+   Clear;
 end;
 
 procedure TCollection.AsRange(Source: PCollection; Index: Integer);
