@@ -249,7 +249,7 @@ begin
 {$IFDEF Tricks}
     Exit; // should never appear, just suppress a warning
 {$ELSE}
-    E := EInOutError.Create(IOResult);
+    E := EInOutError.Create(IOResult, {$IFDEF Debug} sDelphiRuntimeIO, 0 {$ENDIF} );
 {$ENDIF}
   end;
   raise E at ErrorAddr;
@@ -610,7 +610,7 @@ end;
 { Exception}
 
 const
-  DelphiStringBytes = SizeOf(LongInt) {$IF RTLVersion >= 20} * 3 {$IFEND};
+  DelphiStringBytes = SizeOf(LongInt) {$IF UnicodeRTL} * 3 {$IFEND};
   LegacyCharACP = CP_ACP or (SizeOf(LegacyChar) shl SizeOf(Word));
 
 constructor Exception.Create(Msg: PLegacyChar);
@@ -622,7 +622,7 @@ begin
   if L <> 0 then
   begin
     GetMem(FDelphiMsg, L + 1 + DelphiStringBytes);
-  {$IF RTLVersion >= 20}
+  {$IF UnicodeRTL}
     PLongWord(FDelphiMsg)^ := LegacyCharACP;
     Inc(FDelphiMsg, SizeOf(LongInt) * 2);
   {$IFEND}
@@ -647,7 +647,7 @@ begin
     GetMem(FDelphiMsg, StrLen(Msg) + EstimateArgs(Args) + 1 + DelphiStringBytes);
     L := FormatBuf(Msg, Args, FDelphiMsg + DelphiStringBytes);
     ReallocMem(FDelphiMsg, L + 1 + DelphiStringBytes);
-  {$IF RTLVersion >= 20}
+  {$IF UnicodeRTL}
     PLongWord(FDelphiMsg)^ := LegacyCharACP;
     Inc(FDelphiMsg, SizeOf(LongInt) * 2);
   {$IFEND}
@@ -672,9 +672,9 @@ begin
   if L <> 0 then
   begin
     GetMem(Result, L + 1 + DelphiStringBytes);
-  {$IF RTLVersion >= 20}
-    PLongWord(FDelphiMsg)^ := LegacyCharACP;
-    Inc(FDelphiMsg, SizeOf(LongInt) * 2);
+  {$IF UnicodeRTL}
+    PLongWord(Result)^ := LegacyCharACP;
+    Inc(Result, SizeOf(LongInt) * 2);
   {$IFEND}
     PInteger(Result)^ := L;
     Inc(Result, SizeOf(Integer));

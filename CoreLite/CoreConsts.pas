@@ -44,6 +44,7 @@ const
   
   sNotImplemented     = '%s support is not yet implemented';
   sGeneralFault       = 'General fault %#02X';  // e. g. 0x0F for 15
+  sDelphiRuntimeIO    = 'Delphi runtime I/O';
 
   sAssertError = '%s (%s, line %d)';
   sAssertionFailed = 'Assertion failed';

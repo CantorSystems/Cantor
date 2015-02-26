@@ -115,6 +115,8 @@ var
   WideEllipsis: WideChar = WideChar(8230);
 
 const
+  UnicodeRTL = RTLVersion >= 20;
+
   PathDelimiter = WideChar('\'); // platform;
   LegacyReplacementChar = #127;
 
@@ -247,14 +249,14 @@ function WideFormatBuf(Fmt: PWideChar; const Args: array of const;
   Buf: PWideChar): Integer;
 
 { MaxCharBytes(5022x, 52936) = 0, e. g. estimate on each string }
-function MaxCharBytes(CodePage: Word; AcceptSurrogatePairs: Boolean = True): Byte;
+function MaxCharBytes(CodePage: Word; SurrogatePairs: Boolean = True): Byte;
 
 { FreeMem finalization required }
                     // guess GB18030 users could make cheaper and capacious memory chips :-)
-function DecodeUTF16(Source: PWideChar; CodePage: Word; AcceptSurrogatePairs: Boolean = True;
+function DecodeUTF16(Source: PWideChar; SurrogatePairs: Boolean; CodePage: Word; 
   ReplacementChar: LegacyChar = LegacyReplacementChar): TLegacyStringRec; overload;
-function DecodeUTF16(Source: PWideChar; Count: Integer; CodePage: Word; AcceptSurrogatePairs: Boolean = True;
-  ReplacementChar: LegacyChar = LegacyReplacementChar): TLegacyStringRec; overload;
+function DecodeUTF16(Source: PWideChar; Count: Integer; SurrogatePairs: Boolean;
+  CodePage: Word; ReplacementChar: LegacyChar = LegacyReplacementChar): TLegacyStringRec; overload;
 
 function EncodeUTF16(Source: PLegacyChar; CodePage: Word;
   ReplaceInvalidChars: Boolean = True): TWideStringRec; overload;
@@ -1216,7 +1218,7 @@ asm
         POP EDI
 end;
 
-function MaxCharBytes(CodePage: Word; AcceptSurrogatePairs: Boolean): Byte;
+function MaxCharBytes(CodePage: Word; SurrogatePairs: Boolean): Byte;
 begin
   if
     (CodePage - 900 in [0..99]) or      // ANSI/OEM CJK
@@ -1228,11 +1230,11 @@ begin
   then
     Result := 2
   else if CodePage = CP_GB18030 then  
-    Result := 2 * Byte(AcceptSurrogatePairs)
+    Result := 2 * Byte(SurrogatePairs)
   else if CodePage = CP_UTF8 then
-    Result := 3 + Byte(AcceptSurrogatePairs)
+    Result := 3 + Byte(SurrogatePairs)
   else if CodePage = CP_UTF7 then
-    Result := 5 + Byte(AcceptSurrogatePairs) * 2
+    Result := 5 + Byte(SurrogatePairs) * 2
   else if
     (CodePage - 50220 in [0..9]) or     // ISO-2022
     (CodePage = 52936)                  // HZ-GB2312
@@ -1244,14 +1246,14 @@ end;
 
 { FreeMem finalization required }
 
-function DecodeUTF16(Source: PWideChar; CodePage: Word; AcceptSurrogatePairs: Boolean;
+function DecodeUTF16(Source: PWideChar; SurrogatePairs: Boolean; CodePage: Word; 
   ReplacementChar: LegacyChar): TLegacyStringRec;
 begin
-  Result := DecodeUTF16(Source, WideStrLen(Source), CodePage, AcceptSurrogatePairs, ReplacementChar);
+  Result := DecodeUTF16(Source, WideStrLen(Source), SurrogatePairs, CodePage, ReplacementChar);
 end;
 
-function DecodeUTF16(Source: PWideChar; Count: Integer; CodePage: Word;
-  AcceptSurrogatePairs: Boolean; ReplacementChar: LegacyChar): TLegacyStringRec;
+function DecodeUTF16(Source: PWideChar; Count: Integer; SurrogatePairs: Boolean;
+  CodePage: Word; ReplacementChar: LegacyChar): TLegacyStringRec;
 var
   Flags: LongWord;
   Replacement: PLegacyChar;
@@ -1269,7 +1271,7 @@ begin
 
   with Result do
   begin
-    Length := MaxCharBytes(CodePage, AcceptSurrogatePairs);
+    Length := MaxCharBytes(CodePage, SurrogatePairs);
     if Length <> 0 then
       Length := Count * Length
     else
@@ -1311,7 +1313,6 @@ begin
   begin
     GetMem(Value, StrLen(Fmt) + FixedWidth + EstimateArgs(Args) + 1);
     Length := FormatBuf(Fmt, Args, Value);
-//    ReallocMem(Value, Length + 1);
   end;
 end;
 
@@ -1322,7 +1323,6 @@ begin
   begin
     GetMem(Value, (WideStrLen(Fmt) + FixedWidth + EstimateArgs(Args) + 1) * SizeOf(WideChar));
     Length := WideFormatBuf(Fmt, Args, Value);
-//    ReallocMem(Value, (Length + 1) * SizeOf(WideChar));
   end;
 end;
 
