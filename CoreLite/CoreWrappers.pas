@@ -741,7 +741,7 @@ var
 begin
   if FCodePage = CP_UTF8 then
   begin
-    W := FormatString(Fmt, CP_LEGACY, FixedWidth, Args);
+    W := Format(Fmt, CP_LEGACY, FixedWidth, Args);
     try
       WriteLn(W.Value, W.Length, LineBreaks);
     finally
@@ -982,7 +982,7 @@ var
   W: PWideChar;
 begin
   with FTranslations[TranslationIndex] do
-    W := FormatString('\StringFileInfo\%04X%04X\%hs', CP_LEGACY, 0, [Locale, CodePage, Ident]).Value;
+    W := Format('\StringFileInfo\%04X%04X\%hs', CP_LEGACY, 0, [Locale, CodePage, Ident]).Value;
   try
     Result := VerQueryValueW(FData, W, Pointer(Info), Length);
     if Result then

@@ -32,12 +32,18 @@ type
 
   TExceptionOptions = set of (eoWideChar, eoFreeMessage, eoCanFree);
 
+  TExceptionMessage = record
+    case Byte of
+      1: (AsString: PLegacyChar);
+      2: (AsWideString: PWideChar);
+  end;
+
   Exception = class
   private
   {$IFDEF Debug}
-    FDelphiMsg: PLegacyChar;
+    FDelphiMsg: string;
   {$ENDIF}
-    FMessage: PWideChar;
+    FMessage: TExceptionMessage;
     FOptions: TExceptionOptions;
   public
     constructor Create(Msg: PLegacyChar); overload;
@@ -48,9 +54,9 @@ type
     procedure FreeInstance; override;
 
   {$IFDEF Debug}
-    property DelphiMsg: PLegacyChar read FDelphiMsg;
+    property DelphiMsg: string read FDelphiMsg;
   {$ENDIF}
-    property Message: PWideChar read FMessage;
+    property Message: TExceptionMessage read FMessage;
     property Options: TExceptionOptions read FOptions;
   end;
 
@@ -584,17 +590,10 @@ end;
 
 procedure ShowException(E: {$IFDEF Debug} TObject {$ELSE} Exception {$ENDIF});
 begin
-{$IFDEF Debug}
-  if (E is Exception) and (eoWideChar in Exception(E).Options) then
-    ExceptionMessage(Exception(E).Message)
-  else // treat as compatible or SysUtils exception, unsafe with 3rd-party exceptions
-    ErrorMessage(Exception(E).DelphiMsg, PInteger(Exception(E).DelphiMsg - SizeOf(Integer))^);
-{$ELSE}
-  if eoWideChar in E.Options then
-    ExceptionMessage(E.Message)
+  if (E is Exception) and (eoWideChar in Exception(E).FOptions) or UnicodeRTL then
+    ExceptionMessage(Exception(E).FMessage.AsWideString)
   else
-    ErrorMessage(Pointer(E.Message), StrLen(Pointer(E.Message)));
-{$ENDIF}
+    ErrorMessage(Exception(E).FMessage.AsString, StrLen(Exception(E).FMessage.AsString));
 end;
 
 procedure UseExceptionMessageBox;
@@ -607,95 +606,51 @@ begin
   ExceptionMessage := ExceptionMessageWrite;
 end;
 
-{ Exception}
-
-const
-  DelphiStringBytes = SizeOf(LongInt) {$IF UnicodeRTL} * 3 {$IFEND};
-  LegacyCharACP = CP_ACP or (SizeOf(LegacyChar) shl SizeOf(Word));
-
-constructor Exception.Create(Msg: PLegacyChar);
-{$IFDEF Debug}
-var
-  L: Integer;
+function DelphiString(Source: PWideChar; Count: Integer): string;
+{$IF not UnicodeRTL}
 begin
-  L := StrLen(Msg);
-  if L <> 0 then
-  begin
-    GetMem(FDelphiMsg, L + 1 + DelphiStringBytes);
-  {$IF UnicodeRTL}
-    PLongWord(FDelphiMsg)^ := LegacyCharACP;
-    Inc(FDelphiMsg, SizeOf(LongInt) * 2);
-  {$IFEND}
-    PLongInt(FDelphiMsg)^ := L;
-    Inc(FDelphiMsg, SizeOf(LongInt));
-    Move(Msg^, FDelphiMsg^, L + 1);
-  end;
+  SetLength(Result, Count * MaxCharBytes(CP_ACP));
+  SetLength(Result, {$IFDEF Tricks} System. {$ENDIF}
+    WideCharToMultiByte(CP_ACP, 0, Source, Count, Pointer(Result), Length(Result), nil, nil));
 {$ELSE}
 begin
-{$ENDIF}
-  FMessage := Pointer(Msg);
+  SetString(Result, Source, Count);
+{$IFEND}
+end;
+
+{ Exception }
+
+constructor Exception.Create(Msg: PLegacyChar);
+begin
+  FMessage.AsString := Msg;
   FOptions := [eoCanFree];
+{$IFDEF Debug}
+  SetString(FDelphiMsg, Msg, StrLen(Msg));
+{$ENDIF}
 end;
 
 constructor Exception.Create(Msg: PLegacyChar; const Args: array of const);
-{$IFDEF Debug}
-var
-  L: Integer;
 begin
-  if Msg <> nil then
+  with Format(Msg, 0, Args) do
   begin
-    GetMem(FDelphiMsg, StrLen(Msg) + EstimateArgs(Args) + 1 + DelphiStringBytes);
-    L := FormatBuf(Msg, Args, FDelphiMsg + DelphiStringBytes);
-    ReallocMem(FDelphiMsg, L + 1 + DelphiStringBytes);
-  {$IF UnicodeRTL}
-    PLongWord(FDelphiMsg)^ := LegacyCharACP;
-    Inc(FDelphiMsg, SizeOf(LongInt) * 2);
-  {$IFEND}
-    PLongInt(FDelphiMsg)^ := L;
-    Inc(FDelphiMsg, SizeOf(LongInt));
-    FMessage := Pointer(FDelphiMsg);
-    FOptions := [eoCanFree];
+    FMessage.AsString := Value;
+  {$IFDEF Debug}
+    SetString(FDelphiMsg, Value, Length);
+  {$ENDIF}
   end;
-{$ELSE}
-begin
-  FMessage := Pointer(Format(Msg, 0, Args).Value);
   FOptions := [eoFreeMessage, eoCanFree];
-{$ENDIF}
-end;
-
-function LegacyString(Msg: PWideChar; Count: Integer): PLegacyChar;
-var
-  L: Integer;
-begin
-  L := {$IFDEF Tricks} System. {$ENDIF}
-    WideCharToMultiByte(CP_ACP, 0, Msg, Count, nil, 0, nil, nil);
-  if L <> 0 then
-  begin
-    GetMem(Result, L + 1 + DelphiStringBytes);
-  {$IF UnicodeRTL}
-    PLongWord(Result)^ := LegacyCharACP;
-    Inc(Result, SizeOf(LongInt) * 2);
-  {$IFEND}
-    PInteger(Result)^ := L;
-    Inc(Result, SizeOf(Integer));
-  {$IFDEF Tricks} System. {$ENDIF}
-    WideCharToMultiByte(CP_ACP, 0, Msg, Count, Result, L, nil, nil);
-    Result[L] := #0;
-  end
-  else
-    Result := nil;
 end;
 
 constructor Exception.Create(Msg: PWideChar; Count: Integer);
 begin
   if Msg <> nil then
   begin
-    GetMem(FMessage, (Count + 1) * SizeOf(WideChar));
-    Move(Msg^, FMessage^, Count * SizeOf(WideChar));
-    FMessage[Count] := WideChar(0);
+    GetMem(FMessage.AsWideString, (Count + 1) * SizeOf(WideChar));
+    Move(Msg^, FMessage.AsWideString^, Count * SizeOf(WideChar));
+    FMessage.AsWideString[Count] := #0;
     FOptions := [eoWideChar, eoFreeMessage];
   {$IFDEF Debug}
-    FDelphiMsg := LegacyString(Msg, Count);
+    FDelphiMsg := DelphiString(Msg, Count);
   {$ENDIF}
   end;
   Include(FOptions, eoCanFree);
@@ -703,24 +658,20 @@ end;
 
 constructor Exception.Create(Msg: PLegacyChar; CodePage: Word; const Args: array of const);
 begin
-  FMessage := FormatString(Msg, CodePage, 0, Args).Value;
-{$IFDEF Debug}
-  FDelphiMsg := LegacyString(FMessage, WideStrLen(FMessage));
-{$ENDIF}
+  with Format(Msg, CodePage, 0, Args) do
+  begin
+    FMessage.AsWideString := Value;
+  {$IFDEF Debug}
+    FDelphiMsg := DelphiString(Value, Length);
+  {$ENDIF}
+  end;
   FOptions := [eoWideChar, eoFreeMessage, eoCanFree];
 end;
 
 destructor Exception.Destroy;
 begin
   if eoFreeMessage in FOptions then
-    FreeMem(FMessage);
-{$IFDEF Debug}
-  if FDelphiMsg <> nil then
-  begin
-    Dec(FDelphiMsg, SizeOf(Integer));
-    FreeMem(FDelphiMsg);
-  end;
-{$ENDIF}
+    FreeMem(FMessage.AsString);
 end;
 
 procedure Exception.FreeInstance;

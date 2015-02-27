@@ -214,8 +214,8 @@ function QuadStrRScan(Where: PQuadChar; Count: Integer; What: QuadChar): PQuadCh
 function StrRPos(Where: PLegacyChar; WhereCount: Integer; What: PLegacyChar;
   WhatCount: Integer): PLegacyChar;}
 
-procedure SwapQuadCharBytes(Source: PQuadChar; Count: Integer; Dest: PQuadChar);
-procedure SwapWideCharBytes(Source: PWideChar; Count: Integer; Dest: PWideChar);
+procedure SwapQuadCharBytes(Source: PQuadChar; Dest: PQuadChar; Count: Integer);
+procedure SwapWideCharBytes(Source: PWideChar; Dest: PWideChar; Count: Integer);
 
 function StrComp(Str1: PLegacyChar; Count1: Integer; Str2: PLegacyChar; Count2: Integer;
   IgnoreFlags: LongWord = NORM_IGNORECASE; Locale: LongWord = LOCALE_USER_DEFAULT): Integer;
@@ -250,9 +250,10 @@ function WideFormatBuf(Fmt: PWideChar; const Args: array of const;
 
 { MaxCharBytes(5022x, 52936) = 0, e. g. estimate on each string }
 function MaxCharBytes(CodePage: Word; SurrogatePairs: Boolean = True): Byte;
+function TranslateCodePage(Source: Word): Word;
 
 { FreeMem finalization required }
-                    // guess GB18030 users could make cheaper and capacious memory chips :-)
+
 function DecodeUTF16(Source: PWideChar; SurrogatePairs: Boolean; CodePage: Word; 
   ReplacementChar: LegacyChar = LegacyReplacementChar): TLegacyStringRec; overload;
 function DecodeUTF16(Source: PWideChar; Count: Integer; SurrogatePairs: Boolean;
@@ -264,12 +265,13 @@ function EncodeUTF16(Source: PLegacyChar; Count: Integer; CodePage: Word;
   ReplaceInvalidChars: Boolean = True): TWideStringRec; overload;
 
 function Format(Fmt: PLegacyChar; FixedWidth: Integer;
-  const Args: array of const): TLegacyStringRec;
+  const Args: array of const): TLegacyStringRec; overload;
+function Format(Fmt: PLegacyChar; CodePage: Word; FixedWidth: Integer;
+  const Args: array of const): TWideStringRec; overload;
+
 function WideFormat(Fmt: PWideChar; FixedWidth: Integer;
   const Args: array of const): TWideStringRec;
 
-function FormatString(Fmt: PLegacyChar; CodePage: Word; FixedWidth: Integer;
-  const Args: array of const): TWideStringRec;
 
 { User-friendly class names }
 
@@ -1002,12 +1004,11 @@ asm
 @@end:
 end;}
 
-procedure SwapQuadCharBytes(Source: PQuadChar; Count: Integer; Dest: PQuadChar);
+procedure SwapQuadCharBytes(Source: PQuadChar; Dest: PQuadChar; Count: Integer);
 asm
-        TEST EDX, EDX
+        TEST ECX, ECX
         JZ @@exit
 
-        XCHG ECX, EDX
         PUSH EBX
 
 @@repeat:
@@ -1022,12 +1023,11 @@ asm
 @@exit:
 end;
 
-procedure SwapWideCharBytes(Source: PWideChar; Count: Integer; Dest: PWideChar);
+procedure SwapWideCharBytes(Source: PWideChar; Dest: PWideChar; Count: Integer);
 asm
-        TEST EDX, EDX
+        TEST ECX, ECX
         JZ @@exit
 
-        XCHG ECX, EDX
         PUSH EBX
 
         PUSH ECX
@@ -1220,6 +1220,7 @@ end;
 
 function MaxCharBytes(CodePage: Word; SurrogatePairs: Boolean): Byte;
 begin
+  CodePage := TranslateCodePage(CodePage);
   if
     (CodePage - 900 in [0..99]) or      // ANSI/OEM CJK
     (CodePage - 1300 in [0..99]) or     // Johab
@@ -1229,7 +1230,7 @@ begin
     (CodePage - 50900 in [30..50])      // EBCDIC, EUC
   then
     Result := 2
-  else if CodePage = CP_GB18030 then  
+  else if CodePage = CP_GB18030 then
     Result := 2 * Byte(SurrogatePairs)
   else if CodePage = CP_UTF8 then
     Result := 3 + Byte(SurrogatePairs)
@@ -1242,6 +1243,18 @@ begin
     Result := 0
   else
     Result := 1;
+end;
+
+function TranslateCodePage(Source: Word): Word;
+begin
+  case Source of
+    CP_ACP:
+      Result := GetACP;
+    CP_OEMCP:
+      Result := GetOEMCP;
+  else
+    Result := Source;
+  end;
 end;
 
 { FreeMem finalization required }
@@ -1316,17 +1329,7 @@ begin
   end;
 end;
 
-function WideFormat(Fmt: PWideChar; FixedWidth: Integer;
-  const Args: array of const): TWideStringRec;
-begin
-  with Result do
-  begin
-    GetMem(Value, (WideStrLen(Fmt) + FixedWidth + EstimateArgs(Args) + 1) * SizeOf(WideChar));
-    Length := WideFormatBuf(Fmt, Args, Value);
-  end;
-end;
-
-function FormatString(Fmt: PLegacyChar; CodePage: Word; FixedWidth: Integer;
+function Format(Fmt: PLegacyChar; CodePage: Word; FixedWidth: Integer;
   const Args: array of const): TWideStringRec;
 var
   W: PWideChar;
@@ -1336,6 +1339,16 @@ begin
     Result := WideFormat(W, FixedWidth, Args);
   finally
     FreeMem(W);
+  end;
+end;
+
+function WideFormat(Fmt: PWideChar; FixedWidth: Integer;
+  const Args: array of const): TWideStringRec;
+begin
+  with Result do
+  begin
+    GetMem(Value, (WideStrLen(Fmt) + FixedWidth + EstimateArgs(Args) + 1) * SizeOf(WideChar));
+    Length := WideFormatBuf(Fmt, Args, Value);
   end;
 end;
 
