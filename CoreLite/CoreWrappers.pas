@@ -39,6 +39,12 @@ const
   faRandomRead = faRead + [faRandom];
   faRandomRewrite = faRewrite + [faRandom];
 
+type
+  TByteOrderMark = (bomNone, bomUTF7, bomUTF8, bomUTF16LE, bomUTF16BE,
+    bomUTF32LE, bomUTF32BE, bomGB18030);
+  TReadBOM = bomNone..bomGB18030;
+  TWriteBOM = bomUTF8..bomGB18030;
+
 {$IFDEF Lite}
   {$I LiteStreams.inc}
 {$ELSE}
@@ -51,6 +57,7 @@ type
     procedure SetPosition(Value: QuadWord); virtual; abstract;
   public
     function Read(var Data; Count: LongWord): LongWord; virtual; abstract;
+    function ReadBOM: TReadBOM;
     procedure ReadBuffer(var Data; Count: LongWord);
 
     property Position: QuadWord read GetPosition write SetPosition;
@@ -63,6 +70,7 @@ type
     procedure SetSize(Value: QuadWord); virtual; abstract;
   public
     function Write(const Buf; Count: LongWord): LongWord; virtual; abstract;
+    procedure WriteBOM(Value: TWriteBOM);
     procedure WriteBuffer(const Data; Count: LongWord);
 
     property Size write SetSize;
@@ -159,7 +167,7 @@ type
   PSaveHelper = ^TSaveHelper;
   TSaveHelper = object
     BeforeSave, AfterSave: TWritableStreamEvent;
-    procedure Save(HostSave: TWritableStreamEvent; FileName: PCoreChar; FileSize: Int64;
+    procedure Save(HostSave: TWritableStreamEvent; FileName: PCoreChar; FileSize: QuadWord;
       Access: TFileAccess = faSequentialRewrite; Attributes: TFileAttributes = [faNormal]);
   end;
 
@@ -340,6 +348,78 @@ end;
 
 { TReadableStream }
 
+function TReadableStream.ReadBOM: TReadBOM;
+var
+  BOM: Word;
+  Pos: QuadWord;
+begin
+  Pos := GetPosition;
+  ReadBuffer(BOM, SizeOf(BOM));
+  case BOM of
+    $FEFF:
+      begin
+        ReadBuffer(BOM, SizeOf(BOM));
+        if BOM = 0 then
+          Result := bomUTF32LE
+        else
+        begin
+          SetPosition(Pos + SizeOf(BOM));
+          Result := bomUTF16LE;
+        end;
+        Exit;
+      end;
+    $FFFE:
+      begin
+        Result := bomUTF16BE;
+        Exit;
+      end;
+    $BBEF:
+      begin
+        ReadBuffer(BOM, SizeOf(Byte));
+        if BOM and $FF = $BF then
+        begin
+          Result := bomUTF8;
+          Exit;
+        end;
+      end;
+    $0000:
+      begin
+        ReadBuffer(BOM, SizeOf(BOM));
+        if BOM = $FFFE then
+        begin
+          Result := bomUTF32BE;
+          Exit;
+        end;
+      end;
+    $2F2B:
+      begin
+        ReadBuffer(BOM, SizeOf(BOM));
+        if (BOM and $FF = $76) and ((BOM shr 8) in [$38, $39, $2B, $2F]) then
+        begin
+          if BOM = $38 then
+          begin
+            ReadBuffer(BOM, SizeOf(Byte));
+            if BOM and $FF <> $2D then
+              SetPosition(Pos + SizeOf(BOM) * 2);
+          end;
+          Result := bomUTF7;
+          Exit;  
+        end;
+      end;
+    $3184:
+      begin
+        ReadBuffer(BOM, SizeOf(BOM));
+        if BOM = $3395 then
+        begin
+          Result := bomGB18030;
+          Exit;
+        end;
+      end;
+  end;
+  SetPosition(Pos);
+  Result := bomNone;
+end;
+
 procedure TReadableStream.ReadBuffer(var Data; Count: LongWord);
 var
   Bytes: LongWord;
@@ -350,6 +430,30 @@ begin
 end;
 
 { TWritableStream }
+
+procedure TWritableStream.WriteBOM(Value: TWriteBOM);
+const
+  UTF8: array[0..2] of Byte = ($EF, $BB, $BF);
+  GB18030: array[0..3] of Byte = ($84, $31, $95, $33);
+var
+  BOM: LongWord;
+begin
+  case Value of
+    bomUTF8:
+      WriteBuffer(UTF8, SizeOf(UTF8));
+    bomGB18030:
+      WriteBuffer(GB18030, SizeOf(GB18030));
+  else
+    BOM := $FEFF;
+    if Value in [bomUTF16BE, bomUTF32BE] then
+    begin
+      BOM := Swap(BOM);
+      if Value = bomUTF32BE then
+        BOM := BOM shl 16;
+    end;
+    WriteBuffer(BOM, Byte(Value) and not $01);
+  end;
+end;
 
 procedure TWritableStream.WriteBuffer(const Data; Count: LongWord);
 var
@@ -632,7 +736,7 @@ end;
 { TSaveHelper }
 
 procedure TSaveHelper.Save(HostSave: TWritableStreamEvent; FileName: PCoreChar;
-  FileSize: Int64; Access: TFileAccess; Attributes: TFileAttributes);
+  FileSize: QuadWord; Access: TFileAccess; Attributes: TFileAttributes);
 var
   F: TFileStream;
 begin
