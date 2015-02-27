@@ -132,18 +132,22 @@ type
           WideStringOptions: TEndianOptions);
   end;
 
+  THexadecimal = (hexNone, hexUpperCase, hexLowerCase);
+
   PString = ^TString;
   TString = object(TCollection)
   protected // prevent stupid warnings
     FData: TStringData;
     function AsArray(Index: Integer; const Values: array of const): Integer; overload;
-    function AsInteger(Index: Integer; Value: Int64; Hexadecimal: Boolean = False;
-      MinWidth: Integer = 0; FillChar: WideChar = #32): Integer; overload;
+    function AsInteger(Index: Integer; Value: Int64; MinWidth: Integer = 0;
+      Hexadecimal: THexadecimal = hexNone; FillChar: WideChar = #32): Integer; overload;
     procedure Assign(Source: Pointer; Length: Integer; Options: TStringSource); overload;
   public
     procedure AsArray(const Values: array of const); overload;
-    procedure AsInteger(Value: Int64; Hexadecimal: Boolean = False; MinWidth: Integer = 0;
+    procedure AsInteger(Value: Int64; MinWidth: Integer = 0; Hexadecimal: THexadecimal = hexNone;
       FillChar: WideChar = #32); overload;
+    function AsInteger(var Value: Int64; Hexadecimal: Boolean = False): Boolean; overload;
+    function AsInteger(Hexadecimal: Boolean = False): Int64; overload;
     function Estimate(const Values: array of const): Integer;
     class function LengthOf(Source: Pointer): Integer; virtual; abstract;
     function IsUTF8(ThresholdBytes: Integer = 4): Boolean; // TODO: magic number
@@ -527,22 +531,26 @@ end;
 const
   MaxDigits = 20;
 
-function TString.AsInteger(Index: Integer; Value: Int64; Hexadecimal: Boolean;
-  MinWidth: Integer; FillChar: WideChar): Integer;
+function TString.AsInteger(Index: Integer; Value: Int64; MinWidth: Integer;
+  Hexadecimal: THexadecimal; FillChar: WideChar): Integer;
 var
   Buf: array[1..MaxDigits] of LegacyChar;
   Digits: PLegacyChar;
   Minus: Boolean;
+  LowerCaseMask: Word;
 begin
 {$IFDEF Debug}
   CheckIndex(@Self, Index);
 {$ENDIF}
-  if Hexadecimal then
+  if Hexadecimal <> hexNone then
   begin
     Digits := @Buf[High(Buf) - SizeOf(Word)];
     Result := 0;
+    LowerCaseMask := (Byte(Hexadecimal) - 1) * $20;
+    Inc(LowerCaseMask, LowerCaseMask shl 8);
     repeat
-      PWord(Digits)^ := Byte(HexDigits[Byte(Value) shr 4]) or (Byte(HexDigits[Byte(Value) and $F]) shl 8);
+      PWord(Digits)^ := Byte(HexDigits[Byte(Value) shr 4]) or
+        (Byte(HexDigits[Byte(Value) and $F]) shl 8) or LowerCaseMask;
       Inc(Result);
       Value := Value shr 8;
       if Value = 0 then
@@ -621,7 +629,8 @@ begin
       MoveZeroExpand(Digits^, FData.WideString[Index], Result);
 end;
 
-procedure TString.AsInteger(Value: Int64; Hexadecimal: Boolean; MinWidth: Integer; FillChar: WideChar);
+procedure TString.AsInteger(Value: Int64; MinWidth: Integer; Hexadecimal: THexadecimal;
+  FillChar: WideChar);
 var
   Length: Integer;
 begin
@@ -631,9 +640,71 @@ begin
   else
     Length := MaxDigits;
   Capacity := Length + SizeOf(WideChar);
-  Length := AsInteger(0, Value, Hexadecimal, MinWidth, FillChar);
+  Length := AsInteger(0, Value, MinWidth, Hexadecimal, FillChar);
   Append(Length);
   PWideChar(PAddress(FData.RawString) + Length * ItemSize)^ := #0;
+end;
+
+function TString.AsInteger(var Value: Int64; Hexadecimal: Boolean): Boolean;
+const
+  UpperCaseMask = not $20;
+var
+  Digit, Limit: PLegacyChar;
+  Minus: Boolean;
+begin
+  if Count <> 0 then
+  begin
+    Digit := FData.LegacyString;
+    Limit := Digit + Count * ItemSize;
+    Value := 0;
+    if Hexadecimal then
+      while Digit < Limit do
+      begin
+        if (ItemSize = 1) or (Digit[1] = #0) then
+          case Digit^ of
+            '0'..'9':
+              begin
+                Value := Value shl 4 + PByte(Digit)^ - Byte('0');
+                Inc(Digit, ItemSize);
+                Continue;
+              end;
+            'A'..'F', 'a'..'f':
+              begin
+                Value := Value shl 4 + PByte(Digit)^ and UpperCaseMask - Byte('A') + 10;
+                Inc(Digit, ItemSize);
+                Continue;
+              end;
+          end;
+        Result := False;
+        Exit;
+      end
+    else
+    begin
+      Minus := Digit^ = '-';
+      if (Digit^ in ['+', '-']) and ((ItemSize = 1) or (Digit[1] = #0)) then
+        Inc(Digit, ItemSize);
+      while Digit < Limit do
+        if (Digit^ in ['0'..'9']) and ((ItemSize = 1) or (Digit[1] = #0)) then
+        begin
+          Value := Value * 10 + PByte(Digit)^ - Byte('0');
+          Inc(Digit, ItemSize);
+        end
+        else
+        begin
+          Result := False;
+          Exit;
+        end;
+      if Minus then
+        Value := -Value;
+    end;
+  end;
+  Result := True;
+end;
+
+function TString.AsInteger(Hexadecimal: Boolean): Int64;
+begin
+  if not AsInteger(Result, Hexadecimal) then
+    // TODO: raise
 end;
 
 procedure TString.Assign(Source: Pointer; Length: Integer; Options: TStringSource);
