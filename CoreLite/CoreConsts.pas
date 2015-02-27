@@ -74,10 +74,6 @@ const
   sCastMistmatch2 = 'Cannot cast %s to %s';
   sCastUntyped = 'Cannot cast uninitialized object to %s';
 
-  sPosition = 'position';
-  sCodePage = 'code page';
-  sConsoleCodePage = 'console code page';
-
   sIndexOutOfBounds = 'Index %d out of bounds %d..%d of %s';
   sIndexOutOfEmpty  = 'Index %d out of empty %s';
   sIndexOutOfNull   = 'Index %d out of null container';
@@ -87,13 +83,17 @@ const
   sFixedCapacity    = 'This %s can contain only %d items';
   sNullCapacity     = 'Cannot add an item into null container';
 
+  sPosition = 'position';
+  sCodePage = 'code page';
+  sConsoleCodePage = 'console code page';
+
   sLegacyString = 'code paged or UTF-8 string';
   sWideString = 'UTF-16 string';
 
-  sUnsupportedCodePage = 'Code page %u (%s) is not yet supported';
+  sUnsupportedUTF16BE = 'UTF-16 Big-Endian is not native for Windows API';
+  sEncodingUTF16fromCP = 'encoding UTF-16 from code page';
 
   sWhitespaceNo = ' no';
-  sInvalidCodePageClass = 'Code page %u (%s) has%hs lead bytes'#10'that is not valid for %hs';
 
   sLatin1 = 'ISO 8859-1 (Latin-1)';
 
