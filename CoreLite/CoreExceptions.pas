@@ -713,26 +713,20 @@ constructor EPlatform.Create(ErrorCode: LongWord; ErrorSource: PCoreChar);
 var
   W: PCoreChar;
 begin
-{$IFDEF Debug}
   W := SysErrorMessage(ErrorCode);
-  try
-    if ErrorSource <> nil then
-      inherited Create(sPlatformError, CP_LEGACY, [W, ErrorSource])
-    else
-      inherited Create(W, WideStrLen(W));
-  finally
-    LocalFree(THandle(W));
-  end;
-{$ELSE}
   if ErrorSource <> nil then
   begin
-    W := SysErrorMessage(ErrorCode);
     inherited Create(sPlatformError, CP_LEGACY, [W, ErrorSource]);
+    LocalFree(THandle(W));
   end
   else
-    FMessage := SysErrorMessage(ErrorCode);
-  FOptions := [eoWideChar, eoCanFree];
-{$ENDIF}
+  begin
+    FMessage.AsWideString := W;
+    FOptions := [eoWideChar, eoCanFree];
+  {$IFDEF Debug}
+    FDelphiMsg := DelphiString(W, WideStrLen(W));
+  {$ENDIF}
+  end;
   FErrorCode := ErrorCode;
   FErrorSource.Source := ErrorSource;
 end;
@@ -751,17 +745,21 @@ begin
   if IntParam = 0 then
     Dec(P, 3); // ' %d'
   P^ := #0;
-{$IFDEF Debug}
+
   W := SysErrorMessage(ErrorCode);
-  try
-    inherited Create(Fmt, CP_LEGACY, [W, TextParam, IntParam])
-  finally
+  if TextParam <> nil then
+  begin
+    inherited Create(Fmt, CP_LEGACY, [W, TextParam, IntParam]);
     LocalFree(THandle(W));
+  end
+  else
+  begin
+    FMessage.AsWideString := W;
+    FOptions := [eoWideChar, eoCanFree];
+  {$IFDEF Debug}
+    FDelphiMsg := DelphiString(W, WideStrLen(W));
+  {$ENDIF}
   end;
-{$ELSE}
-  inherited Create(Fmt, CP_LEGACY, [W, TextParam, IntParam])
-  FOptions := [eoWideChar, eoCanFree];
-{$ENDIF}
   FErrorCode := ErrorCode;
   FErrorSource.TextParam := TextParam;
   FErrorSource.IntParam := IntParam;
