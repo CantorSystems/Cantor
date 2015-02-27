@@ -477,18 +477,24 @@ begin
   LastBytes := ItemCount * FItemSize;
 
   if FAttachBuffer then
-  begin
-    NewCapacity := TranslateCapacity(NewCount);
-    GetMem(NewItems, NewCapacity * FItemSize);
-    with PCollectionCast(@Self)^ do
+    if Index <> 0 then
     begin
-      Move(Items^, NewItems^, FirstBytes);
-      Move(Items[LastBytes], NewItems[FirstBytes], LastBytes);
-      Items := NewItems;
-    end;
-    FCapacity := NewCapacity;
-    FAttachBuffer := False;
-  end
+      NewCapacity := TranslateCapacity(NewCount);
+      GetMem(NewItems, NewCapacity * FItemSize);
+      with PCollectionCast(@Self)^ do
+      begin
+        Move(Items^, NewItems^, FirstBytes);
+        Move(Items[LastBytes], NewItems[FirstBytes], LastBytes);
+        Items := NewItems;
+      end;
+      FCapacity := NewCapacity;
+      FAttachBuffer := False;
+    end
+    else
+    begin
+      Inc(PCollectionCast(@Self).Items, LastBytes);
+      Dec(FCapacity, ItemCount);
+    end
   else
   begin
     if FItemMode <> imInline then
