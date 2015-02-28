@@ -42,8 +42,8 @@ const
 type
   TByteOrderMark = (bomNone, bomUTF7, bomUTF8, bomUTF16LE, bomUTF16BE,
     bomUTF32LE, bomUTF32BE, bomGB18030);
-  TReadBOM = bomNone..bomGB18030;
-  TWriteBOM = bomUTF8..bomGB18030;
+  TReadableBOM = bomNone..bomGB18030;
+  TWritableBOM = bomUTF8..bomGB18030;
 
 {$IFDEF Lite}
   {$I LiteStreams.inc}
@@ -57,7 +57,7 @@ type
     procedure SetPosition(Value: QuadWord); virtual; abstract;
   public
     function Read(var Data; Count: LongWord): LongWord; virtual; abstract;
-    function ReadBOM: TReadBOM;
+    function ReadBOM: TReadableBOM;
     procedure ReadBuffer(var Data; Count: LongWord);
 
     property Position: QuadWord read GetPosition write SetPosition;
@@ -70,7 +70,7 @@ type
     procedure SetSize(Value: QuadWord); virtual; abstract;
   public
     function Write(const Buf; Count: LongWord): LongWord; virtual; abstract;
-    procedure WriteBOM(Value: TWriteBOM);
+    procedure WriteBOM(Value: TWritableBOM);
     procedure WriteBuffer(const Data; Count: LongWord);
 
     property Size write SetSize;
@@ -348,7 +348,7 @@ end;
 
 { TReadableStream }
 
-function TReadableStream.ReadBOM: TReadBOM;
+function TReadableStream.ReadBOM: TReadableBOM;
 var
   BOM: Word;
   Pos: QuadWord;
@@ -431,7 +431,7 @@ end;
 
 { TWritableStream }
 
-procedure TWritableStream.WriteBOM(Value: TWriteBOM);
+procedure TWritableStream.WriteBOM(Value: TWritableBOM);
 const
   UTF8: array[0..2] of Byte = ($EF, $BB, $BF);
   GB18030: array[0..3] of Byte = ($84, $31, $95, $33);

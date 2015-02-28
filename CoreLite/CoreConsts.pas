@@ -87,42 +87,27 @@ const
   sCodePage = 'code page';
   sConsoleCodePage = 'console code page';
 
-  sLegacyString = 'code paged or UTF-8 string';
+  sLegacyString = 'code page or UTF-8 string';
   sWideString = 'UTF-16 string';
 
   sUnsupportedUTF16BE = 'UTF-16 Big-Endian is not native for Windows API';
   sEncodingUTF16fromCP = 'encoding UTF-16 from code page';
 
-  sWhitespaceNo = ' no';
-
   sLatin1 = 'ISO 8859-1 (Latin-1)';
-
   sUTF8 = 'UTF-8';
   sUTF16 = 'UTF-16';
   sUTF32 = 'UTF-32';
   sCESU8 = 'CESU-8';
-
-//  sBigEndian = '(Big-endian)';
-//  sLittleEndian = '(Little-endian)';
 
   sInvalidCharSetToCharSet = 'Cannot convert %s string'#10'into %s character set';
   sInvalidCharSetToCodePage = 'Cannot convert %hs string'#10'into code page %u (%s)';
   sInvalidCodePageToCharSet = 'Cannot convert string between code page %u (%s)'#10'and %hs character set';
   sInvalidCodePageToCodePage = 'Cannot convert string between code page %u (%s)'#10'and code page %u (%s)';
 
-  sInvalidChar = '%scontains invalid character (U+%04X)';
-
-  sCannotMixCharSetAndCharSet = 'Cannot mix %s and %s characters at the same target';
-  sCannotMixCharSetAndCodePage = 'Cannot mix %hs and %u (%s) characters at the same target';
-  sCannotMixCodePageAndCharSet = 'Cannot mix %u (%s) and %hs characters at the same target';
-  sCannotMixCodePageAndCodePage = 'Cannot mix %u (%s) and %u (%s) characters at the same target';
-
-  sInvalidCharSetChar = 'Cannot convert %hs character (U+%04X)'#10'into %hs character set';
-  sInvalidCodePageChar = 'Cannot convert %hs character (U+%04X)'#10'into code page %u (%s)';
-
   sCharSetSource = 'Source %s string ';
   sCodePageSource = 'Source string encoded with code page %u (%s)'#10;
 
+  sInvalidChar = '%scontains invalid character (U+%04X)';
   sNonUnicode = '%scontains characters outside of Unicode ranges';
   sDisallowedSurrogates = '%scontains characters outside of Basic Multilingual Plane,'#10 +
     'but surrogate pairs are not allowed here';

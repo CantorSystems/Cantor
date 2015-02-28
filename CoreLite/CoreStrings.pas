@@ -18,29 +18,28 @@ uses
 
 type
 {
-  soDetectCharSet:
+  soDetectUTF8:
     * try to decode source as UTF-8, continue as code page or Latin1 if code page is null
 }
-  TStringOption = (soDetectCharSet, soBigEndian, soAttachBuffer, soNullTerminated);
+  TStringOption = (soDetectUTF8, soBigEndian, soAttachBuffer, soNullTerminated);
 const
   soLatin1 = soBigEndian;
   soBuiltIn = [soAttachBuffer, soNullTerminated];
-  soFromTheWild = [soDetectCharSet];
+  soFromTheWild = [soDetectUTF8];
 
 type
-  TRawByteOptions = set of soDetectCharSet..soLatin1;
-  TEndianOptions = set of soBigEndian..soBigEndian;
+  TRawByteOptions = set of soDetectUTF8..soLatin1;
+  TEndianOptions = set of soBigEndian..soBigEndian; 
 
   TStringSource = set of TStringOption;
-  TRawByteSource = set of soDetectCharSet..soNullTerminated;
+  TRawByteSource = set of soDetectUTF8..soNullTerminated;
   TEndianSource = set of soBigEndian..soNullTerminated;
 {
   coForceInvalid -- replace invalid characters with:
     * U+007F -- for code page (used instead of U+001A to avoid compatibility issues)
     * U+FFFD -- for Unicode Transformation Formats (official Unicode replacement character)
 }
-  TConvertOption = (coContinuous, coSurrogates, coBigEndian, coReplaceInvalid,
-    coSysReplacementChar);
+  TConvertOption = (coSurrogates, coBigEndian, coReplaceInvalid, coSysReplacementChar);
 const
   coLatin1 = coBigEndian; // only without coCESU8
 
@@ -50,14 +49,14 @@ const
   coModifiedUTF8 = [coCESU8, coEncodeZero];  // UTF-8 compliance
 
 type
-  TConvertRawBytes = coLatin1..coReplaceInvalid;
-  TConvertCodePaged = coReplaceInvalid..coSysReplacementChar;
-  TConvertUTF8 = coContinuous..coReplaceInvalid;
-  TConvertUTF16 = coContinuous..coReplaceInvalid;
+//  TConvertRawBytes = coLatin1..coReplaceInvalid; as sub-mode to UTF-8
+  TConvertCodePage = coReplaceInvalid..coSysReplacementChar;
+  TConvertUTF8 = coSurrogates..coReplaceInvalid;
+  TConvertUTF16 = coSurrogates..coReplaceInvalid;
 //  TConvertUTF32 = set of coBigEndian..coReplaceInvalid;
 
   TEncodeOptions = set of TConvertOption;
-  TEncodeCodePaged = set of TConvertCodePaged;
+  TEncodeCodePage = set of TConvertCodePage;
   TEncodeUTF8 = set of TConvertUTF8;
   TEncodeUTF16 = set of TConvertUTF16;
 //  TEncodeUTF32 = TConvertUTF32;
@@ -73,26 +72,26 @@ type
     HighSurrogate, LowSurrogate: WideChar; // always big-endian
   end;
 
-  TInvalidChar = record // platform
+  TInvalidUTF8 = record
+    CodePoint: QuadChar;
     case Byte of
-      0: (Value: QuadChar);
-      1: (BrokenSequence,       // Broken %u-byte UTF-8 sequence starting with byte $%02X
-          StartingByte: Byte;   // Bad UTF-8 sequence starting with byte $%02X
-          UTF8Mask: Word);
+      0: (BrokenSequence,       // Broken %u-byte UTF-8 sequence starting with byte $%02X
+          StartingByte: Byte);  // Bad UTF-8 sequence starting with byte $%02X
+      1: (BadUTF8: Word);
   end;
 
-{  TNextLegacyChar = record
-    SourceCount, DestCount, SuccessBytes: Integer; // SuccessBytes < 0 for Latin1
-    InvalidChar: TInvalidChar;
+  TNextLegacyChar = record
+    DestCount, SuccessBytes: Integer; // SuccessBytes < 0 for Latin1
+    InvalidUTF8: TInvalidUTF8;
   end;
 
   TNextEndianChar = record
-    SourceCount, DestCount: Integer;
-    InvalidChar: TInvalidChar;
+    DestCount: Integer;
+    InvalidChar: QuadChar;
   end;
 
   TNextWideChar = TNextEndianChar;
-  TNextQuadChar = TNextEndianChar;}
+//  TNextQuadChar = TNextEndianChar;
 
   PLegacyString = ^TLegacyString;
   PWideString = ^TWideString;
@@ -109,7 +108,7 @@ type
     constructor Create(CodePage: Word = CP_ACP; DefaultReplacementChar: LegacyChar = LegacyReplacementChar);
     destructor Destroy;
     function DecodeUTF16(Source: PWideString; Dest: PLegacyString; DestIndex: Integer;
-      DestOptions: TEncodeCodePaged): Boolean;
+      DestOptions: TEncodeCodePage): Boolean;
     function EncodeUTF16(Source: PLegacyString; Dest: PWideString; DestIndex: Integer;
       DestOptions: TEncodeUTF16): Integer;
 
@@ -172,7 +171,7 @@ type
     procedure SetString(Value: PLegacyChar);
   protected
     function AsWideString(Index: Integer; Source: PWideString;
-      DestOptions: TEncodeUTF8 = []): Integer; overload;
+      DestOptions: TEncodeUTF8 = []): TNextWideChar; overload;
   public
     constructor Create(CP: PCodePage = nil);
 
@@ -187,11 +186,17 @@ type
     function PrevIndex(Value: LegacyChar): Integer; overload;
     function PrevIndex(Value: LegacyChar; StartIndex: Integer): Integer; overload;
 
+    procedure Load(Source: PReadableStream; AllowBOM: Boolean = True;
+      SourceOptions: TRawByteOptions = soFromTheWild);
+    procedure Save(Dest: PWritableStream; WriteBOM: Boolean = False);
+
     property CodePage: PCodePage read FCodePage {write FCodePage};
     property Data: PLegacyChar read GetString write SetString;
     property Options: TRawByteOptions read FData.LegacyStringOptions;
     property RawData: PLegacyChar read FData.LegacyString write SetString;
   end;
+
+  TByteOrder = (boLittleEndian, boBigEndian, boFromBOM);
 
   PEndianString = ^TEndianString;
   TEndianString = object(TString)
@@ -221,6 +226,9 @@ type
     function NextIndex(Value: WideChar; StartIndex: Integer = 0): Integer; overload;
     function PrevIndex(Value: WideChar): Integer; overload;
     function PrevIndex(Value: WideChar; StartIndex: Integer): Integer; overload;
+
+    procedure Load(Source: PReadableStream; ByteOrder: TByteOrder = boFromBOM);
+    procedure Save(Dest: PWritableStream; WriteBOM: Boolean = True);
 
     property Data: PWideChar read GetString write SetString;
     property Options: TEndianOptions read FData.WideStringOptions;
@@ -468,7 +476,7 @@ begin
 end;
 
 function TCodePage.DecodeUTF16(Source: PWideString; Dest: PLegacyString;
-  DestIndex: Integer; DestOptions: TEncodeCodePaged): Boolean;
+  DestIndex: Integer; DestOptions: TEncodeCodePage): Boolean;
 var
   Replacement: PLegacyChar;
   ReplacementUsed: LongBool;
@@ -766,7 +774,7 @@ end;
 procedure TLegacyString.AsString(Source: PLegacyChar; Length: Integer; CP: PCodePage;
   SourceOptions: TRawByteSource);
 begin
-  if ((FCodePage = nil) and (soDetectCharSet in FData.RawOptions)) or
+  if ((FCodePage = nil) and (soDetectUTF8 in FData.RawOptions)) or
     ((FCodePage <> nil) and (CP <> nil) and (FCodePage.FNumber = CP.FNumber))
   then
     Assign(Source, Length, SourceOptions)
@@ -775,22 +783,177 @@ begin
 end;
 
 function TLegacyString.AsWideString(Index: Integer; Source: PWideString;
-  DestOptions: TEncodeUTF8): Integer;
+  DestOptions: TEncodeUTF8): TNextWideChar;
+
+var
+  SourceIndex: Integer;
+
+function NextChar: Word;
+begin
+  with Source.FData do
+  begin
+    Result := Word(WideString[SourceIndex]);
+    if soBigEndian in WideStringOptions then
+      Result := Swap(Result);
+  end;
+  Inc(SourceIndex);
+end;
+
+var
+  CodePoint: QuadChar;
+  Paired, W: Word;
+  Dest, Limit: PLegacyChar;
 begin
 {$IFDEF Debug}
   CheckIndex(@Self, Index);
 {$ENDIF}
-  Result := 0;
+  Result.InvalidChar := 0;
+  SourceIndex := 0;
+  Dest := FData.LegacyString + Index;
+  Limit := FData.LegacyString + Capacity;
+
+  while (Dest < Limit) and (SourceIndex < Source.Count) do
+  begin
+    CodePoint := NextChar;
+
+    case Word(CodePoint) of
+      $00..$7F:
+        begin
+          if (CodePoint = 0) and (DestOptions * coModifiedUTF8 = coModifiedUTF8) then
+          begin
+            PWord(Dest)^ := $80C0; // Fast core
+            Inc(Dest, SizeOf(Word));
+          end
+          else
+          begin
+            Dest^ := LegacyChar(CodePoint);
+            Inc(Dest);
+          end;
+          Continue;
+        end;
+
+      Low(THighSurrogates)..High(THighSurrogates):
+        begin
+          Paired := NextChar;
+
+          case Paired of
+            Low(TLowSurrogates)..High(TLowSurrogates):
+              begin
+                CodePoint := (CodePoint - Low(THighSurrogates)) shl 10 +
+                  Low(TUnicodeSMP) + Paired - Low(TLowSurrogates);
+                if coCESU8 in DestOptions then
+                begin
+                  W := CodePoint;
+                  PLongWord(Dest)^ := // Fast core
+                    ($E0 or Byte(W shr 12)) or
+                    (($80 or (Byte(W shr 6) and $3F)) shl 8) or
+                    (($80 or Byte(W and $3F)) shl 16) or
+                    (($E0 or Byte(Paired shr 12)) shl 24);
+                  Inc(Dest, SizeOf(LongWord));
+                  PWord(Dest)^ :=
+                    (($80 or (Byte(Paired shr 6) and $3F)) shl 8) or
+                    (($80 or Byte(Paired and $3F)) shl 16);
+                  Inc(Dest, SizeOf(Word));
+                end
+                else if not (coLatin1 in DestOptions) then
+                begin
+                  PLongWord(Dest)^ := // Fast core
+                    ($F0 or Byte(CodePoint shr 18)) or
+                    (($80 or Byte(CodePoint shr 12)) shl 8) or
+                    (($80 or (Byte(CodePoint shr 6) and $3F)) shl 16) or
+                    (($80 or Byte(CodePoint and $3F)) shl 24);
+                  Inc(Dest, SizeOf(LongWord));
+                end
+                else if coReplaceInvalid in DestOptions then
+                begin
+                  Dest^ := LegacyReplacementChar;
+                  Inc(Dest);
+                  Continue;
+                end
+                else
+                begin
+                  Result.InvalidChar := CodePoint;
+                  Break;
+                end;
+              end;
+          end;
+        end;
+
+      Low(TLowSurrogates)..High(TLowSurrogates), $FEFF: // UTF-16 Big-Endian BOM
+        if coReplaceInvalid in DestOptions then
+        begin
+          if DestOptions * coModifiedUTF8 = [coLatin1] then
+          begin
+            Dest^ := LegacyReplacementChar;
+            Inc(Dest);
+          end
+          else
+          begin
+            PLongWord(Dest)^ := $BDBFEF; // U+FFFD in UTF-8
+            Inc(Dest, 3);
+          end;
+          Continue;
+        end
+        else
+        begin
+          Result.InvalidChar := CodePoint;
+          Break;
+        end;
+    else
+      if DestOptions * coModifiedUTF8 = [coLatin1] then
+      begin
+        case Word(CodePoint) of
+          $A0..$FF:
+            Dest^ := LegacyChar(CodePoint);
+        else
+          if coReplaceInvalid in DestOptions then
+            Dest^ := LegacyReplacementChar
+          else
+          begin
+            Result.InvalidChar := CodePoint;
+            Break;
+          end;
+        end;
+        Inc(Dest);
+        Continue;
+      end
+      else
+      begin
+        W := CodePoint;
+        case W of
+          $80..$7FF:
+            begin
+              PWord(Dest)^ := // Fast core
+                ($C0 or (W shr 6)) or
+                (($80 or (W and $3F)) shl 8);
+              Inc(Dest, SizeOf(Word));
+            end;
+        else
+          PLongWord(Dest)^ := // Fast core
+            ($E0 or Byte(W shr 12)) or
+            (($80 or (Byte(W shr 6) and $3F)) shl 8) or
+            (($80 or Byte(W and $3F)) shl 16);
+          Inc(Dest, 3);
+        end;
+      end;
+    end;
+  end;
+
+  Result.DestCount := Limit - Dest;
 end;
 
 procedure TLegacyString.AsWideString(Source: PWideString; DestOptions: TEncodeUTF8);
-var
-  Length: Integer;
 begin
   Clear;
   Capacity := Source.Count * MaxCharBytes(DestOptions) + 1;
-  Length := AsWideString(0, Source, DestOptions);
-  FData.LegacyString[Length] := #0;
+  with AsWideString(0, Source, DestOptions) do
+    if InvalidChar = 0 then
+    begin
+      Append(DestCount);
+      FData.LegacyString[DestCount] := #0;
+    end
+    else
+      // TODO: raise
 end;
 
 function TLegacyString.GetString: PLegacyChar;
@@ -843,6 +1006,81 @@ begin
     Result := -1;
 end;
 
+procedure TLegacyString.Load(Source: PReadableStream; AllowBOM: Boolean;
+  SourceOptions: TRawByteOptions);
+var
+  BOM: TReadableBOM;
+  W: TWideString;
+begin
+  Clear;
+  if AllowBOM then
+  begin
+    BOM := Source.ReadBOM;
+    case BOM of
+      bomUTF16LE, bomUTF16BE:
+        begin
+          W.Create;
+          try
+            W.Load(Source, TByteOrder(Byte(BOM) - Byte(bomUTF16LE)));
+            AsWideString(@W); // TODO: codepage
+          finally
+            W.Destroy;
+          end;
+        end;
+      bomUTF7:
+        begin
+          Capacity := Source.Size - Source.Position;
+          Source.ReadBuffer(FData.LegacyString^, Capacity);
+          W.Create;
+          try
+            W.Capacity := Capacity;
+            W.Append({$IFDEF Tricks} System. {$ENDIF} MultiByteToWideChar(CP_UTF7, 0,
+              FData.LegacyString, Capacity, W.FData.WideString, W.Capacity));
+            AsWideString(@W); // TODO: codepage
+          finally
+            W.Destroy;
+          end;
+        end;
+      bomGB18030:
+        begin
+          Capacity := Source.Size - Source.Position + 1;
+          Source.ReadBuffer(FData.LegacyString^, Capacity - 1);
+          if (FCodePage <> nil) and (FCodePage.FNumber = CP_GB18030) then
+          begin
+            Append(Capacity - 1);
+            FData.LegacyString[Count] :=#0;
+          end
+          else
+          begin
+            W.Create;
+            try
+              W.Capacity := Capacity - 1;
+              W.Append({$IFDEF Tricks} System. {$ENDIF} MultiByteToWideChar(CP_GB18030, 0,
+                FData.LegacyString, W.Capacity, W.FData.WideString, W.Capacity));
+              AsWideString(@W); // TODO: codepage
+            finally
+              W.Destroy;
+            end;
+          end;
+        end;
+    else
+      // TODO: raise UTF-32
+    end;
+  end
+  else
+  begin
+    Capacity := Source.Size - Source.Position + 1;
+    Source.ReadBuffer(FData.LegacyString^, Capacity - 1);
+    Append(Capacity - 1);
+    FData.LegacyString[Count] :=#0;
+  end;
+end;
+
+procedure TLegacyString.Save(Dest: PWritableStream; WriteBOM: Boolean);
+begin
+
+end;
+
 procedure TLegacyString.SetString(Value: PLegacyChar);
 begin
   Assign(Value, StrLen(Value), soFromTheWild);
@@ -881,6 +1119,8 @@ begin
 {$ENDIF}
   if Source <> nil then
   begin
+
+
     if Source.FCodePage <> nil then
     begin
       if Source.Count <> 0 then
@@ -963,6 +1203,16 @@ begin
     Result := W - FData.WideString
   else
     Result := -1;
+end;
+
+procedure TWideString.Load(Source: PReadableStream; ByteOrder: TByteOrder);
+begin
+
+end;
+
+procedure TWideString.Save(Dest: PWritableStream; WriteBOM: Boolean);
+begin
+
 end;
 
 procedure TWideString.SetString(Value: PWideChar);

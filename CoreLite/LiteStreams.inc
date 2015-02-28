@@ -27,11 +27,11 @@ type
     function Seek(Offset: QuadWord; Origin: TSeekOrigin): QuadWord;
 
     function Read(var Data; Count: LongWord): LongWord;
-    function ReadBOM: TReadBOM;
+    function ReadBOM: TReadableBOM;
     procedure ReadBuffer(var Data; Count: LongWord);
 
     function Write(const Data; Count: LongWord): LongWord;
-    procedure WriteBOM(Value: TWriteBOM);
+    procedure WriteBOM(Value: TWritableBOM);
     procedure WriteBuffer(const Data; Count: LongWord);
 
     function Lock(Offset, Count: QuadWord): Boolean;
