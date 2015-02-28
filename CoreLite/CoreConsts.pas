@@ -90,33 +90,34 @@ const
   sLegacyString = 'code page or UTF-8 string';
   sWideString = 'UTF-16 string';
 
+  sInteger = 'integer';
+  sHexadecimal = 'hexadecimal';
+  sInvalidInteger = '“%s” is not a valid %hs value';
+  sNullInteger = 'Null string is not a valid %s value';
+
   sUnsupportedUTF16BE = 'UTF-16 Big-Endian is not native for Windows API';
-  sEncodingUTF16fromCP = 'encoding UTF-16 from code page';
+  sUTF32notSupported = 'UTF-32 not supported';
+
+  sCPtoUTF16 = 'System error “%s” while converting code page %u (%s) to UTF-16';
+  sUTF16fromCP = 'System error “%s” while converting UTF-16 to code page %u (%s)';
 
   sLatin1 = 'ISO 8859-1 (Latin-1)';
   sUTF8 = 'UTF-8';
-  sUTF16 = 'UTF-16';
-  sUTF32 = 'UTF-32';
   sCESU8 = 'CESU-8';
+  sUTF16 = 'UTF-16';
+//  sUTF32 = 'UTF-32';
 
-  sInvalidCharSetToCharSet = 'Cannot convert %s string'#10'into %s character set';
-  sInvalidCharSetToCodePage = 'Cannot convert %hs string'#10'into code page %u (%s)';
-  sInvalidCodePageToCharSet = 'Cannot convert string between code page %u (%s)'#10'and %hs character set';
-  sInvalidCodePageToCodePage = 'Cannot convert string between code page %u (%s)'#10'and code page %u (%s)';
-
-  sCharSetSource = 'Source %s string ';
-  sCodePageSource = 'Source string encoded with code page %u (%s)'#10;
-
-  sInvalidChar = '%scontains invalid character (U+%04X)';
-  sNonUnicode = '%scontains characters outside of Unicode ranges';
-  sDisallowedSurrogates = '%scontains characters outside of Basic Multilingual Plane,'#10 +
+  sInvalidString = '%s string contains %s';
+  sInvalidChar = 'invalid character (U+%04X)';
+  sNonUnicode = 'character outside of Unicode range (U+%04X)';
+  sNonBMP = 'character outside of Basic Multilingual Plane (U+%04X),'#10 +
     'but surrogate pairs are not allowed here';
 
   sBadUTF8 = 'Bad UTF-8 sequence starting with byte $%02X';
   sBrokenUTF8 = 'Broken %u-byte UTF-8 sequence or unexpected end of string';
 
-  sBadSurrogate = 'Bad %s surrogate pair starting with a low surrogate (U+%04X)'; // UTF-16 or CESU-8
-  sBrokenSurrogate = 'Broken %s surrogate pair or unexpected end of string:'#10 + // UTF-16 or CESU-8
+  sBadSurrogatePair = 'Bad %s surrogate pair starting with a low surrogate (U+%04X)'; // UTF-16 or CESU-8
+  sBrokenSurrogatePair = 'Broken %s surrogate pair or unexpected end of string:'#10 + // UTF-16 or CESU-8
     'high surrogate (U+%04X) is not complemented by a low surrogate';
 
 implementation
