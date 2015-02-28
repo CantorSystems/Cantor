@@ -36,6 +36,7 @@ type
     case Byte of
       1: (AsString: PLegacyChar);
       2: (AsWideString: PWideChar);
+      3: (Handle: THandle);
   end;
 
   Exception = class
@@ -710,20 +711,20 @@ end;
 
 constructor EPlatform.Create(ErrorCode: LongWord; ErrorSource: PCoreChar);
 var
-  W: PCoreChar;
+  Msg: TCoreStringRec;
 begin
-  W := SysErrorMessage(ErrorCode);
+  Msg := SysErrorMessage(ErrorCode);
   if ErrorSource <> nil then
   begin
-    inherited Create(sPlatformError, CP_LEGACY, [W, ErrorSource]);
-    LocalFree(THandle(W));
+    inherited Create(sPlatformError, CP_LEGACY, [Msg.Value, ErrorSource]);
+    LocalFree(Msg.Handle);
   end
   else
   begin
-    FMessage.AsWideString := W;
+    FMessage.AsWideString := Msg.Value;
     FOptions := [eoWideChar, eoCanFree];
   {$IFDEF Debug}
-    FDelphiMsg := DelphiString(W, WideStrLen(W));
+    FDelphiMsg := DelphiString(Msg.Value, Msg.Length);
   {$ENDIF}
   end;
   FErrorCode := ErrorCode;
@@ -735,8 +736,8 @@ const
   FmtLen = Length(sPlatformError2);
 var
   Fmt: array[0..FmtLen] of LegacyChar;
+  Msg: TCoreStringRec;
   P: PLegacyChar;
-  W: PCoreChar;
 begin
   Fmt := sPlatformError2;
   P := Fmt;
@@ -745,18 +746,18 @@ begin
     Dec(P, 3); // ' %d'
   P^ := #0;
 
-  W := SysErrorMessage(ErrorCode);
+  Msg := SysErrorMessage(ErrorCode);
   if TextParam <> nil then
   begin
-    inherited Create(Fmt, CP_LEGACY, [W, TextParam, IntParam]);
-    LocalFree(THandle(W));
+    inherited Create(Fmt, CP_LEGACY, [Msg.Value, TextParam, IntParam]);
+    LocalFree(Msg.Handle);
   end
   else
   begin
-    FMessage.AsWideString := W;
+    FMessage.AsWideString := Msg.Value;
     FOptions := [eoWideChar, eoCanFree];
   {$IFDEF Debug}
-    FDelphiMsg := DelphiString(W, WideStrLen(W));
+    FDelphiMsg := DelphiString(Msg.Value, Msg.Length);
   {$ENDIF}
   end;
   FErrorCode := ErrorCode;
@@ -767,7 +768,7 @@ end;
 destructor EPlatform.Destroy;
 begin
   if FErrorSource.Source = nil then
-    LocalFree(THandle(FMessage))
+    LocalFree(FMessage.Handle)
   else
     inherited;
 end;

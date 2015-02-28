@@ -85,13 +85,17 @@ type
   PAddress = PLegacyChar;  // for address arithmetic
 
   TLegacyStringRec = record
-    Value: PLegacyChar;
-    Length: Integer;
+    case Byte of
+      0: (Value: PLegacyChar;
+          Length: Integer);
+      1: (Handle: THandle);
   end;
 
   TWideStringRec = record
-    Value: PWideChar;
-    Length: Integer;
+    case Byte of
+      0: (Value: PWideChar;
+          Length: Integer);
+      1: (Handle: THandle);
   end;
 
   TCoreStringRec = TWideStringRec; // TODO: non-Unicode
@@ -229,7 +233,7 @@ function WideParamStr(CommandLine: PWideChar): TWideParamRec;
 
 { LocalFree finalization required }
 
-function SysErrorMessage(ErrorCode: LongWord): PCoreChar;
+function SysErrorMessage(ErrorCode: LongWord): TCoreStringRec;
 
 { Legacy Windows service }
 
@@ -1148,19 +1152,20 @@ end;
 
 { LocalFree finalization required }
 
-function SysErrorMessage(ErrorCode: LongWord): PCoreChar;
-var
-  L: Integer;
+function SysErrorMessage(ErrorCode: LongWord): TCoreStringRec;
 begin
-  L := FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM or FORMAT_MESSAGE_ALLOCATE_BUFFER,
-    nil, ErrorCode, 0, Pointer(@Result), 0, nil);
-  while (L <> 0) and
-    ((Result[L] >= WideChar(0)) and (Result[L] <= WideChar(32)) or
-     (Result[L] = WideChar('.')))
-  do
-    Dec(L);
-  if L <> 0 then
-    Result[L + 1] := WideChar(0);
+  with Result do
+  begin
+    Length := FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM or FORMAT_MESSAGE_ALLOCATE_BUFFER,
+      nil, ErrorCode, 0, Pointer(@Result.Value), 0, nil);
+    while (Length <> 0) and
+      ((Value[Length] >= CoreChar(0)) and (Value[Length] <= CoreChar(0)) or
+       (Value[Length] = CoreChar('.')))
+    do
+      Dec(Length);
+    if Length <> 0 then
+      Value[Length + 1] := CoreChar(0);
+  end;
 end;
 
 { Legacy Windows service }
