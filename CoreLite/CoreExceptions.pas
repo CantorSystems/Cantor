@@ -144,9 +144,8 @@ type
   public
     constructor Create(ErrorCode: LongWord; ErrorSource: PCoreChar {$IFNDEF Debug} = nil {$ENDIF}); overload;
     constructor Create(ErrorCode: LongWord; TextParam: PLegacyChar; IntParam: Integer); overload;
-  {$IFNDEF Debug}
     destructor Destroy; override;
-  {$ENDIF}
+
     property ErrorCode: LongWord read FErrorCode;
     property ErrorSource: TErrorSource read FErrorSource;
   end;
@@ -765,15 +764,15 @@ begin
   FErrorSource.IntParam := IntParam;
 end;
 
-{$IFNDEF Debug}
 destructor EPlatform.Destroy;
 begin
-  if FErrorSource = nil then
+  if FErrorSource.Source = nil then
     LocalFree(THandle(FMessage))
   else
     inherited;
 end;
-{$ENDIF}
+
+{ EMMX }
 
 {$IFDEF ForceMMX}
 constructor EMMX.Create;
