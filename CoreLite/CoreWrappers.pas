@@ -45,6 +45,10 @@ type
   TReadableBOM = bomNone..bomGB18030;
   TWritableBOM = bomUTF8..bomGB18030;
 
+const
+  bomUTF16 = bomUTF16LE;
+  bomUTF32 = bomUTF32LE;
+
 {$IFDEF Lite}
   {$I LiteStreams.inc}
 {$ELSE}
@@ -154,8 +158,8 @@ type
     property Stream: TFileStream read FStream;
   end;
 
-  TReadableStreamEvent = procedure(const Stream: TReadableStream) of object;
-  TWritableStreamEvent = procedure(const Stream: TWritableStream) of object;
+  TReadableStreamEvent = procedure(Stream: PReadableStream) of object;
+  TWritableStreamEvent = procedure(Stream: PWritableStream) of object;
 
   PLoadHelper = ^TLoadHelper;
   TLoadHelper = object
@@ -450,8 +454,8 @@ begin
       BOM := Swap(BOM);
       if Value = bomUTF32BE then
         BOM := BOM shl 16;
-    end;
-    WriteBuffer(BOM, Byte(Value) and not $01);
+    end;     
+    WriteBuffer(BOM, Byte(Value) and not $01); // Fast core
   end;
 end;
 
@@ -469,6 +473,7 @@ end;
 constructor THandleStream.Create(FileName: PCoreChar; Access: TFileAccess;
   Attributes: TFileAttributes);
 begin
+  FHandle := 0;
   if not Open(FileName, Access, Attributes) then
     RaiseLastPlatformError(FileName);
 end;
@@ -724,10 +729,10 @@ begin
   F.Create(FileName, Access);
   try
     if Assigned(BeforeLoad) then
-      BeforeLoad(F);
-    HostLoad(F);
+      BeforeLoad(@F);
+    HostLoad(@F);
     if Assigned(AfterLoad) then
-      AfterLoad(F);
+      AfterLoad(@F);
   finally
     F.Destroy;
   end;
@@ -743,11 +748,11 @@ begin
   F.Create(FileName, Access, Attributes);
   try
     if Assigned(BeforeSave) then
-      BeforeSave(F);
-    F.SetSize(FileSize);  
-    HostSave(F);
+      BeforeSave(@F);
+    F.SetSize(FileSize);
+    HostSave(@F);
     if Assigned(AfterSave) then
-      AfterSave(F);
+      AfterSave(@F);
   finally
     F.Destroy;
   end;
