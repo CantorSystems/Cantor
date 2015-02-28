@@ -104,7 +104,7 @@ begin
   HostApp := Thunk;
   ErrorMessage := ErrorMessageThunk;
   ExceptionMessage := ExceptionMessageThunk;
-{$IF Defined(ForceMMX) and not Defined(Tricks)}
+{$IF defined(ForceMMX) and not defined(Tricks)}
   if not MMX_Supported then
     raise EMMX.Create; // until memory manager isn't set yet
 {$IFEND}
