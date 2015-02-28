@@ -107,6 +107,12 @@ type
     procedure Insert(Index: Integer; Item: Pointer);
   end;
 
+  PCollections = ^TCollection;
+  TCollections = object(TCollection)
+  protected
+    function TotalCount: Integer;
+  end;
+
   TCRC32Table = array[0..$FF] of LongWord;
 
   TCRC32 = object
@@ -188,6 +194,11 @@ type
   PPointersCast = ^TPointersCast;
   TPointersCast = object(TPointers)
     Items: PPointerArray;
+  end;
+
+  PCollectionsCast = ^TCollectionsCast;
+  TCollectionsCast = object(TCollections)
+    Items: TCollection;
   end;
 
 { Helper functions }
@@ -678,6 +689,22 @@ procedure TPointers.Insert(Index: Integer; Item: Pointer);
 begin
   inherited Insert(Index);
   PPointersCast(@Self).Items[Index] := Item;
+end;
+
+{ TCollections }
+
+function TCollections.TotalCount: Integer;
+var
+  I: Integer;
+  Item: PCollection;
+begin
+  Result := 0;
+  Item := @PCollectionsCast(@Self).Items;
+  for I := 0 to FCount - 1 do
+  begin
+    Inc(Result, Item.FCount);
+    Inc(PAddress(Item), FItemSize);
+  end;
 end;
 
 { TCRC32 }
