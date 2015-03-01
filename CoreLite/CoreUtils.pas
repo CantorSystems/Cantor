@@ -6,7 +6,7 @@
     Copyright (c) 2007-2015 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
-      * CoreVCL -- the same as Debug, but also partial use of SysUtils
+      * CoreLiteVCL -- the same as Debug, but also partial use of SysUtils
       * Debug -- allow ShortString, AnsiString, WideString and UnicodeString
                  at EstimateArgs
 *)
@@ -181,13 +181,13 @@ const
 
 function EstimateArgs(const Args: array of const): Integer;
 
-{$IFNDEF CoreVCL}
+{$IFNDEF CoreLiteVCL}
 function StrAlloc(Length: Integer): PLegacyChar;
 function WideStrAlloc(Length: Integer): PWideChar;
 {$ENDIF}
 function QuadStrAlloc(Length: Integer): PQuadChar;
 
-{$IFNDEF CoreVCL}
+{$IFNDEF CoreLiteVCL}
 procedure StrCopy(Dest, Source: PLegacyChar); overload;
 {$ENDIF}
 procedure StrCopy(Dest, Source: PLegacyChar; Length: Integer); overload;
@@ -203,7 +203,7 @@ function WideStrLen(Str: PWideChar; MaxLength: Integer): Integer; overload;
 function QuadStrLen(Str: PQuadChar): Integer; overload;
 function QuadStrLen(Str: PQuadChar; MaxLength: Integer): Integer; overload;
 
-{$IFNDEF CoreVCL}
+{$IFNDEF CoreLiteVCL}
 function StrNew(Str: PLegacyChar): PLegacyChar; overload;
 {$ENDIF}
 function StrNew(Str: PLegacyChar; Length: Integer): PLegacyChar; overload;
@@ -296,7 +296,7 @@ function FriendlyClassName(var Dest: TClassName; Source: TObject): Byte; overloa
 implementation
 
 uses
-{$IFDEF CoreVCL}
+{$IFDEF CoreLiteVCL}
   SysUtils,
 {$ENDIF}
   CoreConsts;
@@ -485,7 +485,7 @@ begin
         Inc(Result);
       vtExtended, vtCurrency:
         Inc(Result, DecimalExtended);
-    {$IF defined(Debug) or defined(CoreVCL)}
+    {$IF defined(Debug) or defined(CoreLiteVCL)}
       vtString:
         Inc(Result, PByte(TVarRec(Args[I]).VString)^);
       {$IFDEF UnicodeRTL} vtUnicodeString, {$ENDIF}
@@ -497,7 +497,7 @@ begin
     end;
 end;
 
-{$IFNDEF CoreVCL}
+{$IFNDEF CoreLiteVCL}
 function StrAlloc(Length: Integer): PLegacyChar;
 begin
   if Length <> 0 then
@@ -532,7 +532,7 @@ begin
     Result := nil;
 end;
 
-{$IFNDEF CoreVCL}
+{$IFNDEF CoreLiteVCL}
 procedure StrCopy(Dest, Source: PLegacyChar);
 {$IFDEF CTRL_SHIFT_UP_CTRL_SHIFT_DOWN}
 asm
@@ -570,7 +570,7 @@ begin
 end;
 
 function StrLen(Str: PLegacyChar): Integer;
-{$IFDEF CoreVCL}
+{$IFDEF CoreLiteVCL}
 begin
   Result := SysUtils.StrLen(Str);
 end;
@@ -676,7 +676,7 @@ asm
 @@exit:
 end;
 
-{$IFNDEF CoreVCL}
+{$IFNDEF CoreLiteVCL}
 function StrNew(Str: PLegacyChar): PLegacyChar;
 var
   L: Integer;

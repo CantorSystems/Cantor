@@ -6,7 +6,8 @@
     Copyright (c) 2015 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
-      * Debug -- some debugging features and diagnostic exceptions
+      * CoreLiteVCL -- TCoreString and UnicodeString types for VCL applications
+      * Debug -- diagnostic exceptions
 *)
 
 unit CoreStrings;
@@ -240,7 +241,7 @@ type
   end;
 
   PCoreString = PWideString;
-{$IFNDEF CoreVCL}
+{$IFNDEF CoreLiteVCL}
   TCoreString = TWideString;
 {$ELSE}
   {$IFNDEF UnicodeRTL} UnicodeString = WideString; {$ENDIF}
@@ -1079,7 +1080,7 @@ begin
           end;
         end;
 
-      Low(TLowSurrogates)..High(TLowSurrogates), $FEFF: // UTF-16 Big-Endian BOM
+      Low(TLowSurrogates)..High(TLowSurrogates), $FFFE, $FEFF: // UTF-16 BOM
         if coReplaceInvalid in DestOptions then
         begin
           if DestOptions * coModifiedUTF8 = [coLatin1] then
@@ -1451,7 +1452,7 @@ var
   Dest, Limit: PWideChar;
   CodePoint, Paired: QuadChar;
   W: Word;
-  C: LegacyChar;
+  B: Byte;
 begin
 {$IFDEF Debug}
   CheckIndex(@Self, Index);
@@ -1491,7 +1492,7 @@ begin
             end;
           end;
 
-        Low(TLowSurrogates)..High(TLowSurrogates), $FFFE, // UTF-16 Big-Endian BOM
+        Low(TLowSurrogates)..High(TLowSurrogates), $FFFE, $FFFF,
         Low(TNonUnicode)..High(TNonUnicode):
           ;
 
@@ -1512,20 +1513,21 @@ begin
             Continue;
           end;
       else
+        W := CodePoint;
         if coBigEndian in DestOptions then
-          Dest^ := WideChar(Swap(CodePoint))
-        else
-          Dest^ := WideChar(CodePoint);
+          W := Swap(W);
+        Dest^ := WideChar(W);
         Inc(Dest);
         Continue;
       end;
 
-      if coReplaceInvalid in DestOptions then
+      if (coReplaceInvalid in DestOptions) and
+        ((Source.FCodePage = nil) or not (soLatin1 in Source.FOptions)) then
       begin
+        W := $FFFD;
         if coBigEndian in DestOptions then
-          Dest^ := WideChar(Swap($FFFD))
-        else
-          Dest^ := WideChar($FFFD);
+          W := Swap(W);
+        Dest^ := WideChar(W);
         Inc(Dest);
       end
       else
@@ -1550,19 +1552,22 @@ begin
       Limit := FData + Count;
       while (Result.SourceCount < Source.Count) and (Dest < Limit) do
       begin
-        C := Source.FData[Result.SourceCount];
+        B := Byte(Source.FData[Result.SourceCount]);
         Inc(Result.SourceCount);
-        if C in [#$00..#$7F, #$A0..#$FF] then
+        if B in [$00..$7F, $A0..$FF] then
         begin
-          PWord(Dest)^ := Byte(C) shl (Byte(coBigEndian in DestOptions) * 8); // Fast core
-          if C in [#$A0..#$FF] then
+          PWord(Dest)^ := B shl (Byte(coBigEndian in DestOptions) * 8); // Fast core
+          if B in [$A0..$FF] then
             Dec(Result.SuccessBytes); // negative for Latin1
         end
         else if coReplaceInvalid in DestOptions then
-          PWord(Dest)^ := Byte(LegacyReplacementChar) shl (Byte(coBigEndian in DestOptions) * 8) // Fast core
+        begin
+          PWord(Dest)^ := Byte(LegacyReplacementChar) shl (Byte(coBigEndian in DestOptions) * 8); // Fast core
+          Dec(Result.SuccessBytes);
+        end
         else
         begin
-          Result.ErrorInfo.InvalidChar := Byte(C);
+          Result.ErrorInfo.InvalidChar := B;
           Break;
         end;
         Inc(Dest);
@@ -1752,7 +1757,7 @@ end;
 
 { TCoreString }
 
-{$IFDEF CoreVCL}
+{$IFDEF CoreLiteVCL}
 function TCoreString.GetUnicodeString: UnicodeString;
 begin
   System.SetString(Result, FData, Count);
