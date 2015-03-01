@@ -377,9 +377,19 @@ end;
 
 var
   ErrorMode: CoreWord;
+{$IFDEF CoreVCL}
+  SaveAbstractErrorProc: procedure;
+{$ENDIF}
 
 procedure InitExceptions;
 begin
+{$IFDEF CoreVCL -- }
+
+  @SaveAbstractErrorProc := @AbstractErrorProc;
+  @AbstractErrorProc := @EAbstract.MethodCall;
+
+{$ELSE ----------- }
+
   OutOfMemory := EOutOfMemory.Create(sOutOfMemory);
   InvalidPointer := EInvalidPointer.Create(sInvalidPointer);
 
@@ -389,7 +399,6 @@ begin
 
   ExceptClsProc := @GetExceptionClass;
   ExceptObjProc := @GetExceptionObject;
-
 {$IFDEF Debug}
   @AbstractErrorProc := @EAbstract.MethodCall;
 {$ENDIF}
@@ -398,12 +407,20 @@ begin
   AssertErrorProc := @AssertErrorHandler;
 {$ENDIF}
 
+{$ENDIF ----------- }
+
   ErrorMode := SetErrorMode(SEM_FAILCRITICALERRORS or SEM_NOGPFAULTERRORBOX);
 end;
 
 procedure DoneExceptions;
 begin
   SetErrorMode(ErrorMode);
+
+{$IFDEF CoreVCL -- }
+
+  @AbstractErrorProc := @AbstractErrorProc;
+
+{$ELSE ----------- }
 
 {$IFOPT C+}
   AssertErrorProc := nil;
@@ -433,6 +450,8 @@ begin
     FreeInstance;
   end;
   InvalidPointer := nil;
+
+{$ENDIF ----------- }
 end;
 
 procedure ExceptionErrorMessage(Msg: PWideChar; CodePage: Word); // via ErrorMessage
@@ -611,14 +630,13 @@ begin
 end;
 
 function DelphiString(Source: PWideChar; Count: Integer): string;
-{$IF not UnicodeRTL}
 begin
+{$IF UnicodeRTL}
+  SetString(Result, Source, Count);
+{$ELSE}
   SetLength(Result, Count * MaxCharBytes(CP_ACP));
   SetLength(Result, {$IFDEF Tricks} System. {$ENDIF}
     WideCharToMultiByte(CP_ACP, 0, Source, Count, Pointer(Result), Length(Result), nil, nil));
-{$ELSE}
-begin
-  SetString(Result, Source, Count);
 {$IFEND}
 end;
 
@@ -626,8 +644,7 @@ end;
 
 constructor Exception.Create(Msg: PLegacyChar);
 {$IFDEF CoreVCL}
-var
-  FDelphiMsg: string;
+  var FDelphiMsg: string;
 {$ENDIF}
 begin
   FMessage.AsString := Msg;
@@ -640,8 +657,7 @@ end;
 
 constructor Exception.Create(Msg: PLegacyChar; const Args: array of const);
 {$IFDEF CoreVCL}
-var
-  FDelphiMsg: string;
+  var FDelphiMsg: string;
 {$ENDIF}
 begin
   with Format(Msg, 0, Args) do
@@ -657,8 +673,7 @@ end;
 
 constructor Exception.Create(Msg: PWideChar; Count: Integer);
 {$IFDEF CoreVCL}
-var
-  FDelphiMsg: string;
+  var FDelphiMsg: string;
 {$ENDIF}
 begin
   if Msg <> nil then
@@ -677,8 +692,7 @@ end;
 
 constructor Exception.Create(Msg: PLegacyChar; CodePage: Word; const Args: array of const);
 {$IFDEF CoreVCL}
-var
-  FDelphiMsg: string;
+  var FDelphiMsg: string;
 {$ENDIF}
 begin
   with Format(Msg, CodePage, 0, Args) do
@@ -819,24 +833,10 @@ begin
 end;
 {$ENDIF}
 
-{$IFDEF CoreVCL}
-var
-  SaveAbstractErrorProc: procedure;
-{$ENDIF}
-
 initialization
-{$IFDEF CoreVCL}
-  @SaveAbstractErrorProc := @AbstractErrorProc;
-  @AbstractErrorProc := @EAbstract.MethodCall;
-{$ELSE}
   InitExceptions;
-{$ENDIF}
 
 finalization
-{$IFDEF CoreVCL}
-  @AbstractErrorProc := @AbstractErrorProc;
-{$ELSE}
   DoneExceptions;
-{$ENDIF}
 
 end.
