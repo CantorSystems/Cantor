@@ -687,7 +687,9 @@ end;
 constructor TFileStreamMapping.Create(FileName: PCoreChar; Options: TCreateFileMapping;
   Size: QuadWord; MappingName: PCoreChar);
 begin
-{$IFNDEF Lite}
+{$IFDEF Lite}
+  FStream.FHandle := 0;
+{$ELSE}
   FStream.Create;
 {$ENDIF}
   if not Open(FileName, Options, Size, MappingName) then

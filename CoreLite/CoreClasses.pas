@@ -619,10 +619,8 @@ begin
   if FDelta < 0 then
   begin
     Result := FCapacity div Abs(FDelta);
-  {$IFNDEF Lite}
     if Result = 0 then
-      Result := Abs(FDelta)
-  {$ENDIF}
+      Result := Abs(FDelta);
   end
   else
     Result := FDelta;
