@@ -39,7 +39,7 @@ type
     * U+007F -- for code page and Latin1 (used instead of U+001A to avoid compatibility issues)
     * U+FFFD -- for Unicode Transformation Formats (official Unicode replacement character)
 }
-  TConvertOption = (coSurrogatePairs, coBigEndian, coReplaceInvalid, coConvert, coSysReplacementChar);
+  TConvertOption = (coSurrogatePairs, coBigEndian, coReplaceInvalid, coSysReplacementChar);
 const
   coLatin1 = coBigEndian; // only without coCESU8
 
@@ -52,15 +52,16 @@ const
 type
 //  TConvertRawBytes = coLatin1..coReplaceInvalid; as sub-mode to UTF-8
   TConvertCodePage = coReplaceInvalid..coSysReplacementChar;
-  TConvertUTF8 = coSurrogatePairs..coConvert;
+  TConvertUTF8 = coSurrogatePairs..coReplaceInvalid;
   TConvertUTF16 = coSurrogatePairs..coReplaceInvalid;
 //  TConvertUTF32 = set of coBigEndian..coReplaceInvalid;
 
-  TEncodeOptions = set of TConvertOption;
   TEncodeCodePage = set of TConvertCodePage;
   TEncodeRawBytes = set of TConvertUTF8;
   TEncodeUTF16 = set of TConvertUTF16;
 //  TEncodeUTF32 = TConvertUTF32;
+
+  TEncodeOptions = TEncodeRawBytes;
 
 const
   FirstLeadByte = LegacyChar(#$80); // for Unicode RTL
@@ -87,7 +88,7 @@ type
           InvalidUTF8: TInvalidUTF8);
   end;
 
-  TConvertInfo = record
+  TConvertResult = record
     SourceCount, DestCount, SuccessBytes, // SuccessBytes < 0 for Latin1
     SurrogatePairs: Integer;
     ErrorInfo: TErrorInfo;
@@ -127,12 +128,16 @@ type
   private
   { placeholder } // FOptions: TStringOptions;
   protected
-    function AsArray(Index: Integer; const Values: array of const): Integer; overload;
-    function AsInteger(Index: Integer; Value: Int64; MinWidth: Integer = 0;
-      Hexadecimal: THexadecimal = hexNone; FillChar: WideChar = #32): Integer; overload;
     procedure Assign(Source: Pointer; Length: Integer; Options: TStringSource); overload;
+    function AssignArray(Index: Integer; const Values: array of const): Integer;
+    function AssignInteger(Index: Integer; Value: Int64; MinWidth: Integer = 0;
+      Hexadecimal: THexadecimal = hexNone; FillChar: WideChar = #32): Integer;
+    function AssignString(Index: Integer; Source: PLegacyString;
+      DestOptions: TEncodeUTF16 = coUTF16): TConvertResult; virtual; abstract;
+    function AssignWideString(Index: Integer; Source: PWideString;
+      DestOptions: TEncodeRawBytes = []): TConvertResult; virtual; abstract;
   public
-    procedure AsArray(const Values: array of const); overload;
+    procedure AsArray(const Values: array of const);
     procedure AsInteger(Value: Int64; MinWidth: Integer = 0; Hexadecimal: THexadecimal = hexNone;
       FillChar: WideChar = #32); overload;
     function AsInteger(var Value: Int64; Hexadecimal: Boolean = False): Boolean; overload;
@@ -156,8 +161,10 @@ type
     procedure SetCodePage(Value: PCodePage);
     procedure SetString(Value: PLegacyChar);
   protected
-    function AsWideString(Index: Integer; Source: PWideString;
-      DestOptions: TEncodeRawBytes = []): TConvertInfo; overload;
+    function AssignString(Index: Integer; Source: PLegacyString;
+      DestOptions: TEncodeUTF16 = coUTF16): TConvertResult; virtual;
+    function AssignWideString(Index: Integer; Source: PWideString;
+      DestOptions: TEncodeRawBytes = []): TConvertResult; virtual;
   public
     constructor Create(CP: PCodePage = nil);
 
@@ -205,8 +212,10 @@ type
     function GetString: PWideChar;
     procedure SetString(Value: PWideChar);
   protected
-    function AsString(Index: Integer; Source: PLegacyString;
-      DestOptions: TEncodeUTF16 = coUTF16): Integer; overload;
+    function AssignString(Index: Integer; Source: PLegacyString;
+      DestOptions: TEncodeUTF16 = coUTF16): TConvertResult; virtual;
+    function AssignWideString(Index: Integer; Source: PWideString;
+      DestOptions: TEncodeRawBytes = []): TConvertResult; virtual;
   public
     constructor Create;
 
@@ -231,7 +240,18 @@ type
   end;
 
   PCoreString = PWideString;
+{$IFNDEF CoreVCL}
   TCoreString = TWideString;
+{$ELSE}
+  {$IFNDEF UnicodeRTL} UnicodeString = WideString; {$ENDIF}
+  TCoreString = object(TWideString)
+  private
+    function GetUnicodeString: UnicodeString;
+    procedure SetUnicodeString(Value: UnicodeString);
+  public
+    property AsUnicodeString: UnicodeString read GetUnicodeString write SetUnicodeString;
+  end;
+{$ENDIF}
 
   PStrings = ^TStrings;
   TStrings = object(TCollections)
@@ -272,7 +292,7 @@ type
     property Hexadecimal: Boolean read FHexadecimal;
   end;
 
-  TConvertMode = (cpDecodeUTF16, cpEncodeUTF16);
+  TConvertMode = (cmDecodeUTF16, cmEncodeUTF16);
 
   EConvert = class(EString)
   private
@@ -297,11 +317,10 @@ type
   EUnicode = class(EConvert)
   private
     FErrorInfo: TErrorInfo;
-    FCharSet: TCharSet;
+    FDestOptions: TEncodeOptions;
   public
-    constructor Create(Source: PString; CharSet: TCharSet; Mode: TConvertMode;
-      const Info: TErrorInfo);
-    property CharSet: TCharSet read FCharSet;
+    constructor Create(Source: PString; DestOptions: TEncodeOptions; const Info: TErrorInfo);
+    property DestOptions: TEncodeOptions read FDestOptions;
     property ErrorInfo: TErrorInfo read FErrorInfo;
   end;
 
@@ -575,12 +594,10 @@ end;
 
 { EUnicode }
 
-constructor EUnicode.Create(Source: PString; CharSet: TCharSet; Mode: TConvertMode; const Info: TErrorInfo);
-const
-  CharSetNames: array[TCharSet] of PLegacyChar = (sLatin1, sUTF8, sCESU8, sUTF16);
+constructor EUnicode.Create(Source: PString; DestOptions: TEncodeOptions; const Info: TErrorInfo);
 var
   Buf: array[0..Length(sNonBMP)+8] of LegacyChar;
-  Msg: PLegacyChar;
+  CharSet, Msg: PLegacyChar;
 begin
   if Info.InvalidUTF8.RawData <> 0 then
     with Info.InvalidUTF8 do
@@ -589,11 +606,22 @@ begin
       else
         inherited Create(sBadUTF8, [StartingByte])
   else
+  begin
+    if Source.ItemSize = SizeOf(LegacyChar) then
+      if coSurrogatePairs in DestOptions then
+        CharSet := sCESU8
+      else if coLatin1 in DestOptions then
+        CharSet := sLatin1
+      else
+        CharSet := sUTF8
+    else
+      CharSet := sUTF16;
+
     case Info.InvalidChar of
       Low(THighSurrogates)..High(THighSurrogates):
-        inherited Create(sBrokenSurrogatePair, [CharSetNames[CharSet], Info.InvalidChar]);
+        inherited Create(sBrokenSurrogatePair, [CharSet, Info.InvalidChar]);
       Low(TLowSurrogates)..High(TLowSurrogates):
-        inherited Create(sBadSurrogatePair, [CharSetNames[CharSet], Info.InvalidChar]);
+        inherited Create(sBadSurrogatePair, [CharSet, Info.InvalidChar]);
     else
       case Info.InvalidChar of
         $80..$9F:
@@ -604,11 +632,12 @@ begin
         Msg := sNonUnicode;
       end;
       FormatBuf(Msg, [Info.InvalidChar], Buf);
-      inherited Create(sInvalidString, [CharSetNames[CharSet], @Buf]);
+      inherited Create(sInvalidString, [CharSet, @Buf]);
     end;
+  end;
   FSource.AsString := Pointer(Source);
   FMode := Mode;
-  FCharSet := CharSet;
+  FDestOptions := DestOptions;
   FErrorInfo := Info;
 end;
 
@@ -698,7 +727,22 @@ end;
 
 { TString }
 
-function TString.AsArray(Index: Integer; const Values: array of const): Integer;
+procedure TString.Assign(Source: Pointer; Length: Integer; Options: TStringSource);
+begin
+  if Source <> nil then
+    if soAttachBuffer in Options then
+      inherited Assign(Source, Length, Length + Integer(soNullTerminated in Options), True)
+    else
+    begin
+      inherited Assign(Source, Length, Length + SizeOf(WideChar), False);
+      PWideChar(PLegacyString(@Self).FData + Length * ItemSize)^ := #0;
+    end
+  else
+    Clear;
+  PLegacyString(@Self).FOptions := Options - soBuiltIn;
+end;
+
+function TString.AssignArray(Index: Integer; const Values: array of const): Integer;
 begin
 {$IFDEF Debug}
   CheckIndex(@Self, Index);
@@ -706,21 +750,10 @@ begin
   Result := 0; // TODO
 end;
 
-procedure TString.AsArray(const Values: array of const);
-var
-  Length: Integer;
-begin
-  Clear;
-  Capacity := Estimate(Values) + SizeOf(WideChar);
-  Length := AsArray(0, Values);
-  Append(Length);
-  PWideChar(PLegacyString(@Self).FData + Length * ItemSize)^ := #0;
-end;
-
 const
   MaxDigits = 20;
 
-function TString.AsInteger(Index: Integer; Value: Int64; MinWidth: Integer;
+function TString.AssignInteger(Index: Integer; Value: Int64; MinWidth: Integer;
   Hexadecimal: THexadecimal; FillChar: WideChar): Integer;
 var
   Buf: array[1..MaxDigits] of LegacyChar;
@@ -739,7 +772,7 @@ begin
     Inc(LowerCaseMask, LowerCaseMask shl 8);
     repeat
       PWord(Digits)^ := Byte(HexDigits[Byte(Value) shr 4]) or
-        (Byte(HexDigits[Byte(Value) and $F]) shl 8) or LowerCaseMask;
+        (Byte(HexDigits[Byte(Value) and $F]) shl 8) or LowerCaseMask; // Fast core
       Inc(Result);
       Value := Value shr 8;
       if Value = 0 then
@@ -820,6 +853,20 @@ begin
         MoveZeroExpand(Digits^, FData[Index], Result);
 end;
 
+procedure TString.AsArray(const Values: array of const);
+var
+  Length: Integer;
+begin
+  Clear;
+  Capacity := Estimate(Values) + SizeOf(WideChar);
+  if Capacity <> 0 then
+  begin
+    Length := AssignArray(0, Values);
+    Append(Length);
+    PWideChar(PLegacyString(@Self).FData + Length * ItemSize)^ := #0;
+  end
+end;
+
 procedure TString.AsInteger(Value: Int64; MinWidth: Integer; Hexadecimal: THexadecimal;
   FillChar: WideChar);
 var
@@ -831,7 +878,7 @@ begin
   else
     Length := MaxDigits;
   Capacity := Length + SizeOf(WideChar);
-  Length := AsInteger(0, Value, MinWidth, Hexadecimal, FillChar);
+  Length := AssignInteger(0, Value, MinWidth, Hexadecimal, FillChar);
   Append(Length);
   PWideChar(PLegacyString(@Self).FData + Length * ItemSize)^ := #0;
 end;
@@ -861,7 +908,7 @@ begin
               end;
             'A'..'F', 'a'..'f':
               begin
-                Value := Value shl 4 + PByte(Digit)^ and UpperCaseMask - Byte('A') + 10;
+                Value := Value shl 4 + PByte(Digit)^ and UpperCaseMask - Byte('A') + $A;
                 Inc(Digit, ItemSize);
                 Continue;
               end;
@@ -872,10 +919,10 @@ begin
     else
     begin
       Minus := Digit^ = '-';
-      if (Digit^ in ['+', '-']) and ((ItemSize = 1) or (Digit[1] = #0)) then
+      if (Digit^ in ['+', '-']) and ((ItemSize = 1) or (Digit[1] = #0)) then // Fast core
         Inc(Digit, ItemSize);
       while Digit < Limit do
-        if (Digit^ in ['0'..'9']) and ((ItemSize = 1) or (Digit[1] = #0)) then
+        if (Digit^ in ['0'..'9']) and ((ItemSize = 1) or (Digit[1] = #0)) then // Fast core
         begin
           Value := Value * 10 + PByte(Digit)^ - Byte('0');
           Inc(Digit, ItemSize);
@@ -898,21 +945,6 @@ begin
     raise EIntegerString.Create(@Self, Hexadecimal);
 end;
 
-procedure TString.Assign(Source: Pointer; Length: Integer; Options: TStringSource);
-begin
-  if Source <> nil then
-    if soAttachBuffer in Options then
-      inherited Assign(Source, Length, Length + Integer(soNullTerminated in Options), True)
-    else
-    begin
-      inherited Assign(Source, Length, Length + SizeOf(WideChar), False);
-      PWideChar(PLegacyString(@Self).FData + Length * ItemSize)^ := #0;
-    end
-  else
-    Clear;
-  PLegacyString(@Self).FOptions := Options - soBuiltIn;
-end;
-
 function TString.Estimate(const Values: array of const): Integer;
 begin
   Result := 0; // TODO
@@ -928,31 +960,29 @@ end;
 
 procedure TLegacyString.AsString(Source: PLegacyChar; CP: PCodePage; SourceOptions: TRawByteSource);
 begin
-  AsString(Source, StrLen(Source), CP, SourceOptions + [soNullTerminated]);
+  Assign(Source, StrLen(Source), SourceOptions + [soNullTerminated]);
+  FCodePage := CP;
 end;
 
 procedure TLegacyString.AsString(Source: PLegacyChar; Length: Integer; CP: PCodePage;
   SourceOptions: TRawByteSource);
 begin
-  if ((FCodePage = nil) and (soDetectUTF8 in FOptions)) or
-    ((FCodePage <> nil) and (CP <> nil) and (FCodePage.FNumber = CP.FNumber))
-  then
-    Assign(Source, Length, SourceOptions)
-  else
-    // TODO: convert
+  Assign(Source, Length, SourceOptions);
+  FCodePage := CP;
 end;
 
-function TLegacyString.AsWideString(Index: Integer; Source: PWideString;
-  DestOptions: TEncodeRawBytes): TConvertInfo;
-
-function NextChar(var Index: Integer): Word;
+function TLegacyString.AssignString(Index: Integer; Source: PLegacyString;
+  DestOptions: TEncodeUTF16): TConvertResult;
 begin
-  Result := Word(Source.FData[Index]);
-  if soBigEndian in Source.FOptions then
-    Result := Swap(Result);
-  Inc(Index);
+{$IFDEF Debug}
+  CheckIndex(@Self, Index);
+{$ENDIF}
+  FillChar(Result, SizeOf(Result), 0);
+  // TODO
 end;
 
+function TLegacyString.AssignWideString(Index: Integer; Source: PWideString;
+  DestOptions: TEncodeRawBytes): TConvertResult;
 var
   CodePoint: QuadChar;
   Paired, W: Word;
@@ -967,7 +997,10 @@ begin
 
   while (Dest < Limit) and (Result.SourceCount < Source.Count) do
   begin
-    CodePoint := NextChar(Result.SourceCount);
+    CodePoint := Word(Source.FData[Result.SourceCount]);
+    if soBigEndian in Source.FOptions then
+      CodePoint := Swap(CodePoint);
+    Inc(Result.SourceCount);
 
     case Word(CodePoint) of
       $00..$7F:
@@ -988,7 +1021,10 @@ begin
 
       Low(THighSurrogates)..High(THighSurrogates):
         begin
-          Paired := NextChar(Result.SourceCount);
+          Paired := Word(Source.FData[Result.SourceCount]);
+          if soBigEndian in Source.FOptions then
+            Paired := Swap(Paired);
+          Inc(Result.SourceCount);
 
           case Paired of
             Low(TLowSurrogates)..High(TLowSurrogates):
@@ -1116,14 +1152,14 @@ procedure TLegacyString.AsWideString(Source: PWideString; DestOptions: TEncodeRa
 begin
   Clear;
   Capacity := Source.Count * MaxCharBytes(DestOptions) + 1;
-  with AsWideString(0, Source, DestOptions) do
+  with AssignWideString(0, Source, DestOptions) do
     if ErrorInfo.RawData = 0 then
     begin
       Append(DestCount);
       FData[DestCount] := #0;
     end
     else
-      // TODO: raise
+      raise EUnicode.Create(@Source, DestOptions, ErrorInfo);
 end;
 
 function TLegacyString.GetString: PLegacyChar;
@@ -1239,7 +1275,7 @@ begin
                 W.Capacity := Capacity;
                 W.Append(CP.EncodeUTF16(@Self, @W, 0, []));
                 if W.Count = 0 then
-                  RaiseLastCodePageError(@Self, @CP, cpEncodeUTF16);
+                  RaiseLastCodePageError(@Self, @CP, cmEncodeUTF16);
                 AsWideString(@W, TranslateOptions(FOptions));
               finally
                 W.Destroy;
@@ -1271,7 +1307,7 @@ begin
                   W.Capacity := Length;
                   W.Append(CP.EncodeUTF16(@Self, @W, 0, []));
                   if W.Count = 0 then
-                    RaiseLastCodePageError(@Self, @CP, cpEncodeUTF16);
+                    RaiseLastCodePageError(@Self, @CP, cmEncodeUTF16);
                   AsWideString(@W, TranslateOptions(FOptions));
                 finally
                   W.Destroy;
@@ -1284,7 +1320,8 @@ begin
           Exit;
         end;
     else
-      raise EUTF32.Create(@Self);
+      if BOM <> bomNone then
+        raise EUTF32.Create(@Self);
     end;
   end;
 
@@ -1346,39 +1383,219 @@ begin
   inherited Create(sWideString, SizeOf(WideChar));
 end;
 
-function TWideString.AsString(Index: Integer; Source: PLegacyString;
-  DestOptions: TEncodeUTF16): Integer;
+function TWideString.AssignString(Index: Integer; Source: PLegacyString;
+  DestOptions: TEncodeUTF16): TConvertResult;
+
+function NextChar(var ConvertResult: TConvertResult): QuadChar;
+var
+  FirstByte, Bytes, B, C: Byte;
+begin
+  FirstByte := Byte(Source.FData[ConvertResult.SourceCount]);
+  Inc(ConvertResult.SourceCount);
+
+  if FirstByte and $80 <> 0 then
+  begin
+    if FirstByte and $40 <> 0 then
+    begin
+      if FirstByte and $20 = 0 then
+      begin
+        Result := FirstByte and $1F;
+        Bytes := 1;
+      end
+      else if FirstByte and $10 = 0 then
+      begin
+        Result := FirstByte and $0F;
+        Bytes := 2;
+      end
+      else if FirstByte and $08 = 0 then
+      begin
+        Result := FirstByte and $07;
+        Bytes := 3;
+      end
+      else
+      begin
+        ConvertResult.ErrorInfo.InvalidUTF8.StartingByte := FirstByte;
+        Result := 0;
+        Exit;
+      end;
+
+      B := Bytes;
+      while (B <> 0) and (ConvertResult.SourceCount < Source.Count) do
+      begin
+        C := Byte(Source.FData[ConvertResult.SourceCount]);
+        if C and $C0 = $80 then
+        begin
+          Result := (Result shl 6) or (C and $3F);
+          Inc(ConvertResult.SourceCount);
+          Dec(B);
+        end
+        else
+          Break; // broken sequence
+      end;
+
+      if B = 0 then
+      begin
+        Inc(ConvertResult.SuccessBytes, Bytes + 1);
+        Exit;
+      end;
+      ConvertResult.ErrorInfo.InvalidUTF8.RawData := FirstByte or (Bytes + 1) shl 8;
+    end;
+    ConvertResult.ErrorInfo.InvalidUTF8.StartingByte := FirstByte;
+    Result := 0;
+  end
+  else
+    Result := FirstByte;
+end;
+
+var
+  Dest, Limit: PWideChar;
+  CodePoint, Paired: QuadChar;
+  W: Word;
+  C: LegacyChar;
 begin
 {$IFDEF Debug}
   CheckIndex(@Self, Index);
 {$ENDIF}
-  if Source <> nil then
+  FillChar(Result, SizeOf(Result), 0);
+
+  if soDetectUTF8 in Source.FOptions then
   begin
+    Dest := FData + Index;
+    Limit := FData + Count;
+    
+    while (Result.SourceCount < Source.Count) and (Dest < Limit) do
+    begin
+      CodePoint := NextChar(Result);
+      if Result.ErrorInfo.InvalidUTF8.RawData <> 0 then
+        Break;
 
+      case CodePoint of
+        Low(THighSurrogates)..High(THighSurrogates):
+          if coSurrogatePairs in DestOptions then
+          begin
+            Paired := NextChar(Result);
+            if Result.ErrorInfo.InvalidUTF8.RawData <> 0 then
+              Break;
 
+            case Paired of
+              Low(TLowSurrogates)..High(TLowSurrogates): // CESU-8
+                begin
+                  if coBigEndian in DestOptions then // Fast core
+                    PLongWord(Dest)^ := Swap(CodePoint) or (Swap(Paired) shl 16)
+                  else
+                    PLongWord(Dest)^ := Word(CodePoint) or (Word(Paired) shl 16);
+                  Inc(Dest, 2);
+                  Inc(Result.SurrogatePairs);
+                  Continue;
+                end;
+            end;
+          end;
+
+        Low(TLowSurrogates)..High(TLowSurrogates), $FFFE, // UTF-16 Big-Endian BOM
+        Low(TNonUnicode)..High(TNonUnicode):
+          ;
+
+        Low(TUnicodeSMP)..High(TUnicodePUA):
+          if coSurrogatePairs in DestOptions then
+          begin
+            W := CodePoint - Low(TUnicodeSMP);
+            if coBigEndian in DestOptions then // Fast core
+              PLongWord(Dest)^ :=
+                Word(Swap(Low(THighSurrogates) + W shr 10)) or
+                Word(Swap((Low(TLowSurrogates) + W and $3FF) shl 16))
+            else
+              PLongWord(Dest)^ :=
+                Word(Low(THighSurrogates) + W shr 10) or
+                Word((Low(TLowSurrogates) + W and $3FF) shl 16);
+            Inc(Dest, 2);
+            Inc(Result.SurrogatePairs);
+            Continue;
+          end;
+      else
+        if coBigEndian in DestOptions then
+          Dest^ := WideChar(Swap(CodePoint))
+        else
+          Dest^ := WideChar(CodePoint);
+        Inc(Dest);
+        Continue;
+      end;
+
+      if coReplaceInvalid in DestOptions then
+      begin
+        if coBigEndian in DestOptions then
+          Dest^ := WideChar(Swap($FFFD))
+        else
+          Dest^ := WideChar($FFFD);
+        Inc(Dest);
+      end
+      else
+        Break;
+    end;
+    Result.DestCount := Dest - (FData + Index);
+  end;
+
+  if Result.ErrorInfo.RawData <> 0 then
+  begin
+    FillChar(Result, SizeOf(Result), 0);
     if Source.FCodePage <> nil then
     begin
-      if Source.Count <> 0 then
+      Result.DestCount := Source.FCodePage.EncodeUTF16(@Source, @Self, Index, DestOptions);
+      if Result.DestCount = 0 then
+        RaiseLastCodePageError(@Source, @Source.FCodePage, cmEncodeUTF16);
+      Result.SourceCount := Source.Count;
+    end
+    else if coLatin1 in DestOptions then
+    begin
+      Dest := FData + Index;
+      Limit := FData + Count;
+      while (Result.SourceCount < Source.Count) and (Dest < Limit) do
       begin
-        Result := Source.FCodePage.EncodeUTF16(Source, @Self, Index, DestOptions);
-        //if (Result = 0) and not (coReplaceInvalid in DestOptions) then
-          // TODO: raise
-        Exit;
+        C := Source.FData[Result.SourceCount];
+        Inc(Result.SourceCount);
+        if C in [#$00..#$7F, #$A0..#$FF] then
+        begin
+          PWord(Dest)^ := Byte(C) shl (Byte(coBigEndian in DestOptions) * 8); // Fast core
+          if C in [#$A0..#$FF] then
+            Dec(Result.SuccessBytes); // negative for Latin1
+        end
+        else if coReplaceInvalid in DestOptions then
+          PWord(Dest)^ := Byte(LegacyReplacementChar) shl (Byte(coBigEndian in DestOptions) * 8) // Fast core
+        else
+        begin
+          Result.ErrorInfo.InvalidChar := Byte(C);
+          Break;
+        end;
+        Inc(Dest);
       end;
+      Result.DestCount := Dest - (FData + Index);
     end;
   end;
-  Result := 0; // TODO: temp
+end;
+
+function TWideString.AssignWideString(Index: Integer; Source: PWideString;
+  DestOptions: TEncodeRawBytes): TConvertResult;
+begin
+{$IFDEF Debug}
+  CheckIndex(@Self, Index);
+{$ENDIF}
+  FillChar(Result, SizeOf(Result), 0);
+  // TODO
 end;
 
 procedure TWideString.AsString(Source: PLegacyString; DestOptions: TEncodeUTF16);
-var
-  Length: Integer;
 begin
   Clear;
-  Capacity := Source.Count + 1;
-  Length := AsString(0, Source, DestOptions);
-  Append(Length);
-  FData[Length] := #0;
+  if Source <> nil then
+  begin
+    Capacity := Source.Count + 1;
+    with AssignString(0, Source, DestOptions) do
+    begin
+      if ErrorInfo.RawData <> 0 then
+  //      raise EUnicode.Create(Source, TranslateOptions
+      Append(DestCount);
+      FData[DestCount] := #0;
+    end;
+  end;
 end;
 
 procedure TWideString.AsWideString(Source: PWideChar; SourceOptions: TEndianSource);
@@ -1443,8 +1660,64 @@ begin
 end;
 
 procedure TWideString.Load(Source: PReadableStream; ByteOrder: TByteOrder);
+var
+  BOM: TReadableBOM;
+  S: TLegacyString;
+  Length: Integer;
+  CP: TCodePage;
+  CPNum: Word;
 begin
+  Clear;
+  CPNum := 0;
+  if ByteOrder = boFromBOM then
+  begin
+    BOM := Source.ReadBOM;
+    case BOM of
+      bomUTF16LE, bomUTF16BE:
+        ;
+      bomUTF7, bomUTF8:
+        CPNum := CP_UTF7 + Byte(BOM) - Byte(bomUTF7);
+      bomGB18030:
+        CPNum := CP_GB18030;
+    else
+      if BOM <> bomNone then
+        raise EUTF32.Create(@Self);
+    end;
+  end
+  else
+    BOM := bomNone;
 
+  if CPNum <> 0 then
+  begin
+    if CPNum = CP_UTF8 then
+      CPNum := CP_ACP;
+    CP.Create(CPNum);
+    try
+      S.Create(@CP);
+      try
+        S.Load(@Source, False);
+        AsString(@S);
+      finally
+        S.Destroy;
+      end;
+    finally
+      CP.Destroy;
+    end;
+  end
+  else
+  begin
+    Length := (Source.Size - Source.Position) div SizeOf(WideChar);
+    if Length <> 0 then
+    begin
+      Capacity := Length + 1;
+      Source.ReadBuffer(FData^, Length * SizeOf(WideChar));
+      FOptions := [];
+      if (ByteOrder >= boBigEndian) or (BOM = bomUTF16BE) then
+        Include(FOptions, soBigEndian);
+      Append(Length);
+      FData[Length] := #0;
+    end;
+  end;
 end;
 
 procedure TWideString.Save(Dest: PWritableStream; WriteBOM: Boolean);
@@ -1476,6 +1749,20 @@ procedure TWideString.SetString(Value: PWideChar);
 begin
   Assign(Value, WideStrLen(Value), []); // Fast core
 end;
+
+{ TCoreString }
+
+{$IFDEF CoreVCL}
+function TCoreString.GetUnicodeString: UnicodeString;
+begin
+  System.SetString(Result, FData, Count);
+end;
+
+procedure TCoreString.SetUnicodeString(Value: UnicodeString);
+begin
+  Assign(Pointer(Value), Length(Value), []);
+end;
+{$ENDIF}
 
 end.
 
