@@ -6,8 +6,9 @@
     Copyright (c) 2007-2015 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
-      * Debug -- allow ShortString, AnsiString and WideString at EstimateArgs,
-                 catch exceptions at FriendlyClassName
+      * CoreVCL -- the same as Debug, but also partial use of SysUtils
+      * Debug -- allow ShortString, AnsiString, WideString and UnicodeString
+                 at EstimateArgs
 *)
 
 unit CoreUtils;
@@ -484,14 +485,15 @@ begin
         Inc(Result);
       vtExtended, vtCurrency:
         Inc(Result, DecimalExtended);
-    {$IFDEF Debug}
+    {$IF defined(Debug) or defined(CoreVCL)}
       vtString:
         Inc(Result, PByte(TVarRec(Args[I]).VString)^);
+      {$IFDEF UnicodeRTL} vtUnicodeString, {$ENDIF}
       vtAnsiString:
         Inc(Result, PInteger(PAddress(TVarRec(Args[I]).VAnsiString) - SizeOf(Integer))^);
       vtWideString:
         Inc(Result, PLongInt(PAddress(TVarRec(Args[I]).VWideString) - SizeOf(LongInt))^ div SizeOf(WideChar));
-    {$ENDIF}
+    {$IFEND}
     end;
 end;
 
