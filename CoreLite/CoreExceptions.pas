@@ -6,10 +6,11 @@
     Copyright (c) 2008-2015 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
+      * CoreVCL -- to use in VCL-based projects
       * Debug -- IDE friendly and SysUtils compatible exceptions and
           abstract method call diagnostic exceptions 
       * ForceMMX -- EMMX exception
-      * Interfaces -- interface support
+      * Interfaces -- interface and safecall exceptions
 *)
 
 unit CoreExceptions;
@@ -21,6 +22,9 @@ interface
 uses
 {$IFDEF Tricks}
   SysSfIni,
+{$ENDIF}
+{$IFDEF CoreVCL}
+  SysUtils,
 {$ENDIF}
   CoreUtils;
 
@@ -39,11 +43,11 @@ type
       3: (Handle: THandle);
   end;
 
-  Exception = class
+  Exception = class {$IFDEF CoreVCL} (SysUtils.Exception) {$ENDIF}
   private
-  {$IFDEF Debug}
+  {$IF defined(Debug) and not defined(CoreVCL)}
     FDelphiMsg: string;
-  {$ENDIF}
+  {$IFEND}
     FMessage: TExceptionMessage;
     FOptions: TExceptionOptions;
   public
@@ -54,14 +58,14 @@ type
     destructor Destroy; override;
     procedure FreeInstance; override;
 
-  {$IFDEF Debug}
+  {$IF defined(Debug) and not defined(CoreVCL)}
     property DelphiMsg: string read FDelphiMsg;
-  {$ENDIF}
+  {$IFEND}
     property Message: TExceptionMessage read FMessage;
     property Options: TExceptionOptions read FOptions;
   end;
 
-{$IFDEF Debug}
+{$IF defined(Debug) or defined(CoreVCL)}
   EAbstract = class(Exception)
   private
     procedure MethodCall(ClassType: TClass);
@@ -82,7 +86,7 @@ type
     constructor Create(Callee: TClass);
     property Callee: TClass read FCallee;
   end;
-{$ENDIF}
+{$IFEND}
 
   EAbort = class(Exception);
   EInvalidCast = class(Exception);
@@ -255,7 +259,7 @@ begin
 {$IFDEF Tricks}
     Exit; // should never appear, just suppress a warning
 {$ELSE}
-    E := EInOutError.Create(IOResult, {$IFDEF Debug} sDelphiRuntimeIO, 0 {$ENDIF} );
+    E := EInOutError.Create(IOResult {$IFDEF Debug}, sDelphiRuntimeIO, 0 {$ENDIF} );
 {$ENDIF}
   end;
   raise E at ErrorAddr;
@@ -593,7 +597,7 @@ begin
   if (E is Exception) and (eoWideChar in Exception(E).FOptions) or UnicodeRTL then
     ExceptionMessage(Exception(E).FMessage.AsWideString)
   else
-    ErrorMessage(Exception(E).FMessage.AsString, StrLen(Exception(E).FMessage.AsString));
+    ErrorMessage(Exception(E).FMessage.AsString, CoreUtils.StrLen(Exception(E).FMessage.AsString));
 end;
 
 procedure UseExceptionMessageBox;
@@ -621,27 +625,41 @@ end;
 { Exception }
 
 constructor Exception.Create(Msg: PLegacyChar);
+{$IFDEF CoreVCL}
+var
+  FDelphiMsg: string;
+{$ENDIF}
 begin
   FMessage.AsString := Msg;
   FOptions := [eoCanFree];
-{$IFDEF Debug}
-  SetString(FDelphiMsg, Msg, StrLen(Msg));
-{$ENDIF}
+{$IF defined(Debug) or defined(CoreVCL)}
+  SetString(FDelphiMsg, Msg, CoreUtils.StrLen(Msg));
+  {$IFDEF CoreVCL} inherited Message := FDelphiMsg; {$ENDIF}
+{$IFEND}
 end;
 
 constructor Exception.Create(Msg: PLegacyChar; const Args: array of const);
+{$IFDEF CoreVCL}
+var
+  FDelphiMsg: string;
+{$ENDIF}
 begin
   with Format(Msg, 0, Args) do
   begin
     FMessage.AsString := Value;
-  {$IFDEF Debug}
+  {$IF defined(Debug) or defined(CoreVCL)}
     SetString(FDelphiMsg, Value, Length);
-  {$ENDIF}
+    {$IFDEF CoreVCL} inherited Message := FDelphiMsg; {$ENDIF}
+  {$IFEND}
   end;
   FOptions := [eoFreeMessage, eoCanFree];
 end;
 
 constructor Exception.Create(Msg: PWideChar; Count: Integer);
+{$IFDEF CoreVCL}
+var
+  FDelphiMsg: string;
+{$ENDIF}
 begin
   if Msg <> nil then
   begin
@@ -649,21 +667,27 @@ begin
     Move(Msg^, FMessage.AsWideString^, Count * SizeOf(WideChar));
     FMessage.AsWideString[Count] := #0;
     FOptions := [eoWideChar, eoFreeMessage];
-  {$IFDEF Debug}
+  {$IF defined(Debug) or defined(CoreVCL)}
     FDelphiMsg := DelphiString(Msg, Count);
-  {$ENDIF}
+    {$IFDEF CoreVCL} inherited Message := FDelphiMsg; {$ENDIF}
+  {$IFEND}
   end;
   Include(FOptions, eoCanFree);
 end;
 
 constructor Exception.Create(Msg: PLegacyChar; CodePage: Word; const Args: array of const);
+{$IFDEF CoreVCL}
+var
+  FDelphiMsg: string;
+{$ENDIF}
 begin
   with Format(Msg, CodePage, 0, Args) do
   begin
     FMessage.AsWideString := Value;
-  {$IFDEF Debug}
+  {$IF defined(Debug) or defined(CoreVCL)}
     FDelphiMsg := DelphiString(Value, Length);
-  {$ENDIF}
+    {$IFDEF CoreVCL} inherited Message := FDelphiMsg; {$ENDIF}
+  {$IFEND}
   end;
   FOptions := [eoWideChar, eoFreeMessage, eoCanFree];
 end;
@@ -672,6 +696,9 @@ destructor Exception.Destroy;
 begin
   if eoFreeMessage in FOptions then
     FreeMem(FMessage.AsString);
+{$IFDEF CoreVCL}
+  inherited;
+{$ENDIF}
 end;
 
 procedure Exception.FreeInstance;
@@ -680,7 +707,9 @@ begin
     inherited FreeInstance;
 end;
 
-{$IFDEF Debug}
+{ EAbstract }
+
+{$IF defined(Debug) or defined(CoreVCL)}
 procedure EAbstract.MethodCall(ClassType: TClass);
 begin
   if {dirty hack!} Pointer(Self) = ClassType then
@@ -705,12 +734,15 @@ begin
   inherited Create(sAbstractClass, [ClassName]);
   FCallee := Callee;
 end;
-{$ENDIF}
+{$IFEND}
 
 { EPlatform }
 
 constructor EPlatform.Create(ErrorCode: LongWord; ErrorSource: PCoreChar);
 var
+{$IFDEF CoreVCL}
+  FDelphiMsg: string;
+{$ENDIF}
   Msg: TCoreStringRec;
 begin
   Msg := SysErrorMessage(ErrorCode);
@@ -723,9 +755,10 @@ begin
   begin
     FMessage.AsWideString := Msg.Value;
     FOptions := [eoWideChar, eoCanFree];
-  {$IFDEF Debug}
+  {$IF defined(Debug) or defined(CoreVCL)}
     FDelphiMsg := DelphiString(Msg.Value, Msg.Length);
-  {$ENDIF}
+    {$IFDEF CoreVCL} inherited Create(FDelphiMsg); {$ENDIF}
+  {$IFEND}
   end;
   FErrorCode := ErrorCode;
   FErrorSource.Source := ErrorSource;
@@ -735,6 +768,9 @@ constructor EPlatform.Create(ErrorCode: LongWord; TextParam: PLegacyChar; IntPar
 const
   FmtLen = Length(sPlatformError2);
 var
+{$IFDEF CoreVCL}
+  FDelphiMsg: string;
+{$ENDIF}
   Fmt: array[0..FmtLen] of LegacyChar;
   Msg: TCoreStringRec;
   P: PLegacyChar;
@@ -756,9 +792,10 @@ begin
   begin
     FMessage.AsWideString := Msg.Value;
     FOptions := [eoWideChar, eoCanFree];
-  {$IFDEF Debug}
+  {$IF defined(Debug) or defined(CoreVCL)}
     FDelphiMsg := DelphiString(Msg.Value, Msg.Length);
-  {$ENDIF}
+    {$IFDEF CoreVCL} inherited Create(FDelphiMsg); {$ENDIF}
+  {$IFEND}
   end;
   FErrorCode := ErrorCode;
   FErrorSource.TextParam := TextParam;
@@ -782,10 +819,24 @@ begin
 end;
 {$ENDIF}
 
+{$IFDEF CoreVCL}
+var
+  SaveAbstractErrorProc: procedure;
+{$ENDIF}
+
 initialization
+{$IFDEF CoreVCL}
+  @SaveAbstractErrorProc := @AbstractErrorProc;
+  @AbstractErrorProc := @EAbstract.MethodCall;
+{$ELSE}
   InitExceptions;
+{$ENDIF}
 
 finalization
+{$IFDEF CoreVCL}
+  @AbstractErrorProc := @AbstractErrorProc;
+{$ELSE}
   DoneExceptions;
+{$ENDIF}
 
 end.

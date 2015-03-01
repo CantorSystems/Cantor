@@ -180,25 +180,31 @@ const
 
 function EstimateArgs(const Args: array of const): Integer;
 
+{$IFNDEF CoreVCL}
 function StrAlloc(Length: Integer): PLegacyChar;
 function WideStrAlloc(Length: Integer): PWideChar;
+{$ENDIF}
 function QuadStrAlloc(Length: Integer): PQuadChar;
 
+{$IFNDEF CoreVCL}
 procedure StrCopy(Dest, Source: PLegacyChar); overload;
+{$ENDIF}
 procedure StrCopy(Dest, Source: PLegacyChar; Length: Integer); overload;
 procedure WideStrCopy(Dest, Source: PWideChar); overload;
 procedure WideStrCopy(Dest, Source: PWideChar; Length: Integer); overload;
 procedure QuadStrCopy(Dest, Source: PQuadChar); overload;
 procedure QuadStrCopy(Dest, Source: PQuadChar; Length: Integer); overload;
 
-function StrLen(Str: PLegacyChar): Integer; overload;
+function StrLen(Str: PLegacyChar): Integer; overload; {$IFDEF UnicodeRTL} inline; {$ENDIF}
 function StrLen(Str: PLegacyChar; MaxLength: Integer): Integer; overload;
 function WideStrLen(Str: PWideChar): Integer; overload;
 function WideStrLen(Str: PWideChar; MaxLength: Integer): Integer; overload;
 function QuadStrLen(Str: PQuadChar): Integer; overload;
 function QuadStrLen(Str: PQuadChar; MaxLength: Integer): Integer; overload;
 
+{$IFNDEF CoreVCL}
 function StrNew(Str: PLegacyChar): PLegacyChar; overload;
+{$ENDIF}
 function StrNew(Str: PLegacyChar; Length: Integer): PLegacyChar; overload;
 function WideStrNew(Str: PWideChar): PWideChar; overload;
 function WideStrNew(Str: PWideChar; Length: Integer): PWideChar; overload;
@@ -218,8 +224,8 @@ function QuadStrRScan(Where: PQuadChar; Count: Integer; What: QuadChar): PQuadCh
 function StrRPos(Where: PLegacyChar; WhereCount: Integer; What: PLegacyChar;
   WhatCount: Integer): PLegacyChar;}
 
-procedure SwapQuadCharBytes(Source: PQuadChar; Dest: PQuadChar; Count: Integer);
 procedure SwapWideCharBytes(Source: PWideChar; Dest: PWideChar; Count: Integer);
+procedure SwapQuadCharBytes(Source: PQuadChar; Dest: PQuadChar; Count: Integer);
 
 function StrComp(Str1: PLegacyChar; Count1: Integer; Str2: PLegacyChar; Count2: Integer;
   IgnoreFlags: LongWord = NORM_IGNORECASE; Locale: LongWord = LOCALE_USER_DEFAULT): Integer;
@@ -289,6 +295,9 @@ function FriendlyClassName(var Dest: TClassName; Source: TObject): Byte; overloa
 implementation
 
 uses
+{$IFDEF CoreVCL}
+  SysUtils,
+{$ENDIF}
   CoreConsts;
 
 { Memory service }
@@ -466,7 +475,7 @@ begin
       vtInt64:
         Inc(Result, DecimalQuadInt);
       vtPChar:
-        Inc(Result, StrLen(TVarRec(Args[I]).VPChar));
+        Inc(Result, CoreUtils.StrLen(TVarRec(Args[I]).VPChar));
       vtPWideChar:
         Inc(Result, WideStrLen(TVarRec(Args[I]).VPWideChar));
       vtPointer:
@@ -486,6 +495,7 @@ begin
     end;
 end;
 
+{$IFNDEF CoreVCL}
 function StrAlloc(Length: Integer): PLegacyChar;
 begin
   if Length <> 0 then
@@ -507,6 +517,7 @@ begin
   else
     Result := nil;
 end;
+{$ENDIF}
 
 function QuadStrAlloc(Length: Integer): PQuadChar;
 begin
@@ -519,12 +530,14 @@ begin
     Result := nil;
 end;
 
+{$IFNDEF CoreVCL}
 procedure StrCopy(Dest, Source: PLegacyChar);
 {$IFDEF CTRL_SHIFT_UP_CTRL_SHIFT_DOWN}
 asm
 end;
 {$ENDIF}
 {$I FastCode\StrCopy.inc}
+{$ENDIF}
 
 procedure StrCopy(Dest, Source: PLegacyChar; Length: Integer);
 begin
@@ -555,13 +568,15 @@ begin
 end;
 
 function StrLen(Str: PLegacyChar): Integer;
-{$IFDEF CTRL_SHIFT_UP_CTRL_SHIFT_DOWN}
-asm
+{$IFDEF CoreVCL}
+begin
+  Result := SysUtils.StrLen(Str);
 end;
-{$ENDIF}
+{$ELSE}
 {$I FastCode\StrLen.inc}
+{$ENDIF}
 
-function StrLen(Str: PLegacyChar; MaxLength: Integer): Integer;
+function StrLen(Str: PLegacyChar; MaxLength: Integer): Integer; 
 asm
         TEST EAX, EAX
         JZ @@exit
@@ -659,6 +674,7 @@ asm
 @@exit:
 end;
 
+{$IFNDEF CoreVCL}
 function StrNew(Str: PLegacyChar): PLegacyChar;
 var
   L: Integer;
@@ -672,6 +688,7 @@ begin
   else
     Result := nil;
 end;
+{$ENDIF}
 
 function StrNew(Str: PLegacyChar; Length: Integer): PLegacyChar;
 begin
@@ -1008,25 +1025,6 @@ asm
 @@end:
 end;}
 
-procedure SwapQuadCharBytes(Source: PQuadChar; Dest: PQuadChar; Count: Integer);
-asm
-        TEST ECX, ECX
-        JZ @@exit
-
-        PUSH EBX
-
-@@repeat:
-        MOV EBX, [EAX]
-        BSWAP EBX
-        MOV [EDX], EBX
-        ADD EAX, SizeOf(QuadChar)
-        ADD EDX, SizeOf(QuadChar)
-        LOOP @@repeat
-
-        POP EBX
-@@exit:
-end;
-
 procedure SwapWideCharBytes(Source: PWideChar; Dest: PWideChar; Count: Integer);
 asm
         TEST ECX, ECX
@@ -1058,6 +1056,25 @@ asm
 @@exit:
 end;
 
+procedure SwapQuadCharBytes(Source: PQuadChar; Dest: PQuadChar; Count: Integer);
+asm
+        TEST ECX, ECX
+        JZ @@exit
+
+        PUSH EBX
+
+@@repeat:
+        MOV EBX, [EAX]
+        BSWAP EBX
+        MOV [EDX], EBX
+        ADD EAX, SizeOf(QuadChar)
+        ADD EDX, SizeOf(QuadChar)
+        LOOP @@repeat
+
+        POP EBX
+@@exit:
+end;
+
 function StrComp(Str1: PLegacyChar; Count1: Integer; Str2: PLegacyChar; Count2: Integer;
   IgnoreFlags: LongWord = NORM_IGNORECASE; Locale: LongWord = LOCALE_USER_DEFAULT): Integer;
 begin
@@ -1084,7 +1101,7 @@ begin
     if CommandLine^ = '"' then
     begin
       Inc(CommandLine);
-      L := StrLen(CommandLine);
+      L := CoreUtils.StrLen(CommandLine);
       P := StrScan(CommandLine, L, '"'); // TODO: MBCS
       if P <> nil then
         L := P - CommandLine;
@@ -1308,7 +1325,7 @@ end;
 function EncodeUTF16(Source: PLegacyChar; CodePage: Word;
   ReplaceInvalidChars: Boolean): TWideStringRec;
 begin
-  Result := EncodeUTF16(Source, StrLen(Source), CodePage);
+  Result := EncodeUTF16(Source, CoreUtils.StrLen(Source), CodePage);
 end;
 
 function EncodeUTF16(Source: PLegacyChar; Count: Integer; CodePage: Word;
@@ -1329,7 +1346,7 @@ function Format(Fmt: PLegacyChar; FixedWidth: Integer;
 begin
   with Result do
   begin
-    GetMem(Value, StrLen(Fmt) + FixedWidth + EstimateArgs(Args) + 1);
+    GetMem(Value, CoreUtils.StrLen(Fmt) + FixedWidth + EstimateArgs(Args) + 1);
     Length := FormatBuf(Fmt, Args, Value);
   end;
 end;
@@ -1372,7 +1389,7 @@ begin
     end;
   except
     P := sInlineObject;
-    Result := StrLen(P);
+    Result := CoreUtils.StrLen(P);
   end;
   Move(P^, Dest, Result);
   Dest[Result] := #0;
