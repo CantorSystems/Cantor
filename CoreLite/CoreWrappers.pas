@@ -7,8 +7,7 @@
 
     Conditional defines:
       * Debug -- force ANSI code page for TStreamConsole
-      * Lite -- allow lite TStream implementation -- without virtual methods,
-                but only THandleStream descendant
+      * Lite -- THandleStream and TFileMapping without virtual methods
 *)
 
 unit CoreWrappers;
@@ -120,7 +119,7 @@ type
   TMapViewAccess = maRead..maCopy{maExecute};
 
   PFileMapping = ^TFileMapping;
-  TFileMapping = object
+  TFileMapping = object {$IFNDEF Lite} (TCoreObject) {$ENDIF}
   private
     FHandle: THandle;
     function AssignHandle(Value: THandle): Boolean;
@@ -130,7 +129,7 @@ type
     constructor Create(MappingName: PCoreChar; Options: TOpenFileMapping;
       InheritHandle: Boolean = True); overload;
 
-    destructor Destroy;
+    destructor Destroy; {$IFNDEF Lite} virtual; {$ENDIF}
 
     function Open(hFile: THandle; Options: TCreateFileMapping;
       Size: QuadWord = 0; MappingName: PCoreChar = nil): Boolean; overload;
@@ -151,28 +150,11 @@ type
   public
     constructor Create(FileName: PCoreChar; Options: TCreateFileMapping;
       Size: QuadWord = 0; MappingName: PCoreChar = nil); overload;
-    destructor Destroy; virtual;
+    destructor Destroy; {$IFNDEF Lite} virtual; {$ENDIF}
     function Open(FileName: PCoreChar; Options: TCreateFileMapping;
       Size: QuadWord = 0; MappingName: PCoreChar = nil): Boolean; overload;
 
     property Stream: TFileStream read FStream;
-  end;
-
-  TReadableStreamEvent = procedure(Stream: PReadableStream) of object;
-  TWritableStreamEvent = procedure(Stream: PWritableStream) of object;
-
-  PLoadHelper = ^TLoadHelper;
-  TLoadHelper = object
-    BeforeLoad, AfterLoad: TReadableStreamEvent;
-    procedure Load(HostLoad: TReadableStreamEvent; FileName: PCoreChar;
-      Access: TFileAccess = faSequentialRead);
-  end;
-
-  PSaveHelper = ^TSaveHelper;
-  TSaveHelper = object
-    BeforeSave, AfterSave: TWritableStreamEvent;
-    procedure Save(HostSave: TWritableStreamEvent; FileName: PCoreChar; FileSize: QuadWord;
-      Access: TFileAccess = faSequentialRewrite; Attributes: TFileAttributes = [faNormal]);
   end;
 
   PConsole = ^TConsole;
@@ -275,7 +257,7 @@ type
   TFormatVersionOptions = set of (fvProductVersion, fvSkipZeroRelease);
 
   PVersionInfo = ^TVersionInfo;
-  TVersionInfo = object(TObject)
+  TVersionInfo = object
   private
     FData: Pointer;
     FTranslations: PTranslationArray;
@@ -317,24 +299,76 @@ type
     property RequiredBytes: LongWord read FRequiredBytes;
   end;
 
-{ Absent in Windows.pas }
+{ Helper functions }
 
+type
+  TReadableStreamEvent = procedure(Stream: PReadableStream) of object;
+  TWritableStreamEvent = procedure(Stream: PWritableStream) of object;
+
+procedure LoadFile(Loader: TReadableStreamEvent; FileName: PCoreChar;
+  Access: TFileAccess = faSequentialRead; BeforeLoad: TReadableStreamEvent = nil;
+  AfterLoad: TReadableStreamEvent = nil);
+procedure SaveFile(Saver: TWritableStreamEvent; FileName: PCoreChar;
+  FileSize: QuadWord; Access: TFileAccess = faSequentialRewrite;
+  BeforeSave: TWritableStreamEvent = nil; AfterSave: TWritableStreamEvent = nil);
+
+{ Import Windows functions for Delphi 6/7 }
+
+{$IF not UnicodeRTL}
 function GetFileSizeEx(hFile: THandle; var lpFileSize: QuadWord): LongBool; stdcall;
 function SetFilePointerEx(hFile: THandle; liDistanceToMove: QuadWord;
   lpNewFilePointer: PQuadWord; dwMoveMethod: LongWord): LongBool; stdcall;
+{$IFEND}
 
 implementation
 
 uses
   CoreConsts;
 
-{ Absent in Windows.pas }
-
+{$IF not UnicodeRTL}
 function GetFileSizeEx(hFile: THandle; var lpFileSize: QuadWord): LongBool; stdcall;
   external kernel32 name 'GetFileSizeEx';
 function SetFilePointerEx(hFile: THandle; liDistanceToMove: QuadWord;
   lpNewFilePointer: PQuadWord; dwMoveMethod: LongWord): LongBool; stdcall;
   external kernel32 name 'SetFilePointerEx';
+{$IFEND}
+
+{ Helper functions }
+
+procedure LoadFile(Loader: TReadableStreamEvent; FileName: PCoreChar;
+  Access: TFileAccess; BeforeLoad, AfterLoad: TReadableStreamEvent);
+var
+  F: TFileStream;
+begin
+  F.Create(FileName, Access);
+  try
+    if Assigned(BeforeLoad) then
+      BeforeLoad(@F);
+    Loader(@F);
+    if Assigned(AfterLoad) then
+      AfterLoad(@F);
+  finally
+    F.Destroy;
+  end;
+end;
+
+procedure SaveFile(Saver: TWritableStreamEvent; FileName: PCoreChar; FileSize: QuadWord;
+  Access: TFileAccess; BeforeSave, AfterSave: TWritableStreamEvent);
+var
+  F: TFileStream;
+begin
+  F.Create(FileName, Access);
+  try
+    if Assigned(BeforeSave) then
+      BeforeSave(@F);
+    F.SetSize(FileSize);
+    Saver(@F);
+    if Assigned(AfterSave) then
+      AfterSave(@F);
+  finally
+    F.Destroy;
+  end;
+end;
 
 { EStream }
 
@@ -380,7 +414,7 @@ begin
     $BBEF:
       begin
         ReadBuffer(BOM, SizeOf(Byte));
-        if BOM and $FF = $BF then
+        if Byte(BOM) = $BF then
         begin
           Result := bomUTF8;
           Exit;
@@ -398,17 +432,25 @@ begin
     $2F2B:
       begin
         ReadBuffer(BOM, SizeOf(BOM));
-        if (BOM and $FF = $76) and ((BOM shr 8) in [$38, $39, $2B, $2F]) then
-        begin
-          if BOM = $38 then
-          begin
-            ReadBuffer(BOM, SizeOf(Byte));
-            if BOM and $FF <> $2D then
-              SetPosition(Pos + SizeOf(BOM) * 2);
+        if Byte(BOM) = $76 then
+          case BOM shr 8 of
+            $38:
+              begin
+                ReadBuffer(BOM, SizeOf(Byte));
+                if Byte(BOM) <> $2D then
+                  SetPosition(Pos + SizeOf(BOM) * 2)
+                else
+                begin
+                  Result := bomUTF7;
+                  Exit;
+                end;
+              end;
+            $39, $2B, $2F:
+              begin
+                Result := bomUTF7;
+                Exit;
+              end;
           end;
-          Result := bomUTF7;
-          Exit;  
-        end;
       end;
     $3184:
       begin
@@ -455,7 +497,7 @@ begin
       if Value = bomUTF32BE then
         BOM := BOM shl 16;
     end;     
-    WriteBuffer(BOM, Byte(Value) and not $01); // Fast core
+    WriteBuffer(BOM, (Byte(Value) - 1) div 2 * 2); // Fast core
   end;
 end;
 
@@ -473,7 +515,9 @@ end;
 constructor THandleStream.Create(FileName: PCoreChar; Access: TFileAccess;
   Attributes: TFileAttributes);
 begin
+{$IFDEF Lite}
   FHandle := 0;
+{$ENDIF}  
   if not Open(FileName, Access, Attributes) then
     RaiseLastPlatformError(FileName);
 end;
@@ -485,14 +529,12 @@ end;
 
 function THandleStream.GetPosition: QuadWord;
 begin
-  // SetFilePointerEx available since Windows 2000
   if not SetFilePointerEx(FHandle, 0, @Result, FILE_CURRENT) then
     Result := -1;
 end;
 
 function THandleStream.GetSize: QuadWord;
 begin
-  // GetFileSizeEx available since Windows 2000
   if not GetFileSizeEx(FHandle, Result) then
     Result := -1;
 end;
@@ -549,7 +591,6 @@ end;
 
 function THandleStream.Seek(Offset: QuadWord; Origin: TSeekOrigin): QuadWord;
 begin
-  // SetFilePointerEx available since Windows 2000
   if not SetFilePointerEx(FHandle, Offset, @Result, LongWord(Origin)) then
     Result := QuadWord(-1);
 end;
@@ -590,7 +631,9 @@ end;
 constructor TFileMapping.Create(hFile: THandle; Options: TCreateFileMapping;
   Size: QuadWord; MappingName: PCoreChar);
 begin
+{$IFDEF Lite}
   FHandle := 0;
+{$ENDIF}
   if not Open(hFile, Options, Size, MappingName) then
     RaiseLastPlatformError(MappingName);
 end;
@@ -689,9 +732,10 @@ constructor TFileStreamMapping.Create(FileName: PCoreChar; Options: TCreateFileM
 begin
 {$IFDEF Lite}
   FStream.FHandle := 0;
-{$ELSE}
+{$ELSE}  
   FStream.Create;
 {$ENDIF}
+  FHandle := 0;
   if not Open(FileName, Options, Size, MappingName) then
     RaiseLastPlatformError(FileName);
 end;
@@ -699,11 +743,7 @@ end;
 destructor TFileStreamMapping.Destroy;
 begin
   inherited;
-{$IFDEF Lite}
   FStream.Destroy;
-{$ELSE}
-  FStream.Finalize;
-{$ENDIF}
 end;
 
 function TFileStreamMapping.Open(FileName: PCoreChar; Options: TCreateFileMapping;
@@ -719,45 +759,6 @@ begin
   end
   else
     Result := False;
-end;
-
-{ TLoadHelper }
-
-procedure TLoadHelper.Load(HostLoad: TReadableStreamEvent; FileName: PCoreChar;
-  Access: TFileAccess);
-var
-  F: TFileStream;
-begin
-  F.Create(FileName, Access);
-  try
-    if Assigned(BeforeLoad) then
-      BeforeLoad(@F);
-    HostLoad(@F);
-    if Assigned(AfterLoad) then
-      AfterLoad(@F);
-  finally
-    F.Destroy;
-  end;
-end;
-
-{ TSaveHelper }
-
-procedure TSaveHelper.Save(HostSave: TWritableStreamEvent; FileName: PCoreChar;
-  FileSize: QuadWord; Access: TFileAccess; Attributes: TFileAttributes);
-var
-  F: TFileStream;
-begin
-  F.Create(FileName, Access, Attributes);
-  try
-    if Assigned(BeforeSave) then
-      BeforeSave(@F);
-    F.SetSize(FileSize);
-    HostSave(@F);
-    if Assigned(AfterSave) then
-      AfterSave(@F);
-  finally
-    F.Destroy;
-  end;
 end;
 
 { TConsole }
@@ -994,6 +995,8 @@ end;
 
 constructor TVersionInfo.Create(FileName: PCoreChar);
 begin
+  FData := nil;
+  FTranslations := nil;
   if not Open(FileName) then
     RaiseLastPlatformError(sVS_VERSION_INFO, 0);
 end;
