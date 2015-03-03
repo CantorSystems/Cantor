@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, ComCtrls, ExtCtrls, CoreWrappers;
+  Dialogs, StdCtrls, ComCtrls, ExtCtrls, CoreWrappers, CoreStrings;
 
 type
   TMainForm = class(TForm)
@@ -28,6 +28,7 @@ type
     procedure cbOEMClick(Sender: TObject);
   private
     FEncodingOEM: Boolean;
+    FACP, FOEMCP: TCodePage;
     procedure BytesRead(Source: PWritableStream);
     procedure BytesWritten(Dest: PWritableStream);
     function FileChosen(Button: TButton): Boolean;
@@ -38,9 +39,6 @@ var
 
 implementation
 
-uses
-  CoreUtils, CoreStrings;
-
 {$R *.dfm}
 
 procedure TMainForm.FormCreate(Sender: TObject);
@@ -48,8 +46,10 @@ begin
   Application.Title := Caption;
   Constraints.MinWidth := btLoad.Left + btUTF16LE.Left + btUTF16LE.Width;
   Constraints.MinHeight := Panel.Height * 2 + StatusBar.Height;
-  StatusBar.Panels[0].Text := SysUtils.Format('ACP = %d', [GetACP]);
-  StatusBar.Panels[1].Text := SysUtils.Format('OEMCP = %d', [GetOEMCP]);
+  StatusBar.Panels[0].Text := Format('ACP = %d', [GetACP]);
+  StatusBar.Panels[1].Text := Format('OEMCP = %d', [GetOEMCP]);
+  FACP.Create(CP_ACP);
+  FOEMCP.Create(CP_OEMCP);
 end;
 
 procedure TMainForm.BytesRead(Source: PWritableStream);
@@ -83,20 +83,20 @@ end;
 procedure TMainForm.LoadFile(Sender: TObject);
 var
   FileName: UnicodeString;
-  CP: TCodePage;
-  S: TLegacyString;
+  W: TWideString;
 begin
   if OpenDialog.Execute then
   begin
-    S.Create;
+    W.Create;
     try
-      CP.Create(Byte(cbOEM.Checked)); // 0 = CP_ACP, 1 = CP_OEMCP
-      S.CodePage := @CP;
       FileName := OpenDialog.FileName;
-      CoreWrappers.LoadFile(S.Load, Pointer(FileName), faSequentialRead, nil, BytesRead);
-      Memo.Text := S.AsRawByteString;
+      CoreWrappers.LoadFile(W.Load, Pointer(FileName), faSequentialRead, nil, BytesRead);
+      DefaultUnicodeCodePage := Byte(cbOEM.Checked);
+      if soBigEndian in W.Options then
+        W.SwapByteOrder;
+      Memo.Text := W.AsRawByteString;
     finally
-      S.Destroy;
+      W.Destroy;
     end;
   end;
 end;
@@ -104,16 +104,17 @@ end;
 procedure TMainForm.SaveLegacyChar(Sender: TObject);
 var
   FileName: UnicodeString;
-  CP: TCodePage;
+  FileCP: TCodePage;
   S: TLegacyString;
 begin
   if FileChosen(TButton(Sender)) then
   begin
     S.Create;
     try
+      S.CodePage := @FACP;
       S.AsRawByteString := Memo.Text;
-      CP.Create(TButton(Sender).Tag);
-      S.CodePage := @CP;
+      FileCP.Create(TButton(Sender).Tag);
+      S.CodePage := @FileCP;
       FileName := SaveDialog.FileName;
       SaveFile(S.Save, Pointer(FileName), S.Count, faSequentialRewrite, nil, BytesWritten);
     finally
@@ -147,27 +148,30 @@ procedure TMainForm.cbOEMClick(Sender: TObject);
 var
   S: TLegacyString;
 begin
-  if not FEncodingOEM then
-  begin
+  if FEncodingOEM then
+    Exit;
+
+  FEncodingOEM := True;
+  try
     S.Create;
     try
-      S.AsRawByteString := Memo.Text;
-      DefaultUnicodeCodePage := Byte(cbOEM.Checked); // 0 = CP_ACP, 1 = CP_OEMCP
-      FEncodingOEM := True;
       try
-        try
-          Memo.Text := S.AsRawByteString;
-        except
-          cbOEM.Checked := not cbOEM.Checked;
-          DefaultUnicodeCodePage := Byte(cbOEM.Checked);
-          raise;
-        end;
-      finally
-        FEncodingOEM := False;
+        if cbOEM.Checked then
+          S.CodePage := @FOEMCP
+        else
+          S.CodePage := @FACP;
+        S.AsRawByteString := Memo.Text;
+        S.CodePage := @FACP;
+        Memo.Text := S.AsRawByteString;
+      except
+        cbOEM.Checked := not cbOEM.Checked;
+        raise;
       end;
     finally
       S.Destroy;
     end;
+  finally
+    FEncodingOEM := False;
   end;
 end;
 
