@@ -148,10 +148,12 @@ type
     function AssignArray(Index: Integer; const Values: array of const): Integer;
     function AssignInteger(Index: Integer; Value: Int64; MinWidth: Integer = 0;
       Hexadecimal: THexadecimal = hexNone; FillChar: WideChar = #32): Integer;
+  {$IFNDEF Lite}
     function AssignString(Index: Integer; Source: PLegacyString;
       EncodeOptions: TEncodeUTF16 = coUTF16): TConvertResult; virtual; abstract;
     function AssignWideString(Index: Integer; Source: PWideString;
       EncodeOptions: TEncodeRawBytes = []): TConvertResult; virtual; abstract;
+  {$ENDIF}
     function CharSetName(EncodeOptions: TEncodeOptions): PLegacyChar;
   {$IFDEF CoreLiteVCL}
     function GetRawByteString: RawByteString; virtual; abstract;
@@ -190,9 +192,9 @@ type
     procedure SetData(Value: PLegacyChar);
   protected
     function AssignString(Index: Integer; Source: PLegacyString;
-      EncodeOptions: TEncodeUTF16 = coUTF16): TConvertResult; virtual;
+      EncodeOptions: TEncodeUTF16 = coUTF16): TConvertResult; {$IFNDEF Lite} virtual; {$ENDIF}
     function AssignWideString(Index: Integer; Source: PWideString;
-      EncodeOptions: TEncodeRawBytes = []): TConvertResult; virtual;
+      EncodeOptions: TEncodeRawBytes = []): TConvertResult; {$IFNDEF Lite} virtual; {$ENDIF}
   {$IFDEF CoreLiteVCL}
     function GetRawByteString: RawByteString; virtual;
     procedure SetRawByteString(Value: RawByteString); virtual;
@@ -254,9 +256,9 @@ type
     procedure SetData(Value: PWideChar);
   protected
     function AssignString(Index: Integer; Source: PLegacyString;
-      EncodeOptions: TEncodeUTF16 = coUTF16): TConvertResult; virtual;
+      EncodeOptions: TEncodeUTF16 = coUTF16): TConvertResult; {$IFNDEF Lite} virtual; {$ENDIF}
     function AssignWideString(Index: Integer; Source: PWideString;
-      EncodeOptions: TEncodeRawBytes = []): TConvertResult; virtual;
+      EncodeOptions: TEncodeRawBytes = []): TConvertResult; {$IFNDEF Lite} virtual; {$ENDIF}
     procedure SwapByteOrder(Index, Length: Integer); overload;
   {$IFDEF CoreLiteVCL}
     function GetRawByteString: RawByteString; virtual;
