@@ -11,14 +11,16 @@ type
   THandleStream = object
   private
     FHandle: THandle;
+    FDummy: Pointer; // dummy field to padding object to be larger than register size
   protected
+    property Dummy: Pointer read FDummy; // publish it to prevent compiler's hint
     function GetPosition: QuadWord;
     function GetSize: QuadWord;
     procedure SetPosition(Value: QuadWord);
     procedure SetSize(Value: QuadWord);
   public
     constructor Create(FileName: PWideChar; Access: TFileAccess;
-      Attributes: TFileAttributes = [faNormal]); overload;
+      Attributes: TFileAttributes = [faNormal]); 
     destructor Destroy; 
 
     function Open(FileName: PWideChar; Access: TFileAccess;
