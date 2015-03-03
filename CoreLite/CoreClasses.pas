@@ -4,6 +4,9 @@
     Platform-independent general purpose classes
 
     Copyright (c) 2015 Vladislav Javadov (aka Freeman)
+
+    Conditional defines:
+      * Lite -- TCoreObject.InitInstance with built-in SizeOf(Pointer)
 *)
 
 unit CoreClasses;
@@ -17,18 +20,14 @@ const
   InstanceSizeIndex = -8; // for Delphi 6, 7
 
 type
-  PObject = ^TObject;
-  TObject = object
-    constructor Create;
-  end;
-
   PCoreObject = ^TCoreObject;
-  TCoreObject = object(TObject)
+  TCoreObject = object
   protected
     procedure Cast(DestName: PLegacyChar; DestInfo: Pointer);
+    procedure InitInstance;
   public
     constructor Create;
-    destructor Destroy; virtual;
+    destructor Destroy; virtual; abstract;
     procedure Finalize;
     procedure Free;
     function InstanceSize: Integer;
@@ -67,8 +66,9 @@ type
   PCollection = ^TCollection;
   TCollection = object(TClearable)
   private
-    FCapacity, FDelta, FItemSize: Integer;
+    FCapacity, FDelta: Integer;
     FItemMode: TCollectionItemMode;
+    FItemSize: Integer;
     FAttachBuffer: Boolean;
   { placeholder } // FItems: Pointer;
     procedure FreeItems(Index, ItemCount: Integer);
@@ -305,21 +305,11 @@ begin
   FCollection := Collection;
 end;
 
-{ TObject }
-
-constructor TObject.Create;
-begin
-end;
-
 { TCoreObject }
 
 constructor TCoreObject.Create;
 begin
-  FillChar(PContainer(@Self).FClassName, InstanceSize, 0);
-end;                         // ^--- first field after VMT
-
-destructor TCoreObject.Destroy;
-begin
+  InitInstance;
 end;
 
 procedure TCoreObject.Cast(DestName: PLegacyChar; DestInfo: Pointer);
@@ -347,6 +337,17 @@ begin
   end;
 end;
 
+procedure TCoreObject.InitInstance;
+begin
+{$IFDEF Lite}
+  FillChar(PContainer(@Self).FClassName, InstanceSize - SizeOf(Pointer), 0);
+{$ELSE}
+  with PContainer(@Self)^ do
+    FillChar(FClassName, InstanceSize - (PAddress(@FClassName) - PAddress(@Self)), 0);
+{$ENDIF}     // ^--- first field after VMT
+
+end;
+
 function TCoreObject.InstanceSize: Integer;
 begin
   if (@Self <> nil) and (TypeOf(Self) <> nil) then  // Fast core
@@ -362,8 +363,15 @@ begin
   if Info <> nil then
   begin
     This := TypeInfo;
-    while (This <> nil) and (This <> Info) do
+    while This <> nil do
+    begin
+      if This = Info then
+      begin
+        Result := True;
+        Exit;
+      end;
       This := PPointer(This)^;
+    end;
   end;
   Result := False;
 end;
@@ -380,7 +388,7 @@ end;
 
 constructor TContainer.Create(Name: PLegacyChar);
 begin
-  inherited Create;
+  InitInstance;
   FClassName := Name;
 end;
 
@@ -548,6 +556,10 @@ var
   FirstBytes, NewCount, NewCapacity: Integer;
   NewItems, Src, Dst: PAddress;
 begin
+{$IFDEF Debug}
+  if ItemCount < 0 then
+    raise ERange.Create(@Self, Index, ItemCount);
+{$ENDIF}
   NewCount := FCount + ItemCount;
   if (NewCount <= FCapacity) and not FAttachBuffer then
     with PCollectionCast(@Self)^ do

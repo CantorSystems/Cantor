@@ -87,7 +87,7 @@ const
   sCodePage = 'code page';
   sConsoleCodePage = 'console code page';
 
-  sLegacyString = 'code page or UTF-8 string';
+  sLegacyString = 'UTF-8 or code page string';
   sWideString = 'UTF-16 string';
 
   sInteger = 'integer';
@@ -98,8 +98,10 @@ const
   sUnsupportedUTF16BE = 'UTF-16 Big-Endian is not native for Windows API';
   sUTF32notSupported = 'UTF-32 not supported';
 
-  sCPtoUTF16 = 'System error “%s” while converting code page %u (%s) to UTF-16';
-  sUTF16fromCP = 'System error “%s” while converting UTF-16 to code page %u (%s)';
+  sSystemCPtoUTF16 = 'System error “%s” while converting code page %u (%s) to UTF-16';
+  sSystemUTF16toCP = 'System error “%s” while converting UTF-16 to code page %u (%s)';
+  sUnicodeToCP = 'Cannot convert %hs string to code page %u (%s)';
+  sCPtoCP = 'Cannot convert string between code page %u (%s) and'#10'code page %u (%s)';
 
   sLatin1 = 'ISO 8859-1 (Latin-1)';
   sUTF8 = 'UTF-8';

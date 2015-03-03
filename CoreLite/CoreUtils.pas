@@ -20,6 +20,9 @@ interface
 uses
   Windows;
 
+const
+  UnicodeRTL = RTLVersion >= 20.0;
+
 type
 {$IFDEF CPUX64}
   CoreInt   = NativeInt;
@@ -120,8 +123,6 @@ var
   WideEllipsis: WideChar = WideChar(8230);
 
 const
-  UnicodeRTL = RTLVersion >= 20;
-
   PathDelimiter = WideChar('\'); // platform;
   LegacyReplacementChar = #127;
 
@@ -225,8 +226,8 @@ function QuadStrRScan(Where: PQuadChar; Count: Integer; What: QuadChar): PQuadCh
 function StrRPos(Where: PLegacyChar; WhereCount: Integer; What: PLegacyChar;
   WhatCount: Integer): PLegacyChar;}
 
-procedure SwapWideCharBytes(Source: PWideChar; Dest: PWideChar; Count: Integer);
-procedure SwapQuadCharBytes(Source: PQuadChar; Dest: PQuadChar; Count: Integer);
+procedure SwapWideCharBytes(Source, Dest: PWideChar; Count: Integer);
+procedure SwapQuadCharBytes(Source, Dest: PQuadChar; Count: Integer);
 
 function StrComp(Str1: PLegacyChar; Count1: Integer; Str2: PLegacyChar; Count2: Integer;
   IgnoreFlags: LongWord = NORM_IGNORECASE; Locale: LongWord = LOCALE_USER_DEFAULT): Integer;
@@ -570,13 +571,13 @@ begin
 end;
 
 function StrLen(Str: PLegacyChar): Integer;
-{$IFDEF CoreLiteVCL}
+{$IF defined(CoreLiteVCL) and UnicodeRTL}
 begin
   Result := SysUtils.StrLen(Str);
 end;
 {$ELSE}
 {$I FastCode\StrLen.inc}
-{$ENDIF}
+{$IFEND}
 
 function StrLen(Str: PLegacyChar; MaxLength: Integer): Integer; 
 asm
@@ -1027,7 +1028,7 @@ asm
 @@end:
 end;}
 
-procedure SwapWideCharBytes(Source: PWideChar; Dest: PWideChar; Count: Integer);
+procedure SwapWideCharBytes(Source, Dest: PWideChar; Count: Integer);
 asm
         TEST ECX, ECX
         JZ @@exit
@@ -1038,13 +1039,11 @@ asm
         SHR ECX, 1
 @@repeat2:
         MOV EBX, [EAX]
-        XCHG BL, BH
-        ROL BX, 16
-        XCHG BL, BH
-        ROL BX, 16
+        BSWAP EBX
+        ROL EBX, 16
         MOV [EDX], EBX
-        ADD EAX, SizeOf(LongWord)
-        ADD EDX, SizeOf(LongWord)
+        LEA EAX, [EAX+4]
+        LEA EDX, [EDX+4]
         LOOP @@repeat2
 
         POP ECX
@@ -1058,7 +1057,7 @@ asm
 @@exit:
 end;
 
-procedure SwapQuadCharBytes(Source: PQuadChar; Dest: PQuadChar; Count: Integer);
+procedure SwapQuadCharBytes(Source, Dest: PQuadChar; Count: Integer);
 asm
         TEST ECX, ECX
         JZ @@exit
@@ -1069,8 +1068,8 @@ asm
         MOV EBX, [EAX]
         BSWAP EBX
         MOV [EDX], EBX
-        ADD EAX, SizeOf(QuadChar)
-        ADD EDX, SizeOf(QuadChar)
+        LEA EAX, [EAX+4]
+        LEA EDX, [EDX+4]
         LOOP @@repeat
 
         POP EBX
@@ -1178,7 +1177,7 @@ begin
     Length := FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM or FORMAT_MESSAGE_ALLOCATE_BUFFER,
       nil, ErrorCode, 0, Pointer(@Result.Value), 0, nil);
     while (Length <> 0) and
-      ((Value[Length] >= CoreChar(0)) and (Value[Length] <= CoreChar(0)) or
+      ((Value[Length] >= CoreChar(0)) and (Value[Length] <= CoreChar(32)) or
        (Value[Length] = CoreChar('.')))
     do
       Dec(Length);
