@@ -101,7 +101,7 @@ const
   sSystemCPtoUTF16 = 'System error “%s” while converting code page %u (%s) to UTF-16';
   sSystemUTF16toCP = 'System error “%s” while converting UTF-16 to code page %u (%s)';
   sUnicodeToCP = 'Cannot convert %hs string to code page %u (%s)';
-  sCPtoCP = 'Cannot convert string between code page %u (%s) and'#10'code page %u (%s)';
+  sCPtoCP = 'Cannot convert string between code page %u (%s) and code page %u (%s)';
 
   sLatin1 = 'ISO 8859-1 (Latin-1)';
   sUTF8 = 'UTF-8';

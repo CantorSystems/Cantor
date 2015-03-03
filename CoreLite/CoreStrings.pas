@@ -205,8 +205,8 @@ type
     function AsRange(Index: Integer): TLegacyString; overload;
     function AsRange(Index, ItemCount: Integer): TLegacyString; overload;
 
-    procedure AsString(Source: PLegacyChar; SourceOptions:
-      TRawByteSource = soFromTheWild); overload;
+    procedure AsString(Source: PLegacyChar;
+      SourceOptions: TRawByteSource = soFromTheWild); overload;
     procedure AsString(Source: PLegacyChar; Length: Integer;
       SourceOptions: TRawByteSource = soFromTheWild); overload;
 
@@ -233,7 +233,7 @@ type
     property RawData: PLegacyChar read FData write SetData;
   end;
 
-  TByteOrder = (boLittleEndian, boBigEndian, boFromBOM);
+  TByteOrder = (boFromBOM, boLittleEndian, boBigEndian);
 
   PEndianString = ^TEndianString;
   TEndianString = object(TString)
@@ -281,7 +281,8 @@ type
     function PrevIndex(Value: WideChar; StartIndex: Integer): Integer; overload;
 
     procedure Load(Source: PReadableStream); overload;
-    procedure Load(Source: PReadableStream; ByteOrder: TByteOrder); overload;
+    procedure Load(Source: PReadableStream; ByteOrder: TByteOrder;
+      FallbackCP: Word = CP_ACP); overload;
     procedure Save(Dest: PWritableStream); overload;
     procedure Save(Dest: PWritableStream; WriteBOM: Boolean); overload;
 
@@ -994,12 +995,16 @@ end;
 function TLegacyString.AsRange(Index: Integer): TLegacyString;
 begin
   Result.Create;
+  Result.FOptions := FOptions;
+  Result.FCodePage := FCodePage;
   Result.AsRange(@Self, Index);
 end;
 
 function TLegacyString.AsRange(Index, ItemCount: Integer): TLegacyString;
 begin
   Result.Create;
+  Result.FOptions := FOptions;
+  Result.FCodePage := FCodePage;
   Result.AsRange(@Self, Index, ItemCount);
 end;
 
@@ -1436,6 +1441,7 @@ end;
 
 procedure TLegacyString.SetCodePage(Value: PCodePage);
 var
+  Capture: TLegacyString;
   W: TWideString;
 begin
   if (Count <> 0) and ((FCodePage <> Value) or
@@ -1444,6 +1450,10 @@ begin
     W.Create;
     try
       W.AsString(@Self);
+      Capture.Create;
+      Capture.FOptions := FOptions;
+      Capture.FCodePage := FCodePage;
+      W.FDataSource := @Capture;
       FCodePage := Value;
       AsWideString(@W);
     finally
@@ -1461,63 +1471,16 @@ end;
 
 {$IFDEF CoreLiteVCL}
 function TLegacyString.GetRawByteString: RawByteString;
-var
-  W: TWideString;
-{$IF UnicodeRTL}
-  CP: Word;
-{$IFEND}
 begin
-  if Count <> 0 then
-  begin
-  {$IF UnicodeRTL}
-    if FCodePage <> nil then
-      CP := FCodePage.FNumber
-    else if soLatin1 in FOptions then
-      CP := 28591 // ISO-8859-1 (Latin 1)
-    else
-      CP := CP_UTF8;
-    SetString(Result, FData, Count);
-    System.SetCodePage(Result, CP, False);
-  {$ELSE}
-    if ((FCodePage <> nil) and (FCodePage.FNumber = TranslateCodePage(DefaultUnicodeCodePage))) and
-      not (soDetectUTF8 in FOptions)
-    then
-      SetString(Result, FData, Count)
-    else
-    begin
-      W.Create;
-      try
-        W.AsString(@Self);
-        Result := W.GetRawByteString;
-      finally
-        W.Destroy;
-      end;
-    end;
-  {$IFEND}
-  end;
+  SetString(Result, FData, Count);
+{$IF UnicodeRTL}
+  System.SetCodePage(Result, CP, False);
+{$IFEND}
 end;
 
 procedure TLegacyString.SetRawByteString(Value: RawByteString);
-var
-  W: TWideString;
 begin
-{$IF UnicodeRTL}
-  if StringCodePage(Value) = CP_UTF8 then
-  begin
-    Assign(Pointer(Value), Length(Value), []);
-    FCodePage := nil;
-    Exit;
-  end;
-{$IFEND}
-  W.Create;
-  try
-    W.FDataSource := @Self;
-    W.SetRawByteString(Value);
-    W.FDataSource := nil;
-    AsWideString(@W);
-  finally
-    W.Destroy;
-  end;
+  Assign(Pointer(Value), Length(Value), soFromTheWild);
 end;
 
 function TLegacyString.GetUnicodeString: UnicodeString;
@@ -1557,12 +1520,14 @@ end;
 function TWideString.AsRange(Index: Integer): TWideString;
 begin
   Result.Create;
+  Result.FOptions := FOptions;
   Result.AsRange(@Self, Index);
 end;
 
 function TWideString.AsRange(Index, ItemCount: Integer): TWideString;
 begin
   Result.Create;
+  Result.FOptions := FOptions;
   Result.AsRange(@Self, Index, ItemCount);
 end;
 
@@ -1858,7 +1823,8 @@ begin
   Load(Source, boFromBOM);
 end;
 
-procedure TWideString.Load(Source: PReadableStream; ByteOrder: TByteOrder);
+procedure TWideString.Load(Source: PReadableStream; ByteOrder: TByteOrder;
+  FallbackCP: Word);
 var
   BOM: TReadableBOM;
   S: TLegacyString;
@@ -1867,13 +1833,13 @@ var
   CPNum: Word;
 begin
   Clear;
-  CPNum := 0;
   if ByteOrder = boFromBOM then
   begin
+    CPNum := CP_UTF8;
     BOM := Source.ReadBOM;
     case BOM of
       bomUTF16LE, bomUTF16BE:
-        ;
+        CPNum := 0;
       bomUTF7, bomUTF8:
         CPNum := CP_UTF7 + Byte(BOM) - Byte(bomUTF7);
       bomGB18030:
@@ -1882,37 +1848,40 @@ begin
       if BOM <> bomNone then
         raise EUTF32.Create(@Self);
     end;
+
+    if CPNum <> 0 then
+    begin
+      if CPNum = CP_UTF8 then
+        CPNum := FallbackCP;
+    {$IFDEF CoreLiteVCL}
+      if CPNum = 0 then
+        CPNum := DefaultUnicodeCodePage;
+    {$ENDIF}
+      CP.Create(CPNum);
+      S.Create;
+      try
+        S.FCodePage := @CP;
+        S.Load(Source, False);
+        AsString(@S);
+      finally
+        S.Destroy;
+      end;
+      Exit;
+    end
   end
   else
     BOM := bomNone;
 
-  if CPNum <> 0 then
+  Length := (Source.Size - Source.Position) div SizeOf(WideChar);
+  if Length <> 0 then
   begin
-    if CPNum = CP_UTF8 then
-      CPNum := CP_ACP;
-    CP.Create(CPNum);
-    S.Create;
-    try
-      S.FCodePage := @CP;
-      S.Load(Source, False);
-      AsString(@S);
-    finally
-      S.Destroy;
-    end;
-  end
-  else
-  begin
-    Length := (Source.Size - Source.Position) div SizeOf(WideChar);
-    if Length <> 0 then
-    begin
-      Capacity := Length + 1;
-      Source.ReadBuffer(FData^, Length * SizeOf(WideChar));
-      FOptions := [];
-      if (ByteOrder >= boBigEndian) or (BOM = bomUTF16BE) then
-        Include(FOptions, soBigEndian);
-      Append(Length);
-      FData[Length] := #0;
-    end;
+    Capacity := Length + 1;
+    Source.ReadBuffer(FData^, Length * SizeOf(WideChar));
+    FOptions := [];
+    if (ByteOrder = boBigEndian) or (BOM = bomUTF16BE) then
+      Include(FOptions, soBigEndian);
+    Append(Length);
+    FData[Length] := #0;
   end;
 end;
 
@@ -1996,7 +1965,7 @@ begin
       CP.Create(CPNum);
       S.FCodePage := @CP;
     end;
-    S.AsString(Pointer(Value), Length(Value), soAttach);
+    S.Assign(Pointer(Value), Length(Value), soAttach);
     AsString(@S);
   finally
     S.Destroy;
