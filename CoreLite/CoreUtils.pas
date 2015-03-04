@@ -131,6 +131,7 @@ const
 
   LF = #10;
   WideLF = WideChar(10);
+  WhitespaceOrLineBreak: array[Boolean] of LegacyChar = (#32, LF);
 {$IFNDEF Tricks}
   HexDigits: array [$0..$F] of LegacyChar = '0123456789ABCDEF';
 var
@@ -234,11 +235,6 @@ function StrComp(Str1: PLegacyChar; Count1: Integer; Str2: PLegacyChar; Count2: 
 function WideStrComp(Str1: PWideChar; Count1: Integer; Str2: PWideChar; Count2: Integer;
   IgnoreFlags: LongWord = NORM_IGNORECASE; Locale: LongWord = LOCALE_USER_DEFAULT): Integer;
 
-{ Command line parameters }
-
-function ParamStr(CommandLine: PLegacyChar): TLegacyParamRec;
-function WideParamStr(CommandLine: PWideChar): TWideParamRec;
-
 { LocalFree finalization required }
 
 function SysErrorMessage(ErrorCode: LongWord): TCoreStringRec;
@@ -264,6 +260,17 @@ function WideFormatBuf(Fmt: PWideChar; const Args: array of const;
 function MaxCharBytes(CodePage: Word; SurrogatePairs: Boolean = True): Byte;
 function TranslateCodePage(Source: Word): Word;
 
+type
+  TModuleFileName = record
+    Value: array[0..MAX_PATH-1] of CoreChar;
+    Length: Integer;
+  end;
+
+  TModuleFileNameOption = (moPath, moExtension);
+  TModuleFileNameOptions = set of TModuleFileNameOption;
+
+function ModuleFileName(Handle: THandle = 0; Options: TModuleFileNameOptions = []): TModuleFileName;
+
 { FreeMem finalization required }
 
 function DecodeUTF16(Source: PWideChar; SurrogatePairs: Boolean; CodePage: Word; 
@@ -283,7 +290,6 @@ function Format(Fmt: PLegacyChar; CodePage: Word; FixedWidth: Integer;
 
 function WideFormat(Fmt: PWideChar; FixedWidth: Integer;
   const Args: array of const): TWideStringRec;
-
 
 { User-friendly class names }
 
@@ -1088,86 +1094,6 @@ begin
   Result := CompareStringW(Locale, IgnoreFlags, Str1, Count1, Str2, Count2) - CSTR_EQUAL;
 end;
 
-{ Command line parameters }
-
-function ParamStr(CommandLine: PLegacyChar): TLegacyParamRec;
-var
-  P: PLegacyChar;
-  L: Integer;
-begin
-  if CommandLine <> nil then
-  begin
-    while (CommandLine^ in [#9, #32]) do
-      Inc(CommandLine);
-    if CommandLine^ = '"' then
-    begin
-      Inc(CommandLine);
-      L := CoreUtils.StrLen(CommandLine);
-      P := StrScan(CommandLine, L, '"'); // TODO: MBCS
-      if P <> nil then
-        L := P - CommandLine;
-      Result.Quoted := True;
-    end
-    else
-    begin
-      P := CommandLine;
-      while not (P^ in [#32, #9, #0]) do
-        Inc(P);
-      L := P - CommandLine;
-      Result.Quoted := False;
-    end;
-    with Result do
-    begin
-      NextParam := CommandLine + L + Byte(Quoted);
-      if NextParam^ <> #0 then
-        Inc(NextParam);
-      Param := CommandLine;
-      Length := L;
-    end;
-  end
-  else
-    FillChar(Result, SizeOf(Result), 0);
-end;
-
-function WideParamStr(CommandLine: PWideChar): TWideParamRec;
-var
-  P: PWideChar;
-  L: Integer;
-begin
-  if CommandLine <> nil then
-  begin
-    while (CommandLine^ = WideChar(32)) or (CommandLine^ = WideChar(9)) do
-      Inc(CommandLine);
-    if CommandLine^ = WideChar('"') then
-    begin
-      Inc(CommandLine);
-      L := WideStrLen(CommandLine);
-      P := WideStrScan(CommandLine, L, CoreChar('"'));
-      if P <> nil then
-        L := P - CommandLine;
-      Result.Quoted := True;
-    end
-    else
-    begin
-      P := CommandLine;
-      while (P^ <> WideChar(32)) and (P^ <> WideChar(9)) and (P^ <> WideChar(0)) do
-        Inc(P);
-      L := P - CommandLine;
-      Result.Quoted := False;
-    end;
-    with Result do
-    begin
-      NextParam := CommandLine + L + Byte(Quoted);
-      if NextParam^ <> WideChar(0) then
-        Inc(NextParam);
-      Param := CommandLine;
-      Length := L;
-    end;
-  end
-  else
-    FillChar(Result, SizeOf(Result), 0);
-end;
-
 { LocalFree finalization required }
 
 function SysErrorMessage(ErrorCode: LongWord): TCoreStringRec;
@@ -1278,6 +1204,11 @@ begin
   else
     Result := Source;
   end;
+end;
+
+function ModuleFileName(Handle: THandle; Options: TModuleFileNameOptions): TModuleFileName;
+begin
+  
 end;
 
 { FreeMem finalization required }

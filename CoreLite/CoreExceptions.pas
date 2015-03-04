@@ -343,18 +343,15 @@ begin
       L := GetModuleFileNameW(THandle(MemInfo.AllocationBase), ModuleName, Length(ModuleName));
       if L <> 0 then
       begin
-        ModuleName[L] := WideChar(0);
-        W := @ModuleName[L - 1];
-        while W^ <> PathDelimiter do
-          Dec(W);
+        W := WideStrRScan(ModuleName, L, PathDelimiter);
         Inc(W);
         Result := EAccessViolation.Create(sModuleAccessViolation, CP_LEGACY,
-          [ExceptionAddress, W, AccessOp, AccessAddress]);
+          [ExceptionAddress, W, WhitespaceOrLineBreak[IsConsole], AccessOp, AccessAddress]);
         Exit;
       end;
     end;
     Result := EAccessViolation.Create(sAccessViolation,
-      [ExceptionAddress, AccessOp, AccessAddress]);
+      [ExceptionAddress, WhitespaceOrLineBreak[IsConsole], AccessOp, AccessAddress]);
   end;
 end;
 

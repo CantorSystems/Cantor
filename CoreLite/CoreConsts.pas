@@ -32,11 +32,11 @@ const
   sOutOfMemory        = 'Out of memory';
   sInvalidPointer     = 'Invalid pointer operation';
 
-  sReadAccess         = 'Read';
-  sWriteAccess        = 'Write';
+  sReadAccess         = 'read';
+  sWriteAccess        = 'write';
 
-  sAccessViolation = 'Access violation at address %p. %hs of address %p';
-  sModuleAccessViolation = 'Access violation at address %p in module “%ws”.'#10'%hs of address %p';
+  sAccessViolation = 'Access violation at address %p:%hc%s of address %p';
+  sModuleAccessViolation = 'Access violation at address %p in module “%s”:%hc%hs of address %p';
 
   sAbstractInstance = '%s instance abstract method call';
   sAbstractClass    = '%s abstract class method call';
@@ -112,8 +112,7 @@ const
   sInvalidString = '%s string contains %s';
   sInvalidChar = 'invalid character (U+%04X)';
   sNonUnicode = 'character outside of Unicode range (U+%04X)';
-  sNonBMP = 'character outside of Basic Multilingual Plane (U+%04X),'#10 +
-    'but surrogate pairs are not allowed here';
+  sNonBMP = 'character outside of Basic Multilingual Plane (U+%04X),%hcbut surrogate pairs are not allowed here';
 
   sBadUTF8 = 'Bad UTF-8 sequence starting with byte $%02X';
   sBrokenUTF8 = 'Broken %u-byte UTF-8 sequence or unexpected end of string';
