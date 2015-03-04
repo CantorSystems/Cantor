@@ -167,9 +167,11 @@ type
       FillChar: WideChar = #32); overload;
     function AsInteger(var Value: Int64; Hexadecimal: Boolean = False): Boolean; overload;
     function AsInteger(Hexadecimal: Boolean = False): Int64; overload;
-
-    function Estimate(const Values: array of const): Integer;
+  {$IFNDEF Lite}
+    procedure Detach; virtual; abstract;
     class function LengthOf(Source: Pointer): Integer; virtual; abstract;
+  {$ENDIF}
+    function Estimate(const Values: array of const): Integer;
   {$IFDEF CoreLiteVCL}
     property AsRawByteString: RawByteString read GetRawByteString write SetRawByteString;
     property AsUnicodeString: UnicodeString read GetUnicodeString write SetUnicodeString;
@@ -205,7 +207,7 @@ type
     constructor Create;
 
     function AsRange(Index: Integer): TLegacyString; overload;
-    function AsRange(Index, ItemCount: Integer): TLegacyString; overload;
+    function AsRange(Index, MaxCount: Integer): TLegacyString; overload;
 
     procedure AsString(Source: PLegacyChar;
       SourceOptions: TRawByteSource = soFromTheWild); overload;
@@ -214,8 +216,9 @@ type
 
     procedure AsWideString(Source: PWideString; EncodeOptions: TEncodeRawBytes = []); 
 
+    procedure Detach; {$IFNDEF Lite} virtual; 
+    class function LengthOf(Source: Pointer): Integer; virtual; {$ENDIF}
     function IsUTF8(ThresholdBytes: Integer = 4): Boolean; // TODO: magic number
-    class function LengthOf(Source: Pointer): Integer; virtual;
 
     function NextIndex(Index: Integer): Integer; overload;
     function NextIndex(Value: LegacyChar; StartIndex: Integer = 0): Integer; overload;
@@ -270,14 +273,16 @@ type
     constructor Create; overload;
 
     function AsRange(Index: Integer): TWideString; overload;
-    function AsRange(Index, ItemCount: Integer): TWideString; overload;
+    function AsRange(Index, MaxCount: Integer): TWideString; overload;
 
     procedure AsString(Source: PLegacyString; EncodeOptions: TEncodeUTF16 = coUTF16);
 
     procedure AsWideString(Source: PWideChar; SourceOptions: TEndianSource = []); overload;
     procedure AsWideString(Source: PWideChar; Length: Integer; SourceOptions: TEndianSource = []); overload;
 
-    class function LengthOf(Source: Pointer): Integer; virtual;
+    procedure Detach; {$IFNDEF Lite} virtual;
+    class function LengthOf(Source: Pointer): Integer; virtual; {$ENDIF}
+
     function NextIndex(Value: WideChar; StartIndex: Integer = 0): Integer; overload;
     function PrevIndex(Value: WideChar): Integer; overload;
     function PrevIndex(Value: WideChar; StartIndex: Integer): Integer; overload;
@@ -313,6 +318,27 @@ type
   TWideStrings = object(TStrings)
     // TODO: append in amCapture mode
   end;
+
+  PLegacyCommandLineParam = ^TLegacyCommandLineParam;
+  TLegacyCommandLineParam = object(TLegacyString)
+  private
+    FQuoted: Boolean;
+  public
+    function AsNextParam(CommandLine: PLegacyString): TLegacyString;
+    property Quoted: Boolean read FQuoted;
+  end;
+
+  PWideCommandLineParam = ^TWideCommandLineParam;
+  TWideCommandLineParam = object(TWideString)
+  private
+    FQuoted: Boolean;
+  public
+    function AsNextParam(CommandLine: PWideString): TWideString;
+    property Quoted: Boolean read FQuoted;
+  end;
+
+  PCommandLineParam = PWideCommandLineParam;
+  TCommandLineParam = TWideCommandLineParam;
 
 { Exceptions }
 
@@ -598,10 +624,10 @@ begin
     CharSet := nil;
   end
   else if PWideString(Source).FDataSource.IsType(TypeOf(TLegacyString)) then
-    if PWideString(Source).FDataSource.FCodePage <> nil then
+    if PWideString(Source).FDataSource.CodePage <> nil then
     begin
-      with PWideString(Source).FDataSource.FCodePage^ do
-        inherited Create(sCPtoCP, CP_LEGACY, [FNumber, FName, CodePage.Number, CodePage.Name]);
+      with PWideString(Source).FDataSource.CodePage^ do
+        inherited Create(sCPtoCP, CP_LEGACY, [Number, Name, CodePage.Number, CodePage.Name]);
       CharSet := nil;
     end
     else
@@ -649,7 +675,7 @@ begin
       else
         Msg := sNonUnicode;
       end;
-      FormatBuf(Msg, [Info.InvalidChar], Buf);
+      FormatBuf(Msg, [Info.InvalidChar, WhitespaceOrLineBreak[IsConsole]], Buf);
       inherited Create(sInvalidString, [CharSet, @Buf]);
     end;
   end;
@@ -742,11 +768,11 @@ function TCodePage.EncodeUTF16(Source: PLegacyString; Dest: PWideString;
   DestIndex: Integer; EncodeOptions: TEncodeUTF16): Integer;
 begin
   Result := {$IFDEF Tricks} System. {$ENDIF} MultiByteToWideChar(
-    FNumber, MB_ERR_INVALID_CHARS and (Integer(coReplaceInvalid in EncodeOptions) - 1),
-    Source.FData, Source.Count, Dest.FData + DestIndex, Dest.Capacity - DestIndex
+    FNumber, MB_ERR_INVALID_CHARS and (Integer((coReplaceInvalid in EncodeOptions) or (FNumber = CP_GB18030)) - 1),
+    Source.RawData, Source.Count, Dest.RawData + DestIndex, Dest.Capacity - DestIndex
   );
   if coBigEndian in EncodeOptions then
-    SwapWideCharBytes(Dest.FData + DestIndex, Dest.FData + DestIndex, Result);
+    SwapWideCharBytes(Dest.RawData + DestIndex, Dest.RawData + DestIndex, Result);
 end;
 
 { TString }
@@ -759,7 +785,7 @@ begin
     else
     begin
       inherited Assign(Source, Length, Length + SizeOf(WideChar), False);
-      PWideChar(PLegacyString(@Self).FData + Length * ItemSize)^ := #0;
+      PWideChar(PLegacyString(@Self).RawData + Length * ItemSize)^ := #0;
     end
   else
     Clear;
@@ -997,17 +1023,13 @@ end;
 function TLegacyString.AsRange(Index: Integer): TLegacyString;
 begin
   Result.Create;
-  Result.FOptions := FOptions;
-  Result.FCodePage := FCodePage;
   Result.AsRange(@Self, Index);
 end;
 
-function TLegacyString.AsRange(Index, ItemCount: Integer): TLegacyString;
+function TLegacyString.AsRange(Index, MaxCount: Integer): TLegacyString;
 begin
   Result.Create;
-  Result.FOptions := FOptions;
-  Result.FCodePage := FCodePage;
-  Result.AsRange(@Self, Index, ItemCount);
+  Result.AsRange(@Self, Index, MaxCount);
 end;
 
 procedure TLegacyString.AsString(Source: PLegacyChar; SourceOptions: TRawByteSource);
@@ -1215,7 +1237,7 @@ begin
   if (Source <> nil) and (Source.Count <> 0) then
   begin
     if FCodePage <> nil then
-      CharBytes := MaxCharBytes(FCodePage.FNumber)
+      CharBytes := MaxCharBytes(FCodePage.Number)
     else
       CharBytes := 4 + Byte(coCESU8 in EncodeOptions) * 2;
 
@@ -1235,7 +1257,7 @@ begin
   end;
 end;
 
-function TLegacyString.GetData: PLegacyChar;
+procedure TLegacyString.Detach;
 begin
   if (Capacity <> 0) and (FData[Count] <> #0) then
   begin
@@ -1243,6 +1265,11 @@ begin
       Capacity := Count + 1;
     FData[Count] := #0;
   end;
+end;
+
+function TLegacyString.GetData: PLegacyChar;
+begin
+  Detach;
   Result := FData;
 end;
 
@@ -1251,10 +1278,12 @@ begin
   Result := False; // TODO
 end;
 
+{$IFNDEF Lite}
 class function TLegacyString.LengthOf(Source: Pointer): Integer;
 begin
   Result := StrLen(Source);
 end;
+{$ENDIF}
 
 function TLegacyString.NextIndex(Index: Integer): Integer;
 begin
@@ -1339,7 +1368,7 @@ begin
           W.Create;
           try
             W.Load(Source, TByteOrder(Byte(BOM) - Byte(bomUTF16)));
-            if soBigEndian in W.FOptions then
+            if soBigEndian in W.Options then
               W.SwapByteOrder;
             AsWideString(@W);
           finally
@@ -1375,7 +1404,7 @@ begin
           begin
             Capacity := Length + 1;
             Source.ReadBuffer(FData^, Length);
-            if (FCodePage <> nil) and (FCodePage.FNumber = CP_GB18030) then
+            if (FCodePage <> nil) and (FCodePage.Number = CP_GB18030) then
             begin
               Append(Length);
               FData[Length] := #0;
@@ -1447,7 +1476,7 @@ var
   W: TWideString;
 begin
   if (Count <> 0) and ((FCodePage <> Value) or
-    ((Value <> nil) and (FCodePage.FNumber <> Value.FNumber))) then
+    ((Value <> nil) and (FCodePage.Number <> Value.Number))) then
   begin
     W.Create;
     try
@@ -1492,7 +1521,7 @@ begin
   W.Create;
   try
     W.AsString(@Self);
-    SetString(Result, W.FData, W.Count);
+    SetString(Result, W.RawData, W.Count);
   finally
     W.Destroy;
   end;
@@ -1522,15 +1551,13 @@ end;
 function TWideString.AsRange(Index: Integer): TWideString;
 begin
   Result.Create;
-  Result.FOptions := FOptions;
   Result.AsRange(@Self, Index);
 end;
 
-function TWideString.AsRange(Index, ItemCount: Integer): TWideString;
+function TWideString.AsRange(Index, MaxCount: Integer): TWideString;
 begin
   Result.Create;
-  Result.FOptions := FOptions;
-  Result.AsRange(@Self, Index, ItemCount);
+  Result.AsRange(@Self, Index, MaxCount);
 end;
 
 function TWideString.AssignString(Index: Integer; Source: PLegacyString;
@@ -1769,7 +1796,7 @@ begin
   Assign(Source, Length, SourceOptions);
 end;
 
-function TWideString.GetData: PWideChar;
+procedure TWideString.Detach;
 begin
   if (Capacity <> 0) and (FData[Count] <> #0) then
   begin
@@ -1777,20 +1804,27 @@ begin
       Capacity := Count + 1;
     FData[Count] := #0;
   end;
+end;
+
+function TWideString.GetData: PWideChar;
+begin
+  Detach;
   Result := FData;
 end;
 
+{$IFNDEF Lite}
 class function TWideString.LengthOf(Source: Pointer): Integer;
 begin
   Result := WideStrLen(Source);
 end;
+{$ENDIF}
 
 function TWideString.NextIndex(Value: WideChar; StartIndex: Integer): Integer;
 var
   W: PWideChar;
 begin
   CheckIndex(@Self, StartIndex);
-  W := WideStrScan(FData, Count, Value);
+  W := WideStrScan(FData + StartIndex, Count - StartIndex, Value);
   if W <> nil then
     Result := W - FData
   else
@@ -1984,6 +2018,90 @@ begin
   Assign(Pointer(Value), Length(Value), []);
 end;
 {$ENDIF}
+
+{ TLegacyCommandLineParam }
+
+function TLegacyCommandLineParam.AsNextParam(CommandLine: PLegacyString): TLegacyString;
+var
+  Limit: PLegacyChar;
+  Idx: Integer;
+begin
+  Clear;
+  Result.Create;
+  Result.AsRange(CommandLine, 0);
+
+  if Result.Count <> 0 then
+  begin
+    Limit := Result.RawData + Result.Count;
+    while (Result.RawData^ in [#9, #32]) and (Result.RawData < Limit) do
+      Result.Delete(0);
+
+    if Result.RawData < Limit then
+      if Result.RawData^ = '"' then
+      begin
+        Result.Delete(0);
+        Idx := Result.NextIndex('"');
+        if Idx >= 0 then
+        begin
+          AsRange(@Result, 0, Idx);
+          FQuoted := True;
+          Result.AsRange(@Result, Idx + 1, False);
+          Exit;
+        end;
+      end
+      else
+        while (Result.RawData < Limit) and (not (Result.RawData^ in [#9, #32])) do
+          Result.Delete(0);
+
+    AsRange(CommandLine, 0, Result.RawData - CommandLine.RawData);
+    FQuoted := False;
+    Result.Delete(0);
+  end;
+end;
+
+{ TWideCommandLineParam }
+
+function TWideCommandLineParam.AsNextParam(CommandLine: PWideString): TWideString;
+var
+  Limit: PWideChar;
+  Idx: Integer;
+begin
+  Clear;
+  Result.Create;
+  Result.AsRange(CommandLine, 0);
+
+  if Result.Count <> 0 then
+  begin
+    Limit := Result.RawData + Result.Count;
+    while ((Result.RawData^ = #9) or (Result.RawData^ = #32)) and
+      (Result.RawData < Limit)
+    do
+      Result.Delete(0);
+
+    if Result.RawData < Limit then
+      if Result.RawData^ = '"' then
+      begin
+        Result.Delete(0);
+        Idx := Result.NextIndex(WideChar('"'));
+        if Idx >= 0 then
+        begin
+          AsRange(@Result, 0, Idx);
+          FQuoted := True;
+          Result.AsRange(@Result, Idx + 1, False);
+          Exit;
+        end;
+      end
+      else
+        while (Result.RawData < Limit) and
+          ((Result.RawData^ <> #9) or (Result.RawData^ <> #32))
+        do
+          Result.Delete(0);
+
+    AsRange(CommandLine, 0, Result.RawData - CommandLine.RawData);
+    FQuoted := False;
+    Result.AsRange(CommandLine, Count + 1, False);
+  end;
+end;
 
 end.
 

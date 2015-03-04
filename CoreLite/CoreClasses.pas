@@ -82,14 +82,16 @@ type
   public
     constructor Create(Name: PLegacyChar; BytesPerItem: Integer;
       CollectionItemMode: TCollectionItemMode = imInline);
-    procedure AsRange(Source: PCollection; Index: Integer); overload;
-    procedure AsRange(Source: PCollection; Index, ItemCount: Integer); overload;
+    procedure AsRange(Source: PCollection; Index: Integer;
+      CopyProps: Boolean = True); overload;
+    procedure AsRange(Source: PCollection; Index, MaxCount: Integer;
+      CopyProps: Boolean = True); overload;
     destructor Destroy; virtual;
     procedure Clear; virtual;
-    procedure Delete(Index: Integer; ItemCount: Integer = 1);
+    procedure Delete(Index: Integer; MaxCount: Integer = 1);
     function TranslateCapacity(NewCount: Integer): Integer;
     function TranslateDelta: Integer;
-    procedure Truncate(ItemCount: Integer);
+    procedure Truncate(MaxCount: Integer);
 
     property AttachBuffer: Boolean read FAttachBuffer;
     property Capacity: Integer read FCapacity write SetCapacity;
@@ -186,6 +188,7 @@ type
   PCollectionCast = ^TCollectionCast;
   TCollectionCast = object(TCollection)
     Items: PAddress;
+    Props: Byte;
   end;
 
   PPointerArray = ^TPointerArray;
@@ -460,15 +463,30 @@ begin
    Clear;
 end;
 
-procedure TCollection.AsRange(Source: PCollection; Index: Integer);
+procedure TCollection.AsRange(Source: PCollection; Index: Integer; CopyProps: Boolean);
 begin
-  AsRange(Source, Index, Source.Count - Index);
+  AsRange(Source, Index, Source.Count - Index, CopyProps);
 end;
 
-procedure TCollection.AsRange(Source: PCollection; Index, ItemCount: Integer);
+procedure TCollection.AsRange(Source: PCollection; Index, MaxCount: Integer;
+  CopyProps: Boolean);
+var
+  SrcLen, DstLen: Integer;
 begin
-  CheckRange(Source, Index, ItemCount);
-  Assign(PCollectionCast(Source).Items + Index * Source.ItemSize, ItemCount, ItemCount, True);
+  if (Index >= 0) and (Index < Source.Count) and (Index + MaxCount <= Source.Count) then
+    Assign(PCollectionCast(Source).Items + Index * Source.ItemSize, MaxCount, MaxCount, True)
+  else
+    Clear;
+
+  if CopyProps and (Source <> nil) then
+  begin
+    SrcLen := Source.InstanceSize;
+    DstLen := InstanceSize;
+    if SrcLen < DstLen then
+      DstLen := SrcLen;
+    Move(PCollectionCast(Source).Props, PCollectionCast(@Self).Props,
+      DstLen - (PAddress(@PCollectionCast(@Self).Props) - PAddress(@Self)));
+  end;
 end;
 
 procedure TCollection.Clear;
@@ -484,16 +502,22 @@ begin
   FCount := 0;
 end;
 
-procedure TCollection.Delete(Index, ItemCount: Integer);
+procedure TCollection.Delete(Index, MaxCount: Integer);
 var
   FirstBytes, LastBytes, NewCount, NewCapacity: Integer;
   NewItems: PAddress;
 begin
-  CheckRange(@Self, Index, ItemCount);
+  if Index + MaxCount >= FCount then
+  begin
+    Truncate(MaxCount);
+    Exit;
+  end;
 
-  NewCount := FCount - ItemCount;
+  CheckIndex(@Self, Index);
+
+  NewCount := FCount - MaxCount;
   FirstBytes := Index * FItemSize;
-  LastBytes := ItemCount * FItemSize;
+  LastBytes := MaxCount * FItemSize;
 
   if FAttachBuffer then
     if Index <> 0 then
@@ -512,12 +536,12 @@ begin
     else
     begin
       Inc(PCollectionCast(@Self).Items, LastBytes);
-      Dec(FCapacity, ItemCount);
+      Dec(FCapacity, MaxCount);
     end
   else
   begin
     if FItemMode <> imInline then
-      FreeItems(Index, ItemCount);
+      FreeItems(Index, MaxCount);
     with PCollectionCast(@Self)^ do
       Move(Items[LastBytes], Items[FirstBytes], (NewCount - Index) * FItemSize);
   end;
@@ -638,30 +662,19 @@ begin
     Result := FDelta;
 end;
 
-procedure TCollection.Truncate(ItemCount: Integer);
+procedure TCollection.Truncate(MaxCount: Integer);
 var
-  NewCount, NewCapacity: Integer;
-  NewItems: Pointer;
+  NewCount: Integer;
 begin
-  NewCount := FCount - ItemCount;
-
-  if FAttachBuffer then
+  NewCount := FCount - MaxCount;
+  if NewCount > 0 then
   begin
-    NewCapacity := TranslateCapacity(NewCount);
-    GetMem(NewItems, NewCapacity * FItemSize);
-    with PCollectionCast(@Self)^ do
-    begin
-      Move(Items^, NewItems^, NewCount * FItemSize);
-      Items := NewItems;
-    end;
-    FCapacity := NewCapacity;
-    FAttachBuffer := False;
+    if not FAttachBuffer and (FItemMode <> imInline) then
+      FreeItems(NewCount, MaxCount);
+    FCount := NewCount;
   end
   else
-    if FItemMode <> imInline then
-      FreeItems(FCount - ItemCount, ItemCount);
-
-  FCount := NewCount;
+    Clear;
 end;
 
 { TPointers }
