@@ -213,7 +213,11 @@ type
       SourceOptions: TRawByteSource = soFromTheWild); overload;
     procedure AsWideString(Source: PWideString; EncodeOptions: TEncodeRawBytes = []);
 
-//    function Compare(
+    function Compare(Value: PLegacyChar; Length: Integer;
+      IgnoreCase: Boolean = False): Integer; overload;
+    function Compare(Value: PLegacyString; Length: Integer;
+      IgnoreCase: Boolean = False): Integer; overload;
+
     procedure Detach; {$IFNDEF Lite} virtual;
     class function LengthOf(Source: Pointer): Integer; virtual; {$ENDIF}
     function IsUTF8(ThresholdBytes: Integer = 4): Boolean; // TODO: magic number
@@ -276,6 +280,11 @@ type
     procedure AsString(Source: PLegacyString; EncodeOptions: TEncodeUTF16 = coUTF16);
     procedure AsWideString(Source: PWideChar; Length: Integer;
       SourceOptions: TEndianSource = []); overload;
+
+    function Compare(Value: PWideChar; Length: Integer;
+      IgnoreCase: Boolean = False): Integer; overload;
+    function Compare(Value: PWideString; Length: Integer;
+      IgnoreCase: Boolean = False): Integer; overload;
 
     procedure Detach; {$IFNDEF Lite} virtual;
     class function LengthOf(Source: Pointer): Integer; virtual; {$ENDIF}
@@ -792,7 +801,7 @@ end;
 function TString.AssignArray(Index: Integer; const Values: array of const): Integer;
 begin
 {$IFDEF Debug}
-  CheckIndex(@Self, Index);
+  CheckIndex(Index);
 {$ENDIF}
   Result := 0; // TODO
 end;
@@ -809,7 +818,7 @@ var
   LowerCaseMask: Word;
 begin
 {$IFDEF Debug}
-  CheckIndex(@Self, Index);
+  CheckIndex(Index);
 {$ENDIF}
   if Hexadecimal <> hexNone then
   begin
@@ -1039,7 +1048,7 @@ function TLegacyString.AssignString(Index: Integer; Source: PLegacyString;
   EncodeOptions: TEncodeUTF16): TConvertResult;
 begin
 {$IFDEF Debug}
-  CheckIndex(@Self, Index);
+  CheckIndex(Index);
 {$ENDIF}
   FillChar(Result, SizeOf(Result), 0);
   // TODO
@@ -1053,7 +1062,7 @@ var
   Dest, Limit: PLegacyChar;
 begin
 {$IFDEF Debug}
-  CheckIndex(@Self, Index);
+  CheckIndex(Index);
 {$ENDIF}
   FillChar(Result, SizeOf(Result), 0);
 
@@ -1249,6 +1258,23 @@ begin
   end;
 end;
 
+function TLegacyString.Compare(Value: PLegacyChar; Length: Integer;
+  IgnoreCase: Boolean): Integer;
+begin
+  Result := CompareStringA(LOCALE_USER_DEFAULT, Byte(IgnoreCase),
+    Value, Count, FData, Count) - CSTR_EQUAL;
+end;
+
+function TLegacyString.Compare(Value: PLegacyString; Length: Integer;
+  IgnoreCase: Boolean): Integer;
+begin
+  if Value <> nil then
+    Result := CompareStringA(LOCALE_USER_DEFAULT, Byte(IgnoreCase),
+      Value.RawData, Value.Count, FData, Count) - CSTR_EQUAL
+  else
+    Result := 1;
+end;
+
 procedure TLegacyString.Detach;
 begin
   if (Capacity <> 0) and (FData[Count] <> #0) then
@@ -1279,7 +1305,7 @@ end;
 
 function TLegacyString.NextIndex(Index: Integer): Integer;
 begin
-  CheckIndex(@Self, Index);
+  CheckIndex(Index);
   if FCodePage <> nil then
   begin
     Result := Index;
@@ -1294,7 +1320,7 @@ function TLegacyString.NextIndex(Value: LegacyChar; StartIndex: Integer): Intege
 var
   S: PLegacyChar;
 begin
-  CheckIndex(@Self, StartIndex);
+  CheckIndex(StartIndex);
   S := StrScan(FData, Count, Value);
   if S <> nil then
     Result := S - FData
@@ -1304,7 +1330,7 @@ end;
 
 function TLegacyString.PrevIndex(Index: Integer): Integer;
 begin
-  CheckIndex(@Self, Index);
+  CheckIndex(Index);
   Result := Index - 1;
   if (ItemSize = 1) and (FCodePage <> nil) then
     while not (FData[Index] in [#0..#127] + FCodePage.LeadBytes) do
@@ -1326,7 +1352,7 @@ function TLegacyString.PrevIndex(Value: LegacyChar; StartIndex: Integer): Intege
 var
   S: PLegacyChar;
 begin
-  CheckIndex(@Self, StartIndex);
+  CheckIndex(StartIndex);
   S := StrRScan(FData, Count - StartIndex, Value);
   if S <> nil then
     Result := S - FData
@@ -1623,7 +1649,7 @@ var
   B: Byte;
 begin
 {$IFDEF Debug}
-  CheckIndex(@Self, Index);
+  CheckIndex(Index);
 {$ENDIF}
   FillChar(Result, SizeOf(Result), 0);
 
@@ -1754,7 +1780,7 @@ function TWideString.AssignWideString(Index: Integer; Source: PWideString;
   EncodeOptions: TEncodeRawBytes): TConvertResult;
 begin
 {$IFDEF Debug}
-  CheckIndex(@Self, Index);
+  CheckIndex(Index);
 {$ENDIF}
   FillChar(Result, SizeOf(Result), 0);
   // TODO
@@ -1811,7 +1837,7 @@ function TWideString.NextIndex(Value: WideChar; StartIndex: Integer): Integer;
 var
   W: PWideChar;
 begin
-  CheckIndex(@Self, StartIndex);
+  CheckIndex(StartIndex);
   W := WideStrScan(FData + StartIndex, Count - StartIndex, Value);
   if W <> nil then
     Result := W - FData
@@ -1834,7 +1860,7 @@ function TWideString.PrevIndex(Value: WideChar; StartIndex: Integer): Integer;
 var
   W: PWideChar;
 begin
-  CheckIndex(@Self, StartIndex);
+  CheckIndex(StartIndex);
   W := WideStrRScan(FData, Count - StartIndex, Value);
   if W <> nil then
     Result := W - FData
@@ -1929,7 +1955,7 @@ var
   W: PWideChar;
 begin
 {$IFDEF Debug}
-  CheckRange(@Self, Index, Length);
+  CheckRange(Index, Length);
 {$ENDIF}
   W := FData + Index;
   SwapWideCharBytes(W, W, Length);
@@ -2007,46 +2033,58 @@ begin
 end;
 {$ENDIF}
 
+function TWideString.Compare(Value: PWideChar; Length: Integer;
+  IgnoreCase: Boolean): Integer;
+begin
+  Result := CompareStringW(LOCALE_USER_DEFAULT, Byte(IgnoreCase),
+    Value, Length, FData, Count) - CSTR_EQUAL;
+end;
+
+function TWideString.Compare(Value: PWideString; Length: Integer;
+  IgnoreCase: Boolean): Integer;
+begin
+  if Value <> nil then
+    Result := CompareStringW(LOCALE_USER_DEFAULT, Byte(IgnoreCase),
+      Value.RawData, Value.Count, FData, Count) - CSTR_EQUAL
+  else
+    Result := 1;
+end;
+
 { TLegacyCommandLineParam }
 
 function TLegacyCommandLineParam.AsNextParam(CommandLine: PLegacyString): TLegacyString;
-var
-  Idx: Integer;
 begin
   Clear;
   Result.Create;
   Result.AsRange(CommandLine, 0);
 
-  while (Result.Count <> 0) and (Result.RawData^ in [#9, #32]) do
+  while (Result.Count <> 0) and (Result.RawData^ in [#32, #9]) do
     Result.Delete(0);
 
   if Result.Count <> 0 then
+  begin
     if Result.RawData^ = '"' then
     begin
       Result.Delete(0);
-      Idx := Result.NextIndex('"');
-      if Idx >= 0 then
-      begin
-        AsRange(@Result, 0, Idx);
-        FQuoted := True;
-        Result.AsRange(@Result, Idx + 1, False);
-        Exit;
-      end;
-    end
-    else
-      while (Result.Count <> 0) and not (Result.RawData^ in [#9, #32]) do
-        Result.Delete(0);
+      AsRange(@Result, 0, Result.NextIndex('"'));
+      FQuoted := True;
+      Result.Delete(0, Count + 1);
+      Exit;
+    end;
 
-  AsRange(CommandLine, 0, Result.RawData - CommandLine.RawData);
+    AsRange(@Result, 0, False);
+    while (Result.Count <> 0) and not (Result.RawData^ in [#32, #9]) do
+      Result.Delete(0);
+
+    if Result.Count <> 0 then
+      Delete(Result.RawData - FData, Result.Count);
+  end;
   FQuoted := False;
-  Result.AsRange(CommandLine, Count + 1, False);
 end;
 
 { TWideCommandLineParam }
 
 function TWideCommandLineParam.AsNextParam(CommandLine: PWideString): TWideString;
-var
-  Idx: Integer;
 begin
   Clear;
   Result.Create;
@@ -2056,25 +2094,24 @@ begin
     Result.Delete(0);
 
   if Result.Count <> 0 then
+  begin
     if Result.RawData^ = '"' then
     begin
       Result.Delete(0);
-      Idx := Result.NextIndex(WideChar('"'));
-      if Idx >= 0 then
-      begin
-        AsRange(@Result, 0, Idx);
-        FQuoted := True;
-        Result.AsRange(@Result, Idx + 1, False);
-        Exit;
-      end;
-    end
-    else
-      while (Result.Count <> 0) and((Result.RawData^ = #32) or (Result.RawData^ = #9)) do
-        Result.Delete(0);
+      AsRange(@Result, 0, Result.NextIndex(WideChar('"')));
+      FQuoted := True;
+      Result.Delete(0, Count + 1);
+      Exit;
+    end;
 
-  AsRange(CommandLine, 0, Result.RawData - CommandLine.RawData);
+    AsRange(@Result, 0, False);
+    while (Result.Count <> 0) and (Result.RawData^ <> #32) and (Result.RawData^ <> #9) do
+      Result.Delete(0);
+
+    if Result.Count <> 0 then
+      Delete(Result.RawData - FData, Result.Count);
+  end;
   FQuoted := False;
-  Result.AsRange(CommandLine, Count + 1, False);
 end;
 
 end.
