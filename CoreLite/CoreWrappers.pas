@@ -178,15 +178,13 @@ type
   {$IFDEF Debug}
     constructor Create(ErrorOutput: Boolean = False);
   {$ENDIF}
-    procedure ReadLn(Prompt: PLegacyChar; LineBreaks: Integer = 1); overload;
-    procedure ReadLn(Prompt: PLegacyChar; Count, LineBreaks: Integer); overload;
+    procedure ReadLn(Prompt: PLegacyChar; Count: Integer; LineBreaks: Integer = 1);
 
     procedure WriteLn(LineBreaks: Integer = 1); overload;
-    procedure WriteLn(Text: PLegacyChar; LineBreaks: Integer = 1); overload;
-    procedure WriteLn(Text: PLegacyChar; Count, LineBreaks: Integer); overload;
+    procedure WriteLn(Text: PLegacyChar; Count: Integer; LineBreaks: Integer = 1); overload;
     procedure WriteLn(Fmt: PLegacyChar; FixedWidth: Integer;
       const Args: array of const; LineBreaks: Integer = 1); overload;
-    procedure WriteLn(Text: PWideChar; Count, LineBreaks: Integer); overload;
+    procedure WriteLn(Text: PWideChar; Count: Integer; LineBreaks: Integer = 1); overload;
   end;
 
   PScreenConsole = ^TScreenConsole;
@@ -194,16 +192,12 @@ type
   private
     procedure SetTextAttribute(Value: Word);
   public
-    procedure ReadLn(Prompt: PLegacyChar; LineBreaks: Integer = 1); overload;
-    procedure ReadLn(Prompt: PLegacyChar; Count, LineBreaks: Integer); overload;
-    procedure ReadLn(Prompt: PWideChar; LineBreaks: Integer = 1); overload;
-    procedure ReadLn(Prompt: PWideChar; Count, LineBreaks: Integer); overload;
+    procedure ReadLn(Prompt: PLegacyChar; Count: Integer; LineBreaks: Integer = 1); overload;
+    procedure ReadLn(Prompt: PWideChar; Count: Integer; LineBreaks: Integer = 1); overload;
 
     procedure WriteLn(LineBreaks: Integer = 1); overload;
-    procedure WriteLn(Text: PLegacyChar; LineBreaks: Integer = 1); overload;
-    procedure WriteLn(Text: PLegacyChar; Count, LineBreaks: Integer); overload;
-    procedure WriteLn(Text: PWideChar; LineBreaks: Integer = 1); overload;
-    procedure WriteLn(Text: PWideChar; Count, LineBreaks: Integer); overload;
+    procedure WriteLn(Text: PLegacyChar; Count: Integer; LineBreaks: Integer = 1); overload;
+    procedure WriteLn(Text: PWideChar; Count: Integer; LineBreaks: Integer = 1); overload;
 
     property TextAttribute: Word write SetTextAttribute;
   end;
@@ -801,17 +795,12 @@ begin
 end;
 {$ENDIF}
 
-procedure TStreamConsole.ReadLn(Prompt: PLegacyChar; LineBreaks: Integer);
-begin
-  WriteLn;
-  ReadLn(Prompt, StrLen(Prompt), LineBreaks);
-end;
-
 procedure TStreamConsole.ReadLn(Prompt: PLegacyChar; Count, LineBreaks: Integer);
 var
   Dummy: array[0..$FF] of LegacyChar; // preventing flood
   BytesRead: LongWord;
 begin
+  WriteLn;
   WriteLn(Prompt, Count, 0);
   WriteLn(PLegacyChar(@Ellipsis), SizeOf(Ellipsis), 0);
 {$IFDEF Tricks} System. {$ENDIF}
@@ -829,11 +818,6 @@ begin // Fast core
     WriteFile(FOutput, LFx4, 4, BytesWritten, nil);
   if LineBreaks mod 4 <> 0 then {$IFDEF Tricks} System. {$ENDIF}
     WriteFile(FOutput, LFx4, LineBreaks mod 4, BytesWritten, nil);
-end;
-
-procedure TStreamConsole.WriteLn(Text: PLegacyChar; LineBreaks: Integer);
-begin
-  WriteLn(Text, StrLen(Text), LineBreaks);
 end;
 
 procedure TStreamConsole.WriteLn(Text: PLegacyChar; Count, LineBreaks: Integer);
@@ -885,11 +869,6 @@ end;
 
 { TScreenConsole }
 
-procedure TScreenConsole.ReadLn(Prompt: PLegacyChar; LineBreaks: Integer);
-begin
-  ReadLn(Prompt, StrLen(Prompt), LineBreaks);
-end;
-
 procedure TScreenConsole.ReadLn(Prompt: PLegacyChar; Count, LineBreaks: Integer);
 var
   Dummy: array[0..$FF] of LegacyChar; // preventing flood
@@ -900,11 +879,6 @@ begin
   WriteLn(Ellipsis, Length(Ellipsis), 0);
   ReadConsoleA(FInput, @Dummy, Length(Dummy), Read, nil);
   WriteLn(LineBreaks - 1);
-end;
-
-procedure TScreenConsole.ReadLn(Prompt: PWideChar; LineBreaks: Integer);
-begin
-  ReadLn(Prompt, WideStrLen(Prompt), LineBreaks);
 end;
 
 procedure TScreenConsole.ReadLn(Prompt: PWideChar; Count, LineBreaks: Integer);
@@ -941,22 +915,12 @@ begin // Fast core
     WriteConsoleW(FOutput, @WideLFx4, LineBreaks mod 4, Written, nil);
 end;
 
-procedure TScreenConsole.WriteLn(Text: PLegacyChar; LineBreaks: Integer);
-begin
-  WriteLn(Text, StrLen(Text), LineBreaks);
-end;
-
 procedure TScreenConsole.WriteLn(Text: PLegacyChar; Count, LineBreaks: Integer);
 var
   Written: LongWord;
 begin
   WriteConsoleA(FOutput, Text, Count, Written, nil);  // TODO: Windows x64
   WriteLn(LineBreaks);
-end;
-
-procedure TScreenConsole.WriteLn(Text: PWideChar; LineBreaks: Integer);
-begin
-  WriteLn(Text, WideStrLen(Text), LineBreaks);
 end;
 
 procedure TScreenConsole.WriteLn(Text: PWideChar; Count, LineBreaks: Integer);

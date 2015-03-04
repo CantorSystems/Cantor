@@ -209,14 +209,12 @@ type
     function AsRange(Index: Integer): TLegacyString; overload;
     function AsRange(Index, MaxCount: Integer): TLegacyString; overload;
 
-    procedure AsString(Source: PLegacyChar;
-      SourceOptions: TRawByteSource = soFromTheWild); overload;
     procedure AsString(Source: PLegacyChar; Length: Integer;
       SourceOptions: TRawByteSource = soFromTheWild); overload;
+    procedure AsWideString(Source: PWideString; EncodeOptions: TEncodeRawBytes = []);
 
-    procedure AsWideString(Source: PWideString; EncodeOptions: TEncodeRawBytes = []); 
-
-    procedure Detach; {$IFNDEF Lite} virtual; 
+//    function Compare(
+    procedure Detach; {$IFNDEF Lite} virtual;
     class function LengthOf(Source: Pointer): Integer; virtual; {$ENDIF}
     function IsUTF8(ThresholdBytes: Integer = 4): Boolean; // TODO: magic number
 
@@ -270,15 +268,14 @@ type
     procedure SetUnicodeString(Value: UnicodeString); virtual;
   {$ENDIF}
   public
-    constructor Create; overload;
+    constructor Create;
 
     function AsRange(Index: Integer): TWideString; overload;
     function AsRange(Index, MaxCount: Integer): TWideString; overload;
 
     procedure AsString(Source: PLegacyString; EncodeOptions: TEncodeUTF16 = coUTF16);
-
-    procedure AsWideString(Source: PWideChar; SourceOptions: TEndianSource = []); overload;
-    procedure AsWideString(Source: PWideChar; Length: Integer; SourceOptions: TEndianSource = []); overload;
+    procedure AsWideString(Source: PWideChar; Length: Integer;
+      SourceOptions: TEndianSource = []); overload;
 
     procedure Detach; {$IFNDEF Lite} virtual;
     class function LengthOf(Source: Pointer): Integer; virtual; {$ENDIF}
@@ -1032,11 +1029,6 @@ begin
   Result.AsRange(@Self, Index, MaxCount);
 end;
 
-procedure TLegacyString.AsString(Source: PLegacyChar; SourceOptions: TRawByteSource);
-begin
-  Assign(Source, StrLen(Source), SourceOptions + [soNullTerminated]);
-end;
-
 procedure TLegacyString.AsString(Source: PLegacyChar; Length: Integer;
   SourceOptions: TRawByteSource);
 begin
@@ -1786,12 +1778,8 @@ begin
   end;
 end;
 
-procedure TWideString.AsWideString(Source: PWideChar; SourceOptions: TEndianSource);
-begin
-  Assign(Source, WideStrLen(Source), SourceOptions + [soNullTerminated]);
-end;
-
-procedure TWideString.AsWideString(Source: PWideChar; Length: Integer; SourceOptions: TEndianSource);
+procedure TWideString.AsWideString(Source: PWideChar; Length: Integer;
+  SourceOptions: TEndianSource);
 begin
   Assign(Source, Length, SourceOptions);
 end;
@@ -2023,84 +2011,70 @@ end;
 
 function TLegacyCommandLineParam.AsNextParam(CommandLine: PLegacyString): TLegacyString;
 var
-  Limit: PLegacyChar;
   Idx: Integer;
 begin
   Clear;
   Result.Create;
   Result.AsRange(CommandLine, 0);
 
-  if Result.Count <> 0 then
-  begin
-    Limit := Result.RawData + Result.Count;
-    while (Result.RawData^ in [#9, #32]) and (Result.RawData < Limit) do
-      Result.Delete(0);
-
-    if Result.RawData < Limit then
-      if Result.RawData^ = '"' then
-      begin
-        Result.Delete(0);
-        Idx := Result.NextIndex('"');
-        if Idx >= 0 then
-        begin
-          AsRange(@Result, 0, Idx);
-          FQuoted := True;
-          Result.AsRange(@Result, Idx + 1, False);
-          Exit;
-        end;
-      end
-      else
-        while (Result.RawData < Limit) and (not (Result.RawData^ in [#9, #32])) do
-          Result.Delete(0);
-
-    AsRange(CommandLine, 0, Result.RawData - CommandLine.RawData);
-    FQuoted := False;
+  while (Result.Count <> 0) and (Result.RawData^ in [#9, #32]) do
     Result.Delete(0);
-  end;
+
+  if Result.Count <> 0 then
+    if Result.RawData^ = '"' then
+    begin
+      Result.Delete(0);
+      Idx := Result.NextIndex('"');
+      if Idx >= 0 then
+      begin
+        AsRange(@Result, 0, Idx);
+        FQuoted := True;
+        Result.AsRange(@Result, Idx + 1, False);
+        Exit;
+      end;
+    end
+    else
+      while (Result.Count <> 0) and not (Result.RawData^ in [#9, #32]) do
+        Result.Delete(0);
+
+  AsRange(CommandLine, 0, Result.RawData - CommandLine.RawData);
+  FQuoted := False;
+  Result.AsRange(CommandLine, Count + 1, False);
 end;
 
 { TWideCommandLineParam }
 
 function TWideCommandLineParam.AsNextParam(CommandLine: PWideString): TWideString;
 var
-  Limit: PWideChar;
   Idx: Integer;
 begin
   Clear;
   Result.Create;
   Result.AsRange(CommandLine, 0);
 
+  while (Result.Count <> 0) and ((Result.RawData^ = #32) or (Result.RawData^ = #9)) do
+    Result.Delete(0);
+
   if Result.Count <> 0 then
-  begin
-    Limit := Result.RawData + Result.Count;
-    while ((Result.RawData^ = #9) or (Result.RawData^ = #32)) and
-      (Result.RawData < Limit)
-    do
+    if Result.RawData^ = '"' then
+    begin
       Result.Delete(0);
-
-    if Result.RawData < Limit then
-      if Result.RawData^ = '"' then
+      Idx := Result.NextIndex(WideChar('"'));
+      if Idx >= 0 then
       begin
+        AsRange(@Result, 0, Idx);
+        FQuoted := True;
+        Result.AsRange(@Result, Idx + 1, False);
+        Exit;
+      end;
+    end
+    else
+      while (Result.Count <> 0) and((Result.RawData^ = #32) or (Result.RawData^ = #9)) do
         Result.Delete(0);
-        Idx := Result.NextIndex(WideChar('"'));
-        if Idx >= 0 then
-        begin
-          AsRange(@Result, 0, Idx);
-          FQuoted := True;
-          Result.AsRange(@Result, Idx + 1, False);
-          Exit;
-        end;
-      end
-      else
-        while (Result.RawData < Limit) and
-          ((Result.RawData^ <> #9) or (Result.RawData^ <> #32))
-        do
-          Result.Delete(0);
 
-    AsRange(CommandLine, 0, Result.RawData - CommandLine.RawData);
-    FQuoted := False;
-    Result.AsRange(CommandLine, Count + 1, False);
-  end;
+  AsRange(CommandLine, 0, Result.RawData - CommandLine.RawData);
+  FQuoted := False;
+  Result.AsRange(CommandLine, Count + 1, False);
 end;
 
 end.
