@@ -48,14 +48,21 @@ type
 
   PEnumerable = ^TEnumerable;
   TEnumerable = object(TContainer)
-  private  
-    FCount: Integer; // for the descendants like TString
+  private
+    FCount: Integer;
   public
     property Count: Integer read FCount;
   end;
 
+  PIndexed = ^TIndexed;
+  TIndexed = object(TEnumerable)
+  protected
+    procedure CheckIndex(Index: Integer);
+    procedure CheckRange(Index, ItemCount: Integer);
+  end;
+
   PClearable = ^TClearable;
-  TClearable = object(TEnumerable)
+  TClearable = object(TIndexed)
   public
     procedure Clear; virtual;
   end;
@@ -78,20 +85,21 @@ type
     function Append(ItemCount: Integer = 1): Integer;
     procedure Assign(Source: Pointer; ItemCount, ItemsCapacity: Integer; Attach: Boolean); overload;
     procedure Assign(Source: PCollection; Attach: TAttachMode); overload;
+    procedure CheckCapacity(ItemCount: Integer);
     procedure Insert(Index: Integer; ItemCount: Integer = 1);
   public
     constructor Create(Name: PLegacyChar; BytesPerItem: Integer;
       CollectionItemMode: TCollectionItemMode = imInline);
     procedure AsRange(Source: PCollection; Index: Integer;
       CopyProps: Boolean = True); overload;
-    procedure AsRange(Source: PCollection; Index, MaxCount: Integer;
+    procedure AsRange(Source: PCollection; Index, ItemCount: Integer;
       CopyProps: Boolean = True); overload;
     destructor Destroy; virtual;
     procedure Clear; virtual;
-    procedure Delete(Index: Integer; MaxCount: Integer = 1);
+    procedure Delete(Index: Integer; ItemCount: Integer = 1);
     function TranslateCapacity(NewCount: Integer): Integer;
     function TranslateDelta: Integer;
-    procedure Truncate(MaxCount: Integer);
+    procedure Truncate(ItemCount: Integer);
 
     property AttachBuffer: Boolean read FAttachBuffer;
     property Capacity: Integer read FCapacity write SetCapacity;
@@ -140,44 +148,56 @@ type
     property DestName: PLegacyChar read FDestName;
   end;
 
-  EContainer = class(Exception)
+  EContainer = class(Exception);
+
+  EIndexed = EContainer; // future class of (EContainer)
+
+  EIndex = class(EIndexed)
+  private
+    FIndex: Integer;
+  public
+    constructor Create(Container: PIndexed; Index: Integer);
+    property Index: Integer read FIndex;
   end;
 
-  ECollection = class(EContainer)
+  ERange = class(EIndexed)
+  private
+    FLowBound, FHighBound: Integer;
+  public
+    constructor Create(Container: PIndexed; Index, ItemCount: Integer);
+    property LowBound: Integer read FLowBound;
+    property HighBound: Integer read FHighBound;
+  end;
+
+  ECollectionIndex = class(EIndex)
   private
     FCollection: PCollection;
   public
     property Collection: PCollection read FCollection;
   end;
 
-  EIndex = class(ECollection)
+  ECollectionRange = class(ERange)
   private
-    FIndex: Integer;
+    FCollection: PCollection;
   public
-    constructor Create(Collection: PCollection; Index: Integer);
-    property Index: Integer read FIndex;
+    property Collection: PCollection read FCollection;
   end;
 
-  ERange = class(ECollection)
-  private
-    FLowBound, FHighBound: Integer;
-  public
-    constructor Create(Collection: PCollection; Index, ItemCount: Integer);
-    property LowBound: Integer read FLowBound;
-    property HighBound: Integer read FHighBound;
-  end;
+  ECollection = EContainer; // future class of (EContainer)
 
-  EFixed = class(ECollection)
+  ECapacity = class(ECollection)
+  private
+    FCollection: PCollection;
+    FItemCount: Integer;
   public
-    constructor Create(Collection: PCollection);
+    constructor Create(Collection: PCollection; ItemCount: Integer); 
+    property Collection: PCollection read FCollection;
+    property ItemCount: Integer read FItemCount;
   end;
 
 { Helper functions }
 
 procedure FreeAndNil(var Instance: PCoreObject);
-
-procedure CheckIndex(Collection: PCollection; Index: Integer);
-procedure CheckRange(Collection: PCollection; Index, ItemCount: Integer);
 
 implementation
 
@@ -214,23 +234,6 @@ asm
         JMP TCoreObject.Free
 end;
 
-procedure CheckIndex(Collection: PCollection; Index: Integer);
-begin
-  if (Collection = nil) or (Index < 0) or (Index > Collection.Count) then
-    raise EIndex.Create(Collection, Index);
-end;
-
-procedure CheckRange(Collection: PCollection; Index, ItemCount: Integer);
-begin
-  if (Collection <> nil) and (Index >= 0) and (Index < Collection.Count) then
-  begin
-    Inc(Index, ItemCount - 1);
-    if (Index >= 0) and (Index < Collection.Count) then
-      Exit;
-  end;
-  raise ERange.Create(Collection, Index, ItemCount);
-end;
-
 { ECast }
 
 constructor ECast.Create(Instance: PCoreObject; DestName: PLegacyChar; DestInfo: Pointer);
@@ -265,46 +268,47 @@ end;
 
 { EIndex }
 
-constructor EIndex.Create(Collection: PCollection; Index: Integer);
+constructor EIndex.Create(Container: PIndexed; Index: Integer);
 begin
-  if Collection <> nil then
-    if Collection.Count <> 0 then
-      inherited Create(sIndexOutOfBounds, [Index, 0, Collection.Count - 1, Collection.ClassName])
+  if Container <> nil then
+    if Container.Count <> 0 then
+      inherited Create(sIndexOutOfBounds, [Index, 0, Container.Count - 1, Container.ClassName])
     else
-      inherited Create(sIndexOutOfEmpty, [Index, Collection.ClassName])
+      inherited Create(sIndexOutOfEmpty, [Index, Container.ClassName])
   else
     inherited Create(sIndexOutOfNull, [Index]);
-  FCollection := Collection;
+  ECollectionIndex(Self).FCollection := Pointer(Container);
   FIndex := Index;
 end;
 
 { ERange }
 
-constructor ERange.Create(Collection: PCollection; Index, ItemCount: Integer);
+constructor ERange.Create(Container: PIndexed; Index, ItemCount: Integer);
 var
   LastIndex: Integer;
 begin
   LastIndex := Index + ItemCount - 1;
-  if Collection <> nil then
-    if Collection.Count <> 0 then
-      inherited Create(sRangeOutOfBounds, [Index, LastIndex, 0, Collection.Count - 1, Collection.ClassName])
+  if Container <> nil then
+    if Container.Count <> 0 then
+      inherited Create(sRangeOutOfBounds, [Index, LastIndex, 0, Container.Count - 1, Container.ClassName])
     else
-      inherited Create(sRangeOutOfEmpty, [Index, LastIndex, Collection.ClassName])
+      inherited Create(sRangeOutOfEmpty, [Index, LastIndex, Container.ClassName])
   else
     inherited Create(sRangeOutOfNull, [Index, LastIndex]);
-  FCollection := Collection;
+  ECollectionIndex(Self).FCollection := Pointer(Container);
   FLowBound := Index;
   FHighBound := LastIndex;
 end;
 
-{ EFixed }
+{ ECapacity }
 
-constructor EFixed.Create(Collection: PCollection);
+constructor ECapacity.Create(Collection: PCollection; ItemCount: Integer);
 begin
   if Collection <> nil then
-    inherited Create(sFixedCapacity, [Collection.ClassName, Collection.Capacity])
-  else                                                            
-    inherited Create(sNullCapacity);
+    inherited Create(sOutOfCapacity, [Collection.Count, ItemCount,
+      WhitespaceOrLineBreak[IsConsole], Collection.ClassName, Collection.Capacity])
+  else
+    inherited Create(sNullCapacity, [ItemCount]);
   FCollection := Collection;
 end;
 
@@ -407,6 +411,27 @@ begin
   FCount := 0;
 end;
 
+{ TIndexed }
+
+procedure TIndexed.CheckIndex(Index: Integer);
+begin
+  if (@Self = nil) or (Index < 0) or (Index > FCount) then
+    raise EIndex.Create(@Self, Index);
+end;
+
+procedure TIndexed.CheckRange(Index, ItemCount: Integer);
+var
+  LastIndex: Integer;
+begin
+  if (@Self <> nil) and (Index >= 0) and (Index < FCount) then
+  begin
+    LastIndex := Index + ItemCount - 1;
+    if (LastIndex >= 0) and (LastIndex < FCount) then
+      Exit;
+  end;
+  raise ERange.Create(@Self, Index, ItemCount);
+end;
+
 { TCollection }
 
 constructor TCollection.Create(Name: PLegacyChar; BytesPerItem: Integer;
@@ -468,13 +493,13 @@ begin
   AsRange(Source, Index, Source.Count - Index, CopyProps);
 end;
 
-procedure TCollection.AsRange(Source: PCollection; Index, MaxCount: Integer;
+procedure TCollection.AsRange(Source: PCollection; Index, ItemCount: Integer;
   CopyProps: Boolean);
 var
   SrcLen, DstLen: Integer;
 begin
-  if (Index >= 0) and (Index < Source.Count) and (Index + MaxCount <= Source.Count) then
-    Assign(PCollectionCast(Source).Items + Index * Source.ItemSize, MaxCount, MaxCount, True)
+  if (Index >= 0) and (Index < Source.Count) and (Index + ItemCount <= Source.Count) then
+    Assign(PCollectionCast(Source).Items + Index * Source.ItemSize, ItemCount, ItemCount, True)
   else
     Clear;
 
@@ -487,6 +512,15 @@ begin
     Move(PCollectionCast(Source).Props, PCollectionCast(@Self).Props,
       DstLen - (PAddress(@PCollectionCast(@Self).Props) - PAddress(@Self)));
   end;
+end;
+
+procedure TCollection.CheckCapacity(ItemCount: Integer);
+var
+  NewCount: Integer;
+begin
+  NewCount := FCount + ItemCount;
+  if (NewCount < 0) or (NewCount > FCapacity) then
+    ECapacity.Create(@Self, ItemCount);
 end;
 
 procedure TCollection.Clear;
@@ -502,51 +536,50 @@ begin
   FCount := 0;
 end;
 
-procedure TCollection.Delete(Index, MaxCount: Integer);
+procedure TCollection.Delete(Index, ItemCount: Integer);
 var
   FirstBytes, LastBytes, NewCount, NewCapacity: Integer;
   NewItems: PAddress;
 begin
-  if Index + MaxCount >= FCount then
+  if ItemCount <> 0 then
   begin
-    Truncate(MaxCount);
-    Exit;
-  end;
+    CheckIndex(Index);
 
-  CheckIndex(@Self, Index);
+    NewCount := FCount - ItemCount;
+    FirstBytes := Index * FItemSize;
+    LastBytes := ItemCount * FItemSize;
 
-  NewCount := FCount - MaxCount;
-  FirstBytes := Index * FItemSize;
-  LastBytes := MaxCount * FItemSize;
-
-  if FAttachBuffer then
-    if Index <> 0 then
+    if FAttachBuffer then
     begin
-      NewCapacity := TranslateCapacity(NewCount);
-      GetMem(NewItems, NewCapacity * FItemSize);
-      with PCollectionCast(@Self)^ do
+      if Index = 0 then
       begin
-        Move(Items^, NewItems^, FirstBytes);
-        Move(Items[LastBytes], NewItems[FirstBytes], LastBytes);
-        Items := NewItems;
+        Inc(PCollectionCast(@Self).Items, LastBytes);
+        Dec(FCapacity, ItemCount);
+      end
+      else if Index + ItemCount < FCount then
+      begin
+        NewCapacity := TranslateCapacity(NewCount);
+        GetMem(NewItems, NewCapacity * FItemSize);
+        with PCollectionCast(@Self)^ do
+        begin
+          Move(Items^, NewItems^, FirstBytes);
+          Move(Items[LastBytes], NewItems[FirstBytes], LastBytes);
+          Items := NewItems;
+        end;
+        FCapacity := NewCapacity;
+        FAttachBuffer := False;
       end;
-      FCapacity := NewCapacity;
-      FAttachBuffer := False;
     end
     else
     begin
-      Inc(PCollectionCast(@Self).Items, LastBytes);
-      Dec(FCapacity, MaxCount);
-    end
-  else
-  begin
-    if FItemMode <> imInline then
-      FreeItems(Index, MaxCount);
-    with PCollectionCast(@Self)^ do
-      Move(Items[LastBytes], Items[FirstBytes], (NewCount - Index) * FItemSize);
-  end;
+      if FItemMode <> imInline then
+        FreeItems(Index, ItemCount);
+      with PCollectionCast(@Self)^ do
+        Move(Items[LastBytes], Items[FirstBytes], (NewCount - Index) * FItemSize);
+    end;
 
-  FCount := NewCount;
+    FCount := NewCount;
+  end;
 end;
 
 procedure TCollection.FreeItems(Index, ItemCount: Integer);
@@ -571,7 +604,7 @@ end;
 
 procedure TCollection.Insert(Index, ItemCount: Integer);
 begin
-  CheckIndex(@Self, Index);
+  CheckIndex(Index);
   Resize(Index, ItemCount);
 end;
 
@@ -595,7 +628,7 @@ begin
   else
   begin
     if FDelta = 0 then
-      raise EFixed.Create(@Self);
+      raise ECapacity.Create(@Self, ItemCount);
     NewCapacity := TranslateCapacity(NewCount);
     GetMem(NewItems, NewCapacity * FItemSize);
     FirstBytes := Index * FItemSize;
@@ -662,15 +695,17 @@ begin
     Result := FDelta;
 end;
 
-procedure TCollection.Truncate(MaxCount: Integer);
+procedure TCollection.Truncate(ItemCount: Integer);
 var
   NewCount: Integer;
 begin
-  NewCount := FCount - MaxCount;
+  if ItemCount < 0 then
+    CheckCapacity(-ItemCount);
+  NewCount := FCount - ItemCount;
   if NewCount > 0 then
   begin
     if not FAttachBuffer and (FItemMode <> imInline) then
-      FreeItems(NewCount, MaxCount);
+      FreeItems(NewCount, ItemCount);
     FCount := NewCount;
   end
   else
@@ -687,15 +722,15 @@ end;
 
 procedure TPointers.Exchange(Index1, Index2: Integer);
 begin
-  CheckIndex(@Self, Index1);
-  CheckIndex(@Self, Index2);
+  CheckIndex(Index1);
+  CheckIndex(Index2);
   with PPointersCast(@Self)^ do
     CoreUtils.Exchange(Items[Index1], Items[Index2]);
 end;
 
 function TPointers.Extract(Index: Integer): Pointer;
 begin
-  CheckIndex(@Self, Index);
+  CheckIndex(Index);
   Result := PPointersCast(@Self).Items[Index];
   Delete(Index);
 end;

@@ -80,8 +80,8 @@ const
   sRangeOutOfBounds = 'Range %d..%d out of bounds %d..%d of %s';
   sRangeOutOfEmpty  = 'Range %d..%d out of empty %s';
   sRangeOutOfNull   = 'Range %d..%d out of null container';
-  sFixedCapacity    = 'This %s can contain only %d items';
-  sNullCapacity     = 'Cannot add an item into null container';
+  sOutOfCapacity    = 'Increment %d items by %d out of capacity.%cThis %s can contain only %d items';
+  sNullCapacity     = 'Cannot add %d item into null container';
 
   sPosition = 'position';
   sCodePage = 'code page';
