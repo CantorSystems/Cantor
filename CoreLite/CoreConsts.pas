@@ -11,7 +11,7 @@ unit CoreConsts;
 interface
 
 const
-  CP_LEGACY = 1252; // we're using “”, but only in exception messages
+  CP_LOCALIZATION = 1252; // we're using “”, but only in exception messages
 
   sDivByZero          = 'Division by zero';
   sRangeError         = 'Range check error';
@@ -63,6 +63,7 @@ const
   sVS_VERSION_INFO = 'VS_VERSION_INFO';
   sFixedVersionInfo = 'fixed version info';
   sVersionAndBuild = '%s build %u';
+  sVersionAndRevision = '%s revision %u';
 
   sPerformanceCounter = 'performance counter';
   sPerformanceFrequency = 'performance frequency';

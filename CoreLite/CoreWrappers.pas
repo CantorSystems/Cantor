@@ -250,6 +250,11 @@ type
   TVersionBuffer = array[0..39] of LegacyChar;
   TFormatVersionOptions = set of (fvProductVersion, fvSkipZeroRelease);
 
+const
+  fvDefault = [fvProductVersion..fvSkipZeroRelease];
+  verDefault = [verDebug..verPatched];
+
+type
   PVersionInfo = ^TVersionInfo;
   TVersionInfo = object
   private
@@ -263,9 +268,8 @@ type
     function FixedInfo: TFixedVersionInfo; overload;
     function FixedInfo(var Info: TFixedVersionInfo): Boolean; overload;
 
-    function FormatVersion(var Buffer: TVersionBuffer;
-      Options: TFormatVersionOptions = [fvProductVersion..fvSkipZeroRelease];
-      BuildFlags: TVersionFlags = [verDebug..verPatched]): Integer;
+    function FormatVersion(var Buffer: TVersionBuffer; BuildFormat: PLegacyChar;
+      Options: TFormatVersionOptions = fvDefault; BuildFlags: TVersionFlags = verDefault): Integer;
 
     function StringInfo(TranslationIndex: LongWord; Ident: PLegacyChar;
       var Info: PCoreChar; var Length: LongWord): Boolean; overload;
@@ -837,7 +841,7 @@ var
 begin
   if FCodePage = CP_UTF8 then
   begin
-    W := Format(Fmt, CP_LEGACY, FixedWidth, Args);
+    W := Format(Fmt, CP_LOCALIZATION, FixedWidth, Args);
     try
       WriteLn(W.Value, W.Length, LineBreaks);
     finally
@@ -1015,7 +1019,7 @@ begin
     Result := False;
 end;
 
-function TVersionInfo.FormatVersion(var Buffer: TVersionBuffer;
+function TVersionInfo.FormatVersion(var Buffer: TVersionBuffer; BuildFormat: PLegacyChar;
   Options: TFormatVersionOptions; BuildFlags: TVersionFlags): Integer;
 const
   MinFmt: PLegacyChar = '%u.%u';
@@ -1051,7 +1055,7 @@ begin
     end;
     FormatBuf(Fmt, [Ver.Major, Ver.Minor, Ver.Release], Tmp)
   end;
-  Result := FormatBuf(sVersionAndBuild, [Tmp, Ver.Build], Buffer);
+  Result := FormatBuf(BuildFormat, [Tmp, Ver.Build], Buffer);
 end;
 
 function TVersionInfo.StringInfo(TranslationIndex: LongWord;
@@ -1060,7 +1064,7 @@ var
   W: PWideChar;
 begin
   with FTranslations[TranslationIndex] do
-    W := Format('\StringFileInfo\%04X%04X\%hs', CP_LEGACY, 0, [Locale, CodePage, Ident]).Value;
+    W := Format('\StringFileInfo\%04X%04X\%hs', CP_LOCALIZATION, 0, [Locale, CodePage, Ident]).Value;
   try
     Result := VerQueryValueW(FData, W, Pointer(Info), Length);
     if Result then

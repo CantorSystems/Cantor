@@ -597,7 +597,7 @@ begin
         W.AsRange(Source, 0)
       else
         W.AsString(PLegacyString(Source));
-      inherited Create(sInvalidInteger, CP_LEGACY, [W.RawData, ValueType[Hexadecimal]]);
+      inherited Create(sInvalidInteger, CP_LOCALIZATION, [W.RawData, ValueType[Hexadecimal]]);
     finally
       W.Destroy;
     end;
@@ -623,7 +623,7 @@ begin
   begin
     Msg := SysErrorMessage(ErrorCode);
     try
-      inherited Create(ModeNames[Mode], CP_LEGACY, [Msg.Value, CodePage.Number, CodePage.Name]);
+      inherited Create(ModeNames[Mode], CP_LOCALIZATION, [Msg.Value, CodePage.Number, CodePage.Name]);
     finally
       LocalFree(Msg.Handle);
     end;
@@ -633,7 +633,7 @@ begin
     if PWideString(Source).FDataSource.CodePage <> nil then
     begin
       with PWideString(Source).FDataSource.CodePage^ do
-        inherited Create(sCPtoCP, CP_LEGACY, [Number, Name, CodePage.Number, CodePage.Name]);
+        inherited Create(sCPtoCP, CP_LOCALIZATION, [Number, Name, CodePage.Number, CodePage.Name]);
       CharSet := nil;
     end
     else
@@ -643,7 +643,7 @@ begin
     CharSet := sUTF16;
 
   if CharSet <> nil then
-    inherited Create(sUnicodetoCP, CP_LEGACY, [CharSet, CodePage.Number, CodePage.Name]);
+    inherited Create(sUnicodetoCP, CP_LOCALIZATION, [CharSet, CodePage.Number, CodePage.Name]);
 
   FSource.AsString := Pointer(Source);
   FMode := Mode;
