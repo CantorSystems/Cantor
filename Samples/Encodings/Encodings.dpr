@@ -3,9 +3,10 @@
 
     Conditional defines (in Project Options -> Directories/Conditionals):
       * CoreLiteVCL -- in order to compile CoreLite for VCL application
+      * Lite -- CoreLite stream without virtual methods
       * Debug -- for Delphi IDE friendly exceptions
 
-    Search path:  ..\CoreLite
+    Search path:  ..\..\CoreLite
 *)
 
 program Encodings;
