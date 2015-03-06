@@ -229,8 +229,8 @@ type
     function PrevIndex(Value: LegacyChar; StartIndex: Integer): Integer; overload;
 
     procedure Load(Source: PReadableStream); overload;
-    procedure Load(Source: PReadableStream; AllowBOM: Boolean;
-      SourceOptions: TRawByteOptions = soFromTheWild); overload;
+    function Load(Source: PReadableStream; AllowBOM: Boolean;
+      SourceOptions: TRawByteOptions = soFromTheWild): TReadableBOM; overload;
     procedure Save(Dest: PWritableStream); overload;
     procedure Save(Dest: PWritableStream; WriteBOM: Boolean); overload;
 
@@ -294,8 +294,8 @@ type
     function PrevIndex(Value: WideChar; StartIndex: Integer): Integer; overload;
 
     procedure Load(Source: PReadableStream); overload;
-    procedure Load(Source: PReadableStream; ByteOrder: TByteOrder;
-      FallbackCP: Word = CP_ACP); overload;
+    function Load(Source: PReadableStream; ByteOrder: TByteOrder;
+      FallbackCP: PCodePage = nil): TReadableBOM; overload;
     procedure Save(Dest: PWritableStream); overload;
     procedure Save(Dest: PWritableStream; WriteBOM: Boolean); overload;
 
@@ -1365,10 +1365,9 @@ begin
   Load(Source, True);
 end;
 
-procedure TLegacyString.Load(Source: PReadableStream; AllowBOM: Boolean;
-  SourceOptions: TRawByteOptions);
+function TLegacyString.Load(Source: PReadableStream; AllowBOM: Boolean;
+  SourceOptions: TRawByteOptions): TReadableBOM;
 var
-  BOM: TReadableBOM;
   W: TWideString;
   CP: TCodePage;
   Length: Integer;
@@ -1377,15 +1376,15 @@ begin
 
   if AllowBOM then
   begin
-    BOM := Source.ReadBOM;
-    case BOM of
+    Result := Source.ReadBOM;
+    case Result of
       bomUTF8:
         Include(FOptions, soDetectUTF8);
       bomUTF16LE, bomUTF16BE:
         begin
           W.Create;
           try
-            W.Load(Source, TByteOrder(Byte(BOM) - Byte(bomUTF16)));
+            W.Load(Source, TByteOrder(Byte(Result) - Byte(bomUTF16)));
             if soBigEndian in W.Options then
               W.SwapByteOrder;
             AsWideString(@W);
@@ -1446,10 +1445,12 @@ begin
           Exit;
         end;
     else
-      if BOM <> bomNone then
+      if Result <> bomNone then
         raise EUTF32.Create(@Self);
     end;
-  end;
+  end
+  else
+    Result := bomNone;
 
   Length := Source.Size - Source.Position;
   if Length <> 0 then
@@ -1869,48 +1870,47 @@ begin
 end;
 
 procedure TWideString.Load(Source: PReadableStream);
+var
+  FallbackCP: TCodePage;
 begin
-  Load(Source, boFromBOM);
+  FallbackCP.Create {$IFDEF CoreLiteVCL} (DefaultUnicodeCodePage) {$ENDIF} ;
+  Load(Source, boFromBOM, @FallbackCP);
 end;
 
-procedure TWideString.Load(Source: PReadableStream; ByteOrder: TByteOrder;
-  FallbackCP: Word);
+function TWideString.Load(Source: PReadableStream; ByteOrder: TByteOrder;
+  FallbackCP: PCodePage = nil): TReadableBOM;
 var
-  BOM: TReadableBOM;
+  CP: TCodePage;
   S: TLegacyString;
   Length: Integer;
-  CP: TCodePage;
-  CPNum: Word;
 begin
   Clear;
   if ByteOrder = boFromBOM then
   begin
-    CPNum := CP_UTF8;
-    BOM := Source.ReadBOM;
-    case BOM of
+    Result := Source.ReadBOM;
+    case Result of
       bomUTF16LE, bomUTF16BE:
-        CPNum := 0;
-      bomUTF7, bomUTF8:
-        CPNum := CP_UTF7 + Byte(BOM) - Byte(bomUTF7);
+        FallbackCP := nil;
+      bomUTF7:
+        begin
+          CP.Create(CP_UTF7);
+          FallbackCP := @CP;
+        end;
       bomGB18030:
-        CPNum := CP_GB18030;
+        begin
+          CP.Create(CP_GB18030);
+          FallbackCP := @CP;
+        end;
     else
-      if BOM <> bomNone then
+      if Result <> bomNone then
         raise EUTF32.Create(@Self);
     end;
 
-    if CPNum <> 0 then
+    if FallbackCP <> nil then
     begin
-      if CPNum = CP_UTF8 then
-        CPNum := FallbackCP;
-    {$IFDEF CoreLiteVCL}
-      if CPNum = 0 then
-        CPNum := DefaultUnicodeCodePage;
-    {$ENDIF}
-      CP.Create(CPNum);
       S.Create;
       try
-        S.FCodePage := @CP;
+        S.FCodePage := FallbackCP;
         S.Load(Source, False);
         AsString(@S);
       finally
@@ -1920,7 +1920,7 @@ begin
     end
   end
   else
-    BOM := bomNone;
+    Result := bomNone;
 
   Length := (Source.Size - Source.Position) div SizeOf(WideChar);
   if Length <> 0 then
@@ -1928,7 +1928,7 @@ begin
     Capacity := Length + 1;
     Source.ReadBuffer(FData^, Length * SizeOf(WideChar));
     FOptions := [];
-    if (ByteOrder = boBigEndian) or (BOM = bomUTF16BE) then
+    if (ByteOrder = boBigEndian) or (Result = bomUTF16BE) then
       Include(FOptions, soBigEndian);
     Append(Length);
     FData[Length] := #0;
