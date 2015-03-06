@@ -1,5 +1,5 @@
 @echo off
-for /f "tokens=1,2 delims=:ADMRCXI?!~" %%i in ('svnversion -n') do (
+for /f "tokens=1,2 delims=:MSP" %%i in ('svnversion -c -n') do (
   if "%%j" == "" (
     set rev=%%i
   ) else (
