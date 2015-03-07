@@ -146,7 +146,7 @@ type
   protected
     procedure Assign(Source: Pointer; Length: Integer; Options: TStringSource); overload;
     function AssignArray(Index: Integer; const Values: array of const): Integer;
-    function AssignInteger(Index: Integer; Value: Int64; MinWidth: Integer = 0;
+    function AssignInteger(Index: Integer; Value: QuadInt; MinWidth: Integer = 0;
       Hexadecimal: THexadecimal = hexNone; FillChar: WideChar = #32): Integer;
   {$IFNDEF Lite}
     function AssignString(Index: Integer; Source: PLegacyString;
@@ -163,10 +163,10 @@ type
   {$ENDIF}
   public
     procedure AsArray(const Values: array of const);
-    procedure AsInteger(Value: Int64; MinWidth: Integer = 0; Hexadecimal: THexadecimal = hexNone;
+    procedure AsInteger(Value: QuadInt; MinWidth: Integer = 0; Hexadecimal: THexadecimal = hexNone;
       FillChar: WideChar = #32); overload;
-    function AsInteger(var Value: Int64; Hexadecimal: Boolean = False): Boolean; overload;
-    function AsInteger(Hexadecimal: Boolean = False): Int64; overload;
+    function AsInteger(var Value: QuadInt; Hexadecimal: Boolean = False): Boolean; overload;
+    function AsInteger(Hexadecimal: Boolean = False): QuadInt; overload;
   {$IFNDEF Lite}
     procedure Detach; virtual; abstract;
     class function LengthOf(Source: Pointer): Integer; virtual; abstract;
@@ -809,7 +809,7 @@ end;
 const
   MaxDigits = 20;
 
-function TString.AssignInteger(Index: Integer; Value: Int64; MinWidth: Integer;
+function TString.AssignInteger(Index: Integer; Value: QuadInt; MinWidth: Integer;
   Hexadecimal: THexadecimal; FillChar: WideChar): Integer;
 var
   Buf: array[1..MaxDigits] of LegacyChar;
@@ -923,7 +923,7 @@ begin
   end
 end;
 
-procedure TString.AsInteger(Value: Int64; MinWidth: Integer; Hexadecimal: THexadecimal;
+procedure TString.AsInteger(Value: QuadInt; MinWidth: Integer; Hexadecimal: THexadecimal;
   FillChar: WideChar);
 var
   Length: Integer;
@@ -939,7 +939,7 @@ begin
   PWideChar(PLegacyString(@Self).FData + Length * ItemSize)^ := #0;
 end;
 
-function TString.AsInteger(var Value: Int64; Hexadecimal: Boolean): Boolean;
+function TString.AsInteger(var Value: QuadInt; Hexadecimal: Boolean): Boolean;
 const
   UpperCaseMask = not $20;
 var
@@ -995,7 +995,7 @@ begin
   Result := True;
 end;
 
-function TString.AsInteger(Hexadecimal: Boolean): Int64;
+function TString.AsInteger(Hexadecimal: Boolean): QuadInt;
 begin
   if not AsInteger(Result, Hexadecimal) then
     raise EIntegerString.Create(@Self, Hexadecimal);

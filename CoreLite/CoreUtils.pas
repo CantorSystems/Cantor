@@ -44,6 +44,8 @@ type
   PQuadWord = {type} PInt64;
 {$ENDIF}
 
+  QuadInt   = Int64;
+
   WordRec = packed record
     case Byte of
       0: (Lo, Hi: Byte);
@@ -158,7 +160,7 @@ procedure FreeMemAndNil(var P);
 // procedure FreeAndNil(var Obj); --> moved to CoreClasses
 
 procedure Exchange(var P1, P2: Pointer); overload;
-procedure Exchange(var P1, P2: Int64); overload;
+procedure Exchange(var P1, P2: QuadWord); overload;
 
 function CompareMem(P1, P2: Pointer; Count: Integer): Boolean;
 function SwapBytes(Source: LongWord): LongWord;
@@ -339,7 +341,7 @@ asm
         XCHG ECX, [EAX]
 end;
 
-procedure Exchange(var P1, P2: Int64); overload;
+procedure Exchange(var P1, P2: QuadWord); overload;
 asm
         MOV ECX, EDX
         MOV EDX, [EAX + 2]
