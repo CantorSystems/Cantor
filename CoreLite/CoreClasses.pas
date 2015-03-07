@@ -473,11 +473,15 @@ begin
 end;
 
 procedure TCollection.Assign(Source: PCollection; Attach: TAttachMode);
+var
+  CanCapture: Boolean;
 begin
   if Source <> nil then
   begin
-    Assign(PCollectionCast(@Source).Items, Source.FCount, Source.FCapacity, Attach <> amCopy);
-    if (Attach = amCapture) and not Source.AttachBuffer then
+    CanCapture := (Attach = amCapture) and not Source.AttachBuffer;
+    Assign(PCollectionCast(@Source).Items, Source.FCount, Source.FCapacity,
+      (Attach = amAttach) or CanCapture);
+    if CanCapture then
     begin
       FItemMode := Source.FItemMode;
       FAttachBuffer := False;
