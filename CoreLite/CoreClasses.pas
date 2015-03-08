@@ -68,7 +68,7 @@ type
   end;
 
   TCollectionItemMode = (imInline, imFreeMem, imFinalize, imFree);
-  TAttachMode = (amCopy, amAttach, amCapture);
+  TSharingMode = (smCopy, smAttach, smCapture); 
 
   PCollection = ^TCollection;
   TCollection = object(TClearable)
@@ -78,26 +78,30 @@ type
     FItemSize: Integer;
     FAttachBuffer: Boolean;
   { placeholder } // FItems: Pointer;
+    procedure Copy(Index: Integer; Collection: PCollection; Capture: Boolean);
     procedure Cut(Index, ItemCount: Integer);
+    procedure Expand(Index, ItemCount: Integer);
     procedure FreeItems(Index, ItemCount: Integer);
-    procedure Resize(Index, ItemCount: Integer);
     procedure SetCapacity(Value: Integer);
   protected
-    function Append(ItemCount: Integer = 1): Integer;
+    function Append(ItemCount: Integer = 1): Integer; overload;
     procedure Assign(Source: Pointer; ItemCount, ItemsCapacity: Integer; Attach: Boolean); overload;
-    procedure Assign(Source: PCollection; Attach: TAttachMode); overload;
+    procedure Assign(Source: PCollection; Mode: TSharingMode); overload;
+    procedure Detach;
     procedure CheckCapacity(ItemCount: Integer);
-    procedure Insert(Index: Integer; ItemCount: Integer = 1);
+    procedure Insert(Index: Integer; ItemCount: Integer = 1); overload;
   public
     constructor Create(Name: PLegacyChar; BytesPerItem: Integer;
       CollectionItemMode: TCollectionItemMode = imInline);
+    destructor Destroy; virtual;
+    procedure Append(Collection: PCollection; Capture: Boolean = False); overload;
     procedure AsRange(Source: PCollection; Index: Integer;
       CopyProps: Boolean = True); overload;
     procedure AsRange(Source: PCollection; Index, ItemCount: Integer;
       CopyProps: Boolean = True); overload;
-    destructor Destroy; virtual;
     procedure Clear; virtual;
     procedure Delete(Index: Integer; ItemCount: Integer = 1);
+    procedure Insert(Index: Integer; Collection: PCollection; Capture: Boolean = False); overload;
     procedure Skip(ItemCount: Integer = 1);
     function TranslateCapacity(NewCount: Integer): Integer;
     function TranslateDelta: Integer;
@@ -121,8 +125,13 @@ type
 
   PCollections = ^TCollection;
   TCollections = object(TCollection)
-  protected
-    function TotalCount: Integer;
+  private
+    function CalcCount(Index, ItemCount: Integer): Integer;
+  public
+    function AverageCount: Integer;
+    function TotalCount: Integer; overload;
+    function TotalCount(Index: Integer): Integer; overload;
+    function TotalCount(Index, ItemCount: Integer): Integer; overload;
   end;
 
   TCRC32Table = array[0..$FF] of LongWord;
@@ -452,7 +461,13 @@ end;
 function TCollection.Append(ItemCount: Integer): Integer;
 begin
   Result := FCount;
-  Resize(Result, ItemCount);
+  Expand(Result, ItemCount);
+end;
+
+procedure TCollection.Append(Collection: PCollection; Capture: Boolean);
+begin
+  if Collection <> nil then
+    Copy(FCount, Collection, Capture)
 end;
 
 procedure TCollection.Assign(Source: Pointer; ItemCount, ItemsCapacity: Integer;
@@ -474,15 +489,15 @@ begin
   FCount := ItemCount;
 end;
 
-procedure TCollection.Assign(Source: PCollection; Attach: TAttachMode);
+procedure TCollection.Assign(Source: PCollection; Mode: TSharingMode);
 var
   CanCapture: Boolean;
 begin
   if Source <> nil then
   begin
-    CanCapture := (Attach = amCapture) and not Source.AttachBuffer;
+    CanCapture := (Mode = smCapture) and not Source.AttachBuffer;
     Assign(PCollectionCast(@Source).Items, Source.FCount, Source.FCapacity,
-      (Attach = amAttach) or CanCapture);
+      (Mode = smAttach) or CanCapture);
     if CanCapture then
     begin
       FItemMode := Source.FItemMode;
@@ -491,7 +506,7 @@ begin
     end;
   end
   else
-   Clear;
+    Clear;
 end;
 
 procedure TCollection.AsRange(Source: PCollection; Index: Integer; CopyProps: Boolean);
@@ -505,7 +520,8 @@ var
   SrcLen, DstLen: Integer;
 begin
   if (Index >= 0) and (Index < Source.Count) and (Index + ItemCount <= Source.Count) then
-    Assign(PCollectionCast(Source).Items + Index * Source.ItemSize, ItemCount, ItemCount, True)
+    Assign(PCollectionCast(Source).Items + Index * Source.ItemSize, ItemCount,
+      PCollectionCast(Source).FCapacity - Index, True)
   else
     Clear;
 
@@ -540,6 +556,42 @@ begin
   else if FItemMode <> imInline then
     FreeItems(0, FCount);
   FCount := 0;
+end;
+
+procedure TCollection.Copy(Index: Integer; Collection: PCollection;
+  Capture: Boolean);
+var
+  MinItemSize, I: Integer;
+  Source, Dest: PAddress;
+begin
+  Expand(Index, Collection.Count);
+
+  if FItemSize < Collection.ItemSize then
+    MinItemSize := FItemSize
+  else if FItemSize > Collection.ItemSize then
+    MinItemSize := Collection.ItemSize
+  else
+    with PCollectionCast(Collection)^ do
+    begin
+      Move(Items^, PCollectionCast(@Self).Items[Index * FItemSize], Count * FItemSize);
+      if Capture and not FAttachBuffer then
+      begin
+        FreeMem(Items);
+        Items := PCollectionCast(@Self).Items + Index * FItemSize;
+        FCapacity := Count;
+        FAttachBuffer := True;
+      end;
+      Exit;
+    end;
+
+  Source := PCollectionCast(Collection).Items;
+  Dest := PCollectionCast(@Self).Items + Index * FItemSize;
+  for I := 0 to Collection.Count - 1 do
+  begin
+    Move(Source^, Dest^, MinItemSize);
+    Inc(Source, PCollectionCast(Collection).ItemSize);
+    Inc(Dest, FItemSize);
+  end;
 end;
 
 procedure TCollection.Cut(Index, ItemCount: Integer);
@@ -587,7 +639,6 @@ end;
 
 procedure TCollection.Delete(Index, ItemCount: Integer);
 begin
-
   if ItemCount <> 0 then
   begin
     CheckIndex(Index);
@@ -595,33 +646,13 @@ begin
   end;
 end;
 
-procedure TCollection.FreeItems(Index, ItemCount: Integer);
-var
-  I: Integer;
-  Item: Pointer;
+procedure TCollection.Detach;
 begin
-  Item := PCollectionCast(@Self).Items + (Index + ItemCount - 1) * FItemSize;
-  for I := 0 to ItemCount - 1 do
-  begin
-    case FItemMode of
-      imFreeMem:
-        FreeMem(PPointer(Item)^);
-      imFinalize:
-        PCoreObject(Item).Finalize;
-      imFree:
-        PCoreObject(Item^).Free;
-    end;
-    Item := PAddress(Item) - FItemSize;
-  end;
+  if FCapacity <> 0 then
+    FAttachBuffer := True;
 end;
 
-procedure TCollection.Insert(Index, ItemCount: Integer);
-begin
-  CheckIndex(Index);
-  Resize(Index, ItemCount);
-end;
-
-procedure TCollection.Resize(Index, ItemCount: Integer);
+procedure TCollection.Expand(Index, ItemCount: Integer);
 var
   FirstBytes, NewCount, NewCapacity: Integer;
   NewItems, Src, Dst: PAddress;
@@ -656,6 +687,42 @@ begin
     FAttachBuffer := False;
   end;
   FCount := NewCount;
+end;
+
+procedure TCollection.FreeItems(Index, ItemCount: Integer);
+var
+  I: Integer;
+  Item: Pointer;
+begin
+  Item := PCollectionCast(@Self).Items + (Index + ItemCount - 1) * FItemSize;
+  for I := 0 to ItemCount - 1 do
+  begin
+    case FItemMode of
+      imFreeMem:
+        FreeMem(PPointer(Item)^);
+      imFinalize:
+        PCoreObject(Item).Finalize;
+      imFree:
+        PCoreObject(Item^).Free;
+    end;
+    Item := PAddress(Item) - FItemSize;
+  end;
+end;
+
+procedure TCollection.Insert(Index, ItemCount: Integer);
+begin
+  CheckIndex(Index);
+  Expand(Index, ItemCount);
+end;
+
+procedure TCollection.Insert(Index: Integer; Collection: PCollection;
+  Capture: Boolean);
+begin
+  if Collection <> nil then
+  begin
+    CheckIndex(Index);
+    Copy(Index, Collection, Capture);
+  end;
 end;
 
 procedure TCollection.SetCapacity(Value: Integer);
@@ -770,18 +837,53 @@ end;
 
 { TCollections }
 
-function TCollections.TotalCount: Integer;
+function TCollections.AverageCount: Integer;
 var
   I: Integer;
   Item: PCollection;
 begin
   Result := 0;
-  Item := @PCollectionsCast(@Self).Items;
-  for I := 0 to FCount - 1 do
+  if FCount <> 0 then
   begin
-    Inc(Result, Item.FCount);
+    Item := @PCollectionsCast(@Self).Items;
+    for I := 0 to FCount - 1 do
+    begin
+      Inc(Result, Item.Count);
+      Inc(PAddress(Item), FItemSize);
+    end;
+    Result := Result div FCount;
+  end;
+end;
+
+function TCollections.CalcCount(Index, ItemCount: Integer): Integer;
+var
+  I: Integer;
+  Item: PCollection;
+begin
+  Result := 0;
+  Item := PCollection(PAddress(@PCollectionsCast(@Self).Items) + Index * FItemSize);
+  for I := Index to Index + ItemCount - 1 do
+  begin
+    Inc(Result, Item.Count);
     Inc(PAddress(Item), FItemSize);
   end;
+end;
+
+function TCollections.TotalCount: Integer;
+begin
+  Result := CalcCount(0, FCount);
+end;
+
+function TCollections.TotalCount(Index: Integer): Integer;
+begin
+  CheckIndex(Index);
+  Result := CalcCount(Index, FCount - Index);
+end;
+
+function TCollections.TotalCount(Index, ItemCount: Integer): Integer;
+begin
+  CheckRange(Index, ItemCount);
+  Result := CalcCount(Index, ItemCount);
 end;
 
 { TCRC32 }

@@ -90,6 +90,8 @@ const
 
   sLegacyString = 'UTF-8 or code page string';
   sWideString = 'UTF-16 string';
+  sLegacyText = 'UTF-8 of code page text';
+  sWideText = 'UTF-16 text';
 
   sInteger = 'integer';
   sHexadecimal = 'hexadecimal';

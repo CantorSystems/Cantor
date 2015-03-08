@@ -181,6 +181,11 @@ type
   TNumberFormat = (nfFillChar, nfThousandsSeparator, nfDecimalSeparator);
   TIntegerFormat = nfFillChar..nfThousandsSeparator;
 
+  TBinaryData = record
+    Data: Pointer;
+    Length: Integer;
+  end;
+
   TLegacyCharNumberFormat = array[TNumberFormat] of LegacyChar;
   TLegacyCharIntegerFormat = array[TIntegerFormat] of LegacyChar;
 
@@ -206,6 +211,8 @@ type
   public
     constructor Create;
 
+    function AsBinaryData(DetachBuffer: Boolean): TBinaryData;
+
     function AsRange(Index: Integer): TLegacyString; overload;
     function AsRange(Index, MaxCount: Integer): TLegacyString; overload;
 
@@ -220,7 +227,7 @@ type
 
     procedure Detach; {$IFNDEF Lite} virtual;
     class function LengthOf(Source: Pointer): Integer; virtual; {$ENDIF}
-    function IsUTF8(ThresholdBytes: Integer = 4): Boolean; // TODO: magic number
+    function IsBinaryData: Boolean;
 
     function NextIndex(Index: Integer): Integer; overload;
     function NextIndex(Value: LegacyChar; StartIndex: Integer = 0): Integer; overload;
@@ -311,18 +318,63 @@ type
 
   PStrings = ^TStrings;
   TStrings = object(TCollections)
-  public
-    property TextLength: Integer read TotalCount;
   end;
+
+  PLegacyStringArray = ^TLegacyStringArray;
+  TLegacyStringArray = array[0..MaxInt div SizeOf(TLegacyString) - 1] of TLegacyString;
 
   PLegacyStrings = ^TLegacyStrings;
   TLegacyStrings = object(TStrings)
-    // TODO: append in amCapture mode
+  private
+  { hold } FItems: PLegacyStringArray;
+    procedure AssignText(Dest: PLegacyString; Index, ItemCount: Integer;
+      Delimiter: PLegacyChar; Attach: Boolean); overload;
+  public
+    constructor Create;
+    function AsText(Delimiter: PLegacyChar = PLegacyChar(LF);
+      Attach: Boolean = False): TLegacyString; overload;
+    function AsText(Index: Integer; Delimiter: PLegacyChar = PLegacyChar(LF);
+      Attach: Boolean = False): TLegacyString; overload;
+    function AsText(Index, ItemCount: Integer; Delimiter: PLegacyChar = PLegacyChar(LF);
+      Attach: Boolean = False): TLegacyString; overload;
+    procedure AsText(Source: PLegacyString; Mode: TSharingMode = smCopy); overload;
+    function AppendText(Source: PLegacyString; Mode: TSharingMode = smCopy): Integer;
+    function InsertText(Source: PLegacyString; Index: Integer;
+      Mode: TSharingMode = smCopy): Integer; overload;
+    procedure DetachItems;
+    function TextLength(Delimiter: PLegacyChar = PLegacyChar(LF)): Integer; overload;
+    function TextLength(Index: Integer; Delimiter:
+      PLegacyChar = PLegacyChar(LF)): Integer; overload;
+    function TextLength(Index, ItemCount: Integer;
+      Delimiter: PLegacyChar = PLegacyChar(LF)): Integer; overload;
   end;
+
+  PWideStringArray = ^TWideStringArray;
+  TWideStringArray = array[0..MaxInt div SizeOf(TWideString) - 1] of TWideString;
 
   PWideStrings = ^TWideStrings;
   TWideStrings = object(TStrings)
-    // TODO: append in amCapture mode
+  { hold } FItems: PWideStringArray;
+    procedure AssignText(Dest: PWideString; Index, ItemCount: Integer;
+      Delimiter: PWideChar; Attach: Boolean); overload;
+  public
+    constructor Create;
+    function AsText(Delimiter: PWideChar = PWideChar(WideLF);
+      Attach: Boolean = False): TWideString; overload;
+    function AsText(Index: Integer; Delimiter: PWideChar = PWideChar(WideLF);
+      Attach: Boolean = False): TWideString; overload;
+    function AsText(Index, ItemCount: Integer; Delimiter: PWideChar = PWideChar(WideLF);
+      Attach: Boolean = False): TWideString; overload;
+    procedure AsText(Source: PWideString; Mode: TSharingMode = smCopy); overload;
+    function AppendText(Source: PWideString; Mode: TSharingMode = smCopy): Integer;
+    function InsertText(Source: PWideString; Index: Integer;
+      Mode: TSharingMode = smCopy): Integer; overload;
+    procedure DetachItems;
+    function TextLength(Delimiter: PWideChar = PWideChar(WideLF)): Integer; overload;
+    function TextLength(Index: Integer; Delimiter:
+      PWideChar = PWideChar(WideLF)): Integer; overload;
+    function TextLength(Index, ItemCount: Integer;
+      Delimiter: PWideChar = PWideChar(WideLF)): Integer; overload;
   end;
 
   PLegacyCommandLineParam = ^TLegacyCommandLineParam;
@@ -1026,6 +1078,17 @@ begin
   inherited Create(sLegacyString, SizeOf(LegacyChar));
 end;
 
+function TLegacyString.AsBinaryData(DetachBuffer: Boolean): TBinaryData;
+begin
+  if DetachBuffer then
+  begin
+    Detach;
+    inherited Detach;
+  end;
+  Result.Data := FData;
+  Result.Length := Count;
+end;
+
 function TLegacyString.AsRange(Index: Integer): TLegacyString;
 begin
   Result.Create;
@@ -1291,17 +1354,30 @@ begin
   Result := FData;
 end;
 
-function TLegacyString.IsUTF8(ThresholdBytes: Integer): Boolean;
-begin
-  Result := False; // TODO
-end;
-
 {$IFNDEF Lite}
 class function TLegacyString.LengthOf(Source: Pointer): Integer;
 begin
   Result := StrLen(Source);
 end;
 {$ENDIF}
+
+function TLegacyString.IsBinaryData: Boolean;
+var
+  P, Limit: PLegacyChar;
+begin
+  P := FData;
+  Limit := P + Count;
+  while P < Limit do
+  begin
+    if P^ in [#1..#8, #11..#12, #14..#31] then
+    begin
+      Result := True;
+      Exit;
+    end;
+    Inc(P);
+  end;
+  Result := False;
+end;
 
 function TLegacyString.NextIndex(Index: Integer): Integer;
 begin
@@ -2048,6 +2124,320 @@ begin
       Value.RawData, Value.Count, FData, Count) - CSTR_EQUAL
   else
     Result := 1;
+end;
+
+{ TLegacyStrings }
+
+constructor TLegacyStrings.Create;
+begin
+  inherited Create(sLegacyText, SizeOf(TLegacyString));
+end;
+
+function TLegacyStrings.AppendText(Source: PLegacyString; Mode: TSharingMode): Integer;
+var
+  Text, Next, Limit: PLegacyChar;
+  SaveCount: Integer;
+begin
+  Result := 0;
+  if Source <> nil then
+  begin
+    Text := Source.RawData;
+    Limit := Text + Source.Count;
+    Next := Text;
+    while Next < Limit do
+      if Next^ in [#10, #13] then
+      begin
+        with FItems[inherited Append] do
+        begin
+          Create;
+          AsRange(Source, Next - Source.RawData, Next - Text);
+          if Mode = smCopy then
+            Detach;
+        end;
+        Inc(Result);
+
+        if (Next^ = #13) and (Next + 1 < Limit) and (Next[1] = #10) then
+          Inc(Next, 2)
+        else
+          Inc(Next);
+        Text := Next;
+      end
+      else
+        Inc(Next);
+
+    if (Mode = smCapture) and (Count <> 0) then
+      with FItems[0] do
+      begin
+        SaveCount := Count;
+        Assign(Source, smCapture);
+        Truncate(Count - SaveCount);
+      end;
+  end;
+end;
+
+procedure TLegacyStrings.AssignText(Dest: PLegacyString; Index, ItemCount: Integer;
+  Delimiter: PLegacyChar; Attach: Boolean);
+var
+  DelimiterLen, I: Integer;
+  Dst: PLegacyChar;
+begin
+  DelimiterLen := StrLen(Delimiter);
+  Dest.Capacity := TotalCount(Index, ItemCount) + DelimiterLen * ItemCount;
+  Dst := Dest.RawData;
+  for I := Index to Index + ItemCount - 1 do
+  begin
+    with FItems[I] do
+    begin
+      Move(RawData^, Dst^, Count);
+      if Attach then
+        Assign(Dst, Count, Options + soAttach);
+      Inc(Dst, Count);
+    end;
+    Move(Delimiter^, Dst^, DelimiterLen);
+    Inc(Dst, DelimiterLen);
+  end;
+  Dec(Dst, DelimiterLen);
+  Dst^ := #0;
+  Dest.Append(Dst - Dest.RawData);
+end;
+
+function TLegacyStrings.AsText(Delimiter: PLegacyChar; Attach: Boolean): TLegacyString;
+begin
+  Result.Create;
+  if Count <> 0 then
+    AssignText(@Result, 0, Count, Delimiter, Attach);
+end;
+
+function TLegacyStrings.AsText(Index: Integer; Delimiter: PLegacyChar;
+  Attach: Boolean): TLegacyString;
+begin
+  Result.Create;
+  AssignText(@Result, Index, Count - Index, Delimiter, Attach);
+end;
+
+function TLegacyStrings.AsText(Index, ItemCount: Integer; Delimiter: PLegacyChar;
+  Attach: Boolean): TLegacyString;
+begin
+  Result.Create;
+  AssignText(@Result, Index, ItemCount, Delimiter, Attach);
+end;
+
+procedure TLegacyStrings.AsText(Source: PLegacyString; Mode: TSharingMode);
+begin
+  Clear;
+  AppendText(Source, Mode);
+end;
+
+procedure TLegacyStrings.DetachItems;
+var
+  I: Integer;
+begin
+  for I := Count - 1 downto 0 do
+    FItems[I].Detach;
+end;
+
+function TLegacyStrings.InsertText(Source: PLegacyString; Index: Integer;
+  Mode: TSharingMode): Integer;
+var
+  Text: TLegacyStrings;
+begin
+  if (Source <> nil) and (Source.Count <> 0) then
+  begin
+    CheckIndex(Index);
+    Text.Create;
+    try
+      if Count <> 0 then
+        Text.Capacity := AverageCount
+      else
+        Text.Capacity := Source.Count div 32; // TODO: magic number
+      Text.Delta := -4;
+      Result := Text.AppendText(Source, Mode);
+      inherited Insert(Index, @Text, True);
+    finally
+      Text.Destroy;
+    end;
+  end
+  else
+    Result := 0;
+end;
+
+function TLegacyStrings.TextLength(Delimiter: PLegacyChar): Integer;
+begin
+  Result := TotalCount;
+  if Result <> 0 then
+    Inc(Result, StrLen(Delimiter) * (Count - 1));
+end;
+
+function TLegacyStrings.TextLength(Index: Integer; Delimiter: PLegacyChar): Integer;
+begin
+  Result := TotalCount(Index);
+  if Result <> 0 then
+    Inc(Result, StrLen(Delimiter) * (Count - 1));
+end;
+
+function TLegacyStrings.TextLength(Index, ItemCount: Integer;
+  Delimiter: PLegacyChar): Integer;
+begin
+  Result := TotalCount(Index, ItemCount);
+  if Result <> 0 then
+    Inc(Result, StrLen(Delimiter) * (ItemCount - 1));
+end;
+
+{ TWideStrings }
+
+constructor TWideStrings.Create;
+begin
+  inherited Create(sWideText, SizeOf(TWideString));
+end;
+
+function TWideStrings.AppendText(Source: PWideString; Mode: TSharingMode): Integer;
+var
+  Text, Next, Limit: PWideChar;
+  SaveCount: Integer;
+begin
+  Result := 0;
+  if Source <> nil then
+  begin
+    Text := Source.RawData;
+    Limit := Text + Source.Count;
+    Next := Text;
+    while Next < Limit do
+      if (Next^ = #10) or (Next^ = #13) then
+      begin
+        with FItems[inherited Append] do
+        begin
+          Create;
+          AsRange(Source, Next - Source.RawData, Next - Text);
+          if Mode = smCopy then
+            Detach;
+        end;
+        Inc(Result);
+
+        if (Next^ = #13) and (Next + 1 < Limit) and (Next[1] = #10) then
+          Inc(Next, 2)
+        else
+          Inc(Next);
+        Text := Next;
+      end
+      else
+        Inc(Next);
+
+    if (Mode = smCapture) and (Count <> 0) then
+      with FItems[0] do
+      begin
+        SaveCount := Count;
+        Assign(Source, smCapture);
+        Truncate(Count - SaveCount);
+      end;
+  end;
+end;
+
+procedure TWideStrings.AssignText(Dest: PWideString; Index, ItemCount: Integer;
+  Delimiter: PWideChar; Attach: Boolean);
+var
+  DelimiterLen, I: Integer;
+  Dst: PWideChar;
+begin
+  DelimiterLen := WideStrLen(Delimiter);
+  Dest.Capacity := TotalCount(Index, ItemCount) + DelimiterLen * ItemCount;
+  Dst := Dest.RawData;
+  for I := Index to Index + ItemCount - 1 do
+  begin
+    with FItems[I] do
+    begin
+      Move(RawData^, Dst^, Count * SizeOf(WideChar));
+      if Attach then
+        Assign(Dst, Count, Options + soAttach);
+      Inc(Dst, Count);
+    end;
+    Move(Delimiter^, Dst^, DelimiterLen * SizeOf(WideChar));
+    Inc(Dst, DelimiterLen);
+  end;
+  Dec(Dst, DelimiterLen);
+  Dst^ := #0;
+  Dest.Append(Dst - Dest.RawData);
+end;
+
+function TWideStrings.AsText(Delimiter: PWideChar; Attach: Boolean): TWideString;
+begin
+  Result.Create;
+  if Count <> 0 then
+    AssignText(@Result, 0, Count, Delimiter, Attach);
+end;
+
+function TWideStrings.AsText(Index: Integer; Delimiter: PWideChar;
+  Attach: Boolean): TWideString;
+begin
+  Result.Create;
+  AssignText(@Result, Index, Count - Index, Delimiter, Attach);
+end;
+
+function TWideStrings.AsText(Index, ItemCount: Integer; Delimiter: PWideChar;
+  Attach: Boolean): TWideString;
+begin
+  Result.Create;
+  AssignText(@Result, Index, ItemCount, Delimiter, Attach);
+end;
+
+procedure TWideStrings.AsText(Source: PWideString; Mode: TSharingMode);
+begin
+  Clear;
+  AppendText(Source, Mode);
+end;
+
+procedure TWideStrings.DetachItems;
+var
+  I: Integer;
+begin
+  for I := Count - 1 downto 0 do
+    FItems[I].Detach;
+end;
+
+function TWideStrings.InsertText(Source: PWideString; Index: Integer;
+  Mode: TSharingMode): Integer;
+var
+  Text: TWideStrings;
+begin
+  if (Source <> nil) and (Source.Count <> 0) then
+  begin
+    CheckIndex(Index);
+    Text.Create;
+    try
+      if Count <> 0 then
+        Text.Capacity := AverageCount
+      else
+        Text.Capacity := Source.Count div 32; // TODO: magic number
+      Text.Delta := -4;
+      Result := Text.AppendText(Source, Mode);
+      inherited Insert(Index, @Text, True);
+    finally
+      Text.Destroy;
+    end;
+  end
+  else
+    Result := 0;
+end;
+
+function TWideStrings.TextLength(Delimiter: PWideChar): Integer;
+begin
+  Result := TotalCount;
+  if Result <> 0 then
+    Inc(Result, WideStrLen(Delimiter) * (Count - 1));
+end;
+
+function TWideStrings.TextLength(Index: Integer; Delimiter: PWideChar): Integer;
+begin
+  Result := TotalCount(Index);
+  if Result <> 0 then
+    Inc(Result, WideStrLen(Delimiter) * (Count - 1));
+end;
+
+function TWideStrings.TextLength(Index, ItemCount: Integer;
+  Delimiter: PWideChar): Integer;
+begin
+  Result := TotalCount(Index, ItemCount);
+  if Result <> 0 then
+    Inc(Result, WideStrLen(Delimiter) * (ItemCount - 1));
 end;
 
 { TLegacyCommandLineParam }
