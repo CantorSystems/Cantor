@@ -78,6 +78,7 @@ type
     FItemSize: Integer;
     FAttachBuffer: Boolean;
   { placeholder } // FItems: Pointer;
+    procedure Cut(Index, ItemCount: Integer);
     procedure FreeItems(Index, ItemCount: Integer);
     procedure Resize(Index, ItemCount: Integer);
     procedure SetCapacity(Value: Integer);
@@ -97,6 +98,7 @@ type
     destructor Destroy; virtual;
     procedure Clear; virtual;
     procedure Delete(Index: Integer; ItemCount: Integer = 1);
+    procedure Skip(ItemCount: Integer = 1);
     function TranslateCapacity(NewCount: Integer): Integer;
     function TranslateDelta: Integer;
     procedure Truncate(ItemCount: Integer);
@@ -524,7 +526,7 @@ var
 begin
   NewCount := FCount + ItemCount;
   if (NewCount < 0) or (NewCount > FCapacity) then
-    ECapacity.Create(@Self, ItemCount);
+    raise ECapacity.Create(@Self, ItemCount);
 end;
 
 procedure TCollection.Clear;
@@ -540,49 +542,56 @@ begin
   FCount := 0;
 end;
 
-procedure TCollection.Delete(Index, ItemCount: Integer);
+procedure TCollection.Cut(Index, ItemCount: Integer);
 var
   FirstBytes, LastBytes, NewCount, NewCapacity: Integer;
   NewItems: PAddress;
 begin
+  CheckCapacity(-ItemCount);
+
+  NewCount := FCount - ItemCount;
+  FirstBytes := Index * FItemSize;
+  LastBytes := ItemCount * FItemSize;
+
+  if FAttachBuffer then
+  begin
+    if Index = 0 then
+    begin
+      Inc(PCollectionCast(@Self).Items, LastBytes);
+      Dec(FCapacity, ItemCount);
+    end
+    else if Index + ItemCount < FCount then
+    begin
+      NewCapacity := TranslateCapacity(NewCount);
+      GetMem(NewItems, NewCapacity * FItemSize);
+      with PCollectionCast(@Self)^ do
+      begin
+        Move(Items^, NewItems^, FirstBytes);
+        Move(Items[LastBytes], NewItems[FirstBytes], LastBytes);
+        Items := NewItems;
+      end;
+      FCapacity := NewCapacity;
+      FAttachBuffer := False;
+    end;
+  end
+  else
+  begin
+    if FItemMode <> imInline then
+      FreeItems(Index, ItemCount);
+    with PCollectionCast(@Self)^ do
+      Move(Items[LastBytes], Items[FirstBytes], (NewCount - Index) * FItemSize);
+  end;
+
+  FCount := NewCount;
+end;
+
+procedure TCollection.Delete(Index, ItemCount: Integer);
+begin
+
   if ItemCount <> 0 then
   begin
     CheckIndex(Index);
-
-    NewCount := FCount - ItemCount;
-    FirstBytes := Index * FItemSize;
-    LastBytes := ItemCount * FItemSize;
-
-    if FAttachBuffer then
-    begin
-      if Index = 0 then
-      begin
-        Inc(PCollectionCast(@Self).Items, LastBytes);
-        Dec(FCapacity, ItemCount);
-      end
-      else if Index + ItemCount < FCount then
-      begin
-        NewCapacity := TranslateCapacity(NewCount);
-        GetMem(NewItems, NewCapacity * FItemSize);
-        with PCollectionCast(@Self)^ do
-        begin
-          Move(Items^, NewItems^, FirstBytes);
-          Move(Items[LastBytes], NewItems[FirstBytes], LastBytes);
-          Items := NewItems;
-        end;
-        FCapacity := NewCapacity;
-        FAttachBuffer := False;
-      end;
-    end
-    else
-    begin
-      if FItemMode <> imInline then
-        FreeItems(Index, ItemCount);
-      with PCollectionCast(@Self)^ do
-        Move(Items[LastBytes], Items[FirstBytes], (NewCount - Index) * FItemSize);
-    end;
-
-    FCount := NewCount;
+    Cut(Index, ItemCount);
   end;
 end;
 
@@ -677,6 +686,12 @@ begin
   FCapacity := Value;
   if Value < FCount then
     FCount := Value;
+end;
+
+procedure TCollection.Skip(ItemCount: Integer);
+begin
+  if ItemCount <> 0 then
+    Cut(0, ItemCount);
 end;
 
 function TCollection.TranslateCapacity(NewCount: Integer): Integer;

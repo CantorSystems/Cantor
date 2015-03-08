@@ -114,7 +114,7 @@ begin
   begin
     Create;
     AsWideString(ExeName, Len, soAttach);
-    Delete(0, PrevIndex(PathDelimiter) + 1);
+    Skip(PrevIndex(PathDelimiter) + 1);
     Truncate(Count - PrevIndex(WideChar('.')));
     Detach;
   end;

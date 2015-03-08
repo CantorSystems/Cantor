@@ -2059,22 +2059,22 @@ begin
   Result.AsRange(CommandLine, 0);
 
   while (Result.Count <> 0) and (Result.RawData^ in [#32, #9]) do
-    Result.Delete(0);
+    Result.Skip;
 
   if Result.Count <> 0 then
   begin
     if Result.RawData^ = '"' then
     begin
-      Result.Delete(0);
+      Result.Skip;
       AsRange(@Result, 0, Result.NextIndex('"'));
       FQuoted := True;
-      Result.Delete(0, Count + 1);
+      Result.Skip(Count + 1);
       Exit;
     end;
 
     AsRange(@Result, 0, False);
     while (Result.Count <> 0) and not (Result.RawData^ in [#32, #9]) do
-      Result.Delete(0);
+      Result.Skip;
 
     if Result.Count <> 0 then
       Delete(Result.RawData - FData, Result.Count);
@@ -2091,22 +2091,22 @@ begin
   Result.AsRange(CommandLine, 0);
 
   while (Result.Count <> 0) and ((Result.RawData^ = #32) or (Result.RawData^ = #9)) do
-    Result.Delete(0);
+    Result.Skip;
 
   if Result.Count <> 0 then
   begin
     if Result.RawData^ = '"' then
     begin
-      Result.Delete(0);
+      Result.Skip;
       AsRange(@Result, 0, Result.NextIndex(WideChar('"')));
       FQuoted := True;
-      Result.Delete(0, Count + 1);
+      Result.Skip(Count + 1);
       Exit;
     end;
 
     AsRange(@Result, 0, False);
     while (Result.Count <> 0) and (Result.RawData^ <> #32) and (Result.RawData^ <> #9) do
-      Result.Delete(0);
+      Result.Skip;
 
     if Result.Count <> 0 then
       Delete(Result.RawData - FData, Result.Count);
