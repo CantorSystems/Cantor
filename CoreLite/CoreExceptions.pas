@@ -94,8 +94,10 @@ type
   EAssertionFailed = class(Exception);
 {$ENDIF}
 
-  EOutOfMemory = class(Exception);
-  EInvalidPointer = class(Exception);
+  EMemory = class(Exception);
+
+  EOutOfMemory = class(EMemory);
+  EInvalidPointer = class(EMemory);
 
   PExceptionRecord = ^TExceptionRecord;
   TExceptionRecord = record
@@ -388,7 +390,9 @@ begin
 {$ELSE ----------- }
 
   OutOfMemory := EOutOfMemory.Create(sOutOfMemory);
+  Exclude(OutOfMemory.FOptions, eoCanFree);
   InvalidPointer := EInvalidPointer.Create(sInvalidPointer);
+  Exclude(InvalidPointer.FOptions, eoCanFree);
 
   ErrorProc := ErrorHandler;
   ExceptProc := @ExceptionHandler;
