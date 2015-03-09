@@ -143,11 +143,15 @@ type
   TString = object(TCollection)
   private
   { placeholder } // FOptions: TStringOptions;
+    function AssignDigits(Index: Integer; Digits: PLegacyChar; Length, MinWidth: Integer;
+      FillChar: WideChar): Integer;
   protected
     procedure Assign(Source: Pointer; Length: Integer; Options: TStringSource); overload;
     function AssignArray(Index: Integer; const Values: array of const): Integer;
     function AssignInteger(Index: Integer; Value: QuadInt; MinWidth: Integer = 0;
       Hexadecimal: THexadecimal = hexNone; FillChar: WideChar = #32): Integer;
+    function AssignReal(Index: Integer; Value: Extended; MinWidth, Precision: Integer;
+      FillChar: WideChar = #32): Integer;
   {$IFNDEF Lite}
     function AssignString(Index: Integer; Source: PLegacyString;
       EncodeOptions: TEncodeUTF16 = coUTF16): TConvertResult; virtual; abstract;
@@ -163,10 +167,12 @@ type
   {$ENDIF}
   public
     procedure AsArray(const Values: array of const);
-    procedure AsInteger(Value: QuadInt; MinWidth: Integer = 0; Hexadecimal: THexadecimal = hexNone;
-      FillChar: WideChar = #32); overload;
+    procedure AsInteger(Value: QuadInt; MinWidth: Integer = 0;
+      Hexadecimal: THexadecimal = hexNone; FillChar: WideChar = #32); overload;
     function AsInteger(var Value: QuadInt; Hexadecimal: Boolean = False): Boolean; overload;
     function AsInteger(Hexadecimal: Boolean = False): QuadInt; overload;
+    procedure AsReal(Value: Extended; MinWidth, Precision: Integer;
+      FillChar: WideChar = #32);
   {$IFNDEF Lite}
     procedure Detach; virtual; abstract;
     class function LengthOf(Source: Pointer): Integer; virtual; abstract;
@@ -852,13 +858,54 @@ begin
   Result := 0; // TODO
 end;
 
-const
-  MaxDigits = 20;
+function TString.AssignDigits(Index: Integer; Digits: PLegacyChar; Length,
+  MinWidth: Integer; FillChar: WideChar): Integer;
+begin
+  if ItemSize = SizeOf(LegacyChar) then
+    with PLegacyString(@Self)^ do
+      if Length < Abs(MinWidth) then
+      begin
+        if MinWidth < 0 then
+        begin
+          System.FillChar(FData[Index], Abs(MinWidth) - Length, FillChar);
+          Move(Digits^, FData[Index + Abs(MinWidth) - Length], Length);
+        end
+        else
+        begin
+          Move(Digits^, FData[Index], Length);
+          System.FillChar(FData[Index + Length], MinWidth - Length, FillChar);
+        end;
+        Result := Abs(MinWidth);
+        Exit;
+      end
+      else
+        Move(Digits^, FData[Index], Length)
+  else
+    with PWideString(@Self)^ do
+      if Length < Abs(MinWidth) then
+      begin
+        if MinWidth < 0 then
+        begin
+          FillWideChar(FData[Index], Abs(MinWidth) - Length, FillChar);
+          MoveZeroExpand(Digits^, FData[Index + Abs(MinWidth) - Length], Length);
+        end
+        else
+        begin
+          MoveZeroExpand(Digits^, FData[Index], Length);
+          FillWideChar(FData[Index + Length], MinWidth - Length, FillChar);
+        end;
+        Result := Abs(Length);
+        Exit;
+      end
+      else
+        MoveZeroExpand(Digits^, FData[Index], Length);
+  Result := Length;
+end;
 
 function TString.AssignInteger(Index: Integer; Value: QuadInt; MinWidth: Integer;
   Hexadecimal: THexadecimal; FillChar: WideChar): Integer;
 var
-  Buf: array[1..MaxDigits] of LegacyChar;
+  Buf: array[1..DecimalQuadInt] of LegacyChar;
   Digits: PLegacyChar;
   Minus: Boolean;
   LowerCaseMask: Word;
@@ -917,42 +964,16 @@ begin
     end;
   end;
 
-  if ItemSize = SizeOf(LegacyChar) then
-    with PLegacyString(@Self)^ do
-      if Result < Abs(MinWidth) then
-      begin
-        if MinWidth < 0 then
-        begin
-          System.FillChar(FData[Index], Abs(MinWidth) - Result, FillChar);
-          Move(Digits^, FData[Index + Abs(MinWidth) - Result], Result);
-        end
-        else
-        begin
-          Move(Digits^, FData[Index], Result);
-          System.FillChar(FData[Index + Result], MinWidth - Result, FillChar);
-        end;
-        Result := Abs(MinWidth);
-      end
-      else
-        Move(Digits^, FData[Index], Result)
-  else
-    with PWideString(@Self)^ do
-      if Result < Abs(MinWidth) then
-      begin
-        if MinWidth < 0 then
-        begin
-          FillWideChar(FData[Index], Abs(MinWidth) - Result, FillChar);
-          MoveZeroExpand(Digits^, FData[Index + Abs(MinWidth) - Result], Result);
-        end
-        else
-        begin
-          MoveZeroExpand(Digits^, FData[Index], Result);
-          FillWideChar(FData[Index + Result], MinWidth - Result, FillChar);
-        end;
-        Result := Abs(MinWidth);
-      end
-      else
-        MoveZeroExpand(Digits^, FData[Index], Result);
+  Result := AssignDigits(Index, Digits, Result, MinWidth, FillChar);
+end;
+
+function TString.AssignReal(Index: Integer; Value: Extended; MinWidth,
+  Precision: Integer; FillChar: WideChar): Integer;
+var
+  Digits: string[DecimalExtended];
+begin
+  Str(Value:Abs(MinWidth):Precision, Digits);
+  Result := AssignDigits(Index, PLegacyChar(@Digits[1]), Length(Digits), MinWidth, FillChar);
 end;
 
 procedure TString.AsArray(const Values: array of const);
@@ -975,10 +996,10 @@ var
   Length: Integer;
 begin
   Clear;
-  if Abs(MinWidth) > MaxDigits then
+  if Abs(MinWidth) > DecimalQuadInt then
     Length := Abs(MinWidth)
   else
-    Length := MaxDigits;
+    Length := DecimalQuadInt;
   Capacity := Length + SizeOf(WideChar);
   Length := AssignInteger(0, Value, MinWidth, Hexadecimal, FillChar);
   Append(Length);
@@ -1045,6 +1066,22 @@ function TString.AsInteger(Hexadecimal: Boolean): QuadInt;
 begin
   if not AsInteger(Result, Hexadecimal) then
     raise EIntegerString.Create(@Self, Hexadecimal);
+end;
+
+procedure TString.AsReal(Value: Extended; MinWidth, Precision: Integer;
+  FillChar: WideChar);
+var
+  Length: Integer;
+begin
+  Clear;
+  if Abs(MinWidth) > DecimalExtended then
+    Length := Abs(MinWidth)
+  else
+    Length := DecimalExtended;
+  Capacity := Length + SizeOf(WideChar);
+  Length := AssignReal(0, Value, MinWidth, Precision, FillChar);
+  Append(Length);
+  PWideChar(PLegacyString(@Self).FData + Length * ItemSize)^ := #0;
 end;
 
 function TString.CharSetName(EncodeOptions: TEncodeOptions): PLegacyChar;
