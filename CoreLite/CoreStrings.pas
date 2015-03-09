@@ -494,6 +494,11 @@ var
   DefaultUnicodeCodePage: Integer;
 {$IFEND}
 
+function Wrap(Source: PLegacyChar; Length: Integer; CodePage: PCodePage = nil;
+  SourceOptions: TRawByteSource = soFromTheWild + soAttach): TLegacyString; overload;
+function Wrap(Source: PWideChar; Length: Integer;
+  SourceOptions: TEndianSource = soAttach): TWideString; overload;
+
 { Legacy Windows service }
 
 function GetCPInfoEx(CodePage, Flags: LongWord; var CPInfoEx: TCPInfoEx): BOOL; stdcall;
@@ -510,8 +515,19 @@ function GetCPInfoEx(CodePage, Flags: LongWord; var CPInfoEx: TCPInfoEx): BOOL; 
 
 { Helper functions }
 
-const
-  InvalidUTF8Mask   = $80000000;
+function Wrap(Source: PLegacyChar; Length: Integer; CodePage: PCodePage;
+  SourceOptions: TRawByteSource): TLegacyString;
+begin
+  Result.Create;
+  Result.CodePage := CodePage;
+  Result.Assign(Source, Length, SourceOptions);
+end;
+
+function Wrap(Source: PWideChar; Length: Integer; SourceOptions: TEndianSource): TWideString;
+begin
+  Result.Create;
+  Result.Assign(Source, Length, SourceOptions);
+end;
 
 function ExtractCodePageName(const Info: TCPInfoEx): TCoreStringRec;
 var
