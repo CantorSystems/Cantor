@@ -232,7 +232,7 @@ type
 
   PCollectionsCast = ^TCollectionsCast;
   TCollectionsCast = object(TCollections)
-    Items: TCollection;
+    Items: PCollection;
   end;
 
 { Helper functions }
@@ -847,7 +847,7 @@ begin
   Result := 0;
   if FCount <> 0 then
   begin
-    Item := @PCollectionsCast(@Self).Items;
+    Item := PCollectionsCast(@Self).Items;
     for I := 0 to FCount - 1 do
     begin
       Inc(Result, Item.Count);
@@ -863,7 +863,7 @@ var
   Item: PCollection;
 begin
   Result := 0;
-  Item := PCollection(PAddress(@PCollectionsCast(@Self).Items) + Index * FItemSize);
+  Item := PCollection(PAddress(PCollectionsCast(@Self).Items) + Index * FItemSize);
   for I := Index to Index + ItemCount - 1 do
   begin
     Inc(Result, Item.Count);

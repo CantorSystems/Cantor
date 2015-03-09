@@ -330,7 +330,7 @@ type
     procedure AssignText(Dest: PLegacyString; Index, ItemCount: Integer;
       Delimiter: PLegacyChar; Attach: Boolean); overload;
   public
-    constructor Create(Initial: Integer; GrowBy: Integer = 0);
+    constructor Create;
 
     function AsText(Delimiter: PLegacyChar;
       Attach: Boolean = False): TLegacyString; overload;
@@ -353,6 +353,8 @@ type
     function TextLength(Delimiter: PLegacyChar): Integer; overload;
     function TextLength(Index: Integer; Delimiter: PLegacyChar): Integer; overload;
     function TextLength(Index, ItemCount: Integer; Delimiter: PLegacyChar): Integer; overload;
+
+    property Items: PLegacyStringArray read FItems;
   end;
 
   PWideStringArray = ^TWideStringArray;
@@ -364,7 +366,7 @@ type
     procedure AssignText(Dest: PWideString; Index, ItemCount: Integer;
       Delimiter: PWideChar; DestOptions: TAggregateUTF16); overload;
   public
-    constructor Create(Initial: Integer; GrowBy: Integer = 0);
+    constructor Create;
 
     function AsText(Delimiter: PWideChar;
       DestOptions: TAggregateUTF16 = coUTF16): TWideString; overload;
@@ -387,6 +389,8 @@ type
     function TextLength(Delimiter: PWideChar): Integer; overload;
     function TextLength(Index: Integer; Delimiter: PWideChar): Integer; overload;
     function TextLength(Index, ItemCount: Integer; Delimiter: PWideChar): Integer; overload;
+
+    property Items: PWideStringArray read FItems;
   end;
 
   PLegacyCommandLineParam = ^TLegacyCommandLineParam;
@@ -473,7 +477,7 @@ type
 { Helper functions }
 
 const
-  AverageStringLength = 24; // estimated on Delphi sources
+  AverageStringLength = 25; // estimated on Delphi sources
 
 type
   THighSurrogates = $D800..$DBFF;
@@ -2118,20 +2122,29 @@ end;
 
 { TLegacyStrings }
 
-constructor TLegacyStrings.Create(Initial, GrowBy: Integer);
+constructor TLegacyStrings.Create;
 begin
   inherited Create(sLegacyText, SizeOf(TLegacyString));
-  Capacity := Initial;
-  Delta := GrowBy;
 end;
 
 function TLegacyStrings.AppendText(Source: PLegacyString; Attach: Boolean): Integer;
 var
   Text, Next, Limit: PLegacyChar;
+  NewCapacity: Integer;
 begin
   Result := 0;
   if Source <> nil then
   begin
+    if Capacity = 0 then
+    begin
+      NewCapacity := AverageCount;
+      if NewCapacity = 0 then
+        NewCapacity := Source.Count div AverageStringLength;
+      Capacity := NewCapacity;
+      if Delta = 0 then
+        Delta := -4;
+    end;
+
     Text := Source.RawData;
     Limit := Text + Source.Count;
     Next := Text;
@@ -2222,16 +2235,11 @@ function TLegacyStrings.InsertText(Source: PLegacyString; Index: Integer;
   Attach: Boolean): Integer;
 var
   Text: TLegacyStrings;
-  Initial: Integer;
 begin
   if (Source <> nil) and (Source.Count <> 0) then
   begin
     CheckIndex(Index);
-    if Count <> 0 then
-      Initial := AverageCount
-    else
-      Initial := Source.Count div AverageStringLength;
-    Text.Create(Initial, -4);
+    Text.Create;
     try
       Result := Text.AppendText(Source, Attach);
       inherited Insert(Index, @Text, True);
@@ -2297,21 +2305,29 @@ end;
 
 { TWideStrings }
 
-constructor TWideStrings.Create(Initial, GrowBy: Integer);
+constructor TWideStrings.Create;
 begin
   inherited Create(sWideText, SizeOf(TWideString));
-  if Initial <> 0 then
-    Capacity := Initial;
-  Delta := GrowBy;
 end;
 
 function TWideStrings.AppendText(Source: PWideString; Attach: Boolean): Integer;
 var
   Text, Next, Limit: PWideChar;
+  NewCapacity: Integer;
 begin
   Result := 0;
   if Source <> nil then
   begin
+    if Capacity = 0 then
+    begin
+      NewCapacity := AverageCount;
+      if NewCapacity = 0 then
+        NewCapacity := Source.Count div AverageStringLength;
+      Capacity := NewCapacity;
+      if Delta = 0 then
+        Delta := -4;
+    end;
+
     Text := Source.RawData;
     Limit := Text + Source.Count;
     Next := Text;
@@ -2403,16 +2419,11 @@ function TWideStrings.InsertText(Source: PWideString; Index: Integer;
   Attach: Boolean): Integer;
 var
   Text: TWideStrings;
-  Initial: Integer;
 begin
   if (Source <> nil) and (Source.Count <> 0) then
   begin
     CheckIndex(Index);
-    if Count <> 0 then
-      Initial := AverageCount
-    else
-      Initial := Source.Count div AverageStringLength;
-    Text.Create(Initial, -4);
+    Text.Create;
     try
       Result := Text.AppendText(Source, Attach);
       inherited Insert(Index, @Text, True);
