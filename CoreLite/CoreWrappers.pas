@@ -209,7 +209,7 @@ type
     function GetValue: QuadWord;
   public
     constructor Create;
-    function ElapsedMilliseconds(StartValue: QuadWord): Double;
+    function MillisecondsFrom(StartValue: QuadWord): Double;
     function MillisecondsBetween(Value1, Value2: QuadWord): Double;
 
     property Frequency: QuadWord read FFrequency;
@@ -361,6 +361,7 @@ begin
       BeforeSave(@F);
     F.SetSize(FileSize);
     Saver(@F);
+    F.SetSize(F.Position);
     if Assigned(AfterSave) then
       AfterSave(@F);
   finally
@@ -817,7 +818,7 @@ var
   I: Integer;
   BytesWritten, LFx4: LongWord;
 begin // Fast core
-  LFx4 := Byte(LF) or (Byte(LF) shl 8) or (Byte(LF) shl 16) or (Byte(LF) shl 24);
+  LFx4 := $0A0A0A0A;
   for I := 0 to LineBreaks div 4 - 1 do {$IFDEF Tricks} System. {$ENDIF}
     WriteFile(FOutput, LFx4, 4, BytesWritten, nil);
   if LineBreaks mod 4 <> 0 then {$IFDEF Tricks} System. {$ENDIF}
@@ -906,13 +907,9 @@ procedure TScreenConsole.WriteLn(LineBreaks: Integer);
 var
   I: Integer;
   Written: LongWord;
-  WideLFx4: QuadRec;
+  WideLFx4: QuadWord;
 begin // Fast core
-  with WideLFx4 do
-  begin
-    Lo := Word(WideLF) or (Word(WideLF) shl 16);
-    Hi := Lo;
-  end;
+  WideLFx4 := $000A000A000A000A;
   for I := 0 to LineBreaks div 4 - 1 do
     WriteConsoleW(FOutput, @WideLFx4, 4, Written, nil);
   if LineBreaks mod 4 <> 0 then
@@ -940,18 +937,18 @@ end;
 constructor TPerformanceCounter.Create;
 begin
   if not QueryPerformanceFrequency(FFrequency) then
-    RaiseLastPlatformError {$IFDEF Debug} (sPerformanceFrequency, 0) {$ENDIF} ;
+    RaiseLastPlatformError(sPerformanceFrequency, 0);
 end;
 
-function TPerformanceCounter.ElapsedMilliseconds(StartValue: QuadWord): Double;
+function TPerformanceCounter.MillisecondsFrom(StartValue: QuadWord): Double;
 begin
-  Result := GetValue - StartValue / FFrequency;
+  Result := (GetValue - StartValue) / FFrequency;
 end;
 
 function TPerformanceCounter.GetValue: QuadWord;
 begin
   if not QueryPerformanceCounter(Result) then
-    RaiseLastPlatformError {$IFDEF Debug} (sPerformanceCounter, 0) {$ENDIF} ;
+    RaiseLastPlatformError(sPerformanceCounter, 0);
 end;
 
 function TPerformanceCounter.MillisecondsBetween(Value1, Value2: QuadWord): Double;

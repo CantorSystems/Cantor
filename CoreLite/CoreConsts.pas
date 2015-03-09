@@ -81,7 +81,7 @@ const
   sRangeOutOfBounds = 'Range %d..%d out of bounds %d..%d of %s';
   sRangeOutOfEmpty  = 'Range %d..%d out of empty %s';
   sRangeOutOfNull   = 'Range %d..%d out of null container';
-  sOutOfCapacity    = 'Increment %d items by %d out of capacity.%cThis %s can contain only %d items';
+  sOutOfCapacity    = 'This %s can contain only %d items, cannot add %d more.';
   sNullCapacity     = 'Cannot add %d item into null container';
 
   sPosition = 'position';

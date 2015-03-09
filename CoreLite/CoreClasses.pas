@@ -316,8 +316,7 @@ end;
 constructor ECapacity.Create(Collection: PCollection; ItemCount: Integer);
 begin
   if Collection <> nil then
-    inherited Create(sOutOfCapacity, [Collection.Count, ItemCount,
-      WhitespaceOrLineBreak[IsConsole], Collection.ClassName, Collection.Capacity])
+    inherited Create(sOutOfCapacity, [Collection.ClassName, Collection.Capacity, ItemCount])
   else
     inherited Create(sNullCapacity, [ItemCount]);
   FCollection := Collection;
@@ -461,7 +460,10 @@ end;
 function TCollection.Append(ItemCount: Integer): Integer;
 begin
   Result := FCount;
-  Expand(Result, ItemCount);
+  if FCount + ItemCount < FCapacity then
+    Inc(FCount, ItemCount)
+  else
+    Expand(Result, ItemCount);
 end;
 
 procedure TCollection.Append(Collection: PCollection; Capture: Boolean);
@@ -665,9 +667,9 @@ begin
   if (NewCount <= FCapacity) and not FAttachBuffer then
     with PCollectionCast(@Self)^ do
     begin
-      Src := Items + (Index + ItemCount) * FItemSize;
-      Dst := Items + ItemCount * FItemSize;
-      Move(Src, Dst, Items + FCount * FItemSize - Src);
+      Src := Items + Index * FItemSize;
+      Dst := Items + (Index + ItemCount) * FItemSize;
+      Move(Src^, Dst^, Items + FCount * FItemSize - Src);
     end
   else
   begin

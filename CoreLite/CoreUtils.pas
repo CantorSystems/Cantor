@@ -131,9 +131,9 @@ const
   CRLF: array[0..1] of LegacyChar = #13#10;
   WideCRLF: array[0..1] of WideChar = (WideChar(13), WideChar(10));
 
-  LF = #10;
-  WideLF = WideChar(10);
-  WhitespaceOrLineBreak: array[Boolean] of LegacyChar = (#32, LF);
+  LF: array[0..1] of LegacyChar = #10#0;
+  WideLF: array[0..1] of WideChar = (#10, #0);
+  WhitespaceOrLineBreak: array[Boolean] of LegacyChar = (#32, #10);
 {$IFNDEF Tricks}
   HexDigits: array [$0..$F] of LegacyChar = '0123456789ABCDEF';
 var
