@@ -5,7 +5,7 @@
 */
 
 public class with inner of
-  class ByteArray[BitDepth scale] of
+  class ByteArray[Word scale] of
     static granularity = const 8;
     if scale <= granularity then
       public out Core:Byte RawByte;
@@ -17,7 +17,7 @@ public class with inner of
     end;
   end;
 
-  class ShortWordArray[BitDepth scale] of
+  class ShortWordArray[Word scale] of
     static granularity = const 16;
     if scale <= granularity then
       public out Core:ShortWord RawShortWord;
@@ -29,7 +29,7 @@ public class with inner of
     end;
   end;
 
-  class LongWordArray[BitDepth scale] of
+  class LongWordArray[Word scale] of
     static granularity = const 32;
     if scale <= granularity then
       public out Core:LongWord RawLongWord;
@@ -41,7 +41,7 @@ public class with inner of
     end;
   end;
 
-  class QuadWordArray[BitDepth scale] of
+  class QuadWordArray[Word scale] of
     static granularity = const 64;
     if scale <= granularity then
       public out Core:QuadWord RawQuadWord;
@@ -53,33 +53,33 @@ public class with inner of
     end;
   end;
 
-  class SingleRealArray[BitDepth scale] of
+  class SingleFloatArray[Word scale] of
     static granularity = const 32;
     if scale <= granularity then
-      public out Core:SingleReal RawSingleReal;
-      public RawSingleReal[Core:SingleReal];
+      public out Core:SingleFloat RawSingleFloat;
+      public RawSingleFloat[Core:SingleFloat];
     else
-      public inner class SingleReals = 0..[scale +/ granularity]--;
-      public out Core:SingleReal RawSingleReals[SingleReals];
-      public RawSingleReals[SingleReals; Core:SingleReal];
+      public inner class SingleFloats = 0..[scale +/ granularity]--;
+      public out Core:SingleFloat RawSingleFloats[SingleFloats];
+      public RawSingleFloats[SingleFloats; Core:SingleFloat];
     end;
   end;
 
-  class DoubleRealArray[BitDepth scale] of
+  class DoubleFloatArray[Word scale] of
     static granularity = const 64;
     if scale <= granularity then
-      public out Core:DoubleReal RawDoubleReal;
-      public RawDoubleReal[Core:DoubleReal];
+      public out Core:DoubleFloat RawDoubleFloat;
+      public RawDoubleFloat[Core:DoubleFloat];
     else
-      public final class DoubleReals = 0..[scale +/ granularity]--;
-      public out Core:DoubleReal RawDoubleReals[DoubleReals];
-      public RawDoubleReals[DoubleReals; Core:DoubleReal];
+      public final class DoubleFloats = 0..[scale +/ granularity]--;
+      public out Core:DoubleFloat RawDoubleFloats[DoubleFloats];
+      public RawDoubleFloats[DoubleFloats; Core:DoubleFloat];
     end;
   end;
 
-  class Number[BitDepth scale] from
+  class Number[Word scale] from
     ByteArray[scale], ShortWordArray[scale], LongWordArray[scale], QuadWordArray[scale],
-    SingleRealArray[scale], DoubleRealArray[scale]
+    SingleFloatArray[scale], DoubleFloatArray[scale]
   of
     public final class Nibble = Core:Word[scale \ 2];
 
@@ -125,21 +125,21 @@ public class with inner of
     public out Core:QuadInt AsQuadInt;
     public AsQuadInt[Core:QuadInt];
 
-    public out Core:SingleReal AsSingleReal;
-    public out Core:DoubleReal AsDoubleReal;
-    public out Core:ExtendedReal AsExtendedReal;
+    public out Core:SingleFloat AsSingleFloat;
+    public out Core:DoubleFloat AsDoubleFloat;
+    public out Core:ExtendedFloat AsExtendedFloat;
   end;
 
-  class Any[BitDepth scale] from Number[scale] of
+  class Any[Word scale] from Number[scale] of
     if scale <= 32 then
       public out Core:Character RawCharacter;
       public RawCharacter[Core:Character];
     end;
   end;
 
-  class Integer[BitDepth scale] = Number[scale];
-  class Word[BitDepth scale] = Any[scale];
-  class Real[BitDepth scale] = Number[scale];
+  class Integer[Word scale] = Number[scale];
+  class Word[Word scale] = Any[scale];
+  class Float[Word scale] = Number[scale];
 
   class Boolean = Number[1];
   class Character = Number[32];
@@ -156,6 +156,6 @@ public class with inner of
   class QuadInt = Integer[16];
   class QuadWord = Word[16];
 
-  class SingleReal = Real[32];
-  class DoubleReal = Real[64];
+  class SingleFloat = Float[32];
+  class DoubleFloat = Float[64];
 end;

@@ -4,23 +4,21 @@
     Copyright © 2014 Vladislav Javadov (aka Freeman)
 */
 
-public class [Byte bitDepth] with inner of
+public class [Word scaleBits] with inner of
 
 //  class Boolean = [False, True]; // non-final, allowing platform-specific align by bits
 
-  class BitDepth = Byte;
-
   inner final of
-    class Integer[BitDepth scale] from Typecast:Integer[scale];
-    class Word[BitDepth scale] from Typecast:Word[scale];
+    class Integer[Word scaleBits] from TypeCast:Integer[scaleBits];
+    class Word[Word scaleBits] from TypeCast:Word[scaleBits];
 
-    class Real[BitDepth scale]] from Typecast:Real[scale];
+    class FloatingPoint[Word significandBits, exponentBits] from TypeCast:FloatingPoint[significandBits, exponentBits];
 
-    class Character from Typecast:Character;
+    class Character from TypeCast:Character;
   end;
 
-  class Integer = Integer[bitDepth];
-  class Word = Word[bitDepth];
+  class Integer = Integer[scaleBits];
+  class Word = Word[scaleBits];
 
   class ByteInt = Integer[8];
   class ShortInt = Integer[16];
@@ -32,9 +30,10 @@ public class [Byte bitDepth] with inner of
   class LongWord = Word[32];
   class QuadWord = Word[64];
 
-  class SingleReal = Real[32];
-  class DoubleReal = Real[64];
-  class ExtendedReal = Real[80];
+//  class HalfFloat = FloatingPoint[12, 4];
+  class SingleFloat = FloatingPoint[24, 7];
+  class DoubleFloat = FloatingPoint[53, 10];
+  class ExtendedFloat = FloatingPoint[64, 15];
 
   class LegacyChar = Byte;
   class WideChar = ShortWord;
