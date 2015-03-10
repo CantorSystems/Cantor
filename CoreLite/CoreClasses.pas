@@ -85,9 +85,10 @@ type
     procedure SetCapacity(Value: Integer);
   protected
     function Append(ItemCount: Integer = 1): Integer; overload;
-    procedure Assign(Source: Pointer; ItemCount, ItemsCapacity: Integer; Attach: Boolean); overload;
+    procedure Assign(Source: Pointer; ItemCount, ItemsCapacity: Integer;
+      AttachBuffer: Boolean); overload;
     procedure Assign(Source: PCollection; Mode: TSharingMode); overload;
-    procedure Detach;
+    procedure Attach;
     procedure CheckCapacity(ItemCount: Integer);
     procedure Insert(Index: Integer; ItemCount: Integer = 1); overload;
   public
@@ -125,13 +126,9 @@ type
 
   PCollections = ^TCollection;
   TCollections = object(TCollection)
-  private
-    function CalcCount(Index, ItemCount: Integer): Integer;
   public
     function AverageCount: Integer;
-    function TotalCount: Integer; overload;
-    function TotalCount(Index: Integer): Integer; overload;
-    function TotalCount(Index, ItemCount: Integer): Integer; overload;
+    function TotalCount: Integer;
   end;
 
   TCRC32Table = array[0..$FF] of LongWord;
@@ -473,10 +470,10 @@ begin
 end;
 
 procedure TCollection.Assign(Source: Pointer; ItemCount, ItemsCapacity: Integer;
-  Attach: Boolean);
+  AttachBuffer: Boolean);
 begin
   Clear;
-  if Attach then
+  if AttachBuffer then
   begin
     PCollectionCast(@Self).Items := Source;
     FCapacity := ItemsCapacity;
@@ -486,7 +483,7 @@ begin
     SetCapacity(ItemsCapacity);
     Move(Source^, PCollectionCast(@Self).Items^, ItemCount * FItemSize);
   end;
-  FAttached := Attach;
+  FAttached := AttachBuffer;
   FItemMode := imInline;
   FCount := ItemCount;
 end;
@@ -536,6 +533,12 @@ begin
     Move(PCollectionCast(Source).Props, PCollectionCast(@Self).Props,
       DstLen - (PAddress(@PCollectionCast(@Self).Props) - PAddress(@Self)));
   end;
+end;
+
+procedure TCollection.Attach;
+begin
+  if FCapacity <> 0 then
+    FAttached := True;
 end;
 
 procedure TCollection.CheckCapacity(ItemCount: Integer);
@@ -648,12 +651,6 @@ begin
   end;
 end;
 
-procedure TCollection.Detach;
-begin
-  if FCapacity <> 0 then
-    FAttached := True;
-end;
-
 procedure TCollection.Expand(Index, ItemCount: Integer);
 var
   FirstBytes, NewCount, NewCapacity: Integer;
@@ -737,7 +734,7 @@ begin
   if (Value < FCount) and (FItemMode <> imInline) and not FAttached then
     FreeItems(Value, FCount - Value);
 
-  if Attached then
+  if FAttached then
   begin
     if Value <> 0 then
     begin
@@ -857,35 +854,18 @@ begin
   end;
 end;
 
-function TCollections.CalcCount(Index, ItemCount: Integer): Integer;
+function TCollections.TotalCount: Integer;
 var
   I: Integer;
   Item: PCollection;
 begin
   Result := 0;
-  Item := PCollection(PAddress(PCollectionsCast(@Self).Items) + Index * FItemSize);
-  for I := Index to Index + ItemCount - 1 do
+  Item := PCollectionsCast(@Self).Items;
+  for I := 0 to FCount - 1 do
   begin
     Inc(Result, Item.Count);
     Inc(PAddress(Item), FItemSize);
   end;
-end;
-
-function TCollections.TotalCount: Integer;
-begin
-  Result := CalcCount(0, FCount);
-end;
-
-function TCollections.TotalCount(Index: Integer): Integer;
-begin
-  CheckIndex(Index);
-  Result := CalcCount(Index, FCount - Index);
-end;
-
-function TCollections.TotalCount(Index, ItemCount: Integer): Integer;
-begin
-  CheckRange(Index, ItemCount);
-  Result := CalcCount(Index, ItemCount);
 end;
 
 { TCRC32 }
