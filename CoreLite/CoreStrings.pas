@@ -1336,7 +1336,10 @@ begin
     else
       CharBytes := 4 + Byte(coCESU8 in EncodeOptions) * 2;
 
-    Capacity := (Source.Count + 1) * CharBytes;
+    CharBytes := (Source.Count + 1) * CharBytes;
+    if Capacity < CharBytes then
+      Capacity := CharBytes;
+
     with AssignWideString(0, Source, EncodeOptions) do
     begin
       if (DestCount <= 0) and (FCodePage <> nil) then
@@ -1373,7 +1376,7 @@ procedure TLegacyString.Detach;
 begin
   if (Capacity <> 0) and (FData[Count] <> #0) then
   begin
-    if AttachBuffer then
+    if Attached then
       Capacity := Count + 1;
     FData[Count] := #0;
   end;
@@ -1502,9 +1505,11 @@ begin
         end;
       bomUTF7:
         begin
-          Capacity := Source.Size - Source.Position;
-          if Capacity <> 0 then
+          Length := Source.Size - Source.Position;
+          if Length <> 0 then
           begin
+            if Capacity < Length then
+              Capacity := Length;
             CP.Create(CP_UTF7);
             W.Create;
             try
@@ -1526,7 +1531,8 @@ begin
           Length := Source.Size - Source.Position;
           if Length <> 0 then
           begin
-            Capacity := Length + 1;
+            if Capacity < Length + 1 then
+              Capacity := Length + 1;
             Source.ReadBuffer(FData^, Length);
             if (FCodePage <> nil) and (FCodePage.Number = CP_GB18030) then
             begin
@@ -1562,7 +1568,8 @@ begin
   Length := Source.Size - Source.Position;
   if Length <> 0 then
   begin
-    Capacity := Length + 1;
+    if Capacity < Length + 1 then
+      Capacity := Length + 1;
     Source.ReadBuffer(FData^, Length);
     Append(Length);
     FData[Length] := #0;
@@ -1895,11 +1902,16 @@ begin
 end;
 
 procedure TWideString.AsString(Source: PLegacyString; EncodeOptions: TEncodeUTF16);
+var
+  Length: Integer;
 begin
   Clear;
   if (Source <> nil) and (Source.Count <> 0) then
   begin
-    Capacity := Source.Count + 1;
+    Length := Source.Count + 1;
+    if Capacity < Length then
+      Capacity := Length;
+      
     with AssignString(0, Source, EncodeOptions) do
     begin
       if (DestCount = 0) and (Source.FCodePage <> nil) then
@@ -1922,7 +1934,7 @@ procedure TWideString.Detach;
 begin
   if (Capacity <> 0) and (FData[Count] <> #0) then
   begin
-    if AttachBuffer then
+    if Attached then
       Capacity := Count + 1;
     FData[Count] := #0;
   end;
@@ -2032,7 +2044,8 @@ begin
   Length := (Source.Size - Source.Position) div SizeOf(WideChar);
   if Length <> 0 then
   begin
-    Capacity := Length + 1;
+    if Capacity < Length + 1 then
+      Capacity := Length + 1;
     Source.ReadBuffer(FData^, Length * SizeOf(WideChar));
     FOptions := [];
     if (ByteOrder = boBigEndian) or (Result = bomUTF16BE) then
@@ -2210,11 +2223,14 @@ end;
 procedure TLegacyStrings.AssignText(Dest: PLegacyString; Index, ItemCount: Integer;
   Delimiter: PLegacyChar; Attach: Boolean);
 var
-  DelimiterLen, I: Integer;
+  DelimiterLen, I, Length: Integer;
   Dst: PLegacyChar;
 begin
   DelimiterLen := StrLen(Delimiter);
-  Dest.Capacity := TotalCount(Index, ItemCount) + DelimiterLen * ItemCount;
+  Length := TotalCount(Index, ItemCount) + DelimiterLen * ItemCount;
+  if Dest.Capacity < Length then
+    Dest.Capacity := Length;
+
   Dst := Dest.RawData;
   for I := Index to Index + ItemCount - 1 do
   begin
@@ -2228,6 +2244,7 @@ begin
     Move(Delimiter^, Dst^, DelimiterLen);
     Inc(Dst, DelimiterLen);
   end;
+
   Dec(Dst, DelimiterLen);
   Dst^ := #0;
   Dest.Append(Dst - Dest.RawData);
@@ -2394,11 +2411,14 @@ end;
 procedure TWideStrings.AssignText(Dest: PWideString; Index, ItemCount: Integer;
   Delimiter: PWideChar; DestOptions: TAggregateUTF16);
 var
-  DelimiterLen, I: Integer;
+  DelimiterLen, I, Length: Integer;
   Dst: PWideChar;
 begin
   DelimiterLen := WideStrLen(Delimiter);
-  Dest.Capacity := TotalCount(Index, ItemCount) + DelimiterLen * ItemCount;
+  Length := TotalCount(Index, ItemCount) + DelimiterLen * ItemCount;
+  if Dest.Capacity < Length then
+    Dest.Capacity := Length;
+
   Dst := Dest.RawData;
   for I := Index to Index + ItemCount - 1 do
   begin
@@ -2412,6 +2432,7 @@ begin
     Move(Delimiter^, Dst^, DelimiterLen * SizeOf(WideChar));
     Inc(Dst, DelimiterLen);
   end;
+  
   Dec(Dst, DelimiterLen);
   Dst^ := #0;
   Dest.Append(Dst - Dest.RawData);

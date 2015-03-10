@@ -76,7 +76,7 @@ type
     FCapacity, FDelta: Integer;
     FItemMode: TCollectionItemMode;
     FItemSize: Integer;
-    FAttachBuffer: Boolean;
+    FAttached: Boolean;
   { placeholder } // FItems: Pointer;
     procedure Copy(Index: Integer; Collection: PCollection; Capture: Boolean);
     procedure Cut(Index, ItemCount: Integer);
@@ -107,7 +107,7 @@ type
     function TranslateDelta: Integer;
     procedure Truncate(ItemCount: Integer);
 
-    property AttachBuffer: Boolean read FAttachBuffer;
+    property Attached: Boolean read FAttached;
     property Capacity: Integer read FCapacity write SetCapacity;
     property Delta: Integer read FDelta write FDelta;
     property ItemMode: TCollectionItemMode read FItemMode;
@@ -486,7 +486,7 @@ begin
     SetCapacity(ItemsCapacity);
     Move(Source^, PCollectionCast(@Self).Items^, ItemCount * FItemSize);
   end;
-  FAttachBuffer := Attach;
+  FAttached := Attach;
   FItemMode := imInline;
   FCount := ItemCount;
 end;
@@ -497,14 +497,14 @@ var
 begin
   if Source <> nil then
   begin
-    CanCapture := (Mode = smCapture) and not Source.AttachBuffer;
+    CanCapture := (Mode = smCapture) and not Source.Attached;
     Assign(PCollectionCast(@Source).Items, Source.FCount, Source.FCapacity,
       (Mode = smAttach) or CanCapture);
     if CanCapture then
     begin
       FItemMode := Source.FItemMode;
-      FAttachBuffer := False;
-      Source.FAttachBuffer := True;
+      FAttached := False;
+      Source.FAttached := True;
     end;
   end
   else
@@ -549,10 +549,10 @@ end;
 
 procedure TCollection.Clear;
 begin
-  if FAttachBuffer then
+  if FAttached then
   begin
     PCollectionCast(@Self).Items := nil;
-    FAttachBuffer := False;
+    FAttached := False;
     FCapacity := 0;
   end
   else if FItemMode <> imInline then
@@ -576,12 +576,12 @@ begin
     with PCollectionCast(Collection)^ do
     begin
       Move(Items^, PCollectionCast(@Self).Items[Index * FItemSize], Count * FItemSize);
-      if Capture and not FAttachBuffer then
+      if Capture and not FAttached then
       begin
         FreeMem(Items);
         Items := PCollectionCast(@Self).Items + Index * FItemSize;
         FCapacity := Count;
-        FAttachBuffer := True;
+        FAttached := True;
       end;
       Exit;
     end;
@@ -607,7 +607,7 @@ begin
   FirstBytes := Index * FItemSize;
   LastBytes := ItemCount * FItemSize;
 
-  if FAttachBuffer then
+  if FAttached then
   begin
     if Index = 0 then
     begin
@@ -625,7 +625,7 @@ begin
         Items := NewItems;
       end;
       FCapacity := NewCapacity;
-      FAttachBuffer := False;
+      FAttached := False;
     end;
   end
   else
@@ -651,7 +651,7 @@ end;
 procedure TCollection.Detach;
 begin
   if FCapacity <> 0 then
-    FAttachBuffer := True;
+    FAttached := True;
 end;
 
 procedure TCollection.Expand(Index, ItemCount: Integer);
@@ -664,7 +664,7 @@ begin
     raise ERange.Create(@Self, Index, ItemCount);
 {$ENDIF}
   NewCount := FCount + ItemCount;
-  if (NewCount <= FCapacity) and not FAttachBuffer then
+  if (NewCount <= FCapacity) and not FAttached then
     with PCollectionCast(@Self)^ do
     begin
       Src := Items + Index * FItemSize;
@@ -686,7 +686,7 @@ begin
       Items := NewItems;
     end;
     FCapacity := NewCapacity;
-    FAttachBuffer := False;
+    FAttached := False;
   end;
   FCount := NewCount;
 end;
@@ -734,10 +734,10 @@ begin
   if Value < 0 then
     Inc(Value, FCapacity);
 
-  if (Value < FCount) and (FItemMode <> imInline) and not FAttachBuffer then
+  if (Value < FCount) and (FItemMode <> imInline) and not FAttached then
     FreeItems(Value, FCount - Value);
 
-  if AttachBuffer then
+  if Attached then
   begin
     if Value <> 0 then
     begin
@@ -747,7 +747,7 @@ begin
     end
     else
       PCollectionCast(@Self).Items := nil;
-    FAttachBuffer := False;
+    FAttached := False;
   end
   else
     ReallocMem(PCollectionCast(@Self).Items, Value * FItemSize);
@@ -792,7 +792,7 @@ begin
   NewCount := FCount - ItemCount;
   if NewCount > 0 then
   begin
-    if not FAttachBuffer and (FItemMode <> imInline) then
+    if not FAttached and (FItemMode <> imInline) then
       FreeItems(NewCount, ItemCount);
     FCount := NewCount;
   end
