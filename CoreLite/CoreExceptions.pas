@@ -120,11 +120,11 @@ type
   ERangeError = class(EInteger);
   EIntOverflow = class(EInteger);
 
-  EReal = class(EHard);
-  EInvalidOp = class(EReal);
-  EZeroDivide = class(EReal);
-  EOverflow = class(EReal);
-  EUnderflow = class(EReal);
+  EFloatingPoint = class(EHard);
+  EInvalidOp = class(EFloatingPoint);
+  EZeroDivide = class(EFloatingPoint);
+  EOverflow = class(EFloatingPoint);
+  EUnderflow = class(EFloatingPoint);
 
   EPrivilege = class(EHard);
   EControlBreak = class(EHard);

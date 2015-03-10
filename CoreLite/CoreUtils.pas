@@ -179,7 +179,8 @@ const
   HexInt          = HexLongInt; // TODO: x64
   HexPointer      = HexInt;     // both x86 and x64
 
-  DecimalReal     = 18;
+  DecimalSingle   = 10;
+  DecimalDouble   = 18;
   DecimalExtended = 22;
   DecimalCurrency = DecimalExtended;
 
