@@ -457,7 +457,7 @@ end;
 function TCollection.Append(ItemCount: Integer): Integer;
 begin
   Result := FCount;
-  if FCount + ItemCount < FCapacity then
+  if FCount + ItemCount <= FCapacity then
     Inc(FCount, ItemCount)
   else
     Expand(Result, ItemCount);
@@ -710,7 +710,9 @@ end;
 
 procedure TCollection.Insert(Index, ItemCount: Integer);
 begin
+{$IFDEF Debug}
   CheckIndex(Index);
+{$ENDIF}  
   Expand(Index, ItemCount);
 end;
 
@@ -765,16 +767,16 @@ var
   GrowBy: Integer;
 begin
   GrowBy := TranslateDelta;
-  Result := NewCount + (NewCount + GrowBy - 1) mod GrowBy;
+  Result := NewCount + GrowBy - NewCount mod GrowBy;
 end;
 
 function TCollection.TranslateDelta: Integer;
 begin
   if FDelta < 0 then
   begin
-    Result := FCapacity div Abs(FDelta);
+    Result := FCapacity div -FDelta;
     if Result = 0 then
-      Result := Abs(FDelta);
+      Result := -FDelta;
   end
   else
     Result := FDelta;
