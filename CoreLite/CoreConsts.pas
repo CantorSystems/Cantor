@@ -88,9 +88,9 @@ const
   sCodePage = 'code page';
   sConsoleCodePage = 'console code page';
 
-  sLegacyString = 'UTF-8 or code page string';
+  sLegacyString = 'string';
   sWideString = 'UTF-16 string';
-  sLegacyText = 'UTF-8 of code page text';
+  sLegacyText = 'text';
   sWideText = 'UTF-16 text';
 
   sInteger = 'integer';
