@@ -378,23 +378,21 @@ type
   protected
     class function CollectionInfo: TCollectionInfo; virtual;
   public
-    function AppendText(Source: PLegacyString; AverageStringLength: Integer = 30;
-      AttachBuffer: Boolean = False): Integer;
+    function AppendText(Source: PLegacyString; AttachBuffer: Boolean = False): Integer;
     function AppendWideText(Source: PWideString; CP: PCodePage = nil;
-      AverageStringLength: Integer = 30; EncodeOptions: TEncodeRawBytes = []): Integer;
+      EncodeOptions: TEncodeRawBytes = []): Integer;
 
-    procedure AsText(Source: PLegacyString; AverageStringLength: Integer = 30;
-      AttachBuffer: Boolean = False);
+    procedure AsText(Source: PLegacyString; AttachBuffer: Boolean = False);
     procedure AsWideText(Source: PWideString; CP: PCodePage = nil;
-      AverageStringLength: Integer = 30; EncodeOptions: TEncodeRawBytes = []);
+      EncodeOptions: TEncodeRawBytes = []);
 
     procedure DetachItems;
     function EstimateText(CodePage: PCodePage = nil): TEstimatedText; 
 
     function InsertText(Index: Integer; Source: PLegacyString;
-      AverageStringLength: Integer = 30; AttachBuffer: Boolean = False): Integer;
+      AttachBuffer: Boolean = False): Integer;
     function InsertWideText(Index: Integer; Source: PWideString; CP: PCodePage = nil;
-      AverageStringLength: Integer = 30; EncodeOptions: TEncodeRawBytes = []): Integer;
+      EncodeOptions: TEncodeRawBytes = []): Integer;
 
     procedure Load(Source: PReadableStream); overload;
     function Load(Source: PReadableStream; CodePage: PCodePage;
@@ -420,26 +418,22 @@ type
   protected
     class function CollectionInfo: TCollectionInfo; virtual;
   public
-    function AppendText(Source: PLegacyString; AverageStringLength: Integer; 
-      EncodeOptions: TEncodeUTF16 = coUTF16): Integer;
-    function AppendWideText(Source: PWideString; AverageStringLength: Integer;
-      AttachBuffer: Boolean = False): Integer;
+    function AppendText(Source: PLegacyString; EncodeOptions: TEncodeUTF16 = coUTF16): Integer;
+    function AppendWideText(Source: PWideString; AttachBuffer: Boolean = False): Integer;
 
-    procedure AsText(Source: PLegacyString; AverageStringLength: Integer = 30;
-      EncodeOptions: TEncodeUTF16 = coUTF16);
-    procedure AsWideText(Source: PWideString; AverageStringLength: Integer = 30;
-      AttachBuffer: Boolean = False);
+    procedure AsText(Source: PLegacyString; EncodeOptions: TEncodeUTF16 = coUTF16);
+    procedure AsWideText(Source: PWideString; AttachBuffer: Boolean = False);
 
     procedure DetachItems;
 
     function InsertText(Index: Integer; Source: PLegacyString;
-      AverageStringLength: Integer = 30; EncodeOptions: TEncodeUTF16 = coUTF16): Integer;
+      EncodeOptions: TEncodeUTF16 = coUTF16): Integer;
     function InsertWideText(Index: Integer; Source: PWideString;
-      AverageStringLength: Integer = 30; AttachBuffer: Boolean = False): Integer;
+      AttachBuffer: Boolean = False): Integer;
 
     procedure Load(Source: PReadableStream); overload;
     function Load(Source: PReadableStream; ByteOrder: TByteOrder;
-      FallbackCP: PCodePage = nil; AverageStringLength: Integer = 30): TReadableBOM; overload;
+      FallbackCP: PCodePage = nil): TReadableBOM; overload;
 
     procedure Save(Dest: PWritableStream); overload;
     procedure Save(Dest: PWritableStream; Delimiter: PWideString;
@@ -536,6 +530,7 @@ type
 { Helper functions }
 
 const
+  AverageStringLength = 30;
   AverageStringsDelta = -8;
 
 type
@@ -2614,8 +2609,7 @@ begin
   end;
 end;
 
-function TLegacyStrings.AppendText(Source: PLegacyString; AverageStringLength: Integer;
-  AttachBuffer: Boolean): Integer;
+function TLegacyStrings.AppendText(Source: PLegacyString; AttachBuffer: Boolean): Integer;
 var
   Lines: TLegacyString;
 begin
@@ -2644,7 +2638,7 @@ begin
 end;
 
 function TLegacyStrings.AppendWideText(Source: PWideString; CP: PCodePage;
-  AverageStringLength: Integer; EncodeOptions: TEncodeRawBytes): Integer;
+  EncodeOptions: TEncodeRawBytes): Integer;
 var
   Lines, Line: TWideString;
 begin
@@ -2673,18 +2667,17 @@ begin
   end;
 end;
 
-procedure TLegacyStrings.AsText(Source: PLegacyString; AverageStringLength: Integer;
-  AttachBuffer: Boolean);
+procedure TLegacyStrings.AsText(Source: PLegacyString; AttachBuffer: Boolean);
 begin
   Clear;
-  AppendText(Source, AverageStringLength, AttachBuffer);
+  AppendText(Source, AttachBuffer);
 end;
 
 procedure TLegacyStrings.AsWideText(Source: PWideString; CP: PCodePage;
-  AverageStringLength: Integer; EncodeOptions: TEncodeRawBytes);
+  EncodeOptions: TEncodeRawBytes);
 begin
   Clear;
-  AppendWideText(Source, CP, AverageStringLength, EncodeOptions);
+  AppendWideText(Source, CP, EncodeOptions);
 end;
 
 procedure TLegacyStrings.DetachItems;
@@ -2732,7 +2725,7 @@ begin
 end;
 
 function TLegacyStrings.InsertText(Index: Integer; Source: PLegacyString;
-  AverageStringLength: Integer; AttachBuffer: Boolean): Integer;
+  AttachBuffer: Boolean): Integer;
 var
   Lines: TLegacyStrings;
 begin
@@ -2740,7 +2733,7 @@ begin
   begin
     CheckIndex(Index);
     Lines.Create;
-    Result := Lines.AppendText(Source, AverageStringLength, AttachBuffer);
+    Result := Lines.AppendText(Source, AttachBuffer);
     inherited Insert(Index, @Lines, True);
   end
   else
@@ -2748,7 +2741,7 @@ begin
 end;
 
 function TLegacyStrings.InsertWideText(Index: Integer; Source: PWideString;
-  CP: PCodePage; AverageStringLength: Integer; EncodeOptions: TEncodeRawBytes): Integer;
+  CP: PCodePage; EncodeOptions: TEncodeRawBytes): Integer;
 var
   Lines: TLegacyStrings;
 begin
@@ -2756,7 +2749,7 @@ begin
   begin
     CheckIndex(Index);
     Lines.Create;
-    Result := Lines.AppendWideText(Source, CP, AverageStringLength, EncodeOptions);
+    Result := Lines.AppendWideText(Source, CP, EncodeOptions);
     inherited Insert(Index, @Lines, True);
   end
   else
@@ -2946,8 +2939,7 @@ begin
   end;
 end;
 
-function TWideStrings.AppendText(Source: PLegacyString; AverageStringLength: Integer;
-  EncodeOptions: TEncodeUTF16): Integer;
+function TWideStrings.AppendText(Source: PLegacyString; EncodeOptions: TEncodeUTF16): Integer;
 var
   Lines, Line: TLegacyString;
 begin
@@ -2975,8 +2967,7 @@ begin
   end;
 end;
 
-function TWideStrings.AppendWideText(Source: PWideString; AverageStringLength: Integer;
-  AttachBuffer: Boolean): Integer;
+function TWideStrings.AppendWideText(Source: PWideString; AttachBuffer: Boolean): Integer;
 var
   Lines: TWideString;
 begin
@@ -3004,18 +2995,16 @@ begin
   end;
 end;
 
-procedure TWideStrings.AsText(Source: PLegacyString; AverageStringLength: Integer;
-  EncodeOptions: TEncodeUTF16);
+procedure TWideStrings.AsText(Source: PLegacyString; EncodeOptions: TEncodeUTF16);
 begin
   Clear;
-  AppendText(Source, AverageStringLength, EncodeOptions);
+  AppendText(Source, EncodeOptions);
 end;
 
-procedure TWideStrings.AsWideText(Source: PWideString; AverageStringLength: Integer;
-  AttachBuffer: Boolean);
+procedure TWideStrings.AsWideText(Source: PWideString; AttachBuffer: Boolean);
 begin
   Clear;
-  AppendWideText(Source, AverageStringLength, AttachBuffer);
+  AppendWideText(Source, AttachBuffer);
 end;
 
 procedure TWideStrings.DetachItems;
@@ -3027,7 +3016,7 @@ begin
 end;
 
 function TWideStrings.InsertText(Index: Integer; Source: PLegacyString;
-  AverageStringLength: Integer; EncodeOptions: TEncodeUTF16): Integer;
+  EncodeOptions: TEncodeUTF16): Integer;
 var
   Lines: TWideStrings;
 begin
@@ -3035,7 +3024,7 @@ begin
   begin
     CheckIndex(Index);
     Lines.Create;
-    Result := Lines.AppendText(Source, AverageStringLength, EncodeOptions);
+    Result := Lines.AppendText(Source, EncodeOptions);
     inherited Insert(Index, @Lines, True);
   end
   else
@@ -3043,7 +3032,7 @@ begin
 end;
 
 function TWideStrings.InsertWideText(Index: Integer; Source: PWideString;
-  AverageStringLength: Integer; AttachBuffer: Boolean): Integer;
+  AttachBuffer: Boolean): Integer;
 var
   Lines: TWideStrings;
 begin
@@ -3051,7 +3040,7 @@ begin
   begin
     CheckIndex(Index);
     Lines.Create;
-    Result := Lines.AppendWideText(Source, AverageStringLength, AttachBuffer);
+    Result := Lines.AppendWideText(Source, AttachBuffer);
     inherited Insert(Index, @Lines, True);
   end
   else
@@ -3064,14 +3053,14 @@ begin
 end;
 
 function TWideStrings.Load(Source: PReadableStream; ByteOrder: TByteOrder;
-  FallbackCP: PCodePage; AverageStringLength: Integer): TReadableBOM;
+  FallbackCP: PCodePage): TReadableBOM;
 var
   W: TWideString;
 begin
   W.Create;
   try
     Result := W.Load(Source, ByteOrder, FallbackCP);
-    AsWideText(@W, AverageStringLength);
+    AsWideText(@W);
   finally
     W.Destroy;
   end;
