@@ -194,6 +194,7 @@ type
     procedure SetData(Value: PLegacyChar);
     procedure VerifyUTF8;
   protected
+    class function CollectionInfo: TCollectionInfo; virtual;
     function AssignHexadecimal(Index: Integer; Value: QuadInt; MinWidth: Integer = 0;
       UpperCase: Boolean = True; FillChar: LegacyChar = #32): Integer;
     function AssignInteger(Index: Integer; Value: QuadInt; MinWidth: Integer = 0;
@@ -212,8 +213,6 @@ type
     procedure SetUnicodeString(Value: UnicodeString); virtual;
   {$ENDIF}
   public
-    constructor Create;
-
     function AsBinaryData(DetachBuffer: Boolean): TBinaryData;
 
     procedure AsHexadecimal(Value: QuadInt; MinWidth: Integer = 0;
@@ -250,10 +249,10 @@ type
     procedure Detach; {$IFNDEF Lite} virtual; {$ENDIF}
     function IsBinaryData: Boolean;
 
+    function LastIndex(Value: LegacyChar): Integer;
     function NextIndex(Index: Integer): Integer; overload;
     function NextIndex(Value: LegacyChar; StartIndex: Integer = 0): Integer; overload;
     function PrevIndex(Index: Integer): Integer; overload;
-    function PrevIndex(Value: LegacyChar): Integer; overload;
     function PrevIndex(Value: LegacyChar; StartIndex: Integer): Integer; overload;
 
     procedure Load(Source: PReadableStream); overload;
@@ -290,6 +289,7 @@ type
     function GetData: PWideChar;
     procedure SetData(Value: PWideChar);
   protected
+    class function CollectionInfo: TCollectionInfo; virtual;
     function AssignHexadecimal(Index: Integer; Value: QuadInt; MinWidth: Integer = 0;
       UpperCase: Boolean = True; FillChar: WideChar = #32): Integer;
     function AssignInteger(Index: Integer; Value: QuadInt; MinWidth: Integer = 0;
@@ -308,8 +308,6 @@ type
     procedure SetUnicodeString(Value: UnicodeString); virtual;
   {$ENDIF}
   public
-    constructor Create;
-
     procedure AsHexadecimal(Value: QuadInt; MinWidth: Integer = 0;
       UpperCase: Boolean = True; FillChar: WideChar = #32); overload;
     procedure AsInteger(Value: QuadInt; MinWidth: Integer = 0;
@@ -343,9 +341,9 @@ type
 
     procedure Detach; {$IFNDEF Lite} virtual; {$ENDIF}
 
-    function NextIndex(Value: WideChar; StartIndex: Integer = 0): Integer; overload;
-    function PrevIndex(Value: WideChar): Integer; overload;
-    function PrevIndex(Value: WideChar; StartIndex: Integer): Integer; overload;
+    function LastIndex(Value: WideChar): Integer;
+    function NextIndex(Value: WideChar; StartIndex: Integer = 0): Integer;
+    function PrevIndex(Value: WideChar; StartIndex: Integer): Integer;
 
     procedure Load(Source: PReadableStream); overload;
     function Load(Source: PReadableStream; ByteOrder: TByteOrder;
@@ -377,25 +375,26 @@ type
   TLegacyStrings = object(TStrings)
   private
   { hold } FItems: PLegacyStringArray;
+  protected
+    class function CollectionInfo: TCollectionInfo; virtual;
   public
-    constructor Create;
-
-    function AppendText(Source: PLegacyString;
+    function AppendText(Source: PLegacyString; AverageStringLength: Integer = 30;
       AttachBuffer: Boolean = False): Integer;
     function AppendWideText(Source: PWideString; CP: PCodePage = nil;
-      EncodeOptions: TEncodeRawBytes = []): Integer;
+      AverageStringLength: Integer = 30; EncodeOptions: TEncodeRawBytes = []): Integer;
 
-    procedure AsText(Source: PLegacyString; AttachBuffer: Boolean = False);
+    procedure AsText(Source: PLegacyString; AverageStringLength: Integer = 30;
+      AttachBuffer: Boolean = False);
     procedure AsWideText(Source: PWideString; CP: PCodePage = nil;
-      EncodeOptions: TEncodeRawBytes = []);
+      AverageStringLength: Integer = 30; EncodeOptions: TEncodeRawBytes = []);
 
     procedure DetachItems;
     function EstimateText(CodePage: PCodePage = nil): TEstimatedText; 
 
     function InsertText(Index: Integer; Source: PLegacyString;
-      AttachBuffer: Boolean = False): Integer;
+      AverageStringLength: Integer = 30; AttachBuffer: Boolean = False): Integer;
     function InsertWideText(Index: Integer; Source: PWideString; CP: PCodePage = nil;
-      EncodeOptions: TEncodeRawBytes = []): Integer;
+      AverageStringLength: Integer = 30; EncodeOptions: TEncodeRawBytes = []): Integer;
 
     procedure Load(Source: PReadableStream); overload;
     function Load(Source: PReadableStream; CodePage: PCodePage;
@@ -416,28 +415,31 @@ type
   TWideStringArray = array[0..MaxInt div SizeOf(TWideString) - 1] of TWideString;
 
   TWideStrings = object(TStrings)
+  private
   { hold } FItems: PWideStringArray;
+  protected
+    class function CollectionInfo: TCollectionInfo; virtual;
   public
-    constructor Create;
-
-    function AppendText(Source: PLegacyString;
+    function AppendText(Source: PLegacyString; AverageStringLength: Integer; 
       EncodeOptions: TEncodeUTF16 = coUTF16): Integer;
-    function AppendWideText(Source: PWideString;
+    function AppendWideText(Source: PWideString; AverageStringLength: Integer;
       AttachBuffer: Boolean = False): Integer;
 
-    procedure AsText(Source: PLegacyString; EncodeOptions: TEncodeUTF16 = coUTF16);
-    procedure AsWideText(Source: PWideString; AttachBuffer: Boolean = False);
+    procedure AsText(Source: PLegacyString; AverageStringLength: Integer = 30;
+      EncodeOptions: TEncodeUTF16 = coUTF16);
+    procedure AsWideText(Source: PWideString; AverageStringLength: Integer = 30;
+      AttachBuffer: Boolean = False);
 
     procedure DetachItems;
 
     function InsertText(Index: Integer; Source: PLegacyString;
-      EncodeOptions: TEncodeUTF16 = coUTF16): Integer;
+      AverageStringLength: Integer = 30; EncodeOptions: TEncodeUTF16 = coUTF16): Integer;
     function InsertWideText(Index: Integer; Source: PWideString;
-      AttachBuffer: Boolean = False): Integer;
+      AverageStringLength: Integer = 30; AttachBuffer: Boolean = False): Integer;
 
     procedure Load(Source: PReadableStream); overload;
     function Load(Source: PReadableStream; ByteOrder: TByteOrder;
-      FallbackCP: PCodePage = nil): TReadableBOM; overload;
+      FallbackCP: PCodePage = nil; AverageStringLength: Integer = 30): TReadableBOM; overload;
 
     procedure Save(Dest: PWritableStream); overload;
     procedure Save(Dest: PWritableStream; Delimiter: PWideString;
@@ -534,7 +536,7 @@ type
 { Helper functions }
 
 const
-  AverageStringLength = 25; // estimated on Delphi sources
+  AverageStringsDelta = -8;
 
 type
   THighSurrogates = $D800..$DBFF;
@@ -570,7 +572,7 @@ uses
   CoreConsts;
 
 const
-  BOMCodePages: array[Boolean] of Word = (CP_GB18030, CP_UTF7);
+  BOMCP: array[Boolean] of Word = (CP_GB18030, CP_UTF7);
 
 { Legacy Windows service }
 
@@ -757,7 +759,7 @@ begin
   begin
     W.Create;
     try
-      if Source.ItemSize = SizeOf(WideChar) then
+      if Source.CollectionInfo.ItemSize = SizeOf(WideChar) then
         W.AsRange(Source, 0)
       else
         W.AsString(PLegacyString(Source));
@@ -955,7 +957,7 @@ begin
     else
     begin
       inherited Assign(Source, Length, Length + SizeOf(WideChar), False);
-      PWideChar(PLegacyString(@Self).RawData + Length * ItemSize)^ := #0;
+      PWideChar(PLegacyString(@Self).RawData + Length * CollectionInfo.ItemSize)^ := #0;
     end
   else
     Clear;
@@ -983,7 +985,7 @@ begin
       Capacity := Length;
     Length := AssignArray(0, Values);
     Append(Length);
-    PWideChar(PLegacyString(@Self).FData + Length * ItemSize)^ := #0;
+    PWideChar(PLegacyString(@Self).FData + Length * CollectionInfo.ItemSize)^ := #0;
   end
 end;
 
@@ -1001,7 +1003,7 @@ end;
 
 function TString.CharSetName(EncodeOptions: TEncodeOptions): PLegacyChar;
 begin
-  if ItemSize = SizeOf(LegacyChar) then
+  if CollectionInfo.ItemSize = SizeOf(LegacyChar) then
     if coSurrogatePairs in EncodeOptions then
       Result := sCESU8
     else if coLatin1 in EncodeOptions then
@@ -1021,10 +1023,12 @@ function TString.TryHexadecimal(var Value: QuadInt): Boolean;
 const
   UpperCaseMask = not $20;
 var
+  ItemSize: Integer;
   Digit, Limit: PLegacyChar;
 begin
   if Count <> 0 then
   begin
+    ItemSize := CollectionInfo.ItemSize;
     Digit := PLegacyString(@Self).FData;
     Limit := Digit + Count * ItemSize;
     Value := 0;
@@ -1054,11 +1058,13 @@ end;
 
 function TString.TryInteger(var Value: QuadInt): Boolean;
 var
+  ItemSize: Integer;
   Digit, Limit: PLegacyChar;
   Minus: Boolean;
 begin
   if Count <> 0 then
   begin
+    ItemSize := CollectionInfo.ItemSize;
     Digit := PLegacyString(@Self).FData;
     Limit := Digit + Count * ItemSize;
     Value := 0;
@@ -1087,9 +1093,13 @@ end;
 
 { TLegacyString }
 
-constructor TLegacyString.Create;
+class function TLegacyString.CollectionInfo: TCollectionInfo;
 begin
-  inherited Create(sLegacyString, SizeOf(LegacyChar));
+  with Result do
+  begin
+    ClassName := sLegacyString;
+    ItemSize := SizeOf(LegacyChar);
+  end;
 end;
 
 function TLegacyString.AsBinaryData(DetachBuffer: Boolean): TBinaryData;
@@ -1635,6 +1645,17 @@ begin
   Result := False;
 end;
 
+function TLegacyString.LastIndex(Value: LegacyChar): Integer;
+var
+  S: PLegacyChar;
+begin
+  S := StrRScan(FData, Count, Value);
+  if S <> nil then
+    Result := S - FData
+  else
+    Result := -1;
+end;
+
 function TLegacyString.NextIndex(Index: Integer): Integer;
 begin
   CheckIndex(Index);
@@ -1664,20 +1685,11 @@ function TLegacyString.PrevIndex(Index: Integer): Integer;
 begin
   CheckIndex(Index);
   Result := Index - 1;
-  if (ItemSize = 1) and (FCodePage <> nil) then
+  if FCodePage <> nil then
     while not (FData[Index] in [#0..#127] + FCodePage.LeadBytes) do
-      Dec(Result);
-end;
-
-function TLegacyString.PrevIndex(Value: LegacyChar): Integer;
-var
-  S: PLegacyChar;
-begin
-  S := StrRScan(FData, Count, Value);
-  if S <> nil then
-    Result := S - FData
+      Dec(Result)
   else
-    Result := -1;
+    Result := Index - 1;
 end;
 
 function TLegacyString.PrevIndex(Value: LegacyChar; StartIndex: Integer): Integer;
@@ -1733,7 +1745,7 @@ begin
       bomUTF7, bomGB18030:
         begin
           Load(Source, False, SourceOptions);
-          CP.Create(BOMCodePages[Result = bomUTF7]);
+          CP.Create(BOMCP[Result = bomUTF7]);
           FCodePage := @CP;
           W.Create;
           try
@@ -1910,9 +1922,13 @@ end;
 
 { TWideString }
 
-constructor TWideString.Create;
+class function TWideString.CollectionInfo: TCollectionInfo;
 begin
-  inherited Create(sWideString, SizeOf(WideChar));
+  with Result do
+  begin
+    ClassName := sWideString;
+    ItemSize := SizeOf(WideChar);
+  end;
 end;
 
 procedure TWideString.AsHexadecimal(Value: QuadInt; MinWidth: Integer;
@@ -2387,23 +2403,23 @@ begin
     Result := nil;
 end;
 
-function TWideString.NextIndex(Value: WideChar; StartIndex: Integer): Integer;
+function TWideString.LastIndex(Value: WideChar): Integer;
 var
   W: PWideChar;
 begin
-  CheckIndex(StartIndex);
-  W := WideStrScan(FData + StartIndex, Count - StartIndex, Value);
+  W := WideStrRScan(FData, Count, Value);
   if W <> nil then
     Result := W - FData
   else
     Result := -1;
 end;
 
-function TWideString.PrevIndex(Value: WideChar): Integer;
+function TWideString.NextIndex(Value: WideChar; StartIndex: Integer): Integer;
 var
   W: PWideChar;
 begin
-  W := WideStrRScan(FData, Count, Value);
+  CheckIndex(StartIndex);
+  W := WideStrScan(FData + StartIndex, Count - StartIndex, Value);
   if W <> nil then
     Result := W - FData
   else
@@ -2589,12 +2605,17 @@ end;
 
 { TLegacyStrings }
 
-constructor TLegacyStrings.Create;
+class function TLegacyStrings.CollectionInfo: TCollectionInfo;
 begin
-  inherited Create(sLegacyText, SizeOf(TLegacyString));
+  with Result do
+  begin
+    ClassName := sLegacyText;
+    ItemSize := SizeOf(TLegacyString);
+  end;
 end;
 
-function TLegacyStrings.AppendText(Source: PLegacyString; AttachBuffer: Boolean): Integer;
+function TLegacyStrings.AppendText(Source: PLegacyString; AverageStringLength: Integer;
+  AttachBuffer: Boolean): Integer;
 var
   Lines: TLegacyString;
 begin
@@ -2605,7 +2626,7 @@ begin
     begin
       Capacity := Source.Count div AverageStringLength;
       if Delta = 0 then
-        Delta := -4;
+        Delta := AverageStringsDelta;
     end;
     Lines.Create;
     Lines.AsRange(Source, 0);
@@ -2623,7 +2644,7 @@ begin
 end;
 
 function TLegacyStrings.AppendWideText(Source: PWideString; CP: PCodePage;
-  EncodeOptions: TEncodeRawBytes): Integer;
+  AverageStringLength: Integer; EncodeOptions: TEncodeRawBytes): Integer;
 var
   Lines, Line: TWideString;
 begin
@@ -2634,7 +2655,7 @@ begin
     begin
       Capacity := Source.Count div AverageStringLength;
       if Delta = 0 then
-        Delta := -4;
+        Delta := AverageStringsDelta;
     end;
     Lines.Create;
     Lines.AsRange(Source, 0);
@@ -2652,17 +2673,18 @@ begin
   end;
 end;
 
-procedure TLegacyStrings.AsText(Source: PLegacyString; AttachBuffer: Boolean);
+procedure TLegacyStrings.AsText(Source: PLegacyString; AverageStringLength: Integer;
+  AttachBuffer: Boolean);
 begin
   Clear;
-  AppendText(Source, AttachBuffer);
+  AppendText(Source, AverageStringLength, AttachBuffer);
 end;
 
 procedure TLegacyStrings.AsWideText(Source: PWideString; CP: PCodePage;
-  EncodeOptions: TEncodeRawBytes);
+  AverageStringLength: Integer; EncodeOptions: TEncodeRawBytes);
 begin
   Clear;
-  AppendWideText(Source, CP, EncodeOptions);
+  AppendWideText(Source, CP, AverageStringLength, EncodeOptions);
 end;
 
 procedure TLegacyStrings.DetachItems;
@@ -2710,7 +2732,7 @@ begin
 end;
 
 function TLegacyStrings.InsertText(Index: Integer; Source: PLegacyString;
-  AttachBuffer: Boolean): Integer;
+  AverageStringLength: Integer; AttachBuffer: Boolean): Integer;
 var
   Lines: TLegacyStrings;
 begin
@@ -2718,19 +2740,15 @@ begin
   begin
     CheckIndex(Index);
     Lines.Create;
-    try
-      Result := Lines.AppendText(Source, AttachBuffer);
-      inherited Insert(Index, @Lines, True);
-    finally
-      Lines.Destroy;
-    end;
+    Result := Lines.AppendText(Source, AverageStringLength, AttachBuffer);
+    inherited Insert(Index, @Lines, True);
   end
   else
     Result := 0;
 end;
 
 function TLegacyStrings.InsertWideText(Index: Integer; Source: PWideString;
-  CP: PCodePage; EncodeOptions: TEncodeRawBytes): Integer;
+  CP: PCodePage; AverageStringLength: Integer; EncodeOptions: TEncodeRawBytes): Integer;
 var
   Lines: TLegacyStrings;
 begin
@@ -2738,12 +2756,8 @@ begin
   begin
     CheckIndex(Index);
     Lines.Create;
-    try
-      Result := Lines.AppendWideText(Source, CP, EncodeOptions);
-      inherited Insert(Index, @Lines, True);
-    finally
-      Lines.Destroy;
-    end;
+    Result := Lines.AppendWideText(Source, CP, AverageStringLength, EncodeOptions);
+    inherited Insert(Index, @Lines, True);
   end
   else
     Result := 0;
@@ -2784,7 +2798,7 @@ begin
         begin
           W.Create;
           try
-            CP.Create(BOMCodePages[Result = bomUTF7]);
+            CP.Create(BOMCP[Result = bomUTF7]);
             S.Create;
             try
               S.FCodePage := @CP;
@@ -2832,6 +2846,7 @@ var
   I: Integer;
   W: TWideString;
   Item: PLegacyString;
+  D: TLegacyString;
 begin
   with EstimateText(CP) do
   begin
@@ -2849,19 +2864,38 @@ begin
     CP := CodePage;
   end;
 
+  if soDetectUTF8 in Delimiter.Options then
+    Delimiter.VerifyUTF8;
+
   W.Create;
   try
-    for I := 0 to Count - 1 do
+    if Delimiter.CodePage <> CP then
     begin
-      Item := @FItems[I];
-      if Item.FCodePage = CP then
-        Item.Save(Dest, False)
-      else
+      W.AsString(Delimiter);
+      D.Create;
+      D.FCodePage := CP;
+      D.AsWideString(@W);
+      Delimiter := @D;
+    end
+    else
+      D.FData := nil;
+
+    try
+      for I := 0 to Count - 1 do
       begin
-        W.AsString(Item);
-        //W.Save(Dest, []); TODO
+        Item := @FItems[I];
+        if Item.CodePage = CP then
+          Item.Save(Dest, False)
+        else
+        begin
+          W.AsString(Item);
+          //W.Save(Dest, []);
+        end;
+        Delimiter.Save(Dest, False);
       end;
-      // save delimiter
+    finally
+      if D.FData <> nil then
+        D.Destroy;
     end;
   finally
     W.Destroy;
@@ -2903,69 +2937,85 @@ end;
 
 { TWideStrings }
 
-constructor TWideStrings.Create;
+class function TWideStrings.CollectionInfo: TCollectionInfo;
 begin
-  inherited Create(sWideText, SizeOf(TWideString));
+  with Result do
+  begin
+    ClassName := sWideText;
+    ItemSize := SizeOf(TWideString);
+  end;
 end;
 
-function TWideStrings.AppendText(Source: PLegacyString; EncodeOptions: TEncodeUTF16): Integer;
-begin
-  Result := 0; // TODO
-end;
-
-function TWideStrings.AppendWideText(Source: PWideString; AttachBuffer: Boolean): Integer;
+function TWideStrings.AppendText(Source: PLegacyString; AverageStringLength: Integer;
+  EncodeOptions: TEncodeUTF16): Integer;
 var
-  Text, Next, Limit: PWideChar;
-  NewCapacity: Integer;
+  Lines, Line: TLegacyString;
+begin
+  Result := 0;
+  if (Source <> nil) and (Source.Count <> 0) then
+  begin
+    if Attached or (Capacity = 0) then
+    begin
+      Capacity := Source.Count div AverageStringLength;
+      if Delta = 0 then
+        Delta := AverageStringsDelta;
+    end;
+    Lines.Create;
+    Lines.AsRange(Source, 0);
+    Line.Create;
+    repeat
+      Lines := Line.AsNextLine(@Lines);
+      with FItems[inherited Append] do
+      begin
+        Create;
+        AsString(@Line, EncodeOptions);
+      end;
+      Inc(Result);
+    until Lines.Count = 0;
+  end;
+end;
+
+function TWideStrings.AppendWideText(Source: PWideString; AverageStringLength: Integer;
+  AttachBuffer: Boolean): Integer;
+var
+  Lines: TWideString;
 begin
   Result := 0;
   if Source <> nil then
   begin
     if Attached or (Capacity = 0) then
     begin
-      NewCapacity := AverageCount;
-      if NewCapacity = 0 then
-        NewCapacity := Source.Count div AverageStringLength;
-      Capacity := NewCapacity;
+      Capacity := Source.Count div AverageStringLength;
       if Delta = 0 then
-        Delta := -4;
+        Delta := AverageStringsDelta;
     end;
-
-    Text := Source.RawData;
-    Limit := Text + Source.Count;
-    Next := Text;
+    Lines.Create;
+    Lines.AsRange(Source, 0);
     repeat
-      if (Next = Limit) or (Next^ = #10) or (Next^ = #13) then
+      with FItems[inherited Append] do
       begin
-        with FItems[inherited Append] do
-        begin
-          Create;
-          AsRange(Source, Text - Source.RawData, Next - Text);
-          if not AttachBuffer then
-            Detach;
-        end;
-        Inc(Result);
-        if (Next^ = #13) and (Next + 1 < Limit) and (Next[1] = #10) then
-          Inc(Next, 2)
-        else
-          Inc(Next);
-        Text := Next;
-        Continue;
+        Create;
+        Lines := AsNextLine(@Lines);
+        if not AttachBuffer then
+          Detach;
       end;
-      Inc(Next);
-    until Text >= Limit;
+      Inc(Result);
+    until Lines.Count = 0;
   end;
 end;
 
-procedure TWideStrings.AsText(Source: PLegacyString; EncodeOptions: TEncodeUTF16);
-begin
-  // TODO
-end;
-
-procedure TWideStrings.AsWideText(Source: PWideString; AttachBuffer: Boolean);
+procedure TWideStrings.AsText(Source: PLegacyString; AverageStringLength: Integer;
+  EncodeOptions: TEncodeUTF16);
 begin
   Clear;
-  AppendWideText(Source, AttachBuffer);
+  AppendText(Source, AverageStringLength, EncodeOptions);
+end;
+
+procedure TWideStrings.AsWideText(Source: PWideString; AverageStringLength: Integer;
+  AttachBuffer: Boolean);
+begin
+  Clear;
+  AppendWideText(Source, AverageStringLength, AttachBuffer);
 end;
 
 procedure TWideStrings.DetachItems;
@@ -2977,7 +3027,7 @@ begin
 end;
 
 function TWideStrings.InsertText(Index: Integer; Source: PLegacyString;
-  EncodeOptions: TEncodeUTF16): Integer;
+  AverageStringLength: Integer; EncodeOptions: TEncodeUTF16): Integer;
 var
   Lines: TWideStrings;
 begin
@@ -2985,19 +3035,15 @@ begin
   begin
     CheckIndex(Index);
     Lines.Create;
-    try
-      Result := Lines.AppendText(Source, EncodeOptions);
-      inherited Insert(Index, @Lines, True);
-    finally
-      Lines.Destroy;
-    end;
+    Result := Lines.AppendText(Source, AverageStringLength, EncodeOptions);
+    inherited Insert(Index, @Lines, True);
   end
   else
     Result := 0;
 end;
 
 function TWideStrings.InsertWideText(Index: Integer; Source: PWideString;
-  AttachBuffer: Boolean): Integer;
+  AverageStringLength: Integer; AttachBuffer: Boolean): Integer;
 var
   Lines: TWideStrings;
 begin
@@ -3005,12 +3051,8 @@ begin
   begin
     CheckIndex(Index);
     Lines.Create;
-    try
-      Result := Lines.AppendWideText(Source, AttachBuffer);
-      inherited Insert(Index, @Lines, True);
-    finally
-      Lines.Destroy;
-    end;
+    Result := Lines.AppendWideText(Source, AverageStringLength, AttachBuffer);
+    inherited Insert(Index, @Lines, True);
   end
   else
     Result := 0;
@@ -3022,14 +3064,14 @@ begin
 end;
 
 function TWideStrings.Load(Source: PReadableStream; ByteOrder: TByteOrder;
-  FallbackCP: PCodePage): TReadableBOM;
+  FallbackCP: PCodePage; AverageStringLength: Integer): TReadableBOM;
 var
   W: TWideString;
 begin
   W.Create;
   try
     Result := W.Load(Source, ByteOrder, FallbackCP);
-    AsWideText(@W, True);
+    AsWideText(@W, AverageStringLength);
   finally
     W.Destroy;
   end;
