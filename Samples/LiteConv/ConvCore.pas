@@ -94,7 +94,7 @@ var
   ExeName: array[0..MAX_PATH] of CoreChar;
   CmdLine, Key: TWideString;
   Param: TCommandLineParam;
-  Len, ParamCount: Integer;
+  ExeNameLength, ParamCount: Integer;
   Cmd: TCommand;
   Opt: TRunOption;
   W: PWideChar;
@@ -106,20 +106,20 @@ begin
     WriteLn;
   end;
 
-  Len := GetModuleFileNameW(0, ExeName, Length(ExeName));
-  if Len = 0 then
+  ExeNameLength := GetModuleFileNameW(0, ExeName, Length(ExeName));
+  if ExeNameLength = 0 then
     RaiseLastPlatformError {$IFDEF Debug} (sModuleFileName, Length(ExeName)) {$ENDIF} ;
 
   with FAppName do
   begin
     Create;
-    AsWideString(ExeName, Len, soAttach);
-    Skip(PrevIndex(PathDelimiter) + 1);
-    Truncate(Count - PrevIndex(WideChar('.')));
+    AsWideString(ExeName, ExeNameLength, soAttach);
+    Skip(LastIndex(PathDelimiter) + 1);
+    Truncate(Count - LastIndex(WideChar('.')));
     Detach;
   end;
 
-  FConsole.WriteLn(sLiteConv, 0, [FAppName.Data],  2);
+  FConsole.WriteLn(sLiteConv, 0, [FAppName.RawData],  2);
 
   CmdLine.Create;
   CmdLine.AsWideString(CommandLine, WideStrLen(CommandLine), soAttach);
