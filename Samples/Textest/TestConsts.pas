@@ -49,6 +49,15 @@ const
   sSavingInto = 'Saving into';
   sFallbackCP = 'Fallback code page: %u (%s)';
 
+  sBytesLinesSecondsGBs = '%hs: %d bytes, %d lines, %hs seconds, %hs GB/s';
+  sAverageLineLength = 'Average line length: %d';
+  sEstimationVariance = 'Estimation variance: %hs%% (%d characters '#215' %d lines)';
+  sCapacityOverhead = 'Capacity overhead: %hs%% (%d bytes)';
+  sTotalOverhead = 'Total overhead: %hs%% (%d bytes)';
+
+  sCoreLiteTestFailed = 'CoreLite test failed for average string length %d';
+  sDelphiTestFailed = 'Delphi test failed';
+
 implementation
 
 end.

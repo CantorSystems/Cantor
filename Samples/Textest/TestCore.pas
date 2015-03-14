@@ -254,25 +254,23 @@ begin
   Time[Length(Time) + 1] := #0;
   Str(CharCount / (1024 * 1024 * 1024) / Elapsed * 100:1:2, Throughput);
   Throughput[Length(Throughput) + 1] := #0;
-  FConsole.WriteLn('%hs: %d bytes, %d lines, %hs seconds, %hs GB/s', 0,
+  FConsole.WriteLn(sBytesLinesSecondsGBs, 0,
     [TestNames[AverageCount <> 0], CharCount, LineCount, @Time[1], @Throughput[1]]);
 
   if AverageStringLength <> 0 then
   begin
-    FConsole.WriteLn('Average line length: %d', 0, [AverageCount]);
+    FConsole.WriteLn(sAverageLineLength, 0, [AverageCount]);
 
     EstimatedCount := CharCount div AverageStringLength;
     Str((EstimatedCount - LineCount) / LineCount * 100:1:1, Percent);
     Percent[Length(Percent) + 1] := #0;
-    FConsole.WriteLn('Estimation variance: %hs%% (%d characters '#215' %d lines)', 0,
-      [@Percent[1], AverageStringLength, EstimatedCount]);
+    FConsole.WriteLn(sEstimationVariance, 0, [@Percent[1], AverageStringLength, EstimatedCount]);
   end;
 
   Overhead := Capacity - LineCount;
   Str(Overhead / Capacity * 100:1:1, Percent);
   Percent[Length(Percent) + 1] := #0;
-  FConsole.WriteLn('Capacity overhead: %hs%% (%d bytes)', 0,
-    [@Percent[1], Overhead * ItemSize]);
+  FConsole.WriteLn(sCapacityOverhead, 0, [@Percent[1], Overhead * ItemSize]);
 
   if AverageStringLength <> 0 then
   begin
@@ -286,7 +284,7 @@ begin
   end;
   Str(Overhead / EstimatedCount * 100:1:1, Percent);
   Percent[Length(Percent) + 1] := #0;
-  FConsole.WriteLn('Total overhead: %hs%% (%d bytes)', 0, [@Percent[1], Overhead]);
+  FConsole.WriteLn(sTotalOverhead, 0, [@Percent[1], Overhead]);
 end;
 
 var
@@ -313,15 +311,13 @@ begin
   except
     on E: TObject do
     begin
-      FConsole.WriteLn('CoreLite test fail, average string length %d', 0, [AverageStringLength]);
+      FConsole.WriteLn(sCoreLiteTestFailed, 0, [AverageStringLength]);
       ShowException(E);
     end;
   end;
 end;
 
 procedure DelphiTest;
-const
-  sDelphiTestFail = 'Delphi test fail';
 var
   Strings: TStrings;
   StartTime: QuadWord;
@@ -344,7 +340,7 @@ begin
   except
     on E: TObject do
     begin
-      FConsole.WriteLn(PLegacyChar(sDelphiTestFail), StrLen(sDelphiTestFail));
+      FConsole.WriteLn(PLegacyChar(sDelphiTestFailed), StrLen(sDelphiTestFailed));
       ShowException(E);
     end;
   end;
@@ -363,7 +359,9 @@ begin
 
     S.Create;
     try
-      LoadFile(S.Load, FSourceFileName.Data, faSequentialRead);
+      if FFallbackCP <> 0 then
+        S.CodePage := @CP;
+      LoadFile(S.Load, FSourceFileName.Data);
       Text.Create;
       try
         FCounter.Create;
@@ -375,7 +373,8 @@ begin
         if S.Count > 100 * 1024 * 1024 then
           Text.Capacity := 0; // let's make a hothouse for Delphi :-)
         DelphiTest;
-        if FIntoFileName.Count <> 0 then
+
+        if (FIntoFileName.Count <> 0) and (Text.Count <> 0) then
         begin
           FConsole.WriteLn;
           FConsole.WriteLn(sFileNameFmt, 0, [sSavingInto, FIntoFileName.Data]);
