@@ -775,15 +775,20 @@ begin
 end;
 
 function TCollection.TranslateDelta: Integer;
+var
+  NewResult: Integer;
 begin
   if FDelta < 0 then
   begin
     Result := -FDelta;
     if FCapacity > Result then
     begin
-      Result := FCapacity div Result;
-      if Result = 0 then
-        Result := FCapacity;
+      NewResult := FCapacity div Result;
+      if NewResult > 0 then
+      begin
+        Result := NewResult;
+        Exit;
+      end;
     end;
   end
   else
