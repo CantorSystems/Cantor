@@ -179,7 +179,7 @@ procedure RaiseLastPlatformError(TextParam: PLegacyChar; IntParam: Integer); ove
 { Exception handling }
 
 procedure DefaultExceptionMessage(Msg: PWideChar; Count: Integer);
-procedure ShowException(E: {$IFDEF Debug} TObject {$ELSE} Exception {$ENDIF});
+procedure ShowException(E: TObject);
 procedure UseExceptionMessageBox;
 procedure UseExceptionMessageWrite;
 
@@ -601,7 +601,7 @@ end;
 
 { Exception handling }
 
-procedure ShowException(E: {$IFDEF Debug} TObject {$ELSE} Exception {$ENDIF} );
+procedure ShowException(E: TObject);
 begin
   if E is Exception then
   begin
