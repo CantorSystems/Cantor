@@ -27,7 +27,7 @@ const         // short Unicode strings
 { Localize }
 
 const
-  sLiteConv = '%s ' + Revision;
+  sLiteConv = 'LiteConv ' + Revision;
 
   sUsage  =
     'Usage:'#10 +

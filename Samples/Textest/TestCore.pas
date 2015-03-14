@@ -110,7 +110,7 @@ begin
     Detach
   end;
 
-  FConsole.WriteLn(sTextest, 0, [FAppName.RawData],  2);
+  FConsole.WriteLn(PLegacyChar(sTextest), StrLen(sTextest), 2);
 
   CmdLine.Create;
   CmdLine.AsWideString(CommandLine, WideStrLen(CommandLine), soAttach);

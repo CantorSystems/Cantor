@@ -119,7 +119,7 @@ begin
     Detach;
   end;
 
-  FConsole.WriteLn(sLiteConv, 0, [FAppName.RawData],  2);
+  FConsole.WriteLn(PLegacyChar(sLiteConv), StrLen(sLiteConv),  2);
 
   CmdLine.Create;
   CmdLine.AsWideString(CommandLine, WideStrLen(CommandLine), soAttach);

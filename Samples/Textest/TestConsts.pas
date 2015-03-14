@@ -19,7 +19,7 @@ const       // short Unicode strings
 { Localize }
 
 const
-  sTextest = '%s ' + Revision;
+  sTextest = 'Textest ' + Revision;
 
   sUsage =
     'Usage:'#9'%s <source> [commands [options]]';
