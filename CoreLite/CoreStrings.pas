@@ -530,8 +530,8 @@ type
 { Helper functions }
 
 const
-  AverageStringLength = 30;
-  AverageStringsDelta = -8;
+  AverageStringLength = 64;
+  AverageStringsDelta = -4;
 
 type
   THighSurrogates = $D800..$DBFF;
@@ -1163,16 +1163,35 @@ begin
 end;
 
 function TLegacyString.AsNextLine(Source: PLegacyString): TLegacyString;
+var
+  P, Limit: PLegacyChar;
 begin
-  Result.Create;
-  Result.AsRange(Source, 0);
+  with Result do
+  begin
+    Create;
+    AsRange(Source, 0);
+    if Count = 0 then
+    begin
+      Self.Clear;
+      Exit;
+    end;
+    P := RawData;
+    Limit := P + Count;
+  end;
 
-  while (Result.Count <> 0) and not (Result.RawData^ in [#10, #13]) do
-    Result.Skip;
+  while (P < Limit) and not (P^ in [#10, #13, #0]) do
+    Inc(P);
 
-  AsRange(Source, 0, Result.RawData - Source.RawData);
-  if Result.Count <> 0 then
-    Result.Skip(1 + Byte((Result.Count > 1) and (Result.RawData^ = #13) and (Result.RawData[1] = #10)));
+  AsRange(@Result, 0, P - Result.RawData);
+  if P < Limit then
+  begin
+    if (P^ = #13) and (P + 1 < Limit) and (P[1] = #10) then
+      Inc(P);
+    Result.Skip(P + 1 - Result.RawData);
+    if P^ <> #0 then
+      Exit;
+  end;
+  Result.Clear;
 end;
 
 function TLegacyString.AsRange(Index: Integer): TLegacyString;
@@ -1981,15 +2000,35 @@ begin
 end;
 
 function TWideString.AsNextLine(Source: PWideString): TWideString;
+var
+  P, Limit: PWideChar;
 begin
-  Result.Create;
-  Result.AsRange(Source, 0);
+  with Result do
+  begin
+    Create;
+    AsRange(Source, 0);
+    if Count = 0 then
+    begin
+      Self.Clear;
+      Exit;
+    end;
+    P := RawData;
+    Limit := P + Count;
+  end;
 
-  while (Result.Count <> 0) and (Result.RawData^ <> #10) and (Result.RawData^ <> #13) do
-    Result.Skip;
+  while (P < Limit) and (P^ <> #10) and (P^ <> #13) and (P^ <> #0) do
+    Inc(P);
 
-  AsRange(Source, Source.Count - Result.Count);
-  Result.Skip(1 + Byte((Result.Count > 1) and (Result.RawData^ = #13) and (Result.RawData[1] = #10)));
+  AsRange(@Result, 0, P - Result.RawData);
+  if P < Limit then
+  begin
+    if (P^ = #13) and (P + 1 < Limit) and (P[1] = #10) then
+      Inc(P);
+    Result.Skip(P + 1 - Result.RawData);
+    if P^ <> #0 then
+      Exit;
+  end;
+  Result.Clear;
 end;
 
 function TWideString.AsRange(Index: Integer): TWideString;
