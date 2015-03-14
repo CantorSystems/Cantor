@@ -2869,7 +2869,7 @@ var
 begin
   Delimiter.Create;
   Delimiter.Assign(@LF, 1, soAttach);
-  Save(Dest, @Delimiter);
+  Save(Dest, @Delimiter, nil);
 end;
 
 procedure TLegacyStrings.Save(Dest: PWritableStream; Delimiter: PLegacyString;
