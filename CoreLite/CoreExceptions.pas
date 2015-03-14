@@ -178,13 +178,13 @@ procedure RaiseLastPlatformError(TextParam: PLegacyChar; IntParam: Integer); ove
 
 { Exception handling }
 
-procedure DefaultExceptionMessage(Msg: PWideChar);
+procedure DefaultExceptionMessage(Msg: PWideChar; Count: Integer);
 procedure ShowException(E: {$IFDEF Debug} TObject {$ELSE} Exception {$ENDIF});
 procedure UseExceptionMessageBox;
 procedure UseExceptionMessageWrite;
 
 var
-  ExceptionMessage: procedure(Msg: PWideChar) = DefaultExceptionMessage;
+  ExceptionMessage: procedure(Msg: PWideChar; Count: Integer) = DefaultExceptionMessage;
 
 implementation
 
@@ -455,54 +455,43 @@ begin
 {$ENDIF ----------- }
 end;
 
-procedure ExceptionErrorMessage(Msg: PWideChar; CodePage: Word); // via ErrorMessage
+procedure ExceptionErrorMessage(Msg: PWideChar; Count: Integer; CodePage: Word); // via ErrorMessage
 asm
-        PUSH ESI
-        MOV ESI, EDX
-
-        PUSH EAX
-        CALL WideStrLen
-        INC EAX
-        POP EDX
-
-        PUSH EBX
         PUSH EDI
+        PUSH EBX
+
+        MOV EBX, EDX  // Length
+        SHL EBX, 1
+        ADD EBX, EDX  // 3 bytes per char for possible UTF-8
+        ADD EBX, 3    // stack align
+        AND EBX, $FFFFFFFC
+        SUB ESP, EBX
         MOV EDI, ESP
 
-        MOV ECX, EAX  // Length
-        SHL ECX, 1
-        ADD ECX, EAX  // 3 bytes per char for possible UTF-8
-        ADD ECX, 3
-        AND ECX, $FFFFFFFC
-        SUB ESP, ECX
-        MOV EBX, ESP
-
         PUSH 0
         PUSH 0
-        PUSH ECX
         PUSH EBX
-        PUSH EAX  // Length
-        PUSH EDX  // Msg
+        PUSH EDI
+        PUSH EDX  // Length
+        PUSH EAX  // Msg
         PUSH 0
-        PUSH ESI  // CodePage
+        PUSH ECX  // CodePage
      {$IFDEF Tricks}
         CALL System.WideCharToMultiByte
      {$ELSE}
         CALL WideCharToMultiByte
      {$ENDIF}
 
-        DEC EAX
         MOV EDX, EAX
-        MOV EAX, EBX
+        MOV EAX, EDI
         CALL ErrorMessage
 
-        MOV ESP, EDI
-        POP EDI
+        ADD ESP, EBX
         POP EBX
-        POP ESI
+        POP EDI
 end;
 
-procedure ExceptMsgBox(Msg: PWideChar; Len: Integer); // asm service
+procedure ExceptMsgBox(Msg: PWideChar; Count: Integer); // asm service
 asm
         MOV ECX, EDX // MsgLen
         OR ECX, 1
@@ -537,18 +526,19 @@ asm
         POP EDI
 end;
 
-procedure ExceptionMessageWrite(Msg: PWideChar);
+procedure ExceptionMessageWrite(Msg: PWideChar; Count: Integer);
 asm
         PUSH EAX
+        PUSH EDX
         CALL GetConsoleOutputCP
-        MOV EDX, EAX
+        MOV ECX, EAX
+        POP EDX
         POP EAX
         JMP ExceptionErrorMessage
 end;
 
-procedure ExceptionMessageBox(Msg: PWideChar);
+procedure ExceptionMessageBox(Msg: PWideChar; Count: Integer);
 var
-  L: Integer;
   Flags: LongWord;
   P: PWideChar;
 begin
@@ -556,13 +546,12 @@ begin
   if not NoErrMsg then
 {$ENDIF}
   begin
-    L := WideStrLen(Msg);
-    if L <> 0 then
+    if Count <> 0 then
     begin
-      P := Msg + L - 1;
-      if (P^ <> WideChar('.')) and (P^ <> WideChar('!')) and (P^ <> WideChar('?')) then
+      P := Msg + Count - 1;
+      if (P^ <> '.') and (P^ <> '!') and (P^ <> '?') then
       begin
-        ExceptMsgBox(Msg, L);
+        ExceptMsgBox(Msg, Count);
         Exit;
       end;
     end;
@@ -573,9 +562,9 @@ begin
   end;
 end;
 
-procedure DefaultExceptionMessage(Msg: PWideChar);
+procedure DefaultExceptionMessage(Msg: PWideChar; Count: Integer);
 asm
-        MOVZX EDX, IsConsole // 0 = ACP, 1 = OEMCP
+        MOVZX ECX, IsConsole // 0 = ACP, 1 = OEMCP
         JMP ExceptionErrorMessage
 end;
 
@@ -612,12 +601,44 @@ end;
 
 { Exception handling }
 
-procedure ShowException(E: {$IFDEF Debug} TObject {$ELSE} Exception {$ENDIF});
+procedure ShowException(E: {$IFDEF Debug} TObject {$ELSE} Exception {$ENDIF} );
 begin
-  if (E is Exception) and (eoWideChar in Exception(E).FOptions) or UnicodeRTL then
-    ExceptionMessage(Exception(E).FMessage.AsWideString)
+  if E is Exception then
+  begin
+    if eoWideChar in Exception(E).FOptions then
+    begin
+      with Exception(E).FMessage do
+        ExceptionMessage(AsWideString, WideStrLen(AsWideString));
+      Exit;
+    end
+  end
+{$IF defined(Debug) and not defined(CoreLiteVCL)}
   else
-    ErrorMessage(Exception(E).FMessage.AsString, CoreUtils.StrLen(Exception(E).FMessage.AsString));
+  begin
+    with Exception(E) do
+    {$IF UnicodeRTL}
+      ExceptionMessage(Pointer(FDelphiMsg), Length(FDelphiMsg));
+    {$ELSE}
+      ErrorMessage(Pointer(FDelphiMsg), Length(FDelphiMsg));
+    {$IFEND}
+    Exit;
+  end
+{$ELSE}
+  else
+  begin
+  {$IFDEF CoreLiteVCL}
+    with SysUtils.Exception(E) do
+    {$IF UnicodeRTL}
+      ExceptionMessage(Pointer(Message), Length(Message));
+    {$ELSE}
+      ErrorMessage(Pointer(Message), Length(Message));
+    {$IFEND}
+  {$ENDIF}
+    Exit;
+  end
+{$IFEND} ;
+  with Exception(E).FMessage do
+    ErrorMessage(AsString, CoreUtils.StrLen(AsString))
 end;
 
 procedure UseExceptionMessageBox;
