@@ -925,7 +925,7 @@ begin
 
   Result := {$IFDEF Tricks} System. {$ENDIF} WideCharToMultiByte(
     FNumber, WC_NO_BEST_FIT_CHARS and (Integer(IsUnicode) - 1), Source.RawData, Source.Count,
-    Dest.RawData + DestIndex, Dest.Capacity - DestIndex, Replacement, ReplaceResult
+    Dest.RawData + DestIndex, Dest.Capacity - DestIndex, Replacement, Pointer(ReplaceResult)
   );
   if ReplacementUsed then
     Result := -Result;
