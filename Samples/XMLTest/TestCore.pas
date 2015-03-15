@@ -54,7 +54,7 @@ type
 implementation
 
 uses
-  Windows, CoreConsts, TestConsts;
+  Windows, CoreXML, CoreConsts, TestConsts;
 
 { ECommandParam }
 
@@ -245,12 +245,11 @@ begin
 
     S.Create;
     try
-      if FFallbackCP <> 0 then
-        S.CodePage := @CP;
       LoadFile(S.Load, FSourceFileName.Data);
       if (FIntoFileName.Count <> 0) and (S.Count <> 0) then
       begin
-        FConsole.WriteLn;
+        if FFallbackCP <> 0 then
+          S.CodePage := @CP;
         FConsole.WriteLn(sFileNameFmt, 0, [sSavingInto, FIntoFileName.Data]);
       //  SaveFile(Text.Save, FIntoFileName.RawData, Text.EstimateText.Length);
       end;
