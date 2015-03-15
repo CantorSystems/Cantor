@@ -192,7 +192,7 @@ type
     function GetData: PLegacyChar;
     procedure SetCodePage(Value: PCodePage);
     procedure SetData(Value: PLegacyChar);
-    procedure VerifyUTF8;
+    procedure ValidateUTF8;
   protected
     class function CollectionInfo: TCollectionInfo; virtual;
     function AssignHexadecimal(Index: Integer; Value: QuadInt; MinWidth: Integer = 0;
@@ -547,7 +547,7 @@ type
 
   TSurrogatePairOptions = set of (poBigEndian, poEncodeBigEndian);
 
-{$IF not UnicodeRTL}
+{$IF defined(CoreLiteVCL) and not UnicodeRTL}
 var
   DefaultUnicodeCodePage: Integer;
 {$IFEND}
@@ -1268,7 +1268,7 @@ begin
   CheckIndex(Index);
 {$ENDIF}
   if soDetectUTF8 in FOptions then
-    VerifyUTF8;
+    ValidateUTF8;
   if Source.Compatible(@Self) then
   begin
     Move(FData[Index], Source.RawData^, Source.Count);
@@ -1616,7 +1616,7 @@ end;
 function TLegacyString.Compatible(Value: PLegacyString): Boolean;
 begin
   if soDetectUTF8 in FOptions then
-    VerifyUTF8;
+    ValidateUTF8;
   Result := (Count = 0) or (Value.Count = 0) or (FOptions = Value.Options) or
     (FCodePage = Value.CodePage) or (FCodePage <> nil) and (FCodePage.Number = Value.CodePage.Number);
 end;
@@ -1899,7 +1899,7 @@ begin
 end;
 {$ENDIF}
 
-procedure TLegacyString.VerifyUTF8;
+procedure TLegacyString.ValidateUTF8;
 var
   Dummy: array[0..1023] of WideChar;
   W: TWideString;
@@ -2897,7 +2897,7 @@ begin
   end;
 
   if soDetectUTF8 in Delimiter.Options then
-    Delimiter.VerifyUTF8;
+    Delimiter.ValidateUTF8;
 
   W.Create;
   try
