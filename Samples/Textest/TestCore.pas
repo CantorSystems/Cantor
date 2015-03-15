@@ -355,7 +355,7 @@ begin
       FConsole.WriteLn(sFallbackCP, 0, [CP.Number, CP.Name]);
     end;
 
-    FConsole.WriteLn(sFileNameFmt, 0, [sSourceFile, FSourceFileName.Data]);
+    FConsole.WriteLn(sFileNameFmt, 0, [PLegacyChar(sSourceFile), FSourceFileName.Data]);
 
     S.Create;
     try
@@ -377,8 +377,8 @@ begin
         if (FIntoFileName.Count <> 0) and (Text.Count <> 0) then
         begin
           FConsole.WriteLn;
-          FConsole.WriteLn(sFileNameFmt, 0, [sSavingInto, FIntoFileName.Data]);
-          SaveFile(Text.Save, FIntoFileName.RawData, Text.EstimateText.Length);
+          FConsole.WriteLn(sFileNameFmt, 0, [PLegacyChar(sSavingInto), FIntoFileName.Data]);
+          SaveFile(Text.Save, FIntoFileName.RawData, Text.EstimateText.EstimatedLength);
         end;
       finally
         Text.Destroy;

@@ -312,24 +312,20 @@ procedure SaveFile(Saver: TWritableStreamEvent; FileName: PCoreChar;
 
 { Import Windows functions for Delphi 6/7 }
 
-{$IF not UnicodeRTL}
 function GetFileSizeEx(hFile: THandle; var lpFileSize: QuadWord): LongBool; stdcall;
 function SetFilePointerEx(hFile: THandle; liDistanceToMove: QuadWord;
   lpNewFilePointer: PQuadWord; dwMoveMethod: LongWord): LongBool; stdcall;
-{$IFEND}
 
 implementation
 
 uses
   CoreConsts;
 
-{$IF not UnicodeRTL}
 function GetFileSizeEx(hFile: THandle; var lpFileSize: QuadWord): LongBool; stdcall;
   external kernel32 name 'GetFileSizeEx';
 function SetFilePointerEx(hFile: THandle; liDistanceToMove: QuadWord;
   lpNewFilePointer: PQuadWord; dwMoveMethod: LongWord): LongBool; stdcall;
   external kernel32 name 'SetFilePointerEx';
-{$IFEND}
 
 { Helper functions }
 

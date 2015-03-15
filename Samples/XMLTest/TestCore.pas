@@ -241,7 +241,7 @@ begin
       FConsole.WriteLn(sFallbackCP, 0, [CP.Number, CP.Name]);
     end;
 
-    FConsole.WriteLn(sFileNameFmt, 0, [sSourceFile, FSourceFileName.Data]);
+    FConsole.WriteLn(sFileNameFmt, 0, [PLegacyChar(sSourceFile), FSourceFileName.Data]);
 
     S.Create;
     try
@@ -250,7 +250,7 @@ begin
       begin
         if FFallbackCP <> 0 then
           S.CodePage := @CP;
-        FConsole.WriteLn(sFileNameFmt, 0, [sSavingInto, FIntoFileName.Data]);
+        FConsole.WriteLn(sFileNameFmt, 0, [PLegacyChar(sSavingInto), FIntoFileName.Data]);
       //  SaveFile(Text.Save, FIntoFileName.RawData, Text.EstimateText.Length);
       end;
     finally

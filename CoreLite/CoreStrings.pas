@@ -366,7 +366,7 @@ type
 
   TEstimatedText = record
     CodePage: PCodePage;
-    Length: Integer;
+    EstimatedLength: Integer;
   end;
 
   PLegacyStringArray = ^TLegacyStringArray;
@@ -1537,11 +1537,11 @@ begin
     with Source.EstimateText(FCodePage) do
     begin
       FCodePage := CodePage;
-      if Length = 0 then
+      if EstimatedLength = 0 then
         Exit;
-      Inc(Length, Delimiter.Count * Source.Count);
-      if Attached or (Capacity < Length) then
-        Capacity := Length;
+      Len := EstimatedLength + Delimiter.Count * Source.Count;
+      if Attached or (Capacity < Len) then
+        Capacity := Len;
     end;
 
     Idx := 0;
@@ -2735,7 +2735,7 @@ begin
   S.FCodePage := CodePage;
   S.FOptions := [];
   Result.CodePage := CodePage;
-  Result.Length := 0;
+  Result.EstimatedLength := 0;
   CPCount := 0;
   for I := 0 to Count - 1 do
     with FItems[I] do
@@ -2753,14 +2753,14 @@ begin
         Result.CodePage := nil;
         if CodePage <> nil then
         begin
-          Inc(Result.Length, Count * 3);
+          Inc(Result.EstimatedLength, Count * 3);
           Continue;
         end;
       end;
-      Inc(Result.Length, Count);
+      Inc(Result.EstimatedLength, Count);
     end;
   if Result.CodePage <> nil then
-    Result.Length := CPCount;
+    Result.EstimatedLength := CPCount;
 end;
 
 function TLegacyStrings.InsertText(Index: Integer; Source: PLegacyString;
@@ -2882,7 +2882,7 @@ var
 begin
   with EstimateText(CP) do
   begin
-    if Length = 0 then
+    if EstimatedLength = 0 then
       Exit;
     if WriteBOM and (CodePage <> nil) then
       case CodePage.Number of

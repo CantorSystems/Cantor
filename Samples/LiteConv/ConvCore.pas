@@ -227,7 +227,7 @@ var
 begin
   with FConsole do
   begin
-    WriteLn(sUsage, 0, [FAppName.Data, FAppName.RawData], 2);
+    WriteLn(sUsage, 0, [FAppName.RawData, FAppName.RawData], 2);
     WriteLn(PLegacyChar(sHelp), StrLen(sHelp), 2);
     ACP.Create(CP_ACP);
     OEMCP.Create(CP_OEMCP);
