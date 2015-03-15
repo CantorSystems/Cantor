@@ -269,8 +269,7 @@ end;
 
 procedure ExceptionHandler(ExceptObject: TObject; ExceptAddr: Pointer);
 begin
-  // "as" typecast -- CoreLite exceptions only: build with runtime packages or die!
-  ShowException(ExceptObject {$IFNDEF Debug} as Exception {$ENDIF});
+  ShowException(ExceptObject);
   Halt(1);
 end;
 
@@ -624,18 +623,18 @@ begin
     Exit;
   end
 {$ELSE}
-  else
-  begin
   {$IFDEF CoreLiteVCL}
-    with SysUtils.Exception(E) do
-    {$IF UnicodeRTL}
-      ExceptionMessage(Pointer(Message), Length(Message));
-    {$ELSE}
-      ErrorMessage(Pointer(Message), Length(Message));
-    {$IFEND}
+    else if E is SysUtils.Exception then
+    begin
+      with SysUtils.Exception(E) do
+      {$IF UnicodeRTL}
+        ExceptionMessage(Pointer(Message), Length(Message));
+      {$ELSE}
+        ErrorMessage(Pointer(Message), Length(Message));
+      {$IFEND}
+      Exit;
+    end;
   {$ENDIF}
-    Exit;
-  end
 {$IFEND} ;
   with Exception(E).FMessage do
     ErrorMessage(AsString, CoreUtils.StrLen(AsString))

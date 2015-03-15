@@ -45,7 +45,7 @@ begin
     Application.Create(GetCommandLineW);
     Application.Run;
   except
-    on E: Exception do
+    on E: TObject do // TObject is for CoreLiteVCL
     begin
       ShowException(E);
       Application.Pause;
