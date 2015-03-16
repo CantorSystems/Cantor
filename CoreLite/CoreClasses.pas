@@ -35,8 +35,14 @@ type
     function TypeInfo: Pointer;
   end;
 
+  PClearable = ^TClearable;
+  TClearable = object(TCoreObject)
+  public
+    procedure Clear; virtual; abstract;
+  end;
+
   PContainer = ^TContainer;
-  TContainer = object(TCoreObject)
+  TContainer = object(TClearable)
   protected
     procedure Cast(Source: PContainer);
   public
@@ -48,6 +54,7 @@ type
   private
     FCount: Integer;
   public
+    procedure Clear; virtual;
     property Count: Integer read FCount;
   end;
 
@@ -56,12 +63,6 @@ type
   protected
     procedure CheckIndex(Index: Integer);
     procedure CheckRange(Index, ItemCount: Integer);
-  end;
-
-  PClearable = ^TClearable;
-  TClearable = object(TIndexed)
-  public
-    procedure Clear; virtual;
   end;
 
   TCollectionInfo = record
@@ -73,7 +74,7 @@ type
   TSharingMode = (smCopy, smAttach, smCapture);
 
   PCollection = ^TCollection;
-  TCollection = object(TClearable)
+  TCollection = object(TIndexed)
   private
     FCapacity, FDelta: Integer;
     FItemMode: TCollectionItemMode;
@@ -410,9 +411,9 @@ begin
   Result := PCollection(@Self).CollectionInfo.ClassName;
 end;
 
-{ TClearable }
+{ TEnumerable }
 
-procedure TClearable.Clear;
+procedure TEnumerable.Clear;
 begin
   FCount := 0;
 end;
