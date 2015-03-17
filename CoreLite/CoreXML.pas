@@ -23,12 +23,10 @@ type
   TXMLName = object(TWideString)
   private
     FPrefix, FLocalName: TWideString;
-  protected
-    procedure AssignXML(Source: PWideString; AttachBuffer: Boolean = False);
   public
     constructor Create;
     destructor Destroy; virtual;
-    function AsXML(Source: PWideString; AttachBuffer: Boolean = False): TWideString;
+    function AsXML(Source: PWideString; AttachBuffer: Boolean = False): Integer;
     procedure Clear; virtual;
 
     property LocalName: TWideString read FLocalName;
@@ -162,96 +160,85 @@ begin
   inherited;
 end;
 
-procedure TXMLName.AssignXML(Source: PWideString; AttachBuffer: Boolean);
+function TXMLName.AsXML(Source: PWideString; AttachBuffer: Boolean): Integer;
 var
   First, Next, Limit, Colon: PWideChar;
   L: Integer;
 begin
-  First := Source.RawData;
-  Limit := First + Source.Count;
-  repeat
-    case First^ of
-      #32, #9, #10, #13:
-        Inc(First);
-    else
-      Break;
-    end;
-  until First >= Limit;
-
-  if First < Limit then
+  if (Source <> nil) and (Source.Count <> 0) then
   begin
-    case First^ of
-      ':', 'A'..'Z', '_', 'a'..'z', WideChar($C0)..WideChar($D6),
-      WideChar($D8)..WideChar($F6), WideChar($F8)..WideChar($2FF),
-      WideChar($370)..WideChar($37D),
-      WideChar($37F)..WideChar($1FFF), WideChar($200C)..WideChar($200D),
-      WideChar($2070)..WideChar($218F), WideChar($2C00)..WideChar($2FEF),
-      WideChar($3001)..WideChar(High(THighSurrogates)),
-      WideChar($F900)..WideChar($FDCF), WideChar($FDF0)..WideChar($FFFD):
-        Next := First + 1;
-    else
-      raise EXML.Create('Invalid XML name starting with “%c” (U+%04X)',
-        CP_LOCALIZATION, [PWord(First)^, PWord(First)^]);
-    end;
-
-    Colon := nil;
-    while Next < Limit do
-      case Next^ of
-        '0'..'9', '.', '-', 'A'..'Z', '_', 'a'..'z',
-        WideChar($B7), WideChar($C0)..WideChar($D6),
-        WideChar($D8)..WideChar($F6), WideChar($F8)..WideChar($2FF),
-        WideChar($300)..WideChar($37D),
-        WideChar($37F)..WideChar($1FFF), WideChar($200C)..WideChar($200D),
-        WideChar($203F)..WideChar($2040),
-        WideChar($2070)..WideChar($218F), WideChar($2C00)..WideChar($2FEF),
-        WideChar($3001)..WideChar(High(TLowSurrogates)),
-        WideChar($F900)..WideChar($FDCF), WideChar($FDF0)..WideChar($FFFD):
-          Inc(Next);
-        ':':
-          begin
-            Colon := Next;
-            Inc(Next);
-          end;
+    First := Source.RawData;
+    Limit := First + Source.Count;
+    repeat
+      case First^ of
+        #32, #9, #10, #13:
+          Inc(First);
       else
         Break;
       end;
+    until First >= Limit;
 
-    AsRange(Source, First - Source.RawData, Next - First);
-    if not AttachBuffer then
-      Detach;
-
-    if Colon <> nil then
+    if First < Limit then
     begin
-      L := Colon - First;
-      FPrefix.AsRange(@Self, 0, L);
-      FLocalName.AsRange(@Self, L + 1);
+      case First^ of
+        ':', 'A'..'Z', '_', 'a'..'z', WideChar($C0)..WideChar($D6),
+        WideChar($D8)..WideChar($F6), WideChar($F8)..WideChar($2FF),
+        WideChar($370)..WideChar($37D),
+        WideChar($37F)..WideChar($1FFF), WideChar($200C)..WideChar($200D),
+        WideChar($2070)..WideChar($218F), WideChar($2C00)..WideChar($2FEF),
+        WideChar($3001)..WideChar(High(THighSurrogates)),
+        WideChar($F900)..WideChar($FDCF), WideChar($FDF0)..WideChar($FFFD):
+          Next := First + 1;
+      else
+        raise EXML.Create('Invalid XML name starting with “%c” (U+%04X)',
+          CP_LOCALIZATION, [PWord(First)^, PWord(First)^]);
+      end;
+
+      Colon := nil;
+      while Next < Limit do
+        case Next^ of
+          '0'..'9', '.', '-', 'A'..'Z', '_', 'a'..'z',
+          WideChar($B7), WideChar($C0)..WideChar($D6),
+          WideChar($D8)..WideChar($F6), WideChar($F8)..WideChar($2FF),
+          WideChar($300)..WideChar($37D),
+          WideChar($37F)..WideChar($1FFF), WideChar($200C)..WideChar($200D),
+          WideChar($203F)..WideChar($2040),
+          WideChar($2070)..WideChar($218F), WideChar($2C00)..WideChar($2FEF),
+          WideChar($3001)..WideChar(High(TLowSurrogates)),
+          WideChar($F900)..WideChar($FDCF), WideChar($FDF0)..WideChar($FFFD):
+            Inc(Next);
+          ':':
+            begin
+              Colon := Next;
+              Inc(Next);
+            end;
+        else
+          Break;
+        end;
+
+      AsRange(Source, First - Source.RawData, Next - First);
+      if not AttachBuffer then
+        Detach;
+
+      if Colon <> nil then
+      begin
+        L := Colon - First;
+        FPrefix.AsRange(@Self, 0, L);
+        FLocalName.AsRange(@Self, L + 1);
+      end
+      else
+      begin
+        FLocalName.AsRange(@Self, 0);
+        FPrefix.Clear;
+      end;
+
+      Result := Next - Source.RawData;
+      Exit;
     end
-    else
-    begin
-      FLocalName := Self;
-      FPrefix.Clear;
-    end;
-
-    Source.Skip(Next - Source.RawData);
-    Exit;
-  end
-  else
-    Source.Clear;
+  end;
 
   Clear;
-end;
-
-function TXMLName.AsXML(Source: PWideString; AttachBuffer: Boolean): TWideString;
-begin
-
-  Result.Create;
-  if (Source <> nil) and (Source.Count <> 0) then
-  begin
-    Result.AsRange(Source, 0);
-    AssignXML(@Result, AttachBuffer);
-  end
-  else
-    Clear;
+  Result := 0;
 end;
 
 procedure TXMLName.Clear;

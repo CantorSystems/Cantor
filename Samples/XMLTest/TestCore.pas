@@ -259,7 +259,8 @@ begin
           try
             Rslt.Create;
             try
-              Rslt := Name.AsXML(@W, True);
+              Rslt.AsRange(@W, 0);
+              Rslt.Skip(Name.AsXML(@Rslt, True));
               FConsole.WriteLn('Name: “%s” (“%s”, “%s”)', 0,
                 [Name.Data, Name.Prefix.Data, Name.LocalName.Data]);
               FConsole.WriteLn('Rest of the text: “%s”', 0, [Rslt.Data]);
