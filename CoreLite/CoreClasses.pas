@@ -478,7 +478,8 @@ begin
   end
   else
   begin
-    SetCapacity(ItemsCapacity);
+    if FCapacity < ItemsCapacity then
+      SetCapacity(ItemsCapacity);
     Move(Source^, PCollectionCast(@Self).Items^, ItemCount * CollectionInfo.ItemSize);
   end;
   FAttached := AttachBuffer;

@@ -753,10 +753,10 @@ begin
     W.Create;
     try
       if Source.CollectionInfo.ItemSize = SizeOf(WideChar) then
-        W := PWideString(Source)^
+        W.AsRange(Source, 0) // TODO: big-endian
       else
         W.AsString(PLegacyString(Source));
-      inherited Create(sInvalidInteger, CP_LOCALIZATION, [W.RawData, ValueType[Hexadecimal]]);
+      inherited Create(sInvalidInteger, CP_LOCALIZATION, [W.Data, ValueType[Hexadecimal]]);
     finally
       W.Destroy;
     end;
@@ -1625,17 +1625,17 @@ end;
 procedure TLegacyString.Detach;
 begin
   if Attached then
-  begin
     Capacity := Count + 1;
+  if Capacity > Count then
     FData[Count] := #0;
-  end;
 end;
 
 function TLegacyString.GetData: PLegacyChar;
 begin
   if Count <> 0 then
   begin
-    Detach;
+    if (Count < Capacity) or (FData[Count] <> #0) then
+      Detach;
     Result := FData;
   end
   else
@@ -2426,17 +2426,17 @@ end;
 procedure TWideString.Detach;
 begin
   if Attached then
-  begin
     Capacity := Count + 1;
+  if Capacity > Count then
     FData[Count] := #0;
-  end;
 end;
 
 function TWideString.GetData: PWideChar;
 begin
   if Count <> 0 then
   begin
-    Detach;
+    if (Count < Capacity) or (FData[Count] <> #0) then
+      Detach;
     Result := FData;
   end
   else
