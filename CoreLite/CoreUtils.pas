@@ -1337,7 +1337,7 @@ begin
   else
   begin // Fast core
     PLongWord(@Dest)^ := $6C6C756E; // 'null'
-    Dest[4] := #0;
+    Dest[SizeOf(LongWord)] := #0;
     Result := SizeOf(LongWord);
   end;
 end;

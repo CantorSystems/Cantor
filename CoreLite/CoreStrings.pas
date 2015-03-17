@@ -222,7 +222,7 @@ type
     procedure AsReal(Value: Extended; MinWidth, Precision: Integer;
       FillChar: LegacyChar = #32);
 
-    function AsNextLine(Source: PLegacyString): TLegacyString;
+    function AsNextLine(Source: PLegacyString): Integer;
 
     function AsRange(Index: Integer): TLegacyString; overload;
     function AsRange(Index, MaxCount: Integer): TLegacyString; overload;
@@ -243,8 +243,7 @@ type
 
     function Compare(Value: PLegacyChar; Length: Integer;
       IgnoreCase: Boolean = False): Integer; overload;
-    function Compare(Value: PLegacyString; Length: Integer;
-      IgnoreCase: Boolean = False): Integer; overload;
+    function Compare(Value: PLegacyString; IgnoreCase: Boolean = False): Integer; overload;
 
     procedure Detach; {$IFNDEF Lite} virtual; {$ENDIF}
     function IsBinaryData: Boolean;
@@ -315,7 +314,7 @@ type
     procedure AsReal(Value: Extended; MinWidth, Precision: Integer;
       FillChar: WideChar = #32);
 
-    function AsNextLine(Source: PWideString): TWideString;
+    function AsNextLine(Source: PWideString): Integer;
 
     function AsRange(Index: Integer): TWideString; overload;
     function AsRange(Index, MaxCount: Integer): TWideString; overload;
@@ -336,8 +335,7 @@ type
 
     function Compare(Value: PWideChar; Length: Integer;
       IgnoreCase: Boolean = False): Integer; overload;
-    function Compare(Value: PWideString; Length: Integer;
-      IgnoreCase: Boolean = False): Integer; overload;
+    function Compare(Value: PWideString; IgnoreCase: Boolean = False): Integer; overload;
 
     procedure Detach; {$IFNDEF Lite} virtual; {$ENDIF}
 
@@ -755,7 +753,7 @@ begin
     W.Create;
     try
       if Source.CollectionInfo.ItemSize = SizeOf(WideChar) then
-        W.AsRange(Source, 0)
+        W := PWideString(Source)^
       else
         W.AsString(PLegacyString(Source));
       inherited Create(sInvalidInteger, CP_LOCALIZATION, [W.RawData, ValueType[Hexadecimal]]);
@@ -1162,36 +1160,40 @@ begin
   FData[Length] := #0;
 end;
 
-function TLegacyString.AsNextLine(Source: PLegacyString): TLegacyString;
+function TLegacyString.AsNextLine(Source: PLegacyString): Integer;
 var
   P, Limit: PLegacyChar;
 begin
-  with Result do
+  if (Source <> nil) and (Source.Count <> 0) then
   begin
-    Create;
-    AsRange(Source, 0);
-    if Count = 0 then
-    begin
-      Self.Clear;
-      Exit;
-    end;
-    P := RawData;
-    Limit := P + Count;
-  end;
-
-  while (P < Limit) and not (P^ in [#10, #13, #0]) do
-    Inc(P);
-
-  AsRange(@Result, 0, P - Result.RawData);
-  if P < Limit then
-  begin
-    if (P^ = #13) and (P + 1 < Limit) and (P[1] = #10) then
+    P := Source.RawData;
+    Limit := P + Source.Count;
+    repeat
+      if P^ in [#10, #13, #0] then
+        Break;
       Inc(P);
-    Result.Skip(P + 1 - Result.RawData);
-    if P^ <> #0 then
-      Exit;
-  end;
-  Result.Clear;
+    until P >= Limit;
+
+    Result := P - Source.RawData;  
+    AsRange(Source, 0, Result);
+
+    if P < Limit then
+    begin
+      if (P^ = #13) and (P + 1 < Limit) and (P[1] = #10) then
+        Inc(Result);
+      if Source.RawData[Result] <> #0 then
+      begin
+        Inc(Result);
+        Exit;
+      end;
+    end;
+    Result := Source.Count;
+    Exit;
+  end
+  else
+    Result := 0;
+
+  Clear;
 end;
 
 function TLegacyString.AsRange(Index: Integer): TLegacyString;
@@ -1603,8 +1605,7 @@ begin
     Value, Count, FData, Count) - CSTR_EQUAL;
 end;
 
-function TLegacyString.Compare(Value: PLegacyString; Length: Integer;
-  IgnoreCase: Boolean): Integer;
+function TLegacyString.Compare(Value: PLegacyString; IgnoreCase: Boolean): Integer;
 begin
   if Value <> nil then
     Result := CompareStringA(LOCALE_USER_DEFAULT, Byte(IgnoreCase),
@@ -1999,36 +2000,42 @@ begin
   FData[Length] := #0;
 end;
 
-function TWideString.AsNextLine(Source: PWideString): TWideString;
+function TWideString.AsNextLine(Source: PWideString): Integer;
 var
   P, Limit: PWideChar;
 begin
-  with Result do
+  if (Source <> nil) and (Source.Count <> 0) then
   begin
-    Create;
-    AsRange(Source, 0);
-    if Count = 0 then
-    begin
-      Self.Clear;
-      Exit;
-    end;
-    P := RawData;
-    Limit := P + Count;
-  end;
-
-  while (P < Limit) and (P^ <> #10) and (P^ <> #13) and (P^ <> #0) do
-    Inc(P);
-
-  AsRange(@Result, 0, P - Result.RawData);
-  if P < Limit then
-  begin
-    if (P^ = #13) and (P + 1 < Limit) and (P[1] = #10) then
+    P := Source.RawData;
+    Limit := P + Source.Count;
+    repeat
+      case P^ of
+        #10, #13, #0:
+          Break;
+      end;
       Inc(P);
-    Result.Skip(P + 1 - Result.RawData);
-    if P^ <> #0 then
-      Exit;
-  end;
-  Result.Clear;
+    until P >= Limit;
+
+    Result := P - Source.RawData;  
+    AsRange(Source, 0, Result);
+
+    if P < Limit then
+    begin
+      if (P^ = #13) and (P + 1 < Limit) and (P[1] = #10) then
+        Inc(Result);
+      if Source.RawData[Result] <> #0 then
+      begin
+        Inc(Result);
+        Exit;
+      end;
+    end;
+    Result := Source.Count;
+    Exit;
+  end
+  else
+    Result := 0;
+
+  Clear;
 end;
 
 function TWideString.AsRange(Index: Integer): TWideString;
@@ -2407,8 +2414,7 @@ begin
     Value, Length, FData, Count) - CSTR_EQUAL;
 end;
 
-function TWideString.Compare(Value: PWideString; Length: Integer;
-  IgnoreCase: Boolean): Integer;
+function TWideString.Compare(Value: PWideString; IgnoreCase: Boolean): Integer;
 begin
   if Value <> nil then
     Result := CompareStringW(LOCALE_USER_DEFAULT, Byte(IgnoreCase),
@@ -2667,7 +2673,7 @@ begin
       with FItems[inherited Append] do
       begin
         Create;
-        Lines := AsNextLine(@Lines);
+        Lines.Skip(AsNextLine(@Lines));
         if not AttachBuffer then
           Detach;
       end;
@@ -2694,7 +2700,7 @@ begin
     Lines.AsRange(Source, 0);
     Line.Create;
     repeat
-      Lines := Line.AsNextLine(@Lines);
+      Lines.Skip(Line.AsNextLine(@Lines));
       with FItems[inherited Append] do
       begin
         Create;
@@ -2995,7 +3001,7 @@ begin
     Lines.AsRange(Source, 0);
     Line.Create;
     repeat
-      Lines := Line.AsNextLine(@Lines);
+      Lines.Skip(Line.AsNextLine(@Lines));
       with FItems[inherited Append] do
       begin
         Create;
@@ -3025,7 +3031,7 @@ begin
       with FItems[inherited Append] do
       begin
         Create;
-        Lines := AsNextLine(@Lines);
+        Lines.Skip(AsNextLine(@Lines));
         if not AttachBuffer then
           Detach;
       end;
@@ -3135,7 +3141,7 @@ end;
 function TLegacyCommandLineParam.AsNextParam(CommandLine: PLegacyString): TLegacyString;
 begin
   Result.Create;
-  Result.AsRange(CommandLine, 0);
+  Result := CommandLine^;
 
   while (Result.Count <> 0) and (Result.RawData^ in [#32, #9, #10, #13]) do
     Result.Skip;
@@ -3148,10 +3154,13 @@ begin
       AsRange(@Result, 0, Result.NextIndex('"'));
       FQuoted := True;
       Result.Skip(Count + 1);
-      Exit;
+    end
+    else
+    begin
+      AsRange(@Result, 0);
+      FQuoted := False;
     end;
-
-    AsRange(@Result, 0, False);
+    
     while (Result.Count <> 0) and not (Result.RawData^ in [#32, #9, #10, #13]) do
       Result.Skip;
 
@@ -3172,7 +3181,7 @@ end;
 function TWideCommandLineParam.AsNextParam(CommandLine: PWideString): TWideString;
 begin
   Result.Create;
-  Result.AsRange(CommandLine, 0);
+  Result := CommandLine^;
 
   while (Result.Count <> 0) and ((Result.RawData^ = #32) or (Result.RawData^ = #9) or
     (Result.RawData^ = #10) or (Result.RawData^ = #13))
@@ -3190,7 +3199,7 @@ begin
       Exit;
     end;
 
-    AsRange(@Result, 0, False);
+    AsRange(@Result, 0);
     while (Result.Count <> 0) and (Result.RawData^ <> #32) and (Result.RawData^ <> #9) and
       (Result.RawData^ <> #10) and (Result.RawData^ <> #13)
     do

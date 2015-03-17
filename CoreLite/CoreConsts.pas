@@ -124,6 +124,9 @@ const
   sBrokenSurrogatePair = 'Broken %s surrogate pair or unexpected end of string:'#10 + // UTF-16 or CESU-8
     'high surrogate (U+%04X) is not complemented by a low surrogate';
 
+  sXMLAttributes = 'XML attributes';
+  sXMLNodes = 'XML nodes';
+
 implementation
 
 end.
