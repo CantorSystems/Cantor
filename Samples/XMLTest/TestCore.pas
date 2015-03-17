@@ -54,7 +54,7 @@ type
 implementation
 
 uses
-  Windows, CoreXML, CoreConsts, TestConsts;
+  Windows, XMLDoc, CoreXML, CoreConsts, TestConsts;
 
 { ECommandParam }
 
@@ -226,32 +226,62 @@ end;
 procedure TApplication.Pause;
 begin
   Include(FOptions, roPause);
-end;
+end;                     
 
 procedure TApplication.Run;
 var
   CP: TCodePage;
   S: TLegacyString;
+  Doc: TXMLDocument;
+  Name: TXMLName;
+  Rslt, W: TWideString;
 begin
   if FSourceFileName.Count <> 0 then
   begin
+    CP.Create(FFallbackCP);
     if FFallbackCP <> 0 then
-    begin
-      CP.Create(FFallbackCP);
       FConsole.WriteLn(sFallbackCP, 0, [CP.Number, CP.Name]);
-    end;
 
     FConsole.WriteLn(sFileNameFmt, 0, [PLegacyChar(sSourceFile), FSourceFileName.Data]);
 
     S.Create;
     try
+      S.CodePage := @CP;
       LoadFile(S.Load, FSourceFileName.Data);
-      if (FIntoFileName.Count <> 0) and (S.Count <> 0) then
-      begin
-        if FFallbackCP <> 0 then
-          S.CodePage := @CP;
-        FConsole.WriteLn(sFileNameFmt, 0, [PLegacyChar(sSavingInto), FIntoFileName.Data]);
-      //  SaveFile(Text.Save, FIntoFileName.RawData, Text.EstimateText.Length);
+
+      Doc.Create;
+      try
+        //Doc.AsXML // TODO
+        W.Create;
+        try
+          W.AsString(@S);
+          Name.Create;
+          try
+            Rslt.Create;
+            try
+              Rslt := Name.AsXML(@W, True);
+              FConsole.WriteLn('Name: “%s” (“%s”, “%s”)', 0,
+                [Name.Data, Name.Prefix.Data, Name.LocalName.Data]);
+              FConsole.WriteLn('Rest of the text: “%s”', 0, [Rslt.Data]);
+            finally
+              Rslt.Destroy;
+            end;
+          finally
+            Name.Destroy;
+          end;
+        finally
+          W.Destroy;
+        end;
+
+        if (FIntoFileName.Count <> 0) and (S.Count <> 0) then
+        begin
+          if FFallbackCP <> 0 then
+            S.CodePage := @CP;
+          FConsole.WriteLn(sFileNameFmt, 0, [PLegacyChar(sSavingInto), FIntoFileName.Data]);
+        //  SaveFile(Text.Save, FIntoFileName.RawData, Text.EstimateText.Length);
+        end;
+      finally
+        Doc.Destroy;
       end;
     finally
       S.Destroy;
