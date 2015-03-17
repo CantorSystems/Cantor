@@ -10,6 +10,13 @@ unit CoreConsts;
 
 interface
 
+const     // short Unicode strings
+  sAmp  = #3'amp';
+  sApos = #4'apos';
+  sQuot = #4'quot';
+  sGt   = #2'gt';
+  sLt   = #2'lt';
+
 const
   CP_LOCALIZATION = 1252; // we're using “”, but only in exception messages
 

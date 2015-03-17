@@ -233,7 +233,7 @@ var
   CP: TCodePage;
   S: TLegacyString;
   Doc: TXMLDocument;
-  Name: TXMLName;
+  Attr: TXMLAttribute;
   Rslt, W: TWideString;
 begin
   if FSourceFileName.Count <> 0 then
@@ -255,20 +255,22 @@ begin
         W.Create;
         try
           W.AsString(@S);
-          Name.Create;
+          Attr.Create;
           try
             Rslt.Create;
             try
               Rslt.AsRange(@W, 0);
-              Rslt.Skip(Name.AsXML(@Rslt, True));
+              Rslt.Skip(Attr.AsXML(@Rslt, True));
               FConsole.WriteLn('Name: “%s” (“%s”, “%s”)', 0,
-                [Name.Data, Name.Prefix.Data, Name.LocalName.Data]);
+                [Attr.Name.Data, Attr.Name.Prefix.Data, Attr.Name.LocalName.Data]);
+              FConsole.Writeln('Text: “%s”', 0, [Attr.Text.Data]);
+              FConsole.Writeln('XML: “%s”', 0, [Attr.XML.Data]);
               FConsole.WriteLn('Rest of the text: “%s”', 0, [Rslt.Data]);
             finally
               Rslt.Destroy;
             end;
           finally
-            Name.Destroy;
+            Attr.Destroy;
           end;
         finally
           W.Destroy;

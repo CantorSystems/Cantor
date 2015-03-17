@@ -36,7 +36,7 @@ type
   PXMLEscapedString = ^TXMLEscapedString;
   TXMLEscapedString = object(TWideString)
   public
-    function AsXML(Source: PWideString; AttachBuffer: Boolean = False): TWideString;
+    function AsXML(Source: PWideString; AttachBuffer: Boolean = False): Integer;
   end;
 
   PXMLObject = ^TXMLObject;
@@ -60,7 +60,7 @@ type
   PXMLAttribute = ^TXMLAttribute;
   TXMLAttribute = object(TXMLObject)
   public
-    function AsXML(Source: PWideString; AttachBuffer: Boolean = False): TWideString;
+    function AsXML(Source: PWideString; AttachBuffer: Boolean = False): Integer;
   end;
 
   PXMLAttributeArray = ^TXMLAttributeArray;
@@ -144,6 +144,21 @@ implementation
 uses
   CoreConsts;
 
+type
+  TEntity = packed record
+    Ident: PWideChar;
+    Value: WideChar;
+  end;
+
+const
+  Entities: array[0..4] of TEntity = (
+    (Ident: sAmp; Value: '&'),
+    (Ident: sLt; Value: '<'),
+    (Ident: sGt; Value: '>'),
+    (Ident: sQuot; Value: '"'),
+    (Ident: sApos; Value: '''')
+  );
+
 { TXMLName }
 
 constructor TXMLName.Create;
@@ -164,81 +179,71 @@ function TXMLName.AsXML(Source: PWideString; AttachBuffer: Boolean): Integer;
 var
   First, Next, Limit, Colon: PWideChar;
   L: Integer;
+  T: Word;
 begin
   if (Source <> nil) and (Source.Count <> 0) then
   begin
     First := Source.RawData;
+    T := PWord(First)^;
+    if soBigEndian in Source.Options then
+      T := Swap(T);
+    case T of
+      Word('a')..Word('z'), Word(':'), Word('A')..Word('Z'), Word('_'),
+      $C0..$D6, $D8..$F6, $F8..$2FF, $370..$37D, $37F..$1FFF, $200C..$200D,
+      $2070..$218F, $2C00..$2FEF, $3001..High(THighSurrogates),
+      $F900..$FDCF, $FDF0..$FFFD:
+        Next := First + 1;
+    else
+      raise EXML.Create('Invalid XML name starting with “%c” (U+%04X)',
+        CP_LOCALIZATION, [T, T]);
+    end;
+
+    Colon := nil;
     Limit := First + Source.Count;
-    repeat
-      case First^ of
-        #32, #9, #10, #13:
-          Inc(First);
+    while Next < Limit do
+    begin
+      T := PWord(Next)^;
+      if soBigEndian in Source.Options then
+        T := Swap(T);
+      case T of
+        Word('a')..Word('z'), Word('0')..Word('9'), Word('A')..Word('Z'),
+        Word('.'), Word('-'), Word('_'), $B7, $C0..$D6, $D8..$F6, $F8..$37D,
+        $37F..$1FFF, $200C..$200D, $203F..$2040, $2070..$218F, $2C00..$2FEF,
+        $3001..High(TLowSurrogates),
+        $F900..$FDCF, $FDF0..$FFFD:
+          Inc(Next);
+        Word(':'):
+          begin
+            Colon := Next;
+            Inc(Next);
+          end;
       else
         Break;
       end;
-    until First >= Limit;
+    end;
 
-    if First < Limit then
+    Result := Next - First;
+    AsRange(Source, First - Source.RawData, Result);
+    if not AttachBuffer then
+      Detach;
+
+    if Colon <> nil then
     begin
-      case First^ of
-        ':', 'A'..'Z', '_', 'a'..'z', WideChar($C0)..WideChar($D6),
-        WideChar($D8)..WideChar($F6), WideChar($F8)..WideChar($2FF),
-        WideChar($370)..WideChar($37D),
-        WideChar($37F)..WideChar($1FFF), WideChar($200C)..WideChar($200D),
-        WideChar($2070)..WideChar($218F), WideChar($2C00)..WideChar($2FEF),
-        WideChar($3001)..WideChar(High(THighSurrogates)),
-        WideChar($F900)..WideChar($FDCF), WideChar($FDF0)..WideChar($FFFD):
-          Next := First + 1;
-      else
-        raise EXML.Create('Invalid XML name starting with “%c” (U+%04X)',
-          CP_LOCALIZATION, [PWord(First)^, PWord(First)^]);
-      end;
-
-      Colon := nil;
-      while Next < Limit do
-        case Next^ of
-          '0'..'9', '.', '-', 'A'..'Z', '_', 'a'..'z',
-          WideChar($B7), WideChar($C0)..WideChar($D6),
-          WideChar($D8)..WideChar($F6), WideChar($F8)..WideChar($2FF),
-          WideChar($300)..WideChar($37D),
-          WideChar($37F)..WideChar($1FFF), WideChar($200C)..WideChar($200D),
-          WideChar($203F)..WideChar($2040),
-          WideChar($2070)..WideChar($218F), WideChar($2C00)..WideChar($2FEF),
-          WideChar($3001)..WideChar(High(TLowSurrogates)),
-          WideChar($F900)..WideChar($FDCF), WideChar($FDF0)..WideChar($FFFD):
-            Inc(Next);
-          ':':
-            begin
-              Colon := Next;
-              Inc(Next);
-            end;
-        else
-          Break;
-        end;
-
-      AsRange(Source, First - Source.RawData, Next - First);
-      if not AttachBuffer then
-        Detach;
-
-      if Colon <> nil then
-      begin
-        L := Colon - First;
-        FPrefix.AsRange(@Self, 0, L);
-        FLocalName.AsRange(@Self, L + 1);
-      end
-      else
-      begin
-        FLocalName.AsRange(@Self, 0);
-        FPrefix.Clear;
-      end;
-
-      Result := Next - Source.RawData;
-      Exit;
+      L := Colon - First;
+      FPrefix.AsRange(@Self, 0, L);
+      FLocalName.AsRange(@Self, L + 1);
     end
+    else
+    begin
+      FLocalName.AsRange(@Self, 0);
+      FPrefix.Clear;
+    end;
+  end
+  else
+  begin
+    Clear;
+    Result := 0;
   end;
-
-  Clear;
-  Result := 0;
 end;
 
 procedure TXMLName.Clear;
@@ -250,132 +255,150 @@ end;
 
 { TXMLEscapedString }
 
-function TXMLEscapedString.AsXML(Source: PWideString; AttachBuffer: Boolean): TWideString;
+function TXMLEscapedString.AsXML(Source: PWideString; AttachBuffer: Boolean): Integer;
 var
-  P, Limit, Next, Semicolon: PWideChar;
-  L: Integer;
+  First, Next, Last, Limit, Semicolon: PWideChar;
+  I, L: Integer;
   Unescaped: QuadChar;
   T: Word;
   W: TWideString;
 begin
-  Result.Create;
-
-{  if (Source <> nil) and (Source.Count <> 0) then
+  Clear;
+  if (Source <> nil) and (Source.Count <> 0) then
   begin
-    P := Source.RawData;
-    Limit := P + Source.Count;
-    Next := nil;
+    W.Create;
+    try
+      First := Source.RawData;
+      Limit := First + Source.Count;
 
-    if (Source.CodePage = nil) or (Source.CodePage.LeadBytes = []) then
-
-    repeat
-      case P^ of
-        '&':
-          begin
-            if Next = nil then
+      Next := First;
+      repeat
+        T := PWord(Next)^;
+        if soBigEndian in Source.Options then
+          T := Swap(T);
+        case T of
+          Word('&'):
             begin
-              Next := P + 1;
-              if (Source.CodePage = nil) or (Source.CodePage.LeadBytes = []) then
-                while (Next < Limit) and not (Next^ in ['<', '>', #0]) do
-                  Inc(Next)
-              else
-                while (Next < Limit) and not (Next^ in ['<', '>', #0]) do
+              if Count = 0 then
+              begin
+                Last := Next;
+                while Last < Limit do
                 begin
-                  if Next^ in [#1..#127] then
-                    Inc(Next)
-                  else if Next^ in Source.CodePage.LeadBytes then
-                  begin
-                    Inc(Next);
-                    while (Next < Limit) and not ((Next^ in [#1..#127]) or
-                      (Next^ in Source.CodePage.LeadBytes))
-                    do
-                      Inc(Next);
+                  T := PWord(Last)^;
+                  if soBigEndian in Source.Options then
+                    T := Swap(T);
+                  case T of
+                    Word('<'), Word('"'), Word(''''), Word('>'):
+                      Break;
+                  else
+                    Inc(Last);
                   end;
                 end;
-              Clear;
-              Capacity := Next - P + 1;
-              Limit := Next;
-              Next := Source.RawData;
-              AttachBuffer := False;
-            end;
-            L := P - Next;
-            Move(RawData[Count], Next^, L);
-            Append(L);
-
-            Inc(P);
-            Semicolon := StrScan(P, Limit - P, ';');
-            if Semicolon = nil then
-            begin
-              AsRange(Source, 0, Limit - Source.RawData);
-              W.Create;
-              try
-                W.AsString(@Self);
-                raise EXML.Create('Unescaped semicolon at “%s”', CP_LOCALIZATION, [W.RawData]);
-              finally
-                W.Destroy;
-              end;
-            end;
-
-            L := Semicolon - P;
-            if L = SizeOf(Word) then
-              case PWord(P)^ or $2020 of
-                $746C: Unescaped := QuadChar('<');
-                $7467: Unescaped := QuadChar('>');
-              end
-            else if L = SizeOf(LongWord) then
-              case PLongWord(P)^ or $20202020 of
-                $746F7571: Unescaped := QuadChar('"');
-                $736F7061: Unescaped := QuadChar('''');
-              end
-            else if (L = 3) and (PLongWord(P)^ or $20202020 = $3B706D61) then
-              Unescaped := QuadChar('&')
-            else if (L > 2) and (PByte(P)^ or $20 = Byte('x')) then
-            begin
-              S.AsString(P + 1, L - 1);
-              Unescaped := S.AsHexadecimal;
-            end
-            else
-            begin
-              S.AsString(P, L);
-              Unescaped := S.AsInteger;
-            end;
-
-            if Unescaped < 128 then
-            begin
-              RawData[Count] := LegacyChar(Unescaped);
-              Append;
-            end
-            else
-            begin
-              if Unescaped >= Low(TUnicodeSMP) then
-              begin
-                T := Unescaped - Low(TUnicodeSMP);
-                Unescaped := Word(Low(THighSurrogates) + T shr 10) or
-                  Word((Low(TLowSurrogates) + T and $3FF) shl 16);
-                L := 2;
+                Assign(First, Last - First, Source.Options - soAttach);
+                Truncate(Last - Next);
+                Limit := Last;
+                AttachBuffer := False;
               end
               else
-                L := 1;
-              W.AsWideString(PWideChar(@Unescaped), L, soAttach);
-              if (CodePage <> nil) and (AssignWideString(Count, @W).ErrorInfo.RawData <> 0) then
-                CodePage := nil;
+              begin
+                L := Next - First;
+                Move(First^, RawData[Count], L * SizeOf(WideChar));
+                Append(L);
+              end;
 
-          end;
+              Last := Next + 1;
+              if soBigEndian in Source.Options then
+                T := Swap(Word(';'))
+              else
+                T := Word(';');
+              Semicolon := WideStrScan(Last, Limit - Last, WideChar(T));
+              if Semicolon = nil then
+              begin
+                AsRange(Source, 0, Limit - Source.RawData);
+                raise EXML.Create('Unescaped ampersand at “%s”', CP_LOCALIZATION, [Data]);
+              end;
+
+              L := Semicolon - Last;
+              if soBigEndian in Source.Options then
+              begin
+                W.AsWideString(Last, L);
+                W.SwapByteOrder;
+              end
+              else
+                W.AsWideString(Last, L, soAttach);
+
+              First := Semicolon + 1;
+              Next := First;
+
+              Unescaped := 0;
+              if W.RawData^ = 'x' then
+              begin
+                W.Skip;
+                Unescaped := W.AsHexadecimal;
+              end
+              else
+              begin
+                for I := Low(Entities) to High(Entities) do
+                  with Entities[I] do
+                    if W.Compare(Ident + 1, PWord(Ident)^, True) = 0 then
+                    begin
+                      Unescaped := QuadChar(Value);
+                      Break;
+                    end;
+              end;
+
+              if Unescaped = 0 then
+                Unescaped := W.AsInteger;
+
+              if Unescaped <= High(TUnicodeBMP) then
+              begin
+                T := Unescaped;
+                if soBigEndian in Options then
+                  T := Swap(T);
+                RawData[Count] := WideChar(T);
+                Append;
+              end
+              else
+              begin
+                T := Unescaped - Low(TUnicodeSMP);
+                if soBigEndian in Options then
+                  PLongWord(RawData + Count)^ :=
+                    Swap(Low(THighSurrogates) + T shr 10) or
+                    Swap((Low(TLowSurrogates) + T and $3FF) shl 16)
+                else
+                  PLongWord(RawData + Count)^ :=
+                    Word(Low(THighSurrogates) + T shr 10) or
+                    Word((Low(TLowSurrogates) + T and $3FF) shl 16);
+                Append(2);
+              end;
+            end;
+          Word('<'), Word('"'), Word(''''), Word('>'):
+            Break;
+        else
+          Inc(Next);
+        end;
+      until Next >= Limit;
+
+      L := Next - First;
+      if Count = 0 then
+      begin
+        AsRange(Source, 0, L);
+        if not AttachBuffer then
+          Detach;
+      end
+      else
+      begin
+        Move(First^, RawData[Count], L * SizeOf(WideChar));
+        Append(L);
+        RawData[Count] := #0;
       end;
-    until P >= Limit;
-
-    if P^ <> #0 then
-      while (P < Limit) and (P^ in [#32, #9, #10, #13, #0]) do
-        Inc(P);
-
-    if (P < Limit) and (P^ <> #0) then
-    begin
-      Result.AsRange(Source, P - Source.RawData, Limit - P);
-      Exit;
+      Result := Next - Source.RawData;
+    finally
+      W.Destroy;
     end;
-  end;}
-
-  Clear;
+  end
+  else
+    Result := 0;
 end;
 
 { TXMLObject }
@@ -405,9 +428,113 @@ end;
 
 { TXMLAttribute }
 
-function TXMLAttribute.AsXML(Source: PWideString; AttachBuffer: Boolean): TWideString;
+function TXMLAttribute.AsXML(Source: PWideString; AttachBuffer: Boolean): Integer;
+var
+  First, Next, Limit: PWideChar;
+  L: Integer;
+  T, U: Word;
+  W: TWideString;
 begin
+  Clear;
+  if (Source <> nil) and (Source.Count <> 0) then
+  begin
+    First := Source.RawData;
+    Limit := First + Source.Count;
 
+    repeat
+      T := PWord(First)^;
+      if soBigEndian in Source.Options then
+        T := Swap(T);
+      case T of
+        32, 9, 10, 13:
+          Inc(First);
+      else
+        Break;
+      end;
+    until First >= Limit;
+
+    W.Create;
+    try
+      W.AsRange(Source, First - Source.RawData);
+      Next := First + FName.AsXML(@W, AttachBuffer);
+      while Next < Limit do
+      begin
+        T := PWord(Next)^;
+        if soBigEndian in Source.Options then
+          T := Swap(T);
+        case T of
+          32, 9, 10, 13:
+            Inc(Next);
+        else
+          Break;
+        end;
+      end;
+
+      if Next < Limit then
+      begin
+        T := PWord(Next)^;
+        if soBigEndian in Source.Options then
+          T := Swap(T);
+        if T = Word('=') then
+        begin
+          Inc(Next);
+          while Next < Limit do
+          begin
+            T := PWord(Next)^;
+            if soBigEndian in Source.Options then
+              T := Swap(T);
+            case T of
+              32, 9, 10, 13:
+                Inc(Next);
+            else
+              Break;
+            end;
+          end;
+
+          if Next < Limit then
+          begin
+            T := PWord(Next)^;
+            if soBigEndian in Source.Options then
+              T := Swap(T);
+            case T of
+              Word('"'), Word(''''):
+                begin
+                  Inc(Next);
+                  if Next < Limit then
+                  begin
+                    L := Next - Source.RawData;
+                    W.AsRange(Source, L, False);
+                    L := FText.AsXML(@W, AttachBuffer);
+                    Inc(Next, L);
+                    if Next < Limit then
+                    begin
+                      U := PWord(Next)^;
+                      if soBigEndian in Source.Options then
+                        U := Swap(U);
+                      if U = T then
+                      begin
+                        Inc(Next);
+                        Result := Next - First;
+                        L := First - Source.RawData;
+                        FXML.AsRange(Source, L, Result);
+                        Inc(Result, L);
+                        Exit;
+                      end;
+                    end;
+                  end;
+                  W.AsRange(Source, Source.RawData - First, Next - First);
+                  raise EXML.Create('Unterminated attribute value: “%s”', CP_LOCALIZATION, [W.Data]);
+                end;
+            end;
+          end;
+        end;
+      end;
+      raise EXML.Create('No value for attribute named “%s”', CP_LOCALIZATION, [FName.Data]);
+    finally
+      W.Destroy;
+    end;
+  end;
+  Result := 0;
 end;
 
 { TXMLAttributes }
