@@ -266,7 +266,7 @@ type
     property RawData: PLegacyChar read FData write SetData;
   end;
 
-  TByteOrder = (boFromBOM, boLittleEndian, boBigEndian);
+  TByteOrder = (boFromBOM, boConvertToNative, boLittleEndian, boBigEndian);
 
   PEndianString = ^TEndianString;
   TEndianString = object(TString)
@@ -518,6 +518,11 @@ type
     constructor Create(Source: PString; EncodeOptions: TEncodeOptions; const Info: TErrorInfo);
     property EncodeOptions: TEncodeOptions read FEncodeOptions;
     property ErrorInfo: TErrorInfo read FErrorInfo;
+  end;
+
+  EBigEndian = class(EString)
+  public
+    constructor Create(Source: PWideString);
   end;
 
   EUTF32 = class(EString)
@@ -850,6 +855,14 @@ begin
   FErrorInfo := Info;
 end;
 
+{ EBigEndian }
+
+constructor EBigEndian.Create(Source: PWideString);
+begin
+  inherited Create(sNotNativeUTF16BE);
+  FSource.AsWideString := Source;
+end;
+
 { EUTF32 }
 
 constructor EUTF32.Create(Source: PString);
@@ -902,7 +915,7 @@ var
 begin
 {$IFDEF Debug}
   if soBigEndian in Source.Options then
-    raise Exception.Create(sUnsupportedUTF16BE);
+    raise EBigEndian.Create(Source);
 {$ENDIF}
 
   IsUnicode := FNumber - CP_UTF7 in [0..1];
@@ -2538,8 +2551,16 @@ begin
       Capacity := Length + 1;
     Source.ReadBuffer(FData^, Length * SizeOf(WideChar));
     FOptions := [];
-    if (ByteOrder = boBigEndian) or (Result = bomUTF16BE) then
+    if Result = bomUTF16BE then
+    begin
       Include(FOptions, soBigEndian);
+      case ByteOrder of
+        boConvertToNative:
+          SwapWideCharBytes(FData, FData, Length);
+        boBigEndian:
+          Include(FOptions, soBigEndian);
+      end;
+    end;
     Append(Length);
     FData[Length] := #0;
   end;

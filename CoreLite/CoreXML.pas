@@ -101,12 +101,12 @@ type
     FNodeType: TXMLNodeType; // one byte, needs align
     FAttributes: TXMLAttributes;
     FChildNodes: TXMLNodes;
-    FPadding: array[0..2] of Byte; // aligning instance size to 4-byte boundary
   protected
-    property PaddingByte: Byte read FPadding[0];
+    FPadding: array[0..2] of Byte; // aligning instance size to 4-byte boundary
   public
     constructor Create;
     destructor Destroy; virtual;
+    function AsXML(Source: PWideString; AttachBuffer: Boolean = False): Integer;
     procedure Clear; virtual;
 
     property Attributes: TXMLAttributes read FAttributes;
@@ -150,7 +150,13 @@ type
     Value: WideChar;
   end;
 
-const
+const     // short Unicode strings
+  sAmp  = #3'amp';
+  sApos = #4'apos';
+  sQuot = #4'quot';
+  sGt   = #2'gt';
+  sLt   = #2'lt';
+
   Entities: array[0..4] of TEntity = (
     (Ident: sAmp; Value: '&'),
     (Ident: sLt; Value: '<'),
@@ -179,40 +185,41 @@ function TXMLName.AsXML(Source: PWideString; AttachBuffer: Boolean): Integer;
 var
   First, Next, Limit, Colon: PWideChar;
   L: Integer;
-  T: Word;
 begin
   if (Source <> nil) and (Source.Count <> 0) then
   begin
-    First := Source.RawData;
-    T := PWord(First)^;
+  {$IFDEF Debug}
     if soBigEndian in Source.Options then
-      T := Swap(T);
-    case T of
-      Word('a')..Word('z'), Word(':'), Word('A')..Word('Z'), Word('_'),
-      $C0..$D6, $D8..$F6, $F8..$2FF, $370..$37D, $37F..$1FFF, $200C..$200D,
-      $2070..$218F, $2C00..$2FEF, $3001..High(THighSurrogates),
-      $F900..$FDCF, $FDF0..$FFFD:
+      raise EBigEndian.Create(Source);
+  {$ENDIF}
+    First := Source.RawData;
+    case First^ of
+      'a'..'z', ':', 'A'..'Z', '_', WideChar($C0)..WideChar($D6),
+      WideChar($D8)..WideChar($F6), WideChar($F8)..WideChar($2FF),
+      WideChar($370)..WideChar($37D), WideChar($37F)..WideChar($1FFF),
+      WideChar($200C)..WideChar($200D), WideChar($2070)..WideChar($218F),
+      WideChar($2C00)..WideChar($2FEF), WideChar($3001)..WideChar(High(THighSurrogates)),
+      WideChar($F900)..WideChar($FDCF), WideChar($FDF0)..WideChar($FFFD):
         Next := First + 1;
     else
       raise EXML.Create('Invalid XML name starting with “%c” (U+%04X)',
-        CP_LOCALIZATION, [T, T]);
+        CP_LOCALIZATION, [PWord(First)^, PWord(First)^]);
     end;
 
     Colon := nil;
     Limit := First + Source.Count;
     while Next < Limit do
     begin
-      T := PWord(Next)^;
-      if soBigEndian in Source.Options then
-        T := Swap(T);
-      case T of
-        Word('a')..Word('z'), Word('0')..Word('9'), Word('A')..Word('Z'),
-        Word('.'), Word('-'), Word('_'), $B7, $C0..$D6, $D8..$F6, $F8..$37D,
-        $37F..$1FFF, $200C..$200D, $203F..$2040, $2070..$218F, $2C00..$2FEF,
-        $3001..High(TLowSurrogates),
-        $F900..$FDCF, $FDF0..$FFFD:
+      case Next^ of
+        'a'..'z', '0'..'9', 'A'..'Z', '.', '-', '_', WideChar($B7),
+        WideChar($C0)..WideChar($D6), WideChar($D8)..WideChar($F6),
+        WideChar($F8)..WideChar($37D), WideChar($37F)..WideChar($1FFF),
+        WideChar($200C)..WideChar($200D), WideChar($203F)..WideChar($2040),
+        WideChar($2070)..WideChar($218F), WideChar($2C00)..WideChar($2FEF),
+        WideChar($3001)..WideChar(High(TLowSurrogates)),
+        WideChar($F900)..WideChar($FDCF), WideChar($FDF0)..WideChar($FFFD):
           Inc(Next);
-        Word(':'):
+        ':':
           begin
             Colon := Next;
             Inc(Next);
@@ -266,6 +273,10 @@ begin
   Clear;
   if (Source <> nil) and (Source.Count <> 0) then
   begin
+  {$IFDEF Debug}
+    if soBigEndian in Source.Options then
+      raise EBigEndian.Create(Source);
+  {$ENDIF}
     W.Create;
     try
       First := Source.RawData;
@@ -273,22 +284,16 @@ begin
 
       Next := First;
       repeat
-        T := PWord(Next)^;
-        if soBigEndian in Source.Options then
-          T := Swap(T);
-        case T of
-          Word('&'):
+        case Next^ of
+          '&':
             begin
               if Count = 0 then
               begin
                 Last := Next;
                 while Last < Limit do
                 begin
-                  T := PWord(Last)^;
-                  if soBigEndian in Source.Options then
-                    T := Swap(T);
-                  case T of
-                    Word('<'), Word('"'), Word(''''), Word('>'):
+                  case Last^ of
+                    '"', '''', '<', '>':
                       Break;
                   else
                     Inc(Last);
@@ -307,11 +312,7 @@ begin
               end;
 
               Last := Next + 1;
-              if soBigEndian in Source.Options then
-                T := Swap(Word(';'))
-              else
-                T := Word(';');
-              Semicolon := WideStrScan(Last, Limit - Last, WideChar(T));
+              Semicolon := WideStrScan(Last, Limit - Last, ';');
               if Semicolon = nil then
               begin
                 AsRange(Source, 0, Limit - Source.RawData);
@@ -352,10 +353,7 @@ begin
 
               if Unescaped <= High(TUnicodeBMP) then
               begin
-                T := Unescaped;
-                if soBigEndian in Options then
-                  T := Swap(T);
-                RawData[Count] := WideChar(T);
+                RawData[Count] := WideChar(Unescaped);
                 Append;
               end
               else
@@ -372,7 +370,7 @@ begin
                 Append(2);
               end;
             end;
-          Word('<'), Word('"'), Word(''''), Word('>'):
+          '"', '''', '<', '>':
             Break;
         else
           Inc(Next);
@@ -392,10 +390,10 @@ begin
         Append(L);
         RawData[Count] := #0;
       end;
-      Result := Next - Source.RawData;
     finally
       W.Destroy;
     end;
+    Result := Next - Source.RawData;
   end
   else
     Result := 0;
@@ -432,21 +430,22 @@ function TXMLAttribute.AsXML(Source: PWideString; AttachBuffer: Boolean): Intege
 var
   First, Next, Limit: PWideChar;
   L: Integer;
-  T, U: Word;
+  Quote: WideChar;
   W: TWideString;
 begin
   Clear;
   if (Source <> nil) and (Source.Count <> 0) then
   begin
+  {$IFDEF Debug}
+    if soBigEndian in Source.Options then
+      raise EBigEndian.Create(Source);
+  {$ENDIF}
     First := Source.RawData;
     Limit := First + Source.Count;
 
     repeat
-      T := PWord(First)^;
-      if soBigEndian in Source.Options then
-        T := Swap(T);
-      case T of
-        32, 9, 10, 13:
+      case First^ of
+        #32, #9, #10, #13:
           Inc(First);
       else
         Break;
@@ -458,46 +457,31 @@ begin
       W.AsRange(Source, First - Source.RawData);
       Next := First + FName.AsXML(@W, AttachBuffer);
       while Next < Limit do
-      begin
-        T := PWord(Next)^;
-        if soBigEndian in Source.Options then
-          T := Swap(T);
-        case T of
-          32, 9, 10, 13:
+        case Next^ of
+          #32, #9, #10, #13:
             Inc(Next);
         else
           Break;
         end;
-      end;
 
       if Next < Limit then
       begin
-        T := PWord(Next)^;
-        if soBigEndian in Source.Options then
-          T := Swap(T);
-        if T = Word('=') then
+        if Next^ = '=' then
         begin
           Inc(Next);
           while Next < Limit do
-          begin
-            T := PWord(Next)^;
-            if soBigEndian in Source.Options then
-              T := Swap(T);
-            case T of
-              32, 9, 10, 13:
+            case Next^ of
+              #32, #9, #10, #13:
                 Inc(Next);
             else
               Break;
             end;
-          end;
 
           if Next < Limit then
           begin
-            T := PWord(Next)^;
-            if soBigEndian in Source.Options then
-              T := Swap(T);
-            case T of
-              Word('"'), Word(''''):
+            Quote := Next^;
+            case Quote of
+              '"', '''':
                 begin
                   Inc(Next);
                   if Next < Limit then
@@ -508,10 +492,7 @@ begin
                     Inc(Next, L);
                     if Next < Limit then
                     begin
-                      U := PWord(Next)^;
-                      if soBigEndian in Source.Options then
-                        U := Swap(U);
-                      if U = T then
+                      if Next^ = Quote then
                       begin
                         Inc(Next);
                         Result := Next - First;
@@ -608,6 +589,86 @@ destructor TXMLNode.Destroy;
 begin
   FChildNodes.Finalize;
   FAttributes.Finalize;
+end;
+
+function TXMLNode.AsXML(Source: PWideString; AttachBuffer: Boolean): Integer;
+var
+  First, Next, Last, Limit: PWideChar;
+  L: Integer;
+//  T, U: Word;
+  W: TWideString;
+begin
+  Clear;
+  if (Source <> nil) and (Source.Count <> 0) then
+  begin
+  {$IFDEF Debug}
+    if soBigEndian in Source.Options then
+      raise EBigEndian.Create(Source);
+  {$ENDIF}
+    First := Source.RawData;
+    Limit := First + Source.Count;
+
+    repeat
+      case First^ of
+        #32, #9, #10, #13:
+          Inc(First);
+      else
+        Break;
+      end;
+    until First >= Limit;
+
+    if First < Limit then
+    begin
+      if First^ <> '<' then
+        with FXML do
+        begin
+          AsNextLine(Source);
+          Skip(First - Source.RawData);
+          raise EXML.Create('Unexpected character “%c” (U+%04X) at “%s”', CP_LOCALIZATION,
+            [PWord(First)^, PWord(First)^, FXML.Data]);
+        end;
+
+      W.Create;
+      try
+        Next := First + 1;
+        W.AsRange(Source, Next - Source.RawData);
+        L := FName.AsXML(@W, AttachBuffer);
+        Inc(Next, L);
+
+        while Next < Limit do
+          case Next^ of
+            #32, #9, #10, #13:
+              begin
+                W.Skip(L);
+                L := FAttributes.Append.AsXML(@W, AttachBuffer);
+                Inc(Next, L);
+              end;
+          else
+            Break;
+          end;
+
+        if Next < Limit then
+        begin
+          case Next^ of
+            '/':
+              begin
+              end;
+            '>':
+              begin
+                // text and/or child nodes
+              end;
+          end;
+        end;
+      finally
+        W.Destroy;
+      end;
+    end
+    else
+      Next := First;
+    Result := Next - Source.RawData;
+  end
+  else
+    Result := 0;
 end;
 
 procedure TXMLNode.Clear;

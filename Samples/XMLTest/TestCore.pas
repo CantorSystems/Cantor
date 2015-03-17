@@ -235,6 +235,7 @@ var
   Doc: TXMLDocument;
   Attr: TXMLAttribute;
   Rslt, W: TWideString;
+  I: Integer;
 begin
   if FSourceFileName.Count <> 0 then
   begin
@@ -260,11 +261,17 @@ begin
             Rslt.Create;
             try
               Rslt.AsRange(@W, 0);
-              Rslt.Skip(Attr.AsXML(@Rslt, True));
-              FConsole.WriteLn('Name: “%s” (“%s”, “%s”)', 0,
-                [Attr.Name.Data, Attr.Name.Prefix.Data, Attr.Name.LocalName.Data]);
-              FConsole.Writeln('Text: “%s”', 0, [Attr.Text.Data]);
-              FConsole.Writeln('XML: “%s”', 0, [Attr.XML.Data]);
+              Rslt.Skip(Doc.AsXML(@Rslt, True));
+              for I := 0 to Doc.Attributes.Count - 1 do
+              begin
+                with Doc.Attributes.Items[I] do
+                begin
+                  FConsole.WriteLn('Name: “%s” (“%s”, “%s”)', 0,
+                    [Name.Data, Name.Prefix.Data, Name.LocalName.Data]);
+                  FConsole.Writeln('Text: “%s”', 0, [Text.Data]);
+                  FConsole.Writeln('XML: “%s”', 0, [XML.Data], 2);
+                end;
+              end;
               FConsole.WriteLn('Rest of the text: “%s”', 0, [Rslt.Data]);
             finally
               Rslt.Destroy;

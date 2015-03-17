@@ -10,13 +10,6 @@ unit CoreConsts;
 
 interface
 
-const     // short Unicode strings
-  sAmp  = #3'amp';
-  sApos = #4'apos';
-  sQuot = #4'quot';
-  sGt   = #2'gt';
-  sLt   = #2'lt';
-
 const
   CP_LOCALIZATION = 1252; // we're using “”, but only in exception messages
 
@@ -105,7 +98,7 @@ const
   sInvalidInteger = '“%s” is not a valid %hs value';
   sNullInteger = 'Null string is not a valid %s value';
 
-  sUnsupportedUTF16BE = 'UTF-16 Big-Endian is not native for Windows API';
+  sNotNativeUTF16BE = 'UTF-16 Big-Endian is not native for Windows API';
   sUTF32notSupported = 'UTF-32 not supported';
 
   sSystemCPtoUTF16 = 'System error “%s” while converting code page %u (%s) to UTF-16';
