@@ -84,11 +84,11 @@ type
   PLegacyChar   = PAnsiChar;
   PPLegacyChar  = PPAnsiChar;
 
-  CoreChar      = WideChar;  // TODO: non-Unicode
+  CoreChar      = WideChar;     // TODO: non-Unicode
   PCoreChar     = PWideChar;
   PPCoreChar    = PPWideChar;
 
-  PAddress = PLegacyChar;  // for address arithmetic
+  PAddress      = PLegacyChar;  // for address arithmetic
 
   TLegacyStringRec = record
     case Byte of

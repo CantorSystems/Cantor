@@ -2241,12 +2241,12 @@ begin
             W := CodePoint - Low(TUnicodeSMP);
             if coBigEndian in EncodeOptions then // Fast core
               PLongWord(Dest)^ :=
-                Word(Swap(Low(THighSurrogates) + W shr 10)) or
-                Word(Swap((Low(TLowSurrogates) + W and $3FF) shl 16))
+                Word(Swap(Low(THighSurrogates) or W shr 10)) or
+                Word(Swap((Low(TLowSurrogates) or W and $3FF) shl 16))
             else
               PLongWord(Dest)^ :=
-                Word(Low(THighSurrogates) + W shr 10) or
-                Word((Low(TLowSurrogates) + W and $3FF) shl 16);
+                Word(Low(THighSurrogates) or W shr 10) or
+                Word((Low(TLowSurrogates) or W and $3FF) shl 16);
             Inc(Dest, 2);
             Inc(Result.SurrogatePairs);
             Continue;
