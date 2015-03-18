@@ -1,7 +1,7 @@
 (*
     Lite Core Library (CoreLite mini)
 
-    XML parser, based on W3C Recommendation (26 Nov 2008)
+    XML parser, in conformance to W3C Recommendation (26 Nov 2008)
     Extensible Markup Language (XML) 1.0 (Fifth Edition)
     http://www.w3.org/TR/REC-xml
 
@@ -193,6 +193,8 @@ begin
       raise EBigEndian.Create(Source);
   {$ENDIF}
     First := Source.RawData;
+    Limit := First + Source.Count;
+
     case First^ of
       'a'..'z', ':', 'A'..'Z', '_', WideChar($C0)..WideChar($D6),
       WideChar($D8)..WideChar($F6), WideChar($F8)..WideChar($2FF),
@@ -207,7 +209,6 @@ begin
     end;
 
     Colon := nil;
-    Limit := First + Source.Count;
     while Next < Limit do
     begin
       case Next^ of
@@ -229,8 +230,7 @@ begin
       end;
     end;
 
-    Result := Next - First;
-    AsRange(Source, First - Source.RawData, Result);
+    AsRange(Source, 0, Next - First);
     if not AttachBuffer then
       Detach;
 
@@ -245,6 +245,16 @@ begin
       FLocalName.AsRange(@Self, 0);
       FPrefix.Clear;
     end;
+
+    while Next < Limit do
+      case Next^ of
+        #32, #9, #10, #13:
+          Inc(Next);
+      else
+        Break;
+      end;
+
+    Result := Next - First;   
   end
   else
   begin
@@ -267,7 +277,6 @@ var
   First, Next, Last, Limit, Semicolon: PWideChar;
   I, L: Integer;
   Unescaped: QuadChar;
-  T: Word;
   W: TWideString;
 begin
   Clear;
@@ -277,11 +286,11 @@ begin
     if soBigEndian in Source.Options then
       raise EBigEndian.Create(Source);
   {$ENDIF}
+    First := Source.RawData;
+    Limit := First + Source.Count;
+
     W.Create;
     try
-      First := Source.RawData;
-      Limit := First + Source.Count;
-
       Next := First;
       repeat
         case Next^ of
@@ -319,26 +328,18 @@ begin
                 raise EXML.Create('Unescaped ampersand at “%s”', CP_LOCALIZATION, [Data]);
               end;
 
-              L := Semicolon - Last;
-              if soBigEndian in Source.Options then
-              begin
-                W.AsWideString(Last, L);
-                W.SwapByteOrder;
-              end
-              else
-                W.AsWideString(Last, L, soAttach);
-
               First := Semicolon + 1;
               Next := First;
 
               Unescaped := 0;
-              if W.RawData^ = 'x' then
+              W.AsWideString(Last, Semicolon - Last, soAttach);
+
+              if PWord(Last)^ or $20 = Word('x') then
               begin
                 W.Skip;
                 Unescaped := W.AsHexadecimal;
               end
               else
-              begin
                 for I := Low(Entities) to High(Entities) do
                   with Entities[I] do
                     if W.Compare(Ident + 1, PWord(Ident)^, True) = 0 then
@@ -346,7 +347,6 @@ begin
                       Unescaped := QuadChar(Value);
                       Break;
                     end;
-              end;
 
               if Unescaped = 0 then
                 Unescaped := W.AsInteger;
@@ -358,15 +358,10 @@ begin
               end
               else
               begin
-                T := Unescaped - Low(TUnicodeSMP);
-                if soBigEndian in Options then
-                  PLongWord(RawData + Count)^ :=
-                    Swap(Low(THighSurrogates) + T shr 10) or
-                    Swap((Low(TLowSurrogates) + T and $3FF) shl 16)
-                else
-                  PLongWord(RawData + Count)^ :=
-                    Word(Low(THighSurrogates) + T shr 10) or
-                    Word((Low(TLowSurrogates) + T and $3FF) shl 16);
+                Dec(Unescaped, Low(TUnicodeSMP));
+                PLongWord(RawData + Count)^ :=
+                  Word(Low(THighSurrogates) or Word(Unescaped) shr 10) or
+                  Word((Low(TLowSurrogates) or Word(Unescaped) and $3FF) shl 16);
                 Append(2);
               end;
             end;
@@ -376,23 +371,24 @@ begin
           Inc(Next);
         end;
       until Next >= Limit;
-
-      L := Next - First;
-      if Count = 0 then
-      begin
-        AsRange(Source, 0, L);
-        if not AttachBuffer then
-          Detach;
-      end
-      else
-      begin
-        Move(First^, RawData[Count], L * SizeOf(WideChar));
-        Append(L);
-        RawData[Count] := #0;
-      end;
     finally
       W.Destroy;
     end;
+
+    L := Next - First;
+    if Count = 0 then
+    begin
+      AsRange(Source, 0, L);
+      if not AttachBuffer then
+        Detach;
+    end
+    else
+    begin
+      Move(First^, RawData[Count], L * SizeOf(WideChar));
+      Append(L);
+      RawData[Count] := #0;
+    end;
+
     Result := Next - Source.RawData;
   end
   else
@@ -431,7 +427,6 @@ var
   First, Next, Limit: PWideChar;
   L: Integer;
   Quote: WideChar;
-  W: TWideString;
 begin
   Clear;
   if (Source <> nil) and (Source.Count <> 0) then
@@ -443,19 +438,23 @@ begin
     First := Source.RawData;
     Limit := First + Source.Count;
 
+    Next := First;
     repeat
-      case First^ of
+      case Next^ of
         #32, #9, #10, #13:
-          Inc(First);
+          Inc(Next);
       else
         Break;
       end;
-    until First >= Limit;
+    until Next >= Limit;
 
-    W.Create;
-    try
-      W.AsRange(Source, First - Source.RawData);
-      Next := First + FName.AsXML(@W, AttachBuffer);
+    FXML.AsRange(Source, Next - First);
+    First := Next;
+    Next := First + FName.AsXML(@FXML, AttachBuffer);
+
+    if (Next < Limit) and (Next^ = '=') then
+    begin
+      Inc(Next);
       while Next < Limit do
         case Next^ of
           #32, #9, #10, #13:
@@ -466,54 +465,52 @@ begin
 
       if Next < Limit then
       begin
-        if Next^ = '=' then
-        begin
-          Inc(Next);
-          while Next < Limit do
-            case Next^ of
-              #32, #9, #10, #13:
-                Inc(Next);
-            else
-              Break;
-            end;
+        Quote := Next^;
+        case Quote of
+          '"', '''':
+            begin
+              Inc(Next);
+              if Next < Limit then
+              begin
+                FXML.AsRange(Source, Next - Source.RawData, False);
+                L := FText.AsXML(@FXML, AttachBuffer);
+                Inc(Next, L);
 
-          if Next < Limit then
-          begin
-            Quote := Next^;
-            case Quote of
-              '"', '''':
+                if (Next < Limit) and (Next^ = Quote) then
                 begin
                   Inc(Next);
-                  if Next < Limit then
-                  begin
-                    L := Next - Source.RawData;
-                    W.AsRange(Source, L, False);
-                    L := FText.AsXML(@W, AttachBuffer);
-                    Inc(Next, L);
-                    if Next < Limit then
-                    begin
-                      if Next^ = Quote then
-                      begin
+                  Result := Next - First;
+                  L := First - Source.RawData;
+                  FXML.AsRange(Source, L, Result);
+                  Inc(Result, L);
+
+                  First := Next;
+                  while Next < Limit do
+                    case Next^ of
+                      #32, #9, #10, #13:
                         Inc(Next);
-                        Result := Next - First;
-                        L := First - Source.RawData;
-                        FXML.AsRange(Source, L, Result);
-                        Inc(Result, L);
-                        Exit;
-                      end;
+                    else
+                      Break;
                     end;
-                  end;
-                  W.AsRange(Source, Source.RawData - First, Next - First);
-                  raise EXML.Create('Unterminated attribute value: “%s”', CP_LOCALIZATION, [W.Data]);
+                  Inc(Result, Next - First);
+                  Exit;
                 end;
+              end;
             end;
-          end;
+        end;
+
+        with FXML do
+        begin
+          AsRange(Source, Source.RawData - First);
+          AsNextLine(@FXML);
+          raise EXML.Create('Unterminated attribute value: “%s”', CP_LOCALIZATION, [Data]);
         end;
       end;
-      raise EXML.Create('No value for attribute named “%s”', CP_LOCALIZATION, [FName.Data]);
-    finally
-      W.Destroy;
     end;
+
+    FXML.AsNextLine(@FXML);
+    raise EXML.Create('No value for attribute named “%s” at “%s”', CP_LOCALIZATION,
+      [FName.Data, FXML.Data]);
   end;
   Result := 0;
 end;
@@ -593,10 +590,8 @@ end;
 
 function TXMLNode.AsXML(Source: PWideString; AttachBuffer: Boolean): Integer;
 var
-  First, Next, Last, Limit: PWideChar;
+  First, Next, Limit: PWideChar;
   L: Integer;
-//  T, U: Word;
-  W: TWideString;
 begin
   Clear;
   if (Source <> nil) and (Source.Count <> 0) then
@@ -625,43 +620,53 @@ begin
           AsNextLine(Source);
           Skip(First - Source.RawData);
           raise EXML.Create('Unexpected character “%c” (U+%04X) at “%s”', CP_LOCALIZATION,
-            [PWord(First)^, PWord(First)^, FXML.Data]);
+            [PWord(First)^, PWord(First)^, Data]);
         end;
 
-      W.Create;
-      try
-        Next := First + 1;
-        W.AsRange(Source, Next - Source.RawData);
-        L := FName.AsXML(@W, AttachBuffer);
-        Inc(Next, L);
+      Next := First + 1;
+      FXML.AsRange(Source, Next - Source.RawData);
+      L := FName.AsXML(@FXML, AttachBuffer);
+      Inc(Next, L);
 
-        while Next < Limit do
-          case Next^ of
-            #32, #9, #10, #13:
+      while Next < Limit do
+        case Next^ of
+          '>':
+            begin
+              Inc(Next);
+              FXML.AsRange(Source, Next - Source.RawData, False);
+              FText.AsXML(@FXML, AttachBuffer);
+              Break;
+            end;
+            
+          '/':
+            begin
+              Inc(Next);
+              if (Next < Limit) and (Next^ = '>') then
               begin
-                W.Skip(L);
-                L := FAttributes.Append.AsXML(@W, AttachBuffer);
-                Inc(Next, L);
+                Inc(Next);
+                Break;
               end;
-          else
-            Break;
-          end;
 
-        if Next < Limit then
-        begin
-          case Next^ of
-            '/':
+              with FXML do
               begin
+                AsRange(Source, First - Source.RawData);
+                AsNextLine(@FXML);
+                raise EXML.Create('Missing “>” after “/” at “%s”', CP_LOCALIZATION, [Data]);
               end;
-            '>':
-              begin
-                // text and/or child nodes
-              end;
-          end;
+            end;
+        else
+          FXML.Skip(L);
+          L := FAttributes.Append.AsXML(@FXML, AttachBuffer);
+          Inc(Next, L);
         end;
-      finally
-        W.Destroy;
-      end;
+
+      while Next < Limit do
+        case Next^ of
+          #32, #9, #10, #13:
+            Inc(Next);
+        else
+          Break;
+        end;
     end
     else
       Next := First;
