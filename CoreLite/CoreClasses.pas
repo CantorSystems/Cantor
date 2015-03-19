@@ -754,8 +754,14 @@ begin
       PCollectionCast(@Self).Items := nil;
     FAttached := False;
   end
+  else if (FCount <> 0) and (Value <> 0) then
+    ReallocMem(PCollectionCast(@Self).Items, Value * ItemSize)
   else
-    ReallocMem(PCollectionCast(@Self).Items, Value * ItemSize);
+  begin
+    FreeMemAndNil(PCollectionCast(@Self).Items);
+    if Value <> 0 then
+      GetMem(PCollectionCast(@Self).Items, Value * ItemSize);
+  end;
 
   FCapacity := Value;
   if Value < FCount then
