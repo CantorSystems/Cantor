@@ -18,6 +18,7 @@ program XMLTest;
 uses
 {$IFDEF Tricks}
   {$IFDEF ForceMMX} ShareMM, CoreConsts, {$ELSE} HeapMM, {$ENDIF}
+  SysWStr,
 {$ENDIF}
   Windows,
   CoreExceptions,
@@ -29,6 +30,7 @@ var
   Application: TApplication;
 begin
 {$IFDEF Tricks}
+  FpuInit;
   UseErrorMessageWrite;
 {$ENDIF}
   UseExceptionMessageWrite;

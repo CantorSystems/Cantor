@@ -29,6 +29,7 @@ var
   Application: TApplication;
 begin
 {$IFDEF Tricks}
+  FpuInit;
   UseErrorMessageWrite;
 {$ENDIF}
   UseExceptionMessageWrite;
