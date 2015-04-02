@@ -66,7 +66,7 @@ type
   end;
 
   TCollectionInfo = record
-    ClassName: PLegacyChar;
+  { hold } ClassName: PLegacyChar;
     ItemSize: Integer;
   end;
 
@@ -86,7 +86,7 @@ type
     procedure FreeItems(Index, ItemCount: Integer);
     procedure SetCapacity(Value: Integer);
   protected
-    class function CollectionInfo: TCollectionInfo; virtual; abstract;
+  { ordered } class function CollectionInfo: TCollectionInfo; virtual; abstract;
     function Append(ItemCount: Integer = 1): Integer; overload;
     procedure Assign(Source: Pointer; ItemCount, ItemsCapacity: Integer;
       AttachBuffer: Boolean); overload;
@@ -130,6 +130,26 @@ type
   public
     function AverageCount: Integer;
     function TotalCount: Integer;
+  end;
+
+  TListInfo = record
+  { hold } ClassName: PLegacyChar;
+    ItemOffset: Integer;
+  end;
+
+  PList = ^TList;
+  TList = object(TEnumerable)
+  private
+  { placeholder } // FFirst, FLast: PListItem;
+  protected
+  { ordered } class function ListInfo: TListInfo; virtual; abstract;
+  public
+    destructor Destroy; virtual;
+    procedure Append(Item: Pointer; After: Pointer = nil);
+    procedure Clear; virtual;
+    procedure Prepend(Item: Pointer; Before: Pointer = nil);
+    function Skip(UpTo: Pointer): Integer;
+    function Truncate(StartFrom: Pointer): Integer;
   end;
 
   TCRC32Table = array[0..$FF] of LongWord;
@@ -231,6 +251,16 @@ type
   PCollectionsCast = ^TCollectionsCast;
   TCollectionsCast = object(TCollections)
     Items: PCollection;
+  end;
+
+  PListItem = ^TListItem;
+  TListItem = object
+    Previous, Next: PListItem;
+  end;
+
+  PListCast = ^TListCast;
+  TListCast = object(TList)
+    First, Last: PListItem;
   end;
 
 { Helper functions }
@@ -894,6 +924,40 @@ begin
       Inc(PAddress(Item), ItemSize);
     end;
   end;
+end;
+
+{ TList }
+
+destructor TList.Destroy;
+begin
+  Skip(PListCast(@Self).Last); // fast core
+end;
+
+procedure TList.Append(Item, After: Pointer);
+begin
+  if After = nil then
+    After := PListCast(@Self).Last;
+end;
+
+procedure TList.Clear;
+begin
+  Skip(PListCast(@Self).Last);
+end;
+
+procedure TList.Prepend(Item, Before: Pointer);
+begin
+  if Before = nil then
+    Before := PListCast(@Self).First;
+end;
+
+function TList.Skip(UpTo: Pointer): Integer;
+begin
+  Result := 0; // TODO
+end;
+
+function TList.Truncate(StartFrom: Pointer): Integer;
+begin
+  Result := 0; // TODO
 end;
 
 { TCRC32 }
