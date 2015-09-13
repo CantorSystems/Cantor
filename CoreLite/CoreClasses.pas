@@ -390,7 +390,6 @@ begin
   with PEnumerable(@Self)^ do
     FillChar(FCount, InstanceSize - (PAddress(@FCount) - PAddress(@Self)), 0);
 {$ENDIF}     // ^--- first field after VMT
-
 end;
 
 function TCoreObject.InstanceSize: Integer;

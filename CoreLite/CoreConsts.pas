@@ -124,8 +124,11 @@ const
   sBrokenSurrogatePair = 'Broken %s surrogate pair or unexpected end of string:'#10 + // UTF-16 or CESU-8
     'high surrogate (U+%04X) is not complemented by a low surrogate';
 
-  sXMLAttributes = 'XML attributes';
-  sXMLNodes = 'XML nodes';
+  sNotExecutableImage = 'Not an executable image';
+  sNotValidWin32Image = 'Not valid Win32 image';
+  sDotNETAssembly = '.NET assemblies cannot be handled';
+  sUnknownExeImage = 'Unknown image signature: %c%c';
+  sBadExeImage = 'Bad image: %s';
 
 implementation
 
