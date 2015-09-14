@@ -70,7 +70,7 @@ const
 //            #9#9#9#9'VCL applications!)'#10 +
           //  #9'-menuet'#9#9#9'Save to MENUET01 format'#10 +
           //  #9'-rebase <#>'#9#9'Change image base to <#> (hexadecimal value)'#10 +
-            #9'-osver <#[.#]>'#9#9'Set required OS version to <#.#> or only <#>'#10 +
+            #9'-osver <#[.#]>'#9#9'Set required OS version to <#> or <#.#>'#10 +
             #9'-stub [stub]'#9#9'Replace stub with one from [stub] file'#10 +
             #9'-trunc'#9#9#9'Don''t align last section, truncate file'#10 +
             #9#9#9#9'immediately after data end'#10#10 +
