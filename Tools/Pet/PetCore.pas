@@ -133,6 +133,8 @@ begin
   Param.Create;
   CmdLine := Param.AsNextParam(@CmdLine); // skip own file name
 
+  Key.Create;
+  ParamCount := 0;
 (*  repeat
     P := WideParamStr(CommandLine);
     if P.Length = 0 then
@@ -352,6 +354,11 @@ begin
 
     CommandLine := P.NextParam;
   until False;*)
+
+  if ParamCount = 0 then
+    Include(FOptions, roPause)
+  else if FSourceFileName.Count = 0 then
+   // raise ECommandParam.Create(cmNone);
 end;
 
 destructor TApplication.Destroy;
@@ -377,7 +384,7 @@ procedure TApplication.Help;
 begin
   with FConsole do
   begin
-    WriteLn(sUsage, 0, [FAppName.RawData], 2);
+    WriteLn(sUsage, 0, [FAppName.RawData], 0);
     WriteLn(PLegacyChar(sHelp), StrLen(sHelp));
   end;
 end;
@@ -432,9 +439,9 @@ var
   hInfo: THandle;
   TmpFileName: PCoreChar;
 begin
-(*  if FSourceFileName <> nil then
+  if FSourceFileName.Count <> 0 then
   begin
-    Image := TExeImage.Create(IMAGE_NUMBEROF_DIRECTORY_ENTRIES, 0, True);
+(*    Image := TExeImage.Create(IMAGE_NUMBEROF_DIRECTORY_ENTRIES, 0, True);
     try
       hInfo := FindFirstFileW(FSourceFileName, FileInfo);
       if hInfo = INVALID_HANDLE_VALUE then
@@ -609,14 +616,10 @@ begin
       end;
     finally
       Image.Free;
-    end;
+    end; *)
   end
   else
-    with FConsole do
-    begin
-      WriteLn(sUsage, 0, [FAppName], 0); // wvsprintf limits length to 1024 characters :-(
-      WriteLn(sHelp);
-    end; *)
+    Help;
 end;
 
 end.             

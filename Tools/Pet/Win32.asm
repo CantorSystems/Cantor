@@ -17,4 +17,3 @@ start:
   INT 21h
 
 Message db 'Win32 module', 10, '$'
-

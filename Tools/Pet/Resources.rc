@@ -1,4 +1,7 @@
-1 ICON "CatBox-32x32.ico"
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+
+// ,---- CAT :-)
+0xCA1 ICON "CatBox-32x32.ico"
 
 #include "revision.inc"
 

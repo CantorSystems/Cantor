@@ -79,6 +79,8 @@ const
 
   sPressEnterToExit = 'Press ENTER to exit';
 
+  sModuleFileName = 'module file name, length';
+
   sMissingFileName = 'Missing file name for “%s” key';
   sMissingParam = 'Missing %s';
   sOSVersion = 'OS version number';
