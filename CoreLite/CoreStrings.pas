@@ -195,8 +195,10 @@ type
     procedure ValidateUTF8;
   protected
     class function CollectionInfo: TCollectionInfo; virtual;
+    procedure AssignHexBuffer(Index: Integer; const Buffer; Length: Integer;
+      LowerCase: Boolean = False);
     function AssignHexadecimal(Index: Integer; Value: QuadInt; MinWidth: Integer = 0;
-      UpperCase: Boolean = True; FillChar: LegacyChar = #32): Integer;
+      LowerCase: Boolean = False; FillChar: LegacyChar = #32): Integer;
     function AssignInteger(Index: Integer; Value: QuadInt; MinWidth: Integer = 0;
       FillChar: LegacyChar = #32): Integer;
     function AssignReal(Index: Integer; Value: Extended; MinWidth, Precision: Integer;
@@ -215,8 +217,10 @@ type
   public
     function AsBinaryData(DetachBuffer: Boolean): TBinaryData;
 
+    procedure AsHexBuffer(const Value; Length: Integer;
+      LowerCase: Boolean = False);
     procedure AsHexadecimal(Value: QuadInt; MinWidth: Integer = 0;
-      UpperCase: Boolean = True; FillChar: LegacyChar = #32); overload;
+      LowerCase: Boolean = False; FillChar: LegacyChar = #32); overload;
     procedure AsInteger(Value: QuadInt; MinWidth: Integer = 0;
       FillChar: LegacyChar = #32); overload;
     procedure AsReal(Value: Extended; MinWidth, Precision: Integer;
@@ -289,8 +293,10 @@ type
     procedure SetData(Value: PWideChar);
   protected
     class function CollectionInfo: TCollectionInfo; virtual;
+    procedure AssignHexBuffer(Index: Integer; const Buffer; Length: Integer;
+      LowerCase: Boolean = False);
     function AssignHexadecimal(Index: Integer; Value: QuadInt; MinWidth: Integer = 0;
-      UpperCase: Boolean = True; FillChar: WideChar = #32): Integer;
+      LowerCase: Boolean = False; FillChar: WideChar = #32): Integer;
     function AssignInteger(Index: Integer; Value: QuadInt; MinWidth: Integer = 0;
       FillChar: WideChar = #32): Integer;
     function AssignReal(Index: Integer; Value: Extended; MinWidth, Precision: Integer;
@@ -307,8 +313,10 @@ type
     procedure SetUnicodeString(Value: UnicodeString); virtual;
   {$ENDIF}
   public
+    procedure AsHexBuffer(const Value; Length: Integer;
+      LowerCase: Boolean = False);
     procedure AsHexadecimal(Value: QuadInt; MinWidth: Integer = 0;
-      UpperCase: Boolean = True; FillChar: WideChar = #32); overload;
+      LowerCase: Boolean = False; FillChar: WideChar = #32); overload;
     procedure AsInteger(Value: QuadInt; MinWidth: Integer = 0;
       FillChar: WideChar = #32); overload;
     procedure AsReal(Value: Extended; MinWidth, Precision: Integer;
@@ -640,7 +648,7 @@ end;
 
 type
   TIntegerString = record
-    Data: array[1..DecimalQuadInt] of LegacyChar;
+    Data: array[0..DecimalQuadInt - 1] of LegacyChar;
     Digits: PLegacyChar;
   end;
 
@@ -653,7 +661,8 @@ begin
   Inc(LowerCaseMask, LowerCaseMask shl 8);
 
   with Result do
-    Digits := @Data[High(Data) - SizeOf(Word)];
+    Digits := @Data[Length(Data) - SizeOf(Word)];
+
   repeat
     PWord(Result.Digits)^ := Byte(HexDigits[Byte(Value) shr 4]) or
       (Byte(HexDigits[Byte(Value) and $F]) shl 8) or LowerCaseMask; // Fast core
@@ -681,6 +690,7 @@ begin
 
   with Result do
     Digits := @Data[High(Data)];
+
   repeat
     Result.Digits^ := LegacyChar(Value mod 10 + Byte('0'));
     Value := Value div 10;
@@ -1119,8 +1129,22 @@ begin
   Result.Length := Count;
 end;
 
+procedure TLegacyString.AsHexBuffer(const Value; Length: Integer;
+  LowerCase: Boolean);
+var
+  L: Integer;
+begin
+  Clear;
+  L := Length * 2;
+  if Attached or (Capacity < L) then
+    Capacity := L + 1;
+  AssignHexBuffer(0, Value, Length, LowerCase);
+  Append(L);
+  FData[L] := #0;
+end;
+
 procedure TLegacyString.AsHexadecimal(Value: QuadInt; MinWidth: Integer;
-  UpperCase: Boolean; FillChar: LegacyChar);
+  LowerCase: Boolean; FillChar: LegacyChar);
 var
   Length: Integer;
 begin
@@ -1132,7 +1156,7 @@ begin
   Inc(Length);
   if Attached or (Capacity < Length) then
     Capacity := Length;
-  Length := AssignHexadecimal(0, Value, MinWidth, UpperCase, FillChar);
+  Length := AssignHexadecimal(0, Value, MinWidth, LowerCase, FillChar);
   Append(Length);
   FData[Length] := #0;
 end;
@@ -1251,10 +1275,31 @@ begin
   Result := Length;
 end;
 
-function TLegacyString.AssignHexadecimal(Index: Integer; Value: QuadInt;
-  MinWidth: Integer; UpperCase: Boolean; FillChar: LegacyChar): Integer;
+procedure TLegacyString.AssignHexBuffer(Index: Integer; const Buffer;
+  Length: Integer; LowerCase: Boolean);
+var
+  LowerCaseMask: Word;
+  I: Integer;
+  B: Byte;
+  Dest: PWord;
 begin
-  with FormatHexadecimal(Value, MinWidth, UpperCase) do
+  LowerCaseMask := Byte(LowerCase) * $20;
+  Inc(LowerCaseMask, LowerCaseMask shl 8);
+
+  Dest := PWord(FData + Index);
+  for I := 0 to Length - 1 do
+  begin
+    B := TByteArray(Buffer)[I];
+    Dest^ := Byte(HexDigits[B shr 4]) or
+      (Byte(HexDigits[B and $F]) shl 8) or LowerCaseMask; // Fast core
+    Inc(Dest);
+  end;
+end;
+
+function TLegacyString.AssignHexadecimal(Index: Integer; Value: QuadInt;
+  MinWidth: Integer; LowerCase: Boolean; FillChar: LegacyChar): Integer;
+begin
+  with FormatHexadecimal(Value, MinWidth, LowerCase) do
     Result := AssignDigits(Index, Digits, PLegacyChar(@Data) + Length(Data) - Digits, MinWidth, FillChar);
 end;
 
@@ -1959,8 +2004,22 @@ begin
   end;
 end;
 
+procedure TWideString.AsHexBuffer(const Value; Length: Integer;
+  LowerCase: Boolean);
+var
+  L: Integer;
+begin
+  Clear;
+  L := Length * 2;
+  if Attached or (Capacity < L) then
+    Capacity := L + 1;
+  AssignHexBuffer(0, Value, Length, LowerCase);
+  Append(L);
+  FData[L] := #0;
+end;
+
 procedure TWideString.AsHexadecimal(Value: QuadInt; MinWidth: Integer;
-  UpperCase: Boolean; FillChar: WideChar);
+  LowerCase: Boolean; FillChar: WideChar);
 var
   Length: Integer;
 begin
@@ -1972,7 +2031,7 @@ begin
   Inc(Length);
   if Attached or (Capacity < Length) then
     Capacity := Length;
-  Length := AssignHexadecimal(0, Value, MinWidth, UpperCase, FillChar);
+  Length := AssignHexadecimal(0, Value, MinWidth, LowerCase, FillChar);
   Append(Length);
   FData[Length] := #0;
 end;
@@ -2090,10 +2149,31 @@ begin
   Result := Length;
 end;
 
-function TWideString.AssignHexadecimal(Index: Integer; Value: QuadInt;
-  MinWidth: Integer; UpperCase: Boolean; FillChar: WideChar): Integer;
+procedure TWideString.AssignHexBuffer(Index: Integer; const Buffer;
+  Length: Integer; LowerCase: Boolean);
+var
+  LowerCaseMask: LongWord;
+  I: Integer;
+  B: Byte;
+  Dest: PLongWord;
 begin
-  with FormatHexadecimal(Value, MinWidth, UpperCase) do
+  LowerCaseMask := Byte(LowerCase) * $20;
+  Inc(LowerCaseMask, LowerCaseMask shl 16);
+
+  Dest := PLongWord(FData + Index);
+  for I := 0 to Length - 1 do
+  begin
+    B := TByteArray(Buffer)[I];
+    Dest^ := Byte(HexDigits[B shr 4]) or
+      (Byte(HexDigits[B and $F]) shl 16) or LowerCaseMask; // Fast core
+    Inc(Dest);
+  end;
+end;
+
+function TWideString.AssignHexadecimal(Index: Integer; Value: QuadInt;
+  MinWidth: Integer; LowerCase: Boolean; FillChar: WideChar): Integer;
+begin
+  with FormatHexadecimal(Value, MinWidth, LowerCase) do
     Result := AssignDigits(Index, Digits, PLegacyChar(@Data) + Length(Data) - Digits, MinWidth, FillChar);
 end;
 
