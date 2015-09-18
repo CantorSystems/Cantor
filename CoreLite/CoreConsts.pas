@@ -10,9 +10,10 @@ unit CoreConsts;
 
 interface
 
-const
-  CP_LOCALIZATION = 1252; // we're using “”, but only in exception messages
+var
+  LocalizationCP: Word = 1252; // we're using “”, but only in exception messages
 
+const
   sDivByZero          = 'Division by zero';
   sRangeError         = 'Range check error';
   sIntOverflow        = 'Integer overflow';
@@ -110,7 +111,7 @@ const
   sUTF8 = 'UTF-8';
   sCESU8 = 'CESU-8';
   sUTF16 = 'UTF-16';
-//  sUTF32 = 'UTF-32';
+  sUTF32 = 'UTF-32';
 
   sInvalidString = '%s string contains %s';
   sInvalidChar = 'invalid character (U+%04X)';
@@ -129,6 +130,9 @@ const
   sDotNETAssembly = '.NET assemblies cannot be handled';
   sUnknownExeImage = 'Unknown image signature: %c%c';
   sBadExeImage = 'Bad image: %s';
+
+  sPressEnterToExit = 'Press ENTER to exit';
+  sModuleFileName = 'module file name, length';
 
 implementation
 

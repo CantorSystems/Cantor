@@ -771,7 +771,7 @@ begin
         W.AsRange(Source, 0) // TODO: big-endian
       else
         W.AsString(PLegacyString(Source));
-      inherited Create(sInvalidInteger, CP_LOCALIZATION, [W.Data, ValueType[Hexadecimal]]);
+      inherited Create(sInvalidInteger, LocalizationCP, [W.Data, ValueType[Hexadecimal]]);
     finally
       W.Destroy;
     end;
@@ -797,7 +797,7 @@ begin
   begin
     Msg := SysErrorMessage(ErrorCode);
     try
-      inherited Create(ModeNames[Mode], CP_LOCALIZATION, [Msg.Value, CodePage.Number, CodePage.Name]);
+      inherited Create(ModeNames[Mode], LocalizationCP, [Msg.Value, CodePage.Number, CodePage.Name]);
     finally
       LocalFree(Msg.Handle);
     end;
@@ -807,7 +807,7 @@ begin
     if PWideString(Source).FDataSource.CodePage <> nil then
     begin
       with PWideString(Source).FDataSource.CodePage^ do
-        inherited Create(sCPtoCP, CP_LOCALIZATION, [Number, Name, CodePage.Number, CodePage.Name]);
+        inherited Create(sCPtoCP, LocalizationCP, [Number, Name, CodePage.Number, CodePage.Name]);
       CharSet := nil;
     end
     else
@@ -817,7 +817,7 @@ begin
     CharSet := sUTF16;
 
   if CharSet <> nil then
-    inherited Create(sUnicodetoCP, CP_LOCALIZATION, [CharSet, CodePage.Number, CodePage.Name]);
+    inherited Create(sUnicodetoCP, LocalizationCP, [CharSet, CodePage.Number, CodePage.Name]);
 
   FSource.AsString := Pointer(Source);
   FMode := Mode;
