@@ -7,8 +7,8 @@
 FILEOS VOS_NT_WINDOWS32
 FILETYPE VFT_APP
 FILEFLAGSMASK 0x3F
-PRODUCTVERSION 0,3,3,rev
-FILEVERSION 0,3,3,rev
+PRODUCTVERSION 0,4,0,rev
+FILEVERSION 0,4,0,rev
 FILEFLAGS VS_FF_PRERELEASE 
   #ifdef debug | VS_FF_DEBUG #endif
 BEGIN
@@ -22,7 +22,7 @@ BEGIN
       VALUE "FileDescription", "Portable executable (PE) optimization tool\000"
       //VALUE "FileDescription", "Portable executable (PE) optimization and dumping tool\000"
       VALUE "OriginalFilename", "Pet.exe\000"
-      VALUE "ProductVersion", "0.3.3\000"
+      VALUE "ProductVersion", "0.4\000"
       VALUE "FileVersion", "r" textrev "\000"
     END
   END

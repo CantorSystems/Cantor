@@ -9,51 +9,65 @@ unit PetCore;
 interface
 
 uses
-  Windows, CoreUtils, CoreExceptions, CoreWrappers, CoreClasses, CoreStrings;
+  Windows, CoreUtils, CoreExceptions, CoreStrings, CoreApp;
 
 type
 //  TResourceNames = TWideStringArray;
   TSectionNames = TLegacyStrings;
 
-  TFileKey = (fkInto, fkBackup, fkStub, fkExtract, fkDump);
-  TFileKeys = array[TFileKey] of PCoreChar;
+  TFileKind = (fkInto, fkStub, fkExtract, fkBackup{, fkDump});
+  TFileNames = array[TFileKind] of TWideString;
 
-  TRunOption = (roStrip, roTrunc, roDeep, {roMiniRes, roCleanVer, roMainIcon,} ro3GB, roPause);
+  TRunOption = (roPause, roNoLogo, roAuto, roStrip, roTrunc, roKeep, roSafe, roDeep,
+    {roMiniRes, roCleanVer, roMainIcon,} ro3GB);
   TRunOptions = set of TRunOption;
 
   TMenuetKolibri = (mkNone, mkMenuet, mkKolibri);
 
-  TApplication = object
+  TApplication = object(TConsoleApplication)
   private
-    FConsole: TStreamConsole;
-    FAppName, FSourceFileName: TCoreString;
-    FFileNames: TFileKeys;
+  { hold } FOptions: TRunOptions;
+    FSourceFileName: TCoreString;
+    FFileNames: TFileNames;
     FDropSections: TSectionNames;
     FImageBase: CoreInt;
     FMajorVersion, FMinorVersion: Word;
-    FOptions: TRunOptions;
   {$IFDEF Kolibri}
     FMenuetKolibri: TMenuetKolibri;
   {$ENDIF}
+    procedure Parse(CommandLine: PWideChar);
   public
-    constructor Create(CommandLine: PCoreChar);
-    destructor Destroy; 
-    procedure Pause;
-    procedure Run;
-    procedure Help;
+    constructor Create;
+    destructor Destroy;
+    procedure Run(CommandLine: PWideChar);
   end;
 
 { Exceptions }
 
   ECommandLine = class(Exception);
 
-  EFileKey = class(ECommandLine)
+  EFileName = class(ECommandLine)
   private
-    FFileKey: TFileKey;
+    FFileKind: TFileKind;
   public
-    constructor Create(MissingFileName: TFileKey); overload;
-    property FileKey: TFileKey read FFileKey;
+    constructor Create(MissingFileName: TFileKind);
+    property FileKind: TFileKind read FFileKind;
   end;
+
+  EMissingParam = class(ECommandLine)
+  public
+    constructor Create(MissingParam: PLegacyChar);
+  end;
+
+{  ECommandParam = class(ECommandLine)
+  private
+    FCommand: TCommand;
+    FParameter: PCoreString;
+  public
+    constructor Create(Command: TCommand; Param: PCoreString = nil);
+    property Command: TCommand read FCommand;
+    property Parameter: PCoreString read FParameter;
+  end;}
 
   ECore = class(Exception);
 
@@ -63,71 +77,56 @@ uses
   ExeImages, CoreConsts, PetConsts;
 
 const
-  FileKeys: TFileKeys = (sInto, sBackup, sStub, sExtract, sDump);
+  FileKeys: array[TFileKind] of PWideChar = (sInto, sStub, sExtract, sBackup{, sDump});
 
 { EFileKey }
 
-constructor EFileKey.Create(MissingFileName: TFileKey);
+constructor EFileName.Create(MissingFileName: TFileKind);
 begin
-  inherited Create(sMissingFileName, CP_CORE, [FileKeys[MissingFileName]]);
+  inherited Create(sMissingFileName, LocalizationCP, [FileKeys[MissingFileName]]);
+end;
+
+{ EMissingParam }
+
+constructor EMissingParam.Create(MissingParam: PLegacyChar);
+begin
+  inherited Create(sMissingFileName, LocalizationCP, [MissingParam]);
 end;
 
 { TApplication }
 
-constructor TApplication.Create(CommandLine: PWideChar);
+constructor TApplication.Create;
+begin
+  inherited;
+  FImageBase := -1;
+end;
 
+destructor TApplication.Destroy;
+var
+  K: TFileKind;
+begin
+  FDropSections.Finalize;
+  for K := Low(FFileNames) to High(FFileNames) do
+    FFileNames[K].Finalize;
+  FSourceFileName.Finalize;
+  inherited;
+end;
+
+procedure TApplication.Parse(CommandLine: PWideChar);
 const
-  OptionKeys: array[TRunOption] of PCoreChar =
-    (sStrip, sTrunc, sDeep, {sMiniRes, sCleanVer, sMainIcon,} s3GB, sPause);
+  OptionKeys: array[TRunOption] of PWideChar =
+    (sPause, sNoLogo, sAuto, sStrip, sTrunc, sKeep, sSafe, sDeep,
+     {sMiniRes, sCleanVer, sMainIcon,} s3GB);
   HexBase: array[Boolean] of LegacyChar = 'A0';
 var
-  ExeName: array[0..MAX_PATH] of CoreChar;
-  VerInfo: TVersionInfo;
-  Ver: TVersionBuffer;
   CmdLine, Key: TWideString;
   Param: TCommandLineParam;
-  ExeNameLength, ParamCount: Integer;
-
-  K: TFileKey;
+  ParamCount, Dot: Integer;
+  W: PWideChar;
+  K: TFileKind;
   R: TRunOption;
   Value: Word;
-//  Nibble: Byte;
 begin
-  with FConsole do
-  begin
-    Create;
-    CodePage := CP_UTF8;
-    WriteLn;
-  end;
-
-  ExeNameLength := GetModuleFileNameW(0, ExeName, Length(ExeName));
-  if ExeNameLength = 0 then
-    RaiseLastPlatformError {$IFDEF Debug} (sModuleFileName, Length(ExeName)) {$ENDIF} ;
-
-  with VerInfo do
-  begin
-    Create(ExeName);
-    try
-      FormatVersion(Ver, sVersionAndRevision);
-      if TranslationCount <> 0 then
-        FConsole.WriteLn(sTitle, 0, [StringInfo(0, 'ProductName'), Ver,
-          StringInfo(0, 'LegalCopyright')], 2);
-    finally
-      Destroy;
-    end;
-  end;
-
-  with FAppName do
-  begin
-    Create;
-    AsWideString(ExeName, ExeNameLength, soAttach);
-    Skip(LastIndex(PathDelimiter) + 1);
-    Truncate(Count - LastIndex(WideChar('.')));
-    Detach;
-  end;
-
-  FImageBase := -1;
-
   CmdLine.Create;
   CmdLine.AsWideString(CommandLine, WideStrLen(CommandLine), soAttach);
   Param.Create;
@@ -135,263 +134,112 @@ begin
 
   Key.Create;
   ParamCount := 0;
-(*  repeat
-    P := WideParamStr(CommandLine);
-    if P.Length = 0 then
-    begin
-      if CommandLine = CmdLineParams then // no params
-        Include(FOptions, roPause);
+  repeat
+    CmdLine := Param.AsNextParam(@CmdLine);
+    if Param.Count = 0 then
       Break;
-    end;
 
-    if (not P.Quoted) and ((P.Param^ = CoreChar('/')) or (P.Param^ = CoreChar('-'))) then
+    Inc(ParamCount);
+    Key.AsRange(@Param, 1);
+    if not Param.Quoted and (Param.RawData^ = '-') then
     begin
-      for K := Low(FFileNames) to High(FFileNames) do
-        if SameKey(FileKeys[K]) then
+      for R := Low(OptionKeys) to High(OptionKeys) do
+      begin
+        W := OptionKeys[R];
+        if Key.Compare(W + 1, PWord(W)^, True) = 0 then
         begin
-          P := WideParamStr(P.NextParam);
-          if P.Length <> 0 then
-          begin
-            with P do
-            begin
-              Param[Length] := CoreChar(0); // unsafe
-              FFileNames[K] := Param;
-              Param := nil;
-            end;
-            if K = fkBackup then
-              FFileNames[fkInto] := FSourceFileName;
-          end
-          else if FFileNames[K] = nil then
-          begin
-            case K of
-              fkInto:
-                FFileNames[fkInto] := FSourceFileName;
-              fkStub:
-                FFileNames[fkStub] := FExeName;
-            else
-              raise EFileKey.Create(K);
-            end;
-            P.Param := nil;
-          end;
+          Include(FOptions, R);
+          Param.Clear;
           Break;
         end;
-
-      if P.Param <> nil then
-        for R := Low(R) to High(R) do
-          if SameKey(OptionKeys[R]) then
-          begin
-            Include(FOptions, R);
-            P.Param := nil;
-            Break;
-          end;
-
-      if P.Param <> nil then
-        if SameKey(sOSVer) then
-        begin
-          P := WideParamStr(P.NextParam);
-          if P.Length <> 0 then
-          begin
-            with P do
-            begin
-              Current := Param;
-              Limit := Current + Length;
-            end;
-            while (PWord(Current)^ and $FF00 = 0) and (PLegacyChar(Current)^ in ['0'..'9']) and (Current < Limit) do
-            begin
-              FMajorVersion := FMajorVersion * 10 + PByte(Current)^ - Byte('0');
-              Inc(Current);
-            end;
-            if Current^ = '.' then
-            begin
-              Inc(Current);
-              while (Current < Limit) and (PWord(Current)^ and $FF00 = 0) and (PLegacyChar(Current)^ in ['0'..'9']) do
-              begin
-                FMinorVersion := FMinorVersion * 10 + PByte(Current)^ - Byte('0');
-                Inc(Current);
-              end;
-            end;
-            P.Param := nil;
-          end
-          else
-            raise ECommandLine.Create(sMissingParam, [PLegacyChar(sOSVersion)]);
-        end
-        else if SameKey(sDropSect) then
-        begin
-          P := WideParamStr(P.NextParam);
-          with P do
-          begin
-            Current := Param;
-            Limit := Current + Length;
-          end;
-          while Current < Limit do
-          begin
-            while (PWord(Current)^ and $FF00 = 0) and (PLegacyChar(Current)^ in [' ', ',', ';']) and (Current < Limit) do
-              Inc(Current);
-            Head := Current;
-            while (Current < Limit) and (PWord(Current)^ and $FF00 = 0) and not (PLegacyChar(Current)^ in [' ', ',', ';']) do
-              Inc(Current);
-            if FDropSections = nil then
-              FDropSections := TSectionNames.Create(IMAGE_NUMBEROF_DIRECTORY_ENTRIES, -2, True);
-            FDropSections.Append(EncodeLegacy(Head, Current - Head, CP_ACP));
-          end;
-          if FDropSections = nil then
-            raise ECommandLine.Create(sMissingParam, [PLegacyChar(sSectionNames)]);
-          P.Param := nil;
-        end
-        else if SameKey(sDropRes) then
-        begin
-          P := WideParamStr(P.NextParam);
-          with P do
-          begin
-            Current := Param;
-            Limit := Current + Length;
-          end;
-          while Current < Limit do
-          begin
-            while (PWord(Current)^ and $FF00 = 0) and (PLegacyChar(Current)^ in [' ', ',', ';']) and (Current < Limit) do
-              Inc(Current);
-            Head := Current;
-            while (Current < Limit) and (PWord(Current)^ and $FF00 = 0) and not (PLegacyChar(Current)^ in [' ', ',', ';']) do
-              Inc(Current);
-            if FDropResources = nil then
-              FDropResources := TResourceNames.Create(16, -2); // why not 16?
-            FDropResources.Append(Head, Current - Head);
-          end;
-          if FDropResources = nil then
-            raise ECommandLine.Create(sMissingParam, [PLegacyChar(sResourceNames)]);
-          P.Param := nil;
-        end
-        else if SameKey(sLocale) then
-        begin
-          P := WideParamStr(P.NextParam);
-          with P do
-          begin
-            Current := Param;
-            Limit := Current + Length;
-          end;
-          while Current < Limit do
-          begin
-            while (PWord(Current)^ and $FF00 = 0) and (PLegacyChar(Current)^ in [' ', ',', ';']) and (Current < Limit) do
-              Inc(Current);
-            Value := 0;
-            while (Current < Limit) and (PWord(Current)^ and $FF00 = 0) and (PLegacyChar(Current)^ in ['0'..'9']) do
-            begin
-              Value := Value * 10 + PByte(Current)^ - Byte('0');
-              Inc(Current);
-            end;
-            if Value <> 0 then
-            begin
-              if FLocaleMap = nil then
-                FLocaleMap := TLocaleMap.Create(8, -2); // why not 8?
-              with FLocaleMap do
-                LongWord(FItems[Append]) := Value; // Fast core
-              if PLegacyChar(Current)^ = '=' then
-              begin
-                Inc(Current);
-                Value := 0;
-                while (Current < Limit) and (PWord(Current)^ and $FF00 = 0) and (PLegacyChar(Current)^ in ['0'..'9']) do
-                begin
-                  Value := Value * 10 + PByte(Current)^ - Byte('0');
-                  Inc(Current);
-                end;
-                with FLocaleMap do
-                  FItems[Count - 1].LocaleTo := Value;
-              end;
-            end;
-            if FLocaleMap = nil then
-              raise ECommandLine.Create(sMissingParam, [PLegacyChar(sLocaleMap)]);
-            P.Param := nil;
-          end;
-        {end
-        else if SameKey(sRebase) then
-        begin
-          P := WideParamStr(P.NextParam);
-          if P.Length <> 0 then
-          begin
-            with P do
-            begin
-              Current := Param;
-              Limit := Current + Length;
-            end;
-            FImageBase := 0;
-            while (PWord(Current)^ and $FF00 = 0) and (PLegacyChar(Current)^ in ['0'..'9', 'A'..'F', 'a'..'f']) and
-              (Current < Limit) do
-            begin
-              if PLegacyChar(Current)^ in ['0'..'9'] then
-                Nibble := PByte(Current)^ - Byte('0')
-              else
-                Nibble := PByte(Current)^ and not $20 - Byte('A') + 10;
-              FImageBase := FImageBase * 16 + Nibble;
-              Inc(Current);
-            end;
-            P.Param := nil;
-          end
-          else
-            raise ECommandLine.Create(sMissingParam, [PLegacyChar(sImageBase)]);
-        end
-        else if SameKey(sMenuet) then
-        begin
-          FMenuetKolibri := mkMenuet;
-          if FImageBase < 0 then
-            FImageBase := 8;
-          P.Param := nil;}
-        end
-      {$IFDEF Kolibri}
-        else if SameKey(sKolibri) then
-        begin
-          FMenuetKolibri := mkKolibri;
-          P.Param := nil;
-        end;
-      {$ENDIF}  
-    end;
-
-    if P.Param <> nil then
-      with P do
-      begin
-        Param[Length] := CoreChar(0); // unsafe
-        FSourceFileName := Param;
       end;
 
-    CommandLine := P.NextParam;
-  until False;*)
+      if Param.Count <> 0 then
+        for K := Low(FFileNames) to High(FFileNames) do
+        begin
+          W := FileKeys[K];
+          if Key.Compare(W + 1, PWord(W)^, True) = 0 then
+          begin
+            CmdLine := Param.AsNextParam(@CmdLine);
+            if Param.Count = 0 then
+              raise EFileName.Create(K);
+            with FFileNames[K] do
+            begin
+              Create;
+              AsRange(@Param, 0);
+              Detach;
+            end;
+            Param.Clear;
+            Break;
+          end;
+        end;
+
+      if Param.Count <> 0 then
+      begin
+        W := sOSVer;
+        if Key.Compare(W + 1, PWord(W)^, True) = 0 then
+        begin
+          CmdLine := Param.AsNextParam(@CmdLine);
+          if Param.Count = 0 then
+            raise EMissingParam.Create(sOSVersion);
+          with Param do
+          begin
+            Dot := NextIndex('.');
+            if Dot >= 0 then
+            begin
+              FMajorVersion := AsRange(0, Dot - 1).AsInteger;
+              FMinorVersion := AsRange(Dot + 1).AsInteger;
+            end
+            else
+            begin
+              FMajorVersion := AsInteger;
+              FMinorVersion := 0;
+            end;
+            Clear;
+          end;
+        end
+        else
+        begin
+          W := sSectionNames;
+          if Key.Compare(W + 1, PWord(W)^, True) = 0 then
+          begin
+            CmdLine := Param.AsNextParam(@CmdLine);
+            if Param.Count = 0 then
+              raise EMissingParam.Create(sSectionNames);
+            with Param do
+            begin
+              {Dot := NextIndex('.');
+              if Dot >= 0 then
+              begin
+                FMajorVersion := AsRange(0, Dot - 1).AsInteger;
+                FMinorVersion := AsRange(Dot + 1).AsInteger;
+              end
+              else
+              begin
+                FMajorVersion := AsInteger;
+                FMinorVersion := 0;
+              end;}
+              Clear;
+            end;
+          end
+        end;
+      end;
+    end;
+
+    if Param.Count <> 0 then
+    begin
+      {if FSourceFileName.Count <> 0 then
+        raise ECommandParam.Create(cmNone, @Param);
+      FSourceFileName.Create;
+      FSourceFileName.AsRange(@Param, 0);}
+    end;
+  until False;
 
   if ParamCount = 0 then
     Include(FOptions, roPause)
   else if FSourceFileName.Count = 0 then
-   // raise ECommandParam.Create(cmNone);
-end;
+//    raise ECommandParam.Create(cmNone);
 
-destructor TApplication.Destroy;
-begin
-  FDropSections.Finalize;
-  FSourceFileName.Finalize;
-  FAppName.Finalize;
-  FConsole.Destroy;
-
-  if roPause in FOptions then // placed here to show exceptions properly
-    with FConsole do
-    begin
-      Create(True);
-      try
-        ReadLn(sPressEnterToExit, StrLen(sPressEnterToExit));
-      finally
-        Destroy;
-      end;
-    end;
-end;
-
-procedure TApplication.Help;
-begin
-  with FConsole do
-  begin
-    WriteLn(sUsage, 0, [FAppName.RawData], 0);
-    WriteLn(PLegacyChar(sHelp), StrLen(sHelp));
-  end;
-end;
-
-procedure TApplication.Pause;
-begin
-  Include(FOptions, roPause);
 end;
 
 procedure TApplication.Run;
@@ -414,19 +262,23 @@ var
 begin
   Format := sProcessing + #0;
   Format[FileNameOffset] := Prefixes[IsUnicode];
-  FConsole.WriteLn(@Format[1], FileNameWidth, Args);
+  Console.WriteLn(@Format[1], FileNameWidth, Args);
 end;
 
 function TempFileName(Source: PCoreChar): PCoreChar;
+type
+  PDotDollarDollarDollar = ^TDotDollarDollarDollar;
+  TDotDollarDollarDollar = array[0..3] of CoreChar;
+const
+  DotDollarDollarDollar: TDotDollarDollarDollar = ('.', '$', '$', '$');
 var
   L: Integer;
 begin
   L := WideStrLen(Source);
-  GetMem(Result, (L + Length('.$$$') + 1) * SizeOf(CoreChar));
+  GetMem(Result, (L + Length(DotDollarDollarDollar) + 1) * SizeOf(CoreChar));
   Move(Source^, Result^, L * SizeOf(CoreChar));
-  PLongWord(Result + L)^ := $0024002E;     // Fast core: '.$'
-  PLongWord(Result + L + 2)^ := $00240024; // '$$'
-  Result[L + 4] := CoreChar(0);
+  PDotDollarDollarDollar(Result + L)^ := DotDollarDollarDollar;
+  Result[L + Length(DotDollarDollarDollar)] := CoreChar(0);
 end;
 
 const
@@ -439,6 +291,9 @@ var
   hInfo: THandle;
   TmpFileName: PCoreChar;
 begin
+  inherited Run(sLogo);
+  Parse(CommandLine);
+
   if FSourceFileName.Count <> 0 then
   begin
 (*    Image := TExeImage.Create(IMAGE_NUMBEROF_DIRECTORY_ENTRIES, 0, True);
@@ -619,8 +474,8 @@ begin
     end; *)
   end
   else
-    Help;
+    Help(sUsage, sHelp);
 end;
 
-end.             
+end.
 

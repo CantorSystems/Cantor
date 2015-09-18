@@ -45,8 +45,8 @@ begin
 {$ENDIF}
 
   try
-    Application.Create(GetCommandLineW);
-    Application.Run;
+    Application.Create;
+    Application.Run(GetCommandLineW);
   except
     on E: Exception do
     begin
