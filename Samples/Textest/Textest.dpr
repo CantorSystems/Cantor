@@ -43,8 +43,8 @@ begin
 {$ENDIF}
 
   try
-    Application.Create(GetCommandLineW);
-    Application.Run;
+    Application.Create;
+    Application.Run(GetCommandLineW);
   except
     on E: TObject do // TObject is for CoreLiteVCL
     begin

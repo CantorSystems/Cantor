@@ -8,7 +8,7 @@ unit TestCore;
 interface
 
 uses
-  CoreUtils, CoreExceptions, CoreWrappers, CoreClasses, CoreStrings;
+  CoreUtils, CoreExceptions, CoreWrappers, CoreStrings, CoreApp;
 
 type
   TRunOption = (roPause, roOEM);
@@ -16,19 +16,18 @@ type
 
   TCommand = (cmNone, cmInto, cmCP);
 
-  TApplication = object
+  TApplication = object(TConsoleApplication)
   private
+  { hold } FOptions: TRunOptions;
+    FFallbackCP, FDummy: Word;
     FCounter: TPerformanceCounter;
-    FConsole: TStreamConsole;
-    FAppName, FSourceFileName, FIntoFileName: TCoreString;
-    FFallbackCP: Word;
-    FOptions: TRunOptions;
+    FSourceFileName, FIntoFileName: TCoreString;
+    procedure Parse(CommandLine: PWideChar);
+  protected
+    property Dummy: Word read FDummy;
   public
-    constructor Create(CommandLine: PCoreChar);
     destructor Destroy;
-    procedure Pause;
-    procedure Run;
-    procedure Help;
+    procedure Run(CommandLine: PCoreChar);
   end;
 
   ECommandLine = class(Exception);
@@ -51,7 +50,6 @@ type
     property UTF8: Boolean read FUTF8;
   end;
 
-
 implementation
 
 uses
@@ -65,7 +63,7 @@ const
     (sSourceFileNameParam, sIntoFileNameParam, sFallbackCodePageParam);
 begin
   if (Param <> nil) and (Param.Count <> 0) then
-    inherited Create(sDuplicate, CP_LOCALIZATION, [Messages[Command], Param.Data])
+    inherited Create(sDuplicate, LocalizationCP, [Messages[Command], Param.Data])
   else
     inherited Create(sMissing, [Messages[Command]]);
   FCommand := Command;
@@ -82,36 +80,20 @@ end;
 
 { TApplication }
 
-constructor TApplication.Create(CommandLine: PWideChar);
+destructor TApplication.Destroy;
+begin
+  FIntoFileName.Finalize;
+  FSourceFileName.Finalize;
+  inherited;
+end;
+
+procedure TApplication.Parse(CommandLine: PWideChar);
 var
-  ExeName: array[0..MAX_PATH] of CoreChar;
   CmdLine, Key: TWideString;
-  Param: TCommandLineParam;
-  ExeNameLength, ParamCount: Integer;
+  Param: TCommandLineParam; 
+  ParamCount: Integer;
   W: PWideChar;
 begin
-  with FConsole do
-  begin
-    Create;
-    CodePage := CP_UTF8;
-    WriteLn;
-  end;
-
-  ExeNameLength := GetModuleFileNameW(0, ExeName, Length(ExeName));
-  if ExeNameLength = 0 then
-    RaiseLastPlatformError {$IFDEF Debug} (sModuleFileName, Length(ExeName)) {$ENDIF} ;
-
-  with FAppName do
-  begin
-    Create;
-    AsWideString(ExeName, ExeNameLength, soAttach);
-    Skip(LastIndex(PathDelimiter) + 1);
-    Truncate(Count - LastIndex(WideChar('.')));
-    Detach
-  end;
-
-  FConsole.WriteLn(PLegacyChar(sTextest), StrLen(sTextest), 2);
-
   CmdLine.Create;
   CmdLine.AsWideString(CommandLine, WideStrLen(CommandLine), soAttach);
   Param.Create;
@@ -196,39 +178,6 @@ begin
     raise ECommandParam.Create(cmNone);
 end;
 
-destructor TApplication.Destroy;
-begin
-  FIntoFileName.Finalize;
-  FSourceFileName.Finalize;
-  FAppName.Finalize;
-  FConsole.Destroy;
-
-  if roPause in FOptions then // placed here to show exceptions properly
-    with FConsole do
-    begin
-      Create(True);
-      try
-        ReadLn(sPressEnterToExit, StrLen(sPressEnterToExit));
-      finally
-        Destroy;
-      end;
-    end;
-end;
-
-procedure TApplication.Help;
-begin
-  with FConsole do
-  begin
-    WriteLn(sUsage, 0, [FAppName.RawData], 2);
-    WriteLn(PLegacyChar(sHelp), StrLen(sHelp));
-  end;
-end;
-
-procedure TApplication.Pause;
-begin
-  Include(FOptions, roPause);
-end;
-
 type
   TDelphiStrings = class(TStrings)
   private
@@ -254,23 +203,23 @@ begin
   Time[Length(Time) + 1] := #0;
   Str(CharCount / (1024 * 1024 * 1024) / Elapsed * 100:1:2, Throughput);
   Throughput[Length(Throughput) + 1] := #0;
-  FConsole.WriteLn(sBytesLinesSecondsGBs, 0,
+  Console.WriteLn(sBytesLinesSecondsGBs, 0,
     [TestNames[AverageCount <> 0], CharCount, LineCount, @Time[1], @Throughput[1]]);
 
   if AverageStringLength <> 0 then
   begin
-    FConsole.WriteLn(sAverageLineLength, 0, [AverageCount]);
+    Console.WriteLn(sAverageLineLength, 0, [AverageCount]);
 
     EstimatedCount := CharCount div AverageStringLength;
     Str((EstimatedCount - LineCount) / LineCount * 100:1:1, Percent);
     Percent[Length(Percent) + 1] := #0;
-    FConsole.WriteLn(sEstimationVariance, 0, [@Percent[1], AverageStringLength, EstimatedCount]);
+    Console.WriteLn(sEstimationVariance, 0, [@Percent[1], AverageStringLength, EstimatedCount]);
   end;
 
   Overhead := Capacity - LineCount;
   Str(Overhead / Capacity * 100:1:1, Percent);
   Percent[Length(Percent) + 1] := #0;
-  FConsole.WriteLn(sCapacityOverhead, 0, [@Percent[1], Overhead * ItemSize]);
+  Console.WriteLn(sCapacityOverhead, 0, [@Percent[1], Overhead * ItemSize]);
 
   if AverageStringLength <> 0 then
   begin
@@ -284,7 +233,7 @@ begin
   end;
   Str(Overhead / EstimatedCount * 100:1:1, Percent);
   Percent[Length(Percent) + 1] := #0;
-  FConsole.WriteLn(sTotalOverhead, 0, [@Percent[1], Overhead]);
+  Console.WriteLn(sTotalOverhead, 0, [@Percent[1], Overhead]);
 end;
 
 var
@@ -296,7 +245,7 @@ procedure CoreLiteTest(AverageStringLength: Integer);
 var
   StartTime: QuadWord;
 begin
-  FConsole.WriteLn;
+  Console.WriteLn;
   try
     Text.Capacity := 0;
     StartTime := FCounter.Value;
@@ -311,7 +260,7 @@ begin
   except
     on E: TObject do
     begin
-      FConsole.WriteLn(sCoreLiteTestFailed, 0, [AverageStringLength]);
+      Console.WriteLn(sCoreLiteTestFailed, 0, [AverageStringLength]);
       ShowException(E);
     end;
   end;
@@ -323,7 +272,7 @@ var
   StartTime: QuadWord;
   Txt: string;
 begin
-  FConsole.WriteLn;
+  Console.WriteLn;
   try
     Strings := TStringList.Create;
     try
@@ -340,22 +289,25 @@ begin
   except
     on E: TObject do
     begin
-      FConsole.WriteLn(PLegacyChar(sDelphiTestFailed), StrLen(sDelphiTestFailed));
+      Console.WriteLn(PLegacyChar(sDelphiTestFailed), StrLen(sDelphiTestFailed));
       ShowException(E);
     end;
   end;
 end;
 
 begin
+  Console.WriteLn(PLegacyChar(sTitle), StrLen(sTitle), 2);
+  Parse(CommandLine);
+
   if FSourceFileName.Count <> 0 then
   begin
     if FFallbackCP <> 0 then
     begin
       CP.Create(FFallbackCP);
-      FConsole.WriteLn(sFallbackCP, 0, [CP.Number, CP.Name]);
+      Console.WriteLn(sFallbackCP, 0, [CP.Number, CP.Name]);
     end;
 
-    FConsole.WriteLn(sFileNameFmt, 0, [PLegacyChar(sSourceFile), FSourceFileName.Data]);
+    Console.WriteLn(sFileNameFmt, 0, [PLegacyChar(sSourceFile), FSourceFileName.Data]);
 
     S.Create;
     try
@@ -376,8 +328,8 @@ begin
 
         if (FIntoFileName.Count <> 0) and (Text.Count <> 0) then
         begin
-          FConsole.WriteLn;
-          FConsole.WriteLn(sFileNameFmt, 0, [PLegacyChar(sSavingInto), FIntoFileName.Data]);
+          Console.WriteLn;
+          Console.WriteLn(sFileNameFmt, 0, [PLegacyChar(sSavingInto), FIntoFileName.Data]);
           SaveFile(Text.Save, FIntoFileName.RawData, Text.EstimateText.EstimatedLength);
         end;
       finally
@@ -388,7 +340,7 @@ begin
     end;
   end
   else
-    Help;
+    Help(sUsage, sHelp);
 end;
 
 end.

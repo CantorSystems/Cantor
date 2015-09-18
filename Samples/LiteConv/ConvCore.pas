@@ -7,7 +7,7 @@ unit ConvCore;
 interface
 
 uses
-  CoreUtils, CoreExceptions, CoreWrappers, CoreClasses, CoreStrings;
+  CoreUtils, CoreExceptions, CoreStrings, CoreApp;
 
 type
   TRunOption = (roPause, roOEM);
@@ -15,19 +15,17 @@ type
 
   TCommand = (cmNone, cmInto, cmCP);
 
-  TApplication = object
+  TApplication = object(TConsoleApplication)
   private
-    FConsole: TStreamConsole;
-    FAppName, FSourceFileName: TCoreString;
+  { hold } FOptions: TRunOptions;
+    FSourceFileName: TCoreString;
     FCommandParams: array[TCommand] of TCoreString;
     FSourceFileCP: Word;
-    FOptions: TRunOptions;
-  public
-    constructor Create(CommandLine: PCoreChar);
-    destructor Destroy;
-    procedure Pause;
-    procedure Run;
+    procedure Parse(CommandLine: PCoreChar);
     procedure Help;
+  public
+    destructor Destroy;
+    procedure Run(CommandLine: PCoreChar);
   end;
 
   ECommandLine = class(Exception);
@@ -50,7 +48,6 @@ type
     property UTF8: Boolean read FUTF8;
   end;
 
-
 implementation
 
 uses
@@ -69,7 +66,7 @@ const
     (sSourceFileNameParam, sIntoFileNameParam, sCodePageParam);
 begin
   if (Param <> nil) and (Param.Count <> 0) then
-    inherited Create(sDuplicate, CP_LOCALIZATION, [Messages[Command], Param.Data])
+    inherited Create(sDuplicate, LocalizationCP, [Messages[Command], Param.Data])
   else
     inherited Create(sMissing, [Messages[Command]]);
   FCommand := Command;
@@ -86,41 +83,43 @@ end;
 
 { TApplication }
 
-constructor TApplication.Create(CommandLine: PWideChar);
+destructor TApplication.Destroy;
+var
+  Cmd: TCommand;
+begin
+  for Cmd := Low(FCommandParams) to High(FCommandParams) do
+    FCommandParams[Cmd].Finalize;
+  FSourceFileName.Finalize;
+  inherited;
+end;
+
+procedure TApplication.Help;
+var
+  ACP, OEMCP: TCodePage;
+begin
+  with Console do
+  begin
+    WriteLn(sUsage, 0, [AppName.Data, AppName.RawData], 2);
+    WriteLn(PLegacyChar(sHelp), StrLen(sHelp), 2);
+    ACP.Create(CP_ACP);
+    OEMCP.Create(CP_OEMCP);
+    WriteLn(sEnvironment, LocalizationCP,
+      [ACP.Number, ACP.Name, OEMCP.Number, OEMCP.Name]);
+  end;
+end;
+
+procedure TApplication.Parse(CommandLine: PCoreChar);
 const
   Commands: array[cmInto..cmInto] of PWideChar = (sInto);
   RunOptions: array[roPause..roPause] of PWideChar = (sPause);
 var
-  ExeName: array[0..MAX_PATH] of CoreChar;
   CmdLine, Key: TWideString;
   Param: TCommandLineParam;
-  ExeNameLength, ParamCount: Integer;
+  ParamCount: Integer;
   Cmd: TCommand;
   Opt: TRunOption;
   W: PWideChar;
 begin
-  with FConsole do
-  begin
-    Create;
-    CodePage := CP_UTF8;
-    WriteLn;
-  end;
-
-  ExeNameLength := GetModuleFileNameW(0, ExeName, Length(ExeName));
-  if ExeNameLength = 0 then
-    RaiseLastPlatformError {$IFDEF Debug} (sModuleFileName, Length(ExeName)) {$ENDIF} ;
-
-  with FAppName do
-  begin
-    Create;
-    AsWideString(ExeName, ExeNameLength, soAttach);
-    Skip(LastIndex(PathDelimiter) + 1);
-    Truncate(Count - LastIndex(WideChar('.')));
-    Detach;
-  end;
-
-  FConsole.WriteLn(PLegacyChar(sLiteConv), StrLen(sLiteConv),  2);
-
   CmdLine.Create;
   CmdLine.AsWideString(CommandLine, WideStrLen(CommandLine), soAttach);
   Param.Create;
@@ -198,65 +197,24 @@ begin
     raise ECommandParam.Create(cmNone);
 end;
 
-destructor TApplication.Destroy;
-var
-  Cmd: TCommand;
-begin
-  for Cmd := Low(FCommandParams) to High(FCommandParams) do
-    FCommandParams[Cmd].Finalize;
-
-  FSourceFileName.Finalize;
-  FAppName.Finalize;
-  FConsole.Destroy;
-
-  if roPause in FOptions then // placed here to show exceptions properly
-    with FConsole do
-    begin
-      Create(True);
-      try
-        ReadLn(sPressEnterToExit, StrLen(sPressEnterToExit));
-      finally
-        Destroy;
-      end;
-    end;
-end;
-
-procedure TApplication.Help;
-var
-  ACP, OEMCP: TCodePage;
-begin
-  with FConsole do
-  begin
-    WriteLn(sUsage, 0, [FAppName.RawData, FAppName.RawData], 2);
-    WriteLn(PLegacyChar(sHelp), StrLen(sHelp), 2);
-    ACP.Create(CP_ACP);
-    OEMCP.Create(CP_OEMCP);
-    WriteLn(sEnvironment, CP_LOCALIZATION,
-      [ACP.Number, ACP.Name, OEMCP.Number, OEMCP.Name]);
-  end;
-end;
-
-procedure TApplication.Pause;
-begin
-  Include(FOptions, roPause);
-end;
-
-procedure TApplication.Run;
+procedure TApplication.Run(CommandLine: PCoreChar);
 var
   CP: TCodePage;
 begin
+  Console.WriteLn(PLegacyChar(sTitle), StrLen(sTitle),  2);
+  Parse(CommandLine);
+
   if FSourceFileName.Count <> 0 then
   begin
     if FSourceFileCP <> 0 then
     begin
       CP.Create(FSourceFileCP);
-      FConsole.WriteLn(sSourceFileCP, 0, [CP.Number, CP.Name]);
+      Console.WriteLn(sSourceFileCP, 0, [CP.Number, CP.Name]);
     end;
-    FConsole.WriteLn(sSourceFileName, 0, [FSourceFileName.Data]);
+    Console.WriteLn(sSourceFileName, 0, [FSourceFileName.Data]);
   end
   else
     Help;
 end;
 
 end.
-

@@ -19,7 +19,7 @@ const       // short Unicode strings
 { Localize }
 
 const
-  sTextest = 'Textest ' + Revision;
+  sTitle = 'Textest ' + Revision;
 
   sUsage =
     'Usage:'#9'%s <source> [commands [options]]';
@@ -31,10 +31,6 @@ const
     'Options'#10 +
             #9'-oem' +    #9#9'Set fallback code page to current OEM code page'#10 +
             #9'-pause' +  #9#9'Wait for ENTER key to exit';
-
-  sPressEnterToExit = 'Press ENTER to exit';
-
-  sModuleFileName = 'module file name, length';
 
   sMissing = 'Missing %s';
   sDuplicate = 'Duplicate %hs: “%s”';

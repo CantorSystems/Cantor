@@ -27,7 +27,7 @@ const         // short Unicode strings
 { Localize }
 
 const
-  sLiteConv = 'LiteConv ' + Revision;
+  sTitle = 'LiteConv ' + Revision;
 
   sUsage  =
     'Usage:'#10 +
@@ -51,10 +51,6 @@ const
     'Current environment'#10 +
             #9'ANSI code page (ACP)'#9'%u (%s)'#10+
             #9'OEM code page (OEMCP)'#9'%u (%s)';
-
-  sPressEnterToExit = 'Press ENTER to exit';
-
-  sModuleFileName = 'module file name, length';
 
   sMissing = 'Missing %s';
   sDuplicate = 'Duplicate %hs: “%s”';
