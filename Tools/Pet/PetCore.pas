@@ -15,8 +15,14 @@ type
 //  TResourceNames = TWideStringArray;
   TSectionNames = TLegacyStrings;
 
+  PFileName = ^TFileName;
+  TFileName = object(TCoreString)
+  public
+    function IsDotOrNull: Boolean;
+  end;
+
   TFileKind = (fkNone, fkSource, fkInto, fkStub, fkExtract, fkBackup{, fkDump});
-  TFileNames = array[fkInto..High(TFileKind)] of TCoreString;
+  TFileNames = array[fkInto..High(TFileKind)] of TFileName;
 
   TRunOption = (roPause, roNoLogo, roAuto, roStrip, roTrunc, roKeep, roSafe, roDeep,
     {roMiniRes, roCleanVer, roMainIcon,} ro3GB);
@@ -30,14 +36,14 @@ type
     FSourceFileName: TCoreString;
     FFileNames: TFileNames;
     FDropSections: TSectionNames;
-    FImageBase: CoreInt;
+//    FImageBase: CoreInt;
     FMajorVersion, FMinorVersion: Word;
   {$IFDEF Kolibri}
     FMenuetKolibri: TMenuetKolibri;
   {$ENDIF}
     procedure Parse(CommandLine: PCoreChar);
   public
-    constructor Create;
+//    constructor Create;
     destructor Destroy;
     procedure Run(CommandLine: PCoreChar);
   end;
@@ -122,13 +128,20 @@ begin
   FDuplicateParam := ParamValue;
 end;
 
+{ TFileName }
+
+function TFileName.IsDotOrNull: Boolean;
+begin
+  Result := (TypeOf(Self) <> nil) and ((Count = 0) or (Count = 1) and (RawData^ = '.'));
+end;
+
 { TApplication }
 
-constructor TApplication.Create;
+{constructor TApplication.Create;
 begin
   inherited;
   FImageBase := -1;
-end;
+end;}
 
 destructor TApplication.Destroy;
 var
@@ -151,6 +164,7 @@ var
   CmdLine, Key: TCoreString;
   Param: TCommandLineParam;
   ParamCount, Dot: Integer;
+  FileName: PFileName;
   W: PCoreChar;
   K: TFileKind;
   R: TRunOption;
@@ -190,7 +204,7 @@ begin
           if Key.Compare(W + 1, PWord(W)^, True) = 0 then
           begin
             CmdLine := Param.AsNextParam(@CmdLine);
-            if Param.Count = 0 then
+            if (Param.Count = 0) and not (K in [fkInto, fkStub]) then
               raise ECommandLine.Create(K);
             with FFileNames[K] do
             begin
@@ -263,15 +277,29 @@ begin
     begin
       if FSourceFileName.Count <> 0 then
         raise ECommandLine.Create(fkSource, @Param);
-      FSourceFileName.Create;
-      FSourceFileName.AsRange(@Param, 0);
+      with FSourceFileName do
+      begin
+        Create;
+        AsRange(@Param, 0);
+      end;
     end;
   until False;
 
   if ParamCount = 0 then
     Include(FOptions, roPause)
-  else if FSourceFileName.Count = 0 then
-    raise ECommandLine.Create(fkSource);
+  else
+  begin
+    if FSourceFileName.Count = 0 then
+      raise ECommandLine.Create(fkSource);
+
+    FileName := @FFileNames[fkInto];
+    if FileName.IsDotOrNull then
+      FileName.AsRange(@FSourceFileName, 0);
+
+    FileName := @FFileNames[fkStub];
+    if FileName.IsDotOrNull then
+      FileName.AsRange(@ExeName, 0);
+  end;
 end;
 
 procedure TApplication.Run;
