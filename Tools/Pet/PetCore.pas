@@ -15,8 +15,8 @@ type
 //  TResourceNames = TWideStringArray;
   TSectionNames = TLegacyStrings;
 
-  TFileKind = (fkInto, fkStub, fkExtract, fkBackup{, fkDump});
-  TFileNames = array[TFileKind] of TWideString;
+  TFileKind = (fkNone, fkSource, fkInto, fkStub, fkExtract, fkBackup{, fkDump});
+  TFileNames = array[fkInto..fkBackup] of TCoreString;
 
   TRunOption = (roPause, roNoLogo, roAuto, roStrip, roTrunc, roKeep, roSafe, roDeep,
     {roMiniRes, roCleanVer, roMainIcon,} ro3GB);
@@ -35,39 +35,31 @@ type
   {$IFDEF Kolibri}
     FMenuetKolibri: TMenuetKolibri;
   {$ENDIF}
-    procedure Parse(CommandLine: PWideChar);
+    procedure Parse(CommandLine: PCoreChar);
   public
     constructor Create;
     destructor Destroy;
-    procedure Run(CommandLine: PWideChar);
+    procedure Run(CommandLine: PCoreChar);
   end;
 
 { Exceptions }
 
-  ECommandLine = class(Exception);
+  TCmdLineFileKind = fkSource..High(TFileKind);
 
-  EFileName = class(ECommandLine)
+  ECommandLine = class(Exception)
   private
+    FDuplicateParam: PCoreString;
     FFileKind: TFileKind;
   public
-    constructor Create(MissingFileName: TFileKind);
+    constructor Create(MissingKind: TCmdLineFileKind); overload;
+    constructor Create(MissingParam: PLegacyChar); overload;
+
+    constructor Create(DuplicateKind: TCmdLineFileKind; FileName: PCoreString); overload;
+    constructor Create(DuplicateParam: PLegacyChar; ParamValue: PCoreString); overload;
+
+    property DuplicateParam: PCoreString read FDuplicateParam;
     property FileKind: TFileKind read FFileKind;
   end;
-
-  EMissingParam = class(ECommandLine)
-  public
-    constructor Create(MissingParam: PLegacyChar);
-  end;
-
-{  ECommandParam = class(ECommandLine)
-  private
-    FCommand: TCommand;
-    FParameter: PCoreString;
-  public
-    constructor Create(Command: TCommand; Param: PCoreString = nil);
-    property Command: TCommand read FCommand;
-    property Parameter: PCoreString read FParameter;
-  end;}
 
   ECore = class(Exception);
 
@@ -77,20 +69,57 @@ uses
   ExeImages, CoreConsts, PetConsts;
 
 const
-  FileKeys: array[TFileKind] of PWideChar = (sInto, sStub, sExtract, sBackup{, sDump});
+  FileKeys: array[fkInto..fkBackup] of PCoreChar = (sInto, sStub, sExtract, sBackup{, sDump});
 
 { EFileKey }
 
-constructor EFileName.Create(MissingFileName: TFileKind);
+//  inherited Create(sMissingFileName, LocalizationCP, [FileKeys[MissingFileName]]);
+//
+
+{ ECommandLine }
+
+type
+  TFileKindBuf = array[0..Length(sFileName) + 10] of LegacyChar;
+
+function FormatFileKind(FileKind: TCmdLineFileKind): TFileKindBuf;
+var
+  KindName: PCoreChar;
 begin
-  inherited Create(sMissingFileName, LocalizationCP, [FileKeys[MissingFileName]]);
+  if FileKind = fkSource then
+    KindName := sSource
+  else
+    KindName := FileKeys[FileKind] + 1;
+  FormatBuf(sFileName, [KindName], Result);
 end;
 
-{ EMissingParam }
-
-constructor EMissingParam.Create(MissingParam: PLegacyChar);
+constructor ECommandLine.Create(MissingKind: TCmdLineFileKind);
+var
+  Kind: TFileKindBuf;
 begin
-  inherited Create(sMissingFileName, LocalizationCP, [MissingParam]);
+  Kind := FormatFileKind(MissingKind);
+  inherited Create(sMissingParam, [Kind]);
+  FFileKind := MissingKind;
+end;
+
+constructor ECommandLine.Create(MissingParam: PLegacyChar);
+begin
+  inherited Create(sMissingParam, [MissingParam]);
+end;
+
+constructor ECommandLine.Create(DuplicateKind: TCmdLineFileKind; FileName: PCoreString);
+var
+  Kind: TFileKindBuf;
+begin
+  Kind := FormatFileKind(DuplicateKind);
+  inherited Create(sDuplicateParam, LocalizationCP, [Kind, FileName.Data]);
+  FFileKind := DuplicateKind;
+  FDuplicateParam := FileName;
+end;
+
+constructor ECommandLine.Create(DuplicateParam: PLegacyChar; ParamValue: PCoreString);
+begin
+  inherited Create(sDuplicateParam, LocalizationCP, [DuplicateParam, ParamValue.Data]);
+  FDuplicateParam := ParamValue;
 end;
 
 { TApplication }
@@ -112,17 +141,17 @@ begin
   inherited;
 end;
 
-procedure TApplication.Parse(CommandLine: PWideChar);
+procedure TApplication.Parse(CommandLine: PCoreChar);
 const
-  OptionKeys: array[TRunOption] of PWideChar =
+  OptionKeys: array[TRunOption] of PCoreChar =
     (sPause, sNoLogo, sAuto, sStrip, sTrunc, sKeep, sSafe, sDeep,
      {sMiniRes, sCleanVer, sMainIcon,} s3GB);
   HexBase: array[Boolean] of LegacyChar = 'A0';
 var
-  CmdLine, Key: TWideString;
+  CmdLine, Key: TCoreString;
   Param: TCommandLineParam;
   ParamCount, Dot: Integer;
-  W: PWideChar;
+  W: PCoreChar;
   K: TFileKind;
   R: TRunOption;
   Value: Word;
@@ -162,9 +191,11 @@ begin
           begin
             CmdLine := Param.AsNextParam(@CmdLine);
             if Param.Count = 0 then
-              raise EFileName.Create(K);
+              raise ECommandLine.Create(K);
             with FFileNames[K] do
             begin
+              if Count <> 0 then
+                raise ECommandLine.Create(K, @Param);
               Create;
               AsRange(@Param, 0);
               Detach;
@@ -181,7 +212,9 @@ begin
         begin
           CmdLine := Param.AsNextParam(@CmdLine);
           if Param.Count = 0 then
-            raise EMissingParam.Create(sOSVersion);
+            raise ECommandLine.Create(sOSVersion);
+          if FMajorVersion <> 0 then
+            raise ECommandLine.Create(sOSVersion, @Param);
           with Param do
           begin
             Dot := NextIndex('.');
@@ -205,7 +238,7 @@ begin
           begin
             CmdLine := Param.AsNextParam(@CmdLine);
             if Param.Count = 0 then
-              raise EMissingParam.Create(sSectionNames);
+              raise ECommandLine.Create(sSectionNames);
             with Param do
             begin
               {Dot := NextIndex('.');
@@ -228,18 +261,17 @@ begin
 
     if Param.Count <> 0 then
     begin
-      {if FSourceFileName.Count <> 0 then
-        raise ECommandParam.Create(cmNone, @Param);
+      if FSourceFileName.Count <> 0 then
+        raise ECommandLine.Create(fkSource, @Param);
       FSourceFileName.Create;
-      FSourceFileName.AsRange(@Param, 0);}
+      FSourceFileName.AsRange(@Param, 0);
     end;
   until False;
 
   if ParamCount = 0 then
     Include(FOptions, roPause)
   else if FSourceFileName.Count = 0 then
-//    raise ECommandParam.Create(cmNone);
-
+    raise ECommandLine.Create(fkSource);
 end;
 
 procedure TApplication.Run;

@@ -95,8 +95,10 @@ const
             #9'-nologo'#9#9#9'Don''t display PET logo'#10 +
             #9'-pause'#9#9#9'Wait for ENTER key to exit';
 
-  sMissingFileName = 'Missing file name for “%s” key';
   sMissingParam = 'Missing %s';
+  sDuplicateParam = 'Duplicate %hs: %s';
+  sFileName = '%ws file name'; // CoreChar
+  sSource = 'source';
   sOSVersion = 'OS version number';
   sSectionNames = 'section names';
   sResourceNames = 'resource names';
