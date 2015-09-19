@@ -11,7 +11,7 @@ unit CoreConsts;
 interface
 
 var
-  LocalizationCP: Word = 1252; // we're using “”, but only in exception messages
+  LocalizationCP: Word = 1252; // we're using ï¿½ï¿½, but only in exception messages
 
 const
   sDivByZero          = 'Division by zero';
@@ -37,7 +37,7 @@ const
   sWriteAccess        = 'write';
 
   sAccessViolation = 'Access violation at address %p:%hc%s of address %p';
-  sModuleAccessViolation = 'Access violation at address %p in module “%s”:%hc%hs of address %p';
+  sModuleAccessViolation = 'Access violation at address %p in module ï¿½%sï¿½:%hc%hs of address %p';
 
   sAbstractInstance = '%s instance abstract method call';
   sAbstractClass    = '%s abstract class method call';
@@ -52,7 +52,7 @@ const
 
   sMMX = 'This program requires MMX';
 
-  sPlatformError  = '%s: “%s”';
+  sPlatformError  = '%s: ï¿½%sï¿½';
   sPlatformError2 = '%s: %hs %d';
 
   sStreamRead = 'read';
@@ -96,14 +96,14 @@ const
 
   sInteger = 'integer';
   sHexadecimal = 'hexadecimal';
-  sInvalidInteger = '“%s” is not a valid %hs value';
+  sInvalidInteger = 'ï¿½%sï¿½ is not a valid %hs value';
   sNullInteger = 'Null string is not a valid %s value';
 
   sNotNativeUTF16BE = 'UTF-16 Big-Endian is not native for Windows API';
   sUTF32notSupported = 'UTF-32 not supported';
 
-  sSystemCPtoUTF16 = 'System error “%s” while converting code page %u (%s) to UTF-16';
-  sSystemUTF16toCP = 'System error “%s” while converting UTF-16 to code page %u (%s)';
+  sSystemCPtoUTF16 = 'System error ï¿½%sï¿½ while converting code page %u (%s) to UTF-16';
+  sSystemUTF16toCP = 'System error ï¿½%sï¿½ while converting UTF-16 to code page %u (%s)';
   sUnicodeToCP = 'Cannot convert %hs string to code page %u (%s)';
   sCPtoCP = 'Cannot convert string between code page %u (%s) and code page %u (%s)';
 
