@@ -131,6 +131,8 @@ const
   sUnknownExeImage = 'Unknown image signature: %c%c';
   sBadExeImage = 'Bad image: %s';
 
+  sAvoidCharCorruption = 'This program uses UTF-8 console. To avoid on-screen Unicode characters'#10 +
+    'corruption, please set a TrueType/OpenType font for console window.';
   sPressEnterToExit = 'Press ENTER to exit';
   sModuleFileName = 'module file name, length';
 

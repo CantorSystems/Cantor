@@ -101,7 +101,8 @@ begin
   with FConsole do
   begin
     WriteLn(UsageFmt, 0, [FAppName.Data], 2);
-    WriteLn(PLegacyChar(HelpMsg), StrLen(HelpMsg));
+    WriteLn(HelpMsg, StrLen(HelpMsg), 2);
+    WriteLn(PLegacyChar(sAvoidCharCorruption), StrLen(sAvoidCharCorruption));
   end;
 end;
 
