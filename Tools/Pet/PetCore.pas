@@ -18,6 +18,7 @@ type
   PFileName = ^TFileName;
   TFileName = object(TCoreString)
   public
+    procedure AsTempName(Source: PCoreString);
     function IsDotOrNull: Boolean;
   end;
 
@@ -42,6 +43,7 @@ type
     FMenuetKolibri: TMenuetKolibri;
   {$ENDIF}
     procedure Parse(CommandLine: PCoreChar);
+    procedure ProcessFile(FileName: PCoreString);
   public
 //    constructor Create;
     destructor Destroy;
@@ -130,6 +132,20 @@ end;
 
 { TFileName }
 
+procedure TFileName.AsTempName(Source: PCoreString);
+type
+  PPostfix = ^TPostfix;
+  TPostfix = array[0..3] of CoreChar;
+const
+  Postfix: TPostfix = ('.', '$', '$', '$');
+begin
+  AsRange(Source, 0);
+  Capacity := Count + Length(Postfix);
+  PPostfix(RawData + Count)^ := Postfix;
+  Append(Length(Postfix));
+  RawData[Count] := #0;
+end;
+
 function TFileName.IsDotOrNull: Boolean;
 begin
   Result := (TypeOf(Self) <> nil) and ((Count = 0) or (Count = 1) and (RawData^ = '.'));
@@ -168,7 +184,6 @@ var
   W: PCoreChar;
   K: TFileKind;
   R: TRunOption;
-  Value: Word;
 begin
   CmdLine.Create;
   CmdLine.AsWideString(CommandLine, WideStrLen(CommandLine), soAttach);
@@ -302,9 +317,9 @@ begin
   end;
 end;
 
-procedure TApplication.Run;
+procedure TApplication.ProcessFile(FileName: PCoreString);
 
-var
+{var
   Buf: string[6];
 
 function Percentage(Ratio: Double): PLegacyChar;
@@ -325,22 +340,6 @@ begin
   Console.WriteLn(@Format[1], FileNameWidth, Args);
 end;
 
-function TempFileName(Source: PCoreChar): PCoreChar;
-type
-  PDotDollarDollarDollar = ^TDotDollarDollarDollar;
-  TDotDollarDollarDollar = array[0..3] of CoreChar;
-const
-  DotDollarDollarDollar: TDotDollarDollarDollar = ('.', '$', '$', '$');
-var
-  L: Integer;
-begin
-  L := WideStrLen(Source);
-  GetMem(Result, (L + Length(DotDollarDollarDollar) + 1) * SizeOf(CoreChar));
-  Move(Source^, Result^, L * SizeOf(CoreChar));
-  PDotDollarDollarDollar(Result + L)^ := DotDollarDollarDollar;
-  Result[L + Length(DotDollarDollarDollar)] := CoreChar(0);
-end;
-
 const
   Deep: array[Boolean] of TStripOptions = ([], [soOrphanedSections]);
 var
@@ -349,190 +348,135 @@ var
   Image: TExeImage;
   FileInfo: TWin32FindDataW;
   hInfo: THandle;
-  TmpFileName: PCoreChar;
+  TmpFileName: PCoreChar;}
+
+begin
+{  Image := TExeImage.Create;
+  try
+    hInfo := FindFirstFileW(FSourceFileName, FileInfo);
+    if hInfo = INVALID_HANDLE_VALUE then
+      RaiseLastPlatformError(FSourceFileName);
+    FindClose(hInfo);
+    OldSize := FileInfo.nFileSizeLow;
+    Processing([sLoadingSource, FSourceFileName, OldSize]);
+
+    with Image do
+    begin
+      Load(FSourceFileName);
+      NewSize := Size(False);
+      Processing([sImageData, Percentage(NewSize / OldSize), NewSize], False);
+    end;
+
+    if FFileNames[fkExtract] <> nil then
+    begin
+      with TExeStub.Create do
+      try
+        Load(Image.Stub);
+        Strip(roStrip in FOptions);
+        Processing([sExtractingStub, FFileNames[fkExtract], Size]);
+        Save(FFileNames[fkExtract]);
+      finally
+        Free;
+      end;
+    end;
+
+    if FFileNames[fkStub] <> nil then
+      with Image.Stub do
+      begin
+        Load(FFileNames[fkStub]);
+        Processing([sInsertingStub, FFileNames[fkStub], Size]);
+      end;
+
+    if roStrip in FOptions then
+      with Image do
+      begin
+        Strip([soStub..soEmptySections] + Deep[roDeep in FOptions]);
+        NewSize := OldSize - Size;
+        Processing([sStripping, Percentage(NewSize / OldSize), NewSize], False);
+      end
+    else
+      with Image.Stub do
+      begin
+        RawSize := Size;
+        Strip(False);
+        FixedSize := Size;
+        Processing([sFixingStub, Percentage(FixedSize / RawSize), FixedSize], False);
+      end;
+
+    if FDropSections <> nil then
+      for I := 0 to FDropSections.Count - 1 do
+      begin
+        with FDropSections.Items[I] do
+          Idx := Image.IndexOfSection(Value, Length);
+        if Idx >= 0 then
+        begin
+          with Image.Sections[Idx].Header do
+            Processing([sDroppingSection, Name, RawDataSize], False);
+          Image.Extract(Idx).Free;
+        end;
+      end;
+
+    if FFileNames[fkInto] <> nil then
+    begin
+      if FFileNames[fkBackup] <> nil then
+      begin
+        FConsole.WriteLn(sBackuping, 0, [FFileNames[fkBackup]]);
+        if not MoveFileExW(FSourceFileName, FFileNames[fkBackup],
+          MOVEFILE_COPY_ALLOWED or MOVEFILE_WRITE_THROUGH)
+        then
+          RaiseLastPlatformError(FFileNames[fkBackup]);
+      end;
+
+      with Image do
+      begin
+        if FMajorVersion <> 0 then
+          with Image.Headers.OptionalHeader do
+          begin
+            MajorOSVersion := FMajorVersion;
+            MinorOSVersion := FMinorVersion;
+            MajorSubsystemVersion := FMajorVersion;
+            MinorSubsystemVersion := FMinorVersion;
+          end;
+        if ro3GB in FOptions then
+          with Image.Headers.FileHeader do
+            Characteristics := Characteristics or IMAGE_FILE_LARGE_ADDRESS_AWARE;
+        Build(Byte(roStrip in FOptions) * 512);
+        NewSize := Size(roTrunc in FOptions);
+      end;
+
+      Processing([sSavingInto, FFileNames[fkInto], NewSize]);
+      if FFileNames[fkBackup] <> nil then
+        Image.Save(FFileNames[fkInto], roTrunc in FOptions)
+      else
+      begin
+        TmpFileName := TempFileName(FFileNames[fkInto]);
+        try
+          Image.Save(TmpFileName, roTrunc in FOptions);
+          if not MoveFileExW(TmpFileName, FFileNames[fkInto],
+            MOVEFILE_COPY_ALLOWED or MOVEFILE_WRITE_THROUGH or MOVEFILE_REPLACE_EXISTING)
+          then
+            RaiseLastPlatformError(FFileNames[fkInto]);
+        finally
+          FreeMem(TmpFileName);
+        end;
+      end;
+
+      FConsole.WriteLn;
+      Processing([sTotal, Percentage(NewSize / OldSize), OldSize - NewSize], False);
+    end;
+  finally
+    Image.Free;
+  end;
+}
+end;
+
+procedure TApplication.Run;
 begin
   inherited Run(sLogo);
   Parse(CommandLine);
 
   if FSourceFileName.Count <> 0 then
-  begin
-(*    Image := TExeImage.Create(IMAGE_NUMBEROF_DIRECTORY_ENTRIES, 0, True);
-    try
-      hInfo := FindFirstFileW(FSourceFileName, FileInfo);
-      if hInfo = INVALID_HANDLE_VALUE then
-        RaiseLastPlatformError(FSourceFileName);
-      FindClose(hInfo);
-      OldSize := FileInfo.nFileSizeLow;
-      Processing([sLoadingSource, FSourceFileName, OldSize]);
-
-      with Image do
-      begin
-        Load(FSourceFileName);
-        NewSize := Size(False);
-        Processing([sImageData, Percentage(NewSize / OldSize), NewSize], False);
-      end;
-
-      if FFileNames[fkExtract] <> nil then
-      begin
-        with TExeStub.Create do
-        try
-          Load(Image.Stub);
-          Strip(roStrip in FOptions);
-          Processing([sExtractingStub, FFileNames[fkExtract], Size]);
-          Save(FFileNames[fkExtract]);
-        finally
-          Free;
-        end;
-      end;
-
-      if FFileNames[fkStub] <> nil then
-        with Image.Stub do
-        begin
-          Load(FFileNames[fkStub]);
-          Processing([sInsertingStub, FFileNames[fkStub], Size]);
-        end;
-
-      if roStrip in FOptions then
-        with Image do
-        begin
-          Strip([soStub..soEmptySections] + Deep[roDeep in FOptions]);
-          NewSize := OldSize - Size;
-          Processing([sStripping, Percentage(NewSize / OldSize), NewSize], False);
-        end
-      else
-        with Image.Stub do
-        begin
-          RawSize := Size;
-          Strip(False);
-          FixedSize := Size;
-          Processing([sFixingStub, Percentage(FixedSize / RawSize), FixedSize], False);
-        end;
-
-      if FDropSections <> nil then
-        for I := 0 to FDropSections.Count - 1 do
-        begin
-          with FDropSections.Items[I] do
-            Idx := Image.IndexOfSection(Value, Length);
-          if Idx >= 0 then
-          begin
-            with Image.Sections[Idx].Header do
-              Processing([sDroppingSection, Name, RawDataSize], False);
-            Image.Extract(Idx).Free;
-          end;
-        end;
-
-      {if (FDropResources <> nil) or (FLocaleMap <> nil) or
-        (FOptions * [roMiniRes, roCleanVer, roMainIcon] <> []) then
-      begin
-        Idx := Image.IndexOfSection(IMAGE_DIRECTORY_ENTRY_RESOURCE);
-        if Idx >= 0 then
-        begin
-          Image.Sections[Idx].Handler := TExeResources.Create(True);
-
-          if FDropResources <> nil then
-            for I := 0 to FDropResources.Count - 1 do
-            begin
-            end;
-
-          if roCleanVer in FOptions then
-          begin
-          end;
-
-          if roMainIcon in FOptions then
-          begin
-          end;
-
-          if FLocaleMap <> nil then
-            for I := 0 to FLocaleMap.Count - 1 do
-            begin
-            end;
-        end;
-      end;}
-
-      if FFileNames[fkInto] <> nil then
-      begin
-        if FFileNames[fkBackup] <> nil then
-        begin
-          FConsole.WriteLn(sBackuping, 0, [FFileNames[fkBackup]]);
-          if not MoveFileExW(FSourceFileName, FFileNames[fkBackup],
-            MOVEFILE_COPY_ALLOWED or MOVEFILE_WRITE_THROUGH)
-          then
-            RaiseLastPlatformError(FFileNames[fkBackup]);
-        end;
-
-      {$IFDEF Kolibri}
-        case FMenuetKolibri of
-          mkKolibri:
-            with TKolibriImage.Create do
-            try
-              Load(Image);
-              Build(Byte(roStrip in FOptions) * 8);
-              NewSize := Size;
-              Processing([sSavingInto, FFileNames[fkInto], NewSize]);
-              if FFileNames[fkBackup] <> nil then
-                Save(FFileNames[fkInto], roTrunc in FOptions)
-              else
-              begin
-                TmpFileName := TempFileName(FFileNames[fkInto]);
-                try
-                  Save(TmpFileName, roTrunc in FOptions);
-                  if not MoveFileExW(TmpFileName, FFileNames[fkInto],
-                    MOVEFILE_COPY_ALLOWED or MOVEFILE_WRITE_THROUGH or MOVEFILE_REPLACE_EXISTING)
-                  then
-                    RaiseLastPlatformError(FFileNames[fkInto]);
-                finally
-                  FreeMem(TmpFileName);
-                end;
-              end;
-            finally
-              Free;
-            end;
-        else
-      {$ENDIF}
-          with Image do
-          begin
-            if FMajorVersion <> 0 then
-              with Image.Headers.OptionalHeader do
-              begin
-                MajorOSVersion := FMajorVersion;
-                MinorOSVersion := FMinorVersion;
-                MajorSubsystemVersion := FMajorVersion;
-                MinorSubsystemVersion := FMinorVersion;
-              end;
-            if ro3GB in FOptions then
-              with Image.Headers.FileHeader do
-                Characteristics := Characteristics or IMAGE_FILE_LARGE_ADDRESS_AWARE;
-            Build(Byte(roStrip in FOptions) * 512);
-            NewSize := Size(roTrunc in FOptions);
-          end;
-
-          Processing([sSavingInto, FFileNames[fkInto], NewSize]);
-          if FFileNames[fkBackup] <> nil then
-            Image.Save(FFileNames[fkInto], roTrunc in FOptions)
-          else
-          begin
-            TmpFileName := TempFileName(FFileNames[fkInto]);
-            try
-              Image.Save(TmpFileName, roTrunc in FOptions);
-              if not MoveFileExW(TmpFileName, FFileNames[fkInto],
-                MOVEFILE_COPY_ALLOWED or MOVEFILE_WRITE_THROUGH or MOVEFILE_REPLACE_EXISTING)
-              then
-                RaiseLastPlatformError(FFileNames[fkInto]);
-            finally
-              FreeMem(TmpFileName);
-            end;
-          end;
-      {$IFDEF Kolibri}
-        end;
-      {$ENDIF}
-
-        FConsole.WriteLn;
-        Processing([sTotal, Percentage(NewSize / OldSize), OldSize - NewSize], False);
-      end;
-    finally
-      Image.Free;
-    end; *)
-  end
+    ProcessFile(@FSourceFileName)
   else
     Help(sUsage, sHelp);
 end;
