@@ -16,7 +16,7 @@ type
   TSectionNames = TLegacyStrings;
 
   TFileKind = (fkNone, fkSource, fkInto, fkStub, fkExtract, fkBackup{, fkDump});
-  TFileNames = array[fkInto..fkBackup] of TCoreString;
+  TFileNames = array[fkInto..High(TFileKind)] of TCoreString;
 
   TRunOption = (roPause, roNoLogo, roAuto, roStrip, roTrunc, roKeep, roSafe, roDeep,
     {roMiniRes, roCleanVer, roMainIcon,} ro3GB);
@@ -69,7 +69,7 @@ uses
   ExeImages, CoreConsts, PetConsts;
 
 const
-  FileKeys: array[fkInto..fkBackup] of PCoreChar = (sInto, sStub, sExtract, sBackup{, sDump});
+  FileKeys: array[fkInto..High(TFileKind)] of PCoreChar = (sInto, sStub, sExtract, sBackup{, sDump});
 
 { EFileKey }
 
