@@ -201,7 +201,7 @@ type
       LowerCase: Boolean = False; FillChar: LegacyChar = #32): Integer;
     function AssignInteger(Index: Integer; Value: QuadInt; MinWidth: Integer = 0;
       FillChar: LegacyChar = #32): Integer;
-    function AssignReal(Index: Integer; Value: Extended; MinWidth, Precision: Integer;
+    function AssignFloat(Index: Integer; Value: Extended; MinWidth, Precision: Integer;
       FillChar: LegacyChar = #32): Integer;
     function AssignString(Index: Integer; Source: PLegacyString;
       EncodeOptions: TEncodeRawBytes = []): TConvertResult;
@@ -223,7 +223,9 @@ type
       LowerCase: Boolean = False; FillChar: LegacyChar = #32); overload;
     procedure AsInteger(Value: QuadInt; MinWidth: Integer = 0;
       FillChar: LegacyChar = #32); overload;
-    procedure AsReal(Value: Extended; MinWidth, Precision: Integer;
+    procedure AsFloat(Value: Extended; MinWidth, Precision: Integer;
+      FillChar: LegacyChar = #32);
+    procedure AsPercentage(Ratio: Double; Precision: Integer = 1;
       FillChar: LegacyChar = #32);
 
     function AsNextLine(Source: PLegacyString): Integer;
@@ -299,7 +301,7 @@ type
       LowerCase: Boolean = False; FillChar: WideChar = #32): Integer;
     function AssignInteger(Index: Integer; Value: QuadInt; MinWidth: Integer = 0;
       FillChar: WideChar = #32): Integer;
-    function AssignReal(Index: Integer; Value: Extended; MinWidth, Precision: Integer;
+    function AssignFloat(Index: Integer; Value: Extended; MinWidth, Precision: Integer;
       FillChar: WideChar = #32): Integer;
     function AssignString(Index: Integer; Source: PLegacyString;
       EncodeOptions: TEncodeUTF16 = coUTF16): TConvertResult;
@@ -319,7 +321,9 @@ type
       LowerCase: Boolean = False; FillChar: WideChar = #32); overload;
     procedure AsInteger(Value: QuadInt; MinWidth: Integer = 0;
       FillChar: WideChar = #32); overload;
-    procedure AsReal(Value: Extended; MinWidth, Precision: Integer;
+    procedure AsFloat(Value: Extended; MinWidth, Precision: Integer;
+      FillChar: WideChar = #32);
+    procedure AsPercentage(Ratio: Double; Precision: Integer = 1;
       FillChar: WideChar = #32);
 
     function AsNextLine(Source: PWideString): Integer;
@@ -1179,7 +1183,7 @@ begin
   FData[Length] := #0;
 end;
 
-procedure TLegacyString.AsReal(Value: Extended; MinWidth, Precision: Integer;
+procedure TLegacyString.AsFloat(Value: Extended; MinWidth, Precision: Integer;
   FillChar: LegacyChar);
 var
   Length: Integer;
@@ -1192,9 +1196,22 @@ begin
   Inc(Length);
   if Attached or (Capacity < Length) then
     Capacity := Length;
-  Length := AssignReal(0, Value, MinWidth, Precision, FillChar);
+  Length := AssignFloat(0, Value, MinWidth, Precision, FillChar);
   Append(Length);
   FData[Length] := #0;
+end;
+
+procedure TLegacyString.AsPercentage(Ratio: Double; Precision: Integer;
+  FillChar: LegacyChar);
+var
+  Length: Integer;
+begin    // 100.1%
+  Length := 3 + 1 + Precision + 1;
+  if Attached or (Capacity < Length) then
+    Capacity := Length;
+  AsFloat(Ratio * 100, 2, Precision, FillChar);
+  Append(1);
+  PWord(@FData)^ := Byte('%'); // Fast core
 end;
 
 function TLegacyString.AsNextLine(Source: PLegacyString): Integer;
@@ -1310,7 +1327,7 @@ begin
     Result := AssignDigits(Index, Digits, PLegacyChar(@Data) + Length(Data) - Digits, MinWidth, FillChar);
 end;
 
-function TLegacyString.AssignReal(Index: Integer; Value: Extended;
+function TLegacyString.AssignFloat(Index: Integer; Value: Extended;
   MinWidth, Precision: Integer; FillChar: LegacyChar): Integer;
 var
   Digits: string[DecimalExtended];
@@ -2054,7 +2071,7 @@ begin
   FData[Length] := #0;
 end;
 
-procedure TWideString.AsReal(Value: Extended; MinWidth, Precision: Integer;
+procedure TWideString.AsFloat(Value: Extended; MinWidth, Precision: Integer;
   FillChar: WideChar);
 var
   Length: Integer;
@@ -2067,9 +2084,22 @@ begin
   Inc(Length);
   if Attached or (Capacity < Length) then
     Capacity := Length;
-  Length := AssignReal(0, Value, MinWidth, Precision, FillChar);
+  Length := AssignFloat(0, Value, MinWidth, Precision, FillChar);
   Append(Length);
   FData[Length] := #0;
+end;
+
+procedure TWideString.AsPercentage(Ratio: Double; Precision: Integer;
+  FillChar: WideChar);
+var
+  Length: Integer;
+begin    // 100.1%
+  Length := 3 + 1 + Precision + 1;
+  if Attached or (Capacity < Length) then
+    Capacity := Length;
+  AsFloat(Ratio * 100, 2, Precision, FillChar);
+  Append(1);
+  PLongWord(@FData)^ := Byte('%'); // Fast core
 end;
 
 function TWideString.AsNextLine(Source: PWideString): Integer;
@@ -2184,7 +2214,7 @@ begin
     Result := AssignDigits(Index, Digits, PLegacyChar(@Data) + Length(Data) - Digits, MinWidth, FillChar);
 end;
 
-function TWideString.AssignReal(Index: Integer; Value: Extended;
+function TWideString.AssignFloat(Index: Integer; Value: Extended;
   MinWidth, Precision: Integer; FillChar: WideChar): Integer;
 var
   Digits: string[DecimalExtended];
