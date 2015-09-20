@@ -3248,8 +3248,8 @@ begin
 end;
 
 procedure TWideStrings.Save(Dest: PWritableStream; Delimiter: PWideString; WriteBOM: Boolean);
-var
-  DelimiterBytes, I: Integer;
+{var
+  DelimiterBytes, I: Integer;}
 begin
 {  DelimiterBytes := WideStrLen(Delimiter) * SizeOf(WideChar);
   for I := 0 to Count - 1 do
