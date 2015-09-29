@@ -63,7 +63,7 @@ const
     (sSourceFileNameParam, sIntoFileNameParam, sFallbackCodePageParam);
 begin
   if (Param <> nil) and (Param.Count <> 0) then
-    inherited Create(sDuplicate, LocalizationCP, [Messages[Command], Param.Data])
+    inherited Create(sDuplicate, DefaultSystemCodePage, [Messages[Command], Param.Data])
   else
     inherited Create(sMissing, [Messages[Command]]);
   FCommand := Command;
