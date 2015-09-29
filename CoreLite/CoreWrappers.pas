@@ -300,14 +300,17 @@ type
 { Helper functions }
 
 type
-  TReadableStreamEvent = procedure(Stream: PReadableStream) of object;
-  TWritableStreamEvent = procedure(Stream: PWritableStream) of object;
+  TReadableDataLoader = procedure(Stream: PReadableStream) of object;
+  TWritableDataSaver = procedure(Stream: PWritableStream) of object;
 
-procedure LoadFile(Loader: TReadableStreamEvent; FileName: PCoreChar;
-  Access: TFileAccess = faSequentialRead; BeforeLoad: TReadableStreamEvent = nil;
-  AfterLoad: TReadableStreamEvent = nil);
-procedure SaveFile(Saver: TWritableStreamEvent; FileName: PCoreChar;
-  FileSize: QuadWord; Access: TFileAccess = faSequentialRewrite;
+  TReadableStreamEvent = procedure(Stream: PReadableStream; CustomData: Pointer) of object;
+  TWritableStreamEvent = procedure(Stream: PWritableStream; CustomData: Pointer) of object;
+
+procedure LoadFile(Loader: TReadableDataLoader; FileName: PCoreChar;
+  Access: TFileAccess = faSequentialRead; CustomData: Pointer = nil;
+  BeforeLoad: TReadableStreamEvent = nil; AfterLoad: TReadableStreamEvent = nil);
+procedure SaveFile(Saver: TWritableDataSaver; FileName: PCoreChar; FileSize: QuadWord;
+  Access: TFileAccess = faSequentialRewrite; CustomData: Pointer = nil;
   BeforeSave: TWritableStreamEvent = nil; AfterSave: TWritableStreamEvent = nil);
 
 { Import Windows functions for Delphi 6/7 }
@@ -329,37 +332,39 @@ function SetFilePointerEx(hFile: THandle; liDistanceToMove: QuadWord;
 
 { Helper functions }
 
-procedure LoadFile(Loader: TReadableStreamEvent; FileName: PCoreChar;
-  Access: TFileAccess; BeforeLoad, AfterLoad: TReadableStreamEvent);
+procedure LoadFile(Loader: TReadableDataLoader; FileName: PCoreChar; Access: TFileAccess;
+  CustomData: Pointer; BeforeLoad, AfterLoad: TReadableStreamEvent);
 var
   F: TFileStream;
 begin
   F.Create(FileName, Access);
   try
     if Assigned(BeforeLoad) then
-      BeforeLoad(@F);
-    Loader(@F);
+      BeforeLoad(@F, CustomData);
+    if Assigned(Loader) then
+      Loader(@F);
     if Assigned(AfterLoad) then
-      AfterLoad(@F);
+      AfterLoad(@F, CustomData);
   finally
     F.Destroy;
   end;
 end;
 
-procedure SaveFile(Saver: TWritableStreamEvent; FileName: PCoreChar; FileSize: QuadWord;
-  Access: TFileAccess; BeforeSave, AfterSave: TWritableStreamEvent);
+procedure SaveFile(Saver: TWritableDataSaver; FileName: PCoreChar; FileSize: QuadWord;
+  Access: TFileAccess; CustomData: Pointer; BeforeSave, AfterSave: TWritableStreamEvent);
 var
   F: TFileStream;
 begin
   F.Create(FileName, Access);
   try
-    if Assigned(BeforeSave) then
-      BeforeSave(@F);
     F.SetSize(FileSize);
-    Saver(@F);
-    F.SetSize(F.Position);
+    if Assigned(BeforeSave) then
+      BeforeSave(@F, CustomData);
+    if Assigned(Saver) then
+      Saver(@F);
     if Assigned(AfterSave) then
-      AfterSave(@F);
+      AfterSave(@F, CustomData);
+    F.SetSize(F.Position);
   finally
     F.Destroy;
   end;
@@ -838,7 +843,7 @@ var
 begin
   if FCodePage = CP_UTF8 then
   begin
-    W := Format(Fmt, LocalizationCP, FixedWidth, Args);
+    W := Format(Fmt, DefaultSystemCodePage, FixedWidth, Args);
     try
       WriteLn(W.Value, W.Length, LineBreaks);
     finally
@@ -1057,7 +1062,7 @@ var
   W: PWideChar;
 begin
   with FTranslations[TranslationIndex] do
-    W := Format('\StringFileInfo\%04X%04X\%hs', LocalizationCP, 0, [Locale, CodePage, Ident]).Value;
+    W := Format('\StringFileInfo\%04X%04X\%hs', DefaultSystemCodePage, 0, [Locale, CodePage, Ident]).Value;
   try
     Result := VerQueryValueW(FData, W, Pointer(Info), Length);
     if Result then

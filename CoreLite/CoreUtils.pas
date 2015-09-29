@@ -18,7 +18,7 @@ unit CoreUtils;
 interface
 
 uses
-  Windows;
+  Windows, CoreConsts;
 
 const
   UnicodeRTL = RTLVersion >= 20.0;
@@ -139,6 +139,10 @@ const
 var
   MainWindow: THandle;
 {$ENDIF}
+{$IF not defined(Tricks) and not UnicodeRTL}
+var
+  DefaultSystemCodePage: Word = LocalizationCP;
+{$IFEND}
 
 { Platform support }
 
@@ -305,11 +309,10 @@ function FriendlyClassName(var Dest: TClassName; Source: TObject): Byte; overloa
 
 implementation
 
-uses
 {$IFDEF CoreLiteVCL}
-  SysUtils,
+uses
+  SysUtils;
 {$ENDIF}
-  CoreConsts;
 
 { Memory service }
 
@@ -1341,6 +1344,11 @@ begin
     Result := SizeOf(LongWord);
   end;
 end;
+
+initialization
+{$IFDEF Tricks}
+  DefaultSystemCodePage := LocalizationCP;
+{$ENDIF}
 
 end.
 

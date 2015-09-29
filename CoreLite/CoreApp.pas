@@ -25,7 +25,7 @@ type
   protected
     procedure Help(UsageFmt, HelpMsg: PLegacyChar);
   public
-    constructor Create;
+    constructor Create(ConsoleCP: Word = CP_UTF8);
     destructor Destroy;
     procedure Pause;
     procedure Run(LogoFmt: PLegacyChar);
@@ -48,7 +48,7 @@ type
 
 { TConsoleApplication }
 
-constructor TConsoleApplication.Create;
+constructor TConsoleApplication.Create(ConsoleCP: Word);
 var
   Buf: array[0..MAX_PATH] of CoreChar;
   BufLen: Integer;
@@ -56,7 +56,7 @@ begin
   with FConsole do
   begin
     Create;
-    CodePage := CP_UTF8;
+    CodePage := ConsoleCP;
     WriteLn;
   end;
 

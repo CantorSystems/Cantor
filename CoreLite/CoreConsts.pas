@@ -10,10 +10,9 @@ unit CoreConsts;
 
 interface
 
-var
-  LocalizationCP: Word = 1252; // we're using ï¿½ï¿½, but only in exception messages
-
 const
+  LocalizationCP = 1252; // we're using “”, but only in exception messages
+
   sDivByZero          = 'Division by zero';
   sRangeError         = 'Range check error';
   sIntOverflow        = 'Integer overflow';
@@ -37,7 +36,7 @@ const
   sWriteAccess        = 'write';
 
   sAccessViolation = 'Access violation at address %p:%hc%s of address %p';
-  sModuleAccessViolation = 'Access violation at address %p in module ï¿½%sï¿½:%hc%hs of address %p';
+  sModuleAccessViolation = 'Access violation at address %p in module “%s”:%hc%hs of address %p';
 
   sAbstractInstance = '%s instance abstract method call';
   sAbstractClass    = '%s abstract class method call';
@@ -52,7 +51,7 @@ const
 
   sMMX = 'This program requires MMX';
 
-  sPlatformError  = '%s: ï¿½%sï¿½';
+  sPlatformError  = '%s: “%s”';
   sPlatformError2 = '%s: %hs %d';
 
   sStreamRead = 'read';
@@ -96,14 +95,14 @@ const
 
   sInteger = 'integer';
   sHexadecimal = 'hexadecimal';
-  sInvalidInteger = 'ï¿½%sï¿½ is not a valid %hs value';
+  sInvalidInteger = '“%s” is not a valid %hs value';
   sNullInteger = 'Null string is not a valid %s value';
 
   sNotNativeUTF16BE = 'UTF-16 Big-Endian is not native for Windows API';
   sUTF32notSupported = 'UTF-32 not supported';
 
-  sSystemCPtoUTF16 = 'System error ï¿½%sï¿½ while converting code page %u (%s) to UTF-16';
-  sSystemUTF16toCP = 'System error ï¿½%sï¿½ while converting UTF-16 to code page %u (%s)';
+  sSystemCPtoUTF16 = 'System error “%s” while converting code page %u (%s) to UTF-16';
+  sSystemUTF16toCP = 'System error “%s” while converting UTF-16 to code page %u (%s)';
   sUnicodeToCP = 'Cannot convert %hs string to code page %u (%s)';
   sCPtoCP = 'Cannot convert string between code page %u (%s) and code page %u (%s)';
 
@@ -125,6 +124,7 @@ const
   sBrokenSurrogatePair = 'Broken %s surrogate pair or unexpected end of string:'#10 + // UTF-16 or CESU-8
     'high surrogate (U+%04X) is not complemented by a low surrogate';
 
+  sExeImage = 'executable image';
   sNotExecutableImage = 'Not an executable image';
   sNotValidWin32Image = 'Not valid Win32 image';
   sDotNETAssembly = '.NET assemblies cannot be handled';

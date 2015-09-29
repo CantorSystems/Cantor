@@ -346,7 +346,7 @@ begin
       begin
         W := WideStrRScan(ModuleName, L, PathDelimiter);
         Inc(W);
-        Result := EAccessViolation.Create(sModuleAccessViolation, LocalizationCP,
+        Result := EAccessViolation.Create(sModuleAccessViolation, DefaultSystemCodePage,
           [ExceptionAddress, W, WhitespaceOrLineBreak[IsConsole], AccessOp, AccessAddress]);
         Exit;
       end;
@@ -783,7 +783,7 @@ begin
   Msg := SysErrorMessage(ErrorCode);
   if ErrorSource <> nil then
   begin
-    inherited Create(sPlatformError, LocalizationCP, [Msg.Value, ErrorSource]);
+    inherited Create(sPlatformError, DefaultSystemCodePage, [Msg.Value, ErrorSource]);
     LocalFree(Msg.Handle);
   end
   else
@@ -820,7 +820,7 @@ begin
   Msg := SysErrorMessage(ErrorCode);
   if TextParam <> nil then
   begin
-    inherited Create(Fmt, LocalizationCP, [Msg.Value, TextParam, IntParam]);
+    inherited Create(Fmt, DefaultSystemCodePage, [Msg.Value, TextParam, IntParam]);
     LocalFree(Msg.Handle);
   end
   else
