@@ -252,7 +252,7 @@ type
 
     procedure Detach; {$IFNDEF Lite} virtual; {$ENDIF}
     function IsBinaryData: Boolean;
-    procedure ValidateUTF8;
+    function ValidateUTF8: Integer;
 
     function LastIndex(Value: LegacyChar): Integer;
     function NextIndex(Index: Integer): Integer; overload;
@@ -1975,7 +1975,7 @@ begin
 end;
 {$ENDIF}
 
-procedure TLegacyString.ValidateUTF8;
+function TLegacyString.ValidateUTF8: Integer;
 var
   Dummy: array[0..1023] of WideChar;
   W: TWideString;
@@ -1993,20 +1993,24 @@ begin
     FCodePage := nil;
     FOptions := [soDetectUTF8];
   end;
+  Result := 0;
   Idx := 0;
   while Idx < Count do
   begin
     R.AsRange(@Self, Idx, False);
     with W.AssignString(0, @R) do
+    begin
       if ErrorInfo.RawData <> 0 then
       begin
         Exclude(FOptions, soDetectUTF8);
+        Result := 0;
         Break;
-      end
-      else
-        Inc(Idx, SourceCount);
+      end;
+      Inc(Idx, SourceCount);
+      Inc(Result, SuccessBytes);
+    end;
   end;
-//  if soDetectUTF8 in FOptions then
+  if Result <> 0 then
     FCodePage := nil;
 end;
 

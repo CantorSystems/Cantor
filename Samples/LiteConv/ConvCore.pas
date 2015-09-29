@@ -219,21 +219,23 @@ begin
         begin
           CodePage := @CP;
           AsWideString(@FSourceFileName, [coReplaceInvalid]);
-          ValidateUTF8;
         end;
 
-        if LegacyFileName.CodePage = nil then
+        if LegacyFileName.ValidateUTF8 <> 0 then
         begin
+          LegacyFileName.CodePage := nil;
           UniFileName.Create;
           try
             UniFileName.AsString(@LegacyFileName);
             if not MoveFileW(FSourceFileName.Data, UniFileName.Data) then
               RaiseLastPlatformError(FSourceFileName.RawData);
-            Console.WriteLn('Renamed “%s” to “%s”', 0, [FSourceFileName.RawData, UniFileName.RawData]);
+            Console.WriteLn(sRenamed, 0, [FSourceFileName.RawData, UniFileName.RawData]);
           finally
             UniFileName.Destroy;
           end;
-        end;
+        end
+        else
+          Console.WriteLn(PLegacyChar(sNoRenameNeeded), StrLen(sNoRenameNeeded));
       finally
         LegacyFileName.Destroy;
       end;

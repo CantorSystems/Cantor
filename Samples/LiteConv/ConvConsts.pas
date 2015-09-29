@@ -67,6 +67,9 @@ const
   sRenameUsingCP = 'Rename using code page: %u (%s)';
   sSourceFileName = 'Source file name: %s';
 
+  sRenamed = 'Renamed “%s” to “%s”';
+  sNoRenameNeeded = 'File name is valid, no rename needed';
+
 implementation
 
 end.
