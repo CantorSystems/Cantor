@@ -57,7 +57,6 @@ begin
   begin
     Create;
     CodePage := ConsoleCP;
-    WriteLn;
   end;
 
   BufLen := GetModuleFileNameW(0, Buf, Length(Buf));
@@ -117,19 +116,21 @@ var
   VerInfo: TVersionInfo;
   Ver: TVersionBuffer;
 begin
-  if caNoLogo in PConsoleAppCast(@Self).Options then
-    Exit;
-
-  with VerInfo do
+  if not (caNoLogo in PConsoleAppCast(@Self).Options) then
   begin
-    Create(FExeName.RawData);
-    try
-      FormatVersion(Ver, sVersionAndRevision);
-      if TranslationCount <> 0 then
-        FConsole.WriteLn(LogoFmt, 0, [StringInfo(0, 'ProductName'), Ver,
-          StringInfo(0, 'LegalCopyright')], 2);
-    finally
-      Destroy;
+    FConsole.WriteLn;
+
+    with VerInfo do
+    begin
+      Create(FExeName.RawData);
+      try
+        FormatVersion(Ver, sVersionAndRevision);
+        if TranslationCount <> 0 then
+          FConsole.WriteLn(LogoFmt, 0, [StringInfo(0, 'ProductName'), Ver,
+            StringInfo(0, 'LegalCopyright')], 2);
+      finally
+        Destroy;
+      end;
     end;
   end;
 end;
