@@ -13,6 +13,7 @@ interface
 const         // short Unicode strings
   sInto     = #4'into';
   sPause    = #5'pause';
+  sRename   = #6'rename';
 
   sBE       = #2'BE';
   sBig5     = #4'Big5';
@@ -38,7 +39,7 @@ const
     'Common options'#10 +
             #9'-into'#9#9'Replace source file with result'#10 +
             #9'-into <dest-file>'#9'Write result to <dest-file>'#10 +
-            #9'-pause'#9#9'Wait for ENTER key to exit'#10#10 {+
+            #9'-pause'#9#9'Wait for ENTER key to exit'#10{#10 +
     'Options for both <in-charset> and <out-charset>'#10 +
             #9'-cp N'#9'Use code page N to decode/encode file'#10 +
             #9'-oem'#9'Use current OEM code page to decode file'#10#10 +
@@ -59,9 +60,11 @@ const
   sIntoFileNameParam = '-into file name';
   sCallPropNameParam = 'property name to -call';
   sCodePageParam = 'code page number';
+  sRenameParam = 'file name to rename';
 //  sIsNotACodePage = 'UTF-%u is not a valid code page';
 
   sSourceFileCP = 'Source file code page: %u (%s)';
+  sRenameUsingCP = 'Rename using code page: %u (%s)';
   sSourceFileName = 'Source file name: %s';
 
 implementation

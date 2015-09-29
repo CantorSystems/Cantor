@@ -10,7 +10,7 @@ uses
   CoreUtils, CoreExceptions, CoreStrings, CoreApp;
 
 type
-  TRunOption = (roPause, roOEM);
+  TRunOption = (roOEM, roRename, roPause);
   TRunOptions = set of TRunOption;
 
   TCommand = (cmNone, cmInto, cmCP);
@@ -66,7 +66,7 @@ const
     (sSourceFileNameParam, sIntoFileNameParam, sCodePageParam);
 begin
   if (Param <> nil) and (Param.Count <> 0) then
-    inherited Create(sDuplicate, LocalizationCP, [Messages[Command], Param.Data])
+    inherited Create(sDuplicate, DefaultSystemCodePage, [Messages[Command], Param.Data])
   else
     inherited Create(sMissing, [Messages[Command]]);
   FCommand := Command;
@@ -103,7 +103,7 @@ begin
     WriteLn(PLegacyChar(sHelp), StrLen(sHelp), 2);
     ACP.Create(CP_ACP);
     OEMCP.Create(CP_OEMCP);
-    WriteLn(sEnvironment, LocalizationCP,
+    WriteLn(sEnvironment, DefaultSystemCodePage,
       [ACP.Number, ACP.Name, OEMCP.Number, OEMCP.Name]);
   end;
 end;
@@ -111,7 +111,7 @@ end;
 procedure TApplication.Parse(CommandLine: PCoreChar);
 const
   Commands: array[cmInto..cmInto] of PWideChar = (sInto);
-  RunOptions: array[roPause..roPause] of PWideChar = (sPause);
+  RunOptions: array[roRename..roPause] of PWideChar = (sRename, sPause);
 var
   CmdLine, Key: TWideString;
   Param: TCommandLineParam;
@@ -200,18 +200,46 @@ end;
 procedure TApplication.Run(CommandLine: PCoreChar);
 var
   CP: TCodePage;
+  LegacyFileName: TLegacyString;
+  UniFileName: TWideString;
 begin
   Console.WriteLn(PLegacyChar(sTitle), StrLen(sTitle),  2);
   Parse(CommandLine);
 
   if FSourceFileName.Count <> 0 then
   begin
-    if FSourceFileCP <> 0 then
+    if roRename in FOptions then
     begin
       CP.Create(FSourceFileCP);
-      Console.WriteLn(sSourceFileCP, 0, [CP.Number, CP.Name]);
+      Console.WriteLn(sRenameUsingCP, 0, [CP.Number, CP.Name]);
+
+      LegacyFileName.Create;
+      try
+        with LegacyFileName do
+        begin
+          CodePage := @CP;
+          AsWideString(@FSourceFileName, [coReplaceInvalid]);
+          ValidateUTF8;
+        end;
+
+        if LegacyFileName.CodePage = nil then
+        begin
+          UniFileName.Create;
+          try
+            UniFileName.AsString(@LegacyFileName);
+            if not MoveFileW(FSourceFileName.Data, UniFileName.Data) then
+              RaiseLastPlatformError(FSourceFileName.RawData);
+            Console.WriteLn('Renamed “%s” to “%s”', 0, [FSourceFileName.RawData, UniFileName.RawData]);
+          finally
+            UniFileName.Destroy;
+          end;
+        end;
+      finally
+        LegacyFileName.Destroy;
+      end;
     end;
-    Console.WriteLn(sSourceFileName, 0, [FSourceFileName.Data]);
+
+//    Console.WriteLn(sSourceFileName, 0, [FSourceFileName.Data]);}
   end
   else
     Help;
