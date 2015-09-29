@@ -99,6 +99,7 @@ procedure TConsoleApplication.Help(UsageFmt, HelpMsg: PLegacyChar);
 begin
   with FConsole do
   begin
+    WriteLn;
     WriteLn(UsageFmt, 0, [FAppName.Data], 2);
     WriteLn(HelpMsg, StrLen(HelpMsg), 2);
     if CodePage = CP_UTF8 then
