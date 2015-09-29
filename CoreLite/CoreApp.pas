@@ -102,7 +102,8 @@ begin
   begin
     WriteLn(UsageFmt, 0, [FAppName.Data], 2);
     WriteLn(HelpMsg, StrLen(HelpMsg), 2);
-    WriteLn(PLegacyChar(sAvoidCharCorruption), StrLen(sAvoidCharCorruption));
+    if CodePage = CP_UTF8 then
+      WriteLn(PLegacyChar(sAvoidCharCorruption), StrLen(sAvoidCharCorruption));
   end;
 end;
 
