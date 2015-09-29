@@ -192,7 +192,6 @@ type
     function GetData: PLegacyChar;
     procedure SetCodePage(Value: PCodePage);
     procedure SetData(Value: PLegacyChar);
-    procedure ValidateUTF8;
   protected
     class function CollectionInfo: TCollectionInfo; virtual;
     procedure AssignHexBuffer(Index: Integer; const Buffer; Length: Integer;
@@ -253,6 +252,7 @@ type
 
     procedure Detach; {$IFNDEF Lite} virtual; {$ENDIF}
     function IsBinaryData: Boolean;
+    procedure ValidateUTF8;
 
     function LastIndex(Value: LegacyChar): Integer;
     function NextIndex(Index: Integer): Integer; overload;
@@ -775,7 +775,7 @@ begin
         W.AsRange(Source, 0) // TODO: big-endian
       else
         W.AsString(PLegacyString(Source));
-      inherited Create(sInvalidInteger, LocalizationCP, [W.Data, ValueType[Hexadecimal]]);
+      inherited Create(sInvalidInteger, DefaultSystemCodePage, [W.Data, ValueType[Hexadecimal]]);
     finally
       W.Destroy;
     end;
@@ -801,7 +801,7 @@ begin
   begin
     Msg := SysErrorMessage(ErrorCode);
     try
-      inherited Create(ModeNames[Mode], LocalizationCP, [Msg.Value, CodePage.Number, CodePage.Name]);
+      inherited Create(ModeNames[Mode], DefaultSystemCodePage, [Msg.Value, CodePage.Number, CodePage.Name]);
     finally
       LocalFree(Msg.Handle);
     end;
@@ -811,7 +811,7 @@ begin
     if PWideString(Source).FDataSource.CodePage <> nil then
     begin
       with PWideString(Source).FDataSource.CodePage^ do
-        inherited Create(sCPtoCP, LocalizationCP, [Number, Name, CodePage.Number, CodePage.Name]);
+        inherited Create(sCPtoCP, DefaultSystemCodePage, [Number, Name, CodePage.Number, CodePage.Name]);
       CharSet := nil;
     end
     else
@@ -821,7 +821,7 @@ begin
     CharSet := sUTF16;
 
   if CharSet <> nil then
-    inherited Create(sUnicodetoCP, LocalizationCP, [CharSet, CodePage.Number, CodePage.Name]);
+    inherited Create(sUnicodetoCP, DefaultSystemCodePage, [CharSet, CodePage.Number, CodePage.Name]);
 
   FSource.AsString := Pointer(Source);
   FMode := Mode;
@@ -2006,7 +2006,7 @@ begin
       else
         Inc(Idx, SourceCount);
   end;
-  if soDetectUTF8 in FOptions then
+//  if soDetectUTF8 in FOptions then
     FCodePage := nil;
 end;
 
