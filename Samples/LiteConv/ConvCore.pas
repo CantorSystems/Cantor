@@ -105,6 +105,8 @@ begin
     OEMCP.Create(CP_OEMCP);
     WriteLn(sEnvironment, DefaultSystemCodePage,
       [ACP.Number, ACP.Name, OEMCP.Number, OEMCP.Name]);
+    WriteLn;
+    WriteLn(PLegacyChar(sAvoidCharCorruption), StrLen(sAvoidCharCorruption));
   end;
 end;
 
