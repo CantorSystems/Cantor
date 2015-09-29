@@ -205,7 +205,11 @@ var
 begin
   Parse(CommandLine);
   if not (roNoLogo in FOptions) then
-    Console.WriteLn(PLegacyChar(sTitle), StrLen(sTitle),  2);
+    with Console do
+    begin
+      WriteLn;
+      WriteLn(PLegacyChar(sTitle), StrLen(sTitle),  2);
+    end;
 
   if FSourceFileName.Count <> 0 then
   begin
