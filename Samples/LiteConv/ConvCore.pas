@@ -10,7 +10,7 @@ uses
   CoreUtils, CoreExceptions, CoreStrings, CoreApp;
 
 type
-  TRunOption = (roPause, roRename, roOEM);
+  TRunOption = (roPause, roNoLogo, roRename, roOEM);
   TRunOptions = set of TRunOption;
 
   TCommand = (cmNone, cmInto, cmCP);
@@ -111,7 +111,7 @@ end;
 procedure TApplication.Parse(CommandLine: PCoreChar);
 const
   Commands: array[cmInto..cmInto] of PWideChar = (sInto);
-  RunOptions: array[roPause..roRename] of PWideChar = (sPause, sRename);
+  RunOptions: array[roPause..roRename] of PWideChar = (sPause, sNoLogo, sRename);
 var
   CmdLine, Key: TWideString;
   Param: TCommandLineParam;
@@ -203,15 +203,17 @@ var
   LegacyFileName: TLegacyString;
   UniFileName: TWideString;
 begin
-  Console.WriteLn(PLegacyChar(sTitle), StrLen(sTitle),  2);
   Parse(CommandLine);
+  if not (roNoLogo in FOptions) then
+    Console.WriteLn(PLegacyChar(sTitle), StrLen(sTitle),  2);
 
   if FSourceFileName.Count <> 0 then
   begin
     if roRename in FOptions then
     begin
       CP.Create(FSourceFileCP);
-      Console.WriteLn(sRenameUsingCP, 0, [CP.Number, CP.Name]);
+      if not (roNoLogo in FOptions) then
+        Console.WriteLn(sRenameUsingCP, 0, [CP.Number, CP.Name]);
 
       LegacyFileName.Create;
       try
@@ -234,7 +236,7 @@ begin
           end;
         end
         else
-          Console.WriteLn(PLegacyChar(sNoRenameNeeded), StrLen(sNoRenameNeeded));
+          Console.WriteLn(sNoRenameNeeded, 0, [FSourceFileName.Data]);
       finally
         LegacyFileName.Destroy;
       end;

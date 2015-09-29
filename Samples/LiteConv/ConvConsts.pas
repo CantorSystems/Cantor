@@ -12,6 +12,7 @@ interface
 
 const         // short Unicode strings
   sInto     = #4'into';
+  sNoLogo   = #6'nologo';
   sPause    = #5'pause';
   sRename   = #6'rename';
 
@@ -68,7 +69,7 @@ const
   sSourceFileName = 'Source file name: %s';
 
   sRenamed = 'Renamed “%s” to “%s”';
-  sNoRenameNeeded = 'File name is valid, no rename needed';
+  sNoRenameNeeded = 'File name “%s” is valid, no rename needed';
 
 implementation
 
