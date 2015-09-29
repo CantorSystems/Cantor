@@ -10,7 +10,7 @@ uses
   CoreUtils, CoreExceptions, CoreStrings, CoreApp;
 
 type
-  TRunOption = (roOEM, roRename, roPause);
+  TRunOption = (roPause, roRename, roOEM);
   TRunOptions = set of TRunOption;
 
   TCommand = (cmNone, cmInto, cmCP);
@@ -111,7 +111,7 @@ end;
 procedure TApplication.Parse(CommandLine: PCoreChar);
 const
   Commands: array[cmInto..cmInto] of PWideChar = (sInto);
-  RunOptions: array[roRename..roPause] of PWideChar = (sRename, sPause);
+  RunOptions: array[roPause..roRename] of PWideChar = (sPause, sRename);
 var
   CmdLine, Key: TWideString;
   Param: TCommandLineParam;
