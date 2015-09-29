@@ -221,9 +221,8 @@ begin
           AsWideString(@FSourceFileName, [coReplaceInvalid]);
         end;
 
-        if LegacyFileName.ValidateUTF8 <> 0 then
+        if LegacyFileName.ValidateUTF8 > 0 then
         begin
-          LegacyFileName.CodePage := nil;
           UniFileName.Create;
           try
             UniFileName.AsString(@LegacyFileName);

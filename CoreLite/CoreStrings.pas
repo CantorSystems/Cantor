@@ -2003,14 +2003,14 @@ begin
       if ErrorInfo.RawData <> 0 then
       begin
         Exclude(FOptions, soDetectUTF8);
-        Result := 0;
+        Result := SuccessBytes; // negative
         Break;
       end;
       Inc(Idx, SourceCount);
       Inc(Result, SuccessBytes);
     end;
   end;
-  if Result <> 0 then
+  if Result > 0 then
     FCodePage := nil;
 end;
 
