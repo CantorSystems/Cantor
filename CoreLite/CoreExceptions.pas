@@ -21,7 +21,7 @@ interface
 
 uses
 {$IFDEF Tricks}
-  SysSfIni,
+  SafeInit,
 {$ENDIF}
 {$IFDEF CoreLiteVCL}
   SysUtils,
