@@ -40,8 +40,8 @@ type
   CoreWord  = LongWord;
   PCoreWord = PLongWord;
 
-  QuadWord  = {type} Int64;
-  PQuadWord = {type} PInt64;
+  QuadWord  = {$IF RTLVersion >= 15} {type} UInt64 {$ELSE} Int64 {$IFEND};
+  PQuadWord = {$IF RTLVersion >= 15} {type} ^UInt64 {$ELSE} PInt64 {$IFEND};
 {$ENDIF}
 
   QuadInt   = Int64;
