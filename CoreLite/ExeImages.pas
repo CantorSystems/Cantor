@@ -83,6 +83,8 @@ type
     FHeaders: TImageNewHeaders;
     FStub: TExeStub;
     function IndexOfAddress(Address: LongWord): Integer;
+  protected
+    class function CollectionInfo: TCollectionInfo; virtual;
   public
     destructor Destroy; virtual;
     procedure Build(FileAlignment: LongWord = 512);
@@ -93,12 +95,12 @@ type
     function IndexOfSection(DirectoryIndex: Byte): Integer; overload;
     function IndexOfSection(Name: PLegacyChar; Length: Integer): Integer; overload;
     procedure Load(Source: PReadableStream);
-    procedure Save(Dest: PWritableStream{; TruncLastSection: Boolean = True});
+    procedure Save(Dest: PWritableStream; TruncLastSection: Boolean = True);
     function SectionAlignBytes(Source: LongWord): LongWord;
     function Size(TruncLastSection: Boolean = True): LongWord;
     procedure Strip(Options: TStripOptions = [soStub..soEmptySections]);
 
-    property Headers: TImageNewHeaders read FHeaders;
+    property Headers: TImageNewHeaders read FHeaders write FHeaders;
     property Sections: PExeSectionArray read FSections;
     property Stub: TExeStub read FStub;
   end;
@@ -514,6 +516,15 @@ begin
   FHeaders.FileHeader.SectionCount := Count;
 end;
 
+class function TExeImage.CollectionInfo: TCollectionInfo;
+begin
+  with Result do
+  begin
+    ClassName := sExeImage;
+    ItemSize := SizeOf(TExeSection); 
+  end;
+end;
+
 procedure TExeImage.Delete(Index: Integer);
 begin
   if (Index <> 0) and (FSections[Index].FHeader.VirtualSize <> 0) then
@@ -580,7 +591,6 @@ end;
 procedure TExeImage.Load(Source: PReadableStream);
 var
   I: Integer;
-  Section: TExeSection;
 begin
   Clear;
   
@@ -608,7 +618,8 @@ begin
       FillChar(DataDirectory[DirectoryEntryCount], SizeOf(DataDirectory) -
         DirectoryEntryCount * SizeOf(TImageDataDirectory), 0);
     end;
-    for I := 0 to FHeaders.FileHeader.SectionCount - 1 do
+    Capacity := FHeaders.FileHeader.SectionCount;
+    for I := 0 to Capacity - 1 do
       with FSections[Append] do
       begin
         Create;
@@ -617,7 +628,7 @@ begin
   end;
 end;
 
-procedure TExeImage.Save(Dest: PWritableStream{; TruncLastSection: Boolean});
+procedure TExeImage.Save(Dest: PWritableStream; TruncLastSection: Boolean);
 var
   Dummy: array[0..4095] of Byte;
   Offset, H: LongWord;
@@ -643,7 +654,7 @@ begin
   for I := 0 to Count - 1 do
   begin
     FSections[I].Save(Dest);
-    if (I < Count - 1) {or not TruncLastSection} then
+    if (I < Count - 1) or not TruncLastSection then
       Dest.WriteBuffer(Dummy, FileAlignBytes(Sections[I].FHeader.RawDataSize));
   end;
 end;

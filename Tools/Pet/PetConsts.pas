@@ -112,6 +112,20 @@ const
 
   sProcessing     = '%-16hs %-32@s %8u bytes';
 
+  sRead = 'Read';
+  sActual = 'Actual';
+  sStripped = 'Stripped';
+  sRatio = 'Ratio';
+
+  HeaderFixedWidth = 18 + 12 * 3;
+  DataFixedWidth = 15 + 12 * 3 + 6;
+
+  sHeaderFmt = '%-18s%-12s%-12s%-12s';
+  sDataFmt = #$E2#$80#$A2' %15s%-12d%-12d%-12d%-6s';
+
+  sDoubleLine = #$E2#$95#$90;
+  sSingleLine = #$E2#$94#$80;
+
   sLoadingSource    = 'Loading source';
   sImageData        = 'Image data';
   sExtractingStub   = 'Extracting stub';
@@ -131,7 +145,7 @@ uses
   CoreConsts;
 
 initialization
-  LocalizationCP := 1251; // #ПокажиКота
+  DefaultSystemCodePage := 1251; // #ПокажиКота
 
 end.
 

@@ -9,7 +9,7 @@ unit PetCore;
 interface
 
 uses
-  Windows, CoreUtils, CoreExceptions, CoreStrings, CoreApp;
+  Windows, CoreUtils, CoreExceptions, CoreWrappers, CoreStrings, CoreApp, ExeImages;
 
 type
 //  TResourceNames = TWideStringArray;
@@ -20,6 +20,12 @@ type
   public
     procedure AsTempName(Source: PCoreString);
     function IsDotOrNull: Boolean;
+  end;
+
+  PImageData = ^TImageData;
+  TImageData = record
+    Image: TExeImage;
+    FileSize: LongWord;
   end;
 
   TFileKind = (fkNone, fkSource, fkInto, fkStub, fkExtract, fkBackup{, fkDump});
@@ -42,6 +48,10 @@ type
   {$IFDEF Kolibri}
     FMenuetKolibri: TMenuetKolibri;
   {$ENDIF}
+
+    procedure LoadImage(Source: PReadableStream; CustomData: Pointer);
+    procedure SaveImage(Dest: PWritableStream; CustomData: Pointer);
+
     procedure Parse(CommandLine: PCoreChar);
     procedure ProcessFile(FileName: PCoreString);
   public
@@ -74,14 +84,14 @@ type
 implementation
 
 uses
-  ExeImages, CoreConsts, PetConsts;
+  CoreConsts, PetConsts, CoreClasses;
 
 const
   FileKeys: array[fkInto..High(TFileKind)] of PCoreChar = (sInto, sStub, sExtract, sBackup{, sDump});
 
 { EFileKey }
 
-//  inherited Create(sMissingFileName, LocalizationCP, [FileKeys[MissingFileName]]);
+//  inherited Create(sMissingFileName, DefaultSystemCodePage, [FileKeys[MissingFileName]]);
 //
 
 { ECommandLine }
@@ -119,14 +129,14 @@ var
   Kind: TFileKindBuf;
 begin
   Kind := FormatFileKind(DuplicateKind);
-  inherited Create(sDuplicateParam, LocalizationCP, [Kind, FileName.Data]);
+  inherited Create(sDuplicateParam, DefaultSystemCodePage, [Kind, FileName.Data]);
   FFileKind := DuplicateKind;
   FDuplicateParam := FileName;
 end;
 
 constructor ECommandLine.Create(DuplicateParam: PLegacyChar; ParamValue: PCoreString);
 begin
-  inherited Create(sDuplicateParam, LocalizationCP, [DuplicateParam, ParamValue.Data]);
+  inherited Create(sDuplicateParam, DefaultSystemCodePage, [DuplicateParam, ParamValue.Data]);
   FDuplicateParam := ParamValue;
 end;
 
@@ -270,17 +280,7 @@ begin
               raise ECommandLine.Create(sSectionNames);
             with Param do
             begin
-              {Dot := NextIndex('.');
-              if Dot >= 0 then
-              begin
-                FMajorVersion := AsRange(0, Dot - 1).AsInteger;
-                FMinorVersion := AsRange(Dot + 1).AsInteger;
-              end
-              else
-              begin
-                FMajorVersion := AsInteger;
-                FMinorVersion := 0;
-              end;}
+              // FSectionNames bla-bla-bla
               Clear;
             end;
           end
@@ -296,6 +296,7 @@ begin
       begin
         Create;
         AsRange(@Param, 0);
+        Detach;
       end;
     end;
   until False;
@@ -319,155 +320,152 @@ end;
 
 procedure TApplication.ProcessFile(FileName: PCoreString);
 
-{var
-  Buf: string[6];
+var
+  Ratio: TLegacyString;
 
-function Percentage(Ratio: Double): PLegacyChar;
+procedure Processing(Source: PLegacyChar; FileName: PCoreString);
 begin
-  Str((Ratio * 100):1:1, Buf);
-  PWord(@Buf[Length(Buf) + 1])^ := Word('%');  // Fast core
-  Result :=  @Buf[1];
+  Console.WriteLn('%hs: %s', 0, [Source, FileName.RawData]);
 end;
 
-procedure Processing(Args: array of const; IsUnicode: Boolean = True);
-const
-  Prefixes: array[Boolean] of LegacyChar = 'hw';
-var
-  Format: string[Length(sProcessing) + 1];
+procedure Stats(Source: PLegacyChar; Read, Actual, Stripped: LongWord);
 begin
-  Format := sProcessing + #0;
-  Format[FileNameOffset] := Prefixes[IsUnicode];
-  Console.WriteLn(@Format[1], FileNameWidth, Args);
+  Ratio.AsPercentage(Stripped / Read);
+  Console.WriteLn(sDataFmt, DataFixedWidth, [Read, Actual, Stripped, Ratio.RawData]);
 end;
 
 const
   Deep: array[Boolean] of TStripOptions = ([], [soOrphanedSections]);
 var
+  Data: TImageData;
+  Stub: TExeStub;
   I, Idx: Integer;
   OldSize, NewSize, RawSize, FixedSize: LongWord;
-  Image: TExeImage;
-  FileInfo: TWin32FindDataW;
-  hInfo: THandle;
-  TmpFileName: PCoreChar;}
-
+  ActualSize, StrippedSize, Size: LongWord;
+{  FileInfo: TWin32FindDataW;
+  hInfo: THandle;}
+  TmpFileName: TFileName;
 begin
-{  Image := TExeImage.Create;
+  Data.Image.Create;
   try
-    hInfo := FindFirstFileW(FSourceFileName, FileInfo);
+    Ratio.Create;
+    try
+{    hInfo := FindFirstFileW(FSourceFileName, FileInfo);
     if hInfo = INVALID_HANDLE_VALUE then
       RaiseLastPlatformError(FSourceFileName);
-    FindClose(hInfo);
-    OldSize := FileInfo.nFileSizeLow;
-    Processing([sLoadingSource, FSourceFileName, OldSize]);
+    FindClose(hInfo);}
 
-    with Image do
-    begin
-      Load(FSourceFileName);
-      NewSize := Size(False);
-      Processing([sImageData, Percentage(NewSize / OldSize), NewSize], False);
-    end;
-
-    if FFileNames[fkExtract] <> nil then
-    begin
-      with TExeStub.Create do
-      try
-        Load(Image.Stub);
-        Strip(roStrip in FOptions);
-        Processing([sExtractingStub, FFileNames[fkExtract], Size]);
-        Save(FFileNames[fkExtract]);
-      finally
-        Free;
+      Processing(sLoadingSource, @FSourceFileName);
+      LoadFile(nil, FSourceFileName.RawData, faRead, @Data, LoadImage);
+      with Data.Image do
+      begin
+        ActualSize := Size(False);
+        StrippedSize := Size(roTrunc in FOptions);
       end;
-    end;
+      Stats(sImageData, Data.FileSize, ActualSize, StrippedSize);
 
-    if FFileNames[fkStub] <> nil then
-      with Image.Stub do
+      if FFileNames[fkExtract].Count <> 0 then
       begin
-        Load(FFileNames[fkStub]);
-        Processing([sInsertingStub, FFileNames[fkStub], Size]);
-      end;
-
-    if roStrip in FOptions then
-      with Image do
-      begin
-        Strip([soStub..soEmptySections] + Deep[roDeep in FOptions]);
-        NewSize := OldSize - Size;
-        Processing([sStripping, Percentage(NewSize / OldSize), NewSize], False);
-      end
-    else
-      with Image.Stub do
-      begin
-        RawSize := Size;
-        Strip(False);
-        FixedSize := Size;
-        Processing([sFixingStub, Percentage(FixedSize / RawSize), FixedSize], False);
-      end;
-
-    if FDropSections <> nil then
-      for I := 0 to FDropSections.Count - 1 do
-      begin
-        with FDropSections.Items[I] do
-          Idx := Image.IndexOfSection(Value, Length);
-        if Idx >= 0 then
-        begin
-          with Image.Sections[Idx].Header do
-            Processing([sDroppingSection, Name, RawDataSize], False);
-          Image.Extract(Idx).Free;
-        end;
-      end;
-
-    if FFileNames[fkInto] <> nil then
-    begin
-      if FFileNames[fkBackup] <> nil then
-      begin
-        FConsole.WriteLn(sBackuping, 0, [FFileNames[fkBackup]]);
-        if not MoveFileExW(FSourceFileName, FFileNames[fkBackup],
-          MOVEFILE_COPY_ALLOWED or MOVEFILE_WRITE_THROUGH)
-        then
-          RaiseLastPlatformError(FFileNames[fkBackup]);
-      end;
-
-      with Image do
-      begin
-        if FMajorVersion <> 0 then
-          with Image.Headers.OptionalHeader do
-          begin
-            MajorOSVersion := FMajorVersion;
-            MinorOSVersion := FMinorVersion;
-            MajorSubsystemVersion := FMajorVersion;
-            MinorSubsystemVersion := FMinorVersion;
-          end;
-        if ro3GB in FOptions then
-          with Image.Headers.FileHeader do
-            Characteristics := Characteristics or IMAGE_FILE_LARGE_ADDRESS_AWARE;
-        Build(Byte(roStrip in FOptions) * 512);
-        NewSize := Size(roTrunc in FOptions);
-      end;
-
-      Processing([sSavingInto, FFileNames[fkInto], NewSize]);
-      if FFileNames[fkBackup] <> nil then
-        Image.Save(FFileNames[fkInto], roTrunc in FOptions)
-      else
-      begin
-        TmpFileName := TempFileName(FFileNames[fkInto]);
+        Stub.Create;
         try
-          Image.Save(TmpFileName, roTrunc in FOptions);
-          if not MoveFileExW(TmpFileName, FFileNames[fkInto],
-            MOVEFILE_COPY_ALLOWED or MOVEFILE_WRITE_THROUGH or MOVEFILE_REPLACE_EXISTING)
-          then
-            RaiseLastPlatformError(FFileNames[fkInto]);
+          Stub.Load(@Data.Image.Stub);
+          Stub.Strip(roStrip in FOptions);
+          Processing(sExtractingStub, @FFileNames[fkExtract]);
+          SaveFile(Stub.Save, FFileNames[fkExtract].RawData, Stub.Size);
         finally
-          FreeMem(TmpFileName);
+          Stub.Destroy;
         end;
       end;
 
-      FConsole.WriteLn;
-      Processing([sTotal, Percentage(NewSize / OldSize), OldSize - NewSize], False);
+      if FFileNames[fkStub].Count <> 0 then
+      begin
+        LoadFile(Data.Image.Stub.Load, FFileNames[fkStub].RawData);
+  //      Processing([sInsertingStub, FFileNames[fkStub], Size]);
+      end;
+
+      if roStrip in FOptions then
+      begin
+        Data.Image.Strip([soStub..soEmptySections] + Deep[roDeep in FOptions]);
+        NewSize := OldSize - Data.Image.Size(roTrunc in FOptions);
+  //        Processing([sStripping, Percentage(NewSize / OldSize), NewSize], False);
+      end
+      else
+        with Data.Image.Stub do
+        begin
+          RawSize := Size;
+          Strip(False);
+          FixedSize := Size;
+  //        Processing([sFixingStub, Percentage(FixedSize / RawSize), FixedSize], False);
+        end;
+
+  {    if FDropSections <> nil then
+        for I := 0 to FDropSections.Count - 1 do
+        begin
+          with FDropSections.Items[I] do
+            Idx := Image.IndexOfSection(Value, Length);
+          if Idx >= 0 then
+          begin
+            with Image.Sections[Idx].Header do
+              Processing([sDroppingSection, Name, RawDataSize], False);
+            Image.Extract(Idx).Free;
+          end;
+        end;}
+
+      if FFileNames[fkInto].Count <> 0 then
+      begin
+        if FFileNames[fkBackup].Count <> 0 then
+        begin
+          Console.WriteLn(sBackuping, 0, [FFileNames[fkBackup].RawData]);
+          if not MoveFileExW(FSourceFileName.RawData, FFileNames[fkBackup].RawData,
+            MOVEFILE_COPY_ALLOWED or MOVEFILE_WRITE_THROUGH)
+          then
+            RaiseLastPlatformError(FFileNames[fkBackup].RawData);
+        end;
+
+        with Data.Image do
+        begin
+          if FMajorVersion <> 0 then
+            with (@Headers.OptionalHeader)^ do // WTF?
+            begin
+              MajorOSVersion := FMajorVersion;
+              MinorOSVersion := FMinorVersion;
+              MajorSubsystemVersion := FMajorVersion;
+              MinorSubsystemVersion := FMinorVersion;
+            end;
+          if ro3GB in FOptions then
+            with (@Headers.FileHeader)^ do // WTF?
+              Characteristics := Characteristics or IMAGE_FILE_LARGE_ADDRESS_AWARE;
+          Build(Byte(roStrip in FOptions) * 512);
+          NewSize := Size(roTrunc in FOptions);
+        end;
+
+  //      Processing([sSavingInto, FFileNames[fkInto], NewSize]);
+        if FFileNames[fkBackup].Count <> 0 then
+          SaveFile(nil, FFileNames[fkInto].RawData, NewSize, faRewrite, @Data.Image, nil, SaveImage)
+        else
+        begin
+          TmpFileName.Create;
+          try
+            TmpFileName.AsTempName(@FFileNames[fkInto]);
+            SaveFile(nil, TmpFileName.RawData, NewSize, faRewrite, @Data.Image, nil, SaveImage);
+            if not MoveFileExW(TmpFileName.RawData, FFileNames[fkInto].RawData,
+              MOVEFILE_COPY_ALLOWED or MOVEFILE_WRITE_THROUGH or MOVEFILE_REPLACE_EXISTING)
+            then
+              RaiseLastPlatformError(TmpFileName.RawData);
+          finally
+            TmpFileName.Destroy;
+          end;
+        end;
+
+        Console.WriteLn;
+  //      Processing([sTotal, Percentage(NewSize / OldSize), OldSize - NewSize], False);
+      end;
+    finally
+      Ratio.Destroy;
     end;
   finally
-    Image.Free;
+    Data.Image.Destroy;
   end;
-}
 end;
 
 procedure TApplication.Run;
@@ -479,6 +477,20 @@ begin
     ProcessFile(@FSourceFileName)
   else
     Help(sUsage, sHelp);
+end;
+
+procedure TApplication.LoadImage(Source: PReadableStream; CustomData: Pointer);
+begin
+  with PImageData(CustomData)^ do
+  begin
+    Image.Load(Source);
+    FileSize := Source.Size;
+  end;
+end;
+
+procedure TApplication.SaveImage(Dest: PWritableStream; CustomData: Pointer);
+begin
+  PExeImage(CustomData).Save(Dest, roTrunc in FOptions);
 end;
 
 end.
