@@ -88,6 +88,9 @@ type
   PCoreChar     = PWideChar;
   PPCoreChar    = PPWideChar;
 
+  CharCode      = Word;         // TODO: non-Unicode
+  PCharCode     = PWord;
+
   PAddress      = PLegacyChar;  // for address arithmetic
 
   TLegacyStringRec = record

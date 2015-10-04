@@ -111,7 +111,7 @@ begin
     if not Param.Quoted and (Param.RawData^ = '-') then
     begin
       W := sOEM;
-      if Key.Compare(W + 1, PWord(W)^, True) = 0 then
+      if Key.Compare(W + 1, PCharCode(W)^, True) = 0 then
       begin
         if FFallbackCP <> 0 then
         begin
@@ -124,7 +124,7 @@ begin
       else
       begin
         W := sPause;
-        if Key.Compare(W + 1, PWord(W)^, True) = 0 then
+        if Key.Compare(W + 1, PCharCode(W)^, True) = 0 then
         begin
           Include(FOptions, roPause);
           Param.Clear;
@@ -135,7 +135,7 @@ begin
     if (Param.Count <> 0) and (Param.RawData^ = '-') then
     begin
       W := sCP;
-      if Key.Compare(W + 1, PWord(W)^, True) = 0 then
+      if Key.Compare(W + 1, PCharCode(W)^, True) = 0 then
       begin
         CmdLine := Param.AsNextParam(@CmdLine);
         if (Param.Count = 0) or (FFallbackCP <> 0) then
@@ -148,7 +148,7 @@ begin
       else
       begin
         W := sInto;
-        if Key.Compare(W + 1, PWord(W)^, True) = 0 then
+        if Key.Compare(W + 1, PCharCode(W)^, True) = 0 then
         begin
           CmdLine := Param.AsNextParam(@CmdLine);
           if (Param.Count = 0) or (FIntoFileName.Count <> 0) then

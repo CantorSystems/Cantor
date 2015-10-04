@@ -139,14 +139,14 @@ begin
     if not Param.Quoted and (Param.RawData^ = '-') then
     begin
       W := sOEM;
-      if Key.Compare(W + 1, PWord(W)^, True) = 0 then
+      if Key.Compare(W + 1, PCharCode(W)^, True) = 0 then
       begin
         FSourceFileCP := CP_OEMCP;
         Param.Clear;
       end
       else
         for Opt := Low(RunOptions) to High(RunOptions) do
-          if Key.Compare(RunOptions[Opt] + 1, PWord(RunOptions[Opt])^, True) = 0 then
+          if Key.Compare(RunOptions[Opt] + 1, PCharCode(RunOptions[Opt])^, True) = 0 then
           begin
             Include(FOptions, Opt);
             Param.Clear;
@@ -157,7 +157,7 @@ begin
     if (Param.Count <> 0) and (Param.RawData^ = '-') then
     begin
       {W := sCP;
-      if Key.Compare(W + 1, PWord(W)^, True) = 0 then
+      if Key.Compare(W + 1, PCharCode(W)^, True) = 0 then
       begin
         CmdLine := Param.AsNextParam(@CmdLine);
         if (Param.Count = 0) or (FSourceFileCP <> 0) then
@@ -169,7 +169,7 @@ begin
       end
       else}
         for Cmd := Low(Commands) to High(Commands) do
-          if Key.Compare(Commands[Cmd] + 1, PWord(Commands[Cmd])^, True) = 0 then
+          if Key.Compare(Commands[Cmd] + 1, PCharCode(Commands[Cmd])^, True) = 0 then
           begin
             CmdLine := Param.AsNextParam(@CmdLine);
             if (Param.Count = 0) or (FCommandParams[Cmd].Count <> 0) then
