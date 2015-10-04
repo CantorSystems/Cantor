@@ -110,8 +110,15 @@ type
   PStream = PWritableStream;
   TStream = TWritableStream;
 
+  PFileInformation = ^PByHandleFileInformation;
+  TFileInformation = TByHandleFileInformation;
+
   PFileStream = PHandleStream;
-  TFileStream = THandleStream;
+  TFileStream = object(THandleStream)
+  public
+    function Information: TFileInformation;
+    procedure SetTime(Creation, LastAccess, LastWrite: PFileTime);
+  end;
 
   TMappingOption = (maRead, maWrite, maCopy, maExecute, maImage, maReserve, maNoCache);
   TCreateFileMapping = set of maWrite..maNoCache;
@@ -303,15 +310,20 @@ type
   TReadableDataLoader = procedure(Stream: PReadableStream) of object;
   TWritableDataSaver = procedure(Stream: PWritableStream) of object;
 
-  TReadableStreamEvent = procedure(Stream: PReadableStream; CustomData: Pointer) of object;
-  TWritableStreamEvent = procedure(Stream: PWritableStream; CustomData: Pointer) of object;
+  TSaveOptions = set of (soBackup, soCopyAttr, soCopyTime);
 
 procedure LoadFile(Loader: TReadableDataLoader; FileName: PCoreChar;
-  Access: TFileAccess = faSequentialRead; CustomData: Pointer = nil;
-  BeforeLoad: TReadableStreamEvent = nil; AfterLoad: TReadableStreamEvent = nil);
+  Access: TFileAccess = faSequentialRead);
+
 procedure SaveFile(Saver: TWritableDataSaver; FileName: PCoreChar; FileSize: QuadWord;
-  Access: TFileAccess = faSequentialRewrite; CustomData: Pointer = nil;
-  BeforeSave: TWritableStreamEvent = nil; AfterSave: TWritableStreamEvent = nil);
+  Access: TFileAccess = faSequentialRewrite); overload;
+procedure SaveFile(Saver: TWritableDataSaver; FileName: PCoreChar;
+  const FileInfo: TWin32FileAttributeData; Access: TFileAccess = faSequentialRewrite); overload;
+procedure SaveFile(Saver: TWritableDataSaver; BackupFileName, FileName: PCoreChar;
+  FileSize: QuadWord; Access: TFileAccess = faSequentialRewrite;
+  Options: TSaveOptions = [soBackup..soCopyTime]); overload;
+
+function TranslateFileSize(const Info: TWin32FileAttributeData): QuadWord;
 
 { Import Windows functions for Delphi 6/7 }
 
@@ -332,42 +344,109 @@ function SetFilePointerEx(hFile: THandle; liDistanceToMove: QuadWord;
 
 { Helper functions }
 
-procedure LoadFile(Loader: TReadableDataLoader; FileName: PCoreChar; Access: TFileAccess;
-  CustomData: Pointer; BeforeLoad, AfterLoad: TReadableStreamEvent);
+procedure LoadFile(Loader: TReadableDataLoader; FileName: PCoreChar; Access: TFileAccess);
 var
   F: TFileStream;
 begin
   F.Create(FileName, Access);
   try
-    if Assigned(BeforeLoad) then
-      BeforeLoad(@F, CustomData);
-    if Assigned(Loader) then
-      Loader(@F);
-    if Assigned(AfterLoad) then
-      AfterLoad(@F, CustomData);
+    Loader(@F);
   finally
     F.Destroy;
   end;
 end;
 
+{$IFDEF AstronautArch}
 procedure SaveFile(Saver: TWritableDataSaver; FileName: PCoreChar; FileSize: QuadWord;
-  Access: TFileAccess; CustomData: Pointer; BeforeSave, AfterSave: TWritableStreamEvent);
+  Access: TFileAccess);
+var
+  F: TFileStream;
+  Info: TWin32FileAttributeData;
+begin
+  FillChar(Info, SizeOf(Info), 0);
+  Info.nFileSizeHigh := FileSize shr 32;
+  Info.nFileSizeLow := LongWord(FileSize);
+  SaveFile(Save, FileName, Info, Access);
+end;
+{$ELSE}
+procedure SaveFile(Saver: TWritableDataSaver; FileName: PCoreChar; FileSize: QuadWord;
+  Access: TFileAccess);
 var
   F: TFileStream;
 begin
   F.Create(FileName, Access);
   try
     F.SetSize(FileSize);
-    if Assigned(BeforeSave) then
-      BeforeSave(@F, CustomData);
-    if Assigned(Saver) then
-      Saver(@F);
-    if Assigned(AfterSave) then
-      AfterSave(@F, CustomData);
+    Saver(@F);
     F.SetSize(F.Position);
   finally
     F.Destroy;
   end;
+{$ENDIF}
+end;
+
+procedure SaveFile(Saver: TWritableDataSaver; FileName: PCoreChar;
+  const FileInfo: TWin32FileAttributeData; Access: TFileAccess);
+var
+  F: TFileStream;
+  Creation, LastAccess, LastWrite: PFileTime;
+begin
+  F.Create(FileName, Access);
+  try
+    with FileInfo do
+      if (dwFileAttributes <> 0) and not SetFileAttributesW(FileName, dwFileAttributes) then
+        RaiseLastPlatformError(FileName);
+    F.SetSize(TranslateFileSize(FileInfo));
+    Saver(@F);
+    F.SetSize(F.Position);
+    with FileInfo do
+    begin
+      if QuadWord(ftCreationTime) <> 0 then
+        Creation := @ftCreationTime
+      else
+        Creation := nil;
+      if QuadWord(ftLastAccessTime) <> 0 then
+        LastAccess := @ftLastAccessTime
+      else
+        LastAccess := nil;
+      if QuadWord(ftLastWriteTime) <> 0 then
+        LastWrite := @ftLastWriteTime
+      else
+        LastWrite := nil;
+    end;
+    F.SetTime(Creation, LastAccess, LastWrite);
+  finally
+    F.Destroy;
+  end;
+end;
+
+procedure SaveFile(Saver: TWritableDataSaver; BackupFileName, FileName: PCoreChar;
+  FileSize: QuadWord; Access: TFileAccess; Options: TSaveOptions);
+var
+  Info: TWin32FileAttributeData;
+begin
+  if not MoveFileExW(FileName, BackupFileName,
+    MOVEFILE_COPY_ALLOWED or MOVEFILE_WRITE_THROUGH or MOVEFILE_REPLACE_EXISTING)
+  then
+    RaiseLastPlatformError(FileName);
+  if Options * [soCopyAttr..soCopyTime] <> [] then
+  begin
+    if not GetFileAttributesExW(BackupFileName, GetFileExMaxInfoLevel, @Info) then
+      RaiseLastPlatformError(BackupFileName);
+    if not (soCopyAttr in Options) then
+      Info.dwFileAttributes := 0;
+    if not (soCopyTime in Options) then
+      FillChar(Info.ftCreationTime, SizeOf(TFileTime) * 3, 0);
+  end;
+  SaveFile(Saver, FileName, Info, Access);
+  if not (soBackup in Options) and not DeleteFileW(BackupFileName) then
+    RaiseLastPlatformError(BackupFileName);
+end;
+
+function TranslateFileSize(const Info: TWin32FileAttributeData): QuadWord;
+begin
+  with Info do
+    Result := nFileSizeLow or nFileSizeHigh shl 32;
 end;
 
 { EStream }
@@ -624,6 +703,20 @@ function THandleStream.Write(const Data; Count: LongWord): LongWord;
 begin
 {$IFDEF Tricks} System. {$ENDIF}
   WriteFile(FHandle, Data, Count, Result, nil);  // TODO: Windows x64
+end;
+
+{ TFileStream }
+
+function TFileStream.Information: TFileInformation;
+begin
+  if not GetFileInformationByHandle(FHandle, Result) then
+    RaiseLastPlatformError(nil);
+end;
+
+procedure TFileStream.SetTime(Creation, LastAccess, LastWrite: PFileTime);
+begin
+  if not SetFileTime(FHandle, Creation, LastAccess, LastWrite) then
+    RaiseLastPlatformError(nil);
 end;
 
 { TFileMapping }
