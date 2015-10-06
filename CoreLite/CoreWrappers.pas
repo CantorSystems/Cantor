@@ -312,8 +312,8 @@ type
 
   TSaveOptions = set of (soBackup, soCopyAttr, soCopyTime);
 
-procedure LoadFile(LoadProc: TLoadProc; FileName: PCoreChar;
-  Access: TFileAccess = faSequentialRead);
+function LoadFile(LoadProc: TLoadProc; FileName: PCoreChar;
+  Access: TFileAccess = faSequentialRead): CoreWord;
 
 procedure SaveFile(SaveProc: TSaveProc; FileName: PCoreChar; FileSize: QuadWord;
   Access: TFileAccess = faSequentialRewrite); overload;
@@ -344,13 +344,16 @@ function SetFilePointerEx(hFile: THandle; liDistanceToMove: QuadWord;
 
 { Helper functions }
 
-procedure LoadFile(LoadProc: TLoadProc; FileName: PCoreChar; Access: TFileAccess);
+function LoadFile(LoadProc: TLoadProc; FileName: PCoreChar; Access: TFileAccess): CoreWord;
 var
   F: TFileStream;
+  Pos: QuadWord;
 begin
   F.Create(FileName, Access);
   try
+    Pos := F.Position;
     LoadProc(@F);
+    Result := F.Position - Pos;
   finally
     F.Destroy;
   end;
