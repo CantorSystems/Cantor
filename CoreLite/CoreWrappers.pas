@@ -307,19 +307,19 @@ type
 { Helper functions }
 
 type
-  TReadableDataLoader = procedure(Stream: PReadableStream) of object;
-  TWritableDataSaver = procedure(Stream: PWritableStream) of object;
+  TLoadProc = procedure(Stream: PReadableStream) of object;
+  TSaveProc = procedure(Stream: PWritableStream) of object;
 
   TSaveOptions = set of (soBackup, soCopyAttr, soCopyTime);
 
-procedure LoadFile(Loader: TReadableDataLoader; FileName: PCoreChar;
+procedure LoadFile(LoadProc: TLoadProc; FileName: PCoreChar;
   Access: TFileAccess = faSequentialRead);
 
-procedure SaveFile(Saver: TWritableDataSaver; FileName: PCoreChar; FileSize: QuadWord;
+procedure SaveFile(SaveProc: TSaveProc; FileName: PCoreChar; FileSize: QuadWord;
   Access: TFileAccess = faSequentialRewrite); overload;
-procedure SaveFile(Saver: TWritableDataSaver; FileName: PCoreChar;
+procedure SaveFile(SaveProc: TSaveProc; FileName: PCoreChar;
   const FileInfo: TWin32FileAttributeData; Access: TFileAccess = faSequentialRewrite); overload;
-procedure SaveFile(Saver: TWritableDataSaver; BackupFileName, FileName: PCoreChar;
+procedure SaveFile(SaveProc: TSaveProc; BackupFileName, FileName: PCoreChar;
   FileSize: QuadWord; Access: TFileAccess = faSequentialRewrite;
   Options: TSaveOptions = [soBackup..soCopyTime]); overload;
 
@@ -344,32 +344,19 @@ function SetFilePointerEx(hFile: THandle; liDistanceToMove: QuadWord;
 
 { Helper functions }
 
-procedure LoadFile(Loader: TReadableDataLoader; FileName: PCoreChar; Access: TFileAccess);
+procedure LoadFile(LoadProc: TLoadProc; FileName: PCoreChar; Access: TFileAccess);
 var
   F: TFileStream;
 begin
   F.Create(FileName, Access);
   try
-    Loader(@F);
+    LoadProc(@F);
   finally
     F.Destroy;
   end;
 end;
 
-{$IFDEF AstronautArch}
-procedure SaveFile(Saver: TWritableDataSaver; FileName: PCoreChar; FileSize: QuadWord;
-  Access: TFileAccess);
-var
-  F: TFileStream;
-  Info: TWin32FileAttributeData;
-begin
-  FillChar(Info, SizeOf(Info), 0);
-  Info.nFileSizeHigh := FileSize shr 32;
-  Info.nFileSizeLow := LongWord(FileSize);
-  SaveFile(Save, FileName, Info, Access);
-end;
-{$ELSE}
-procedure SaveFile(Saver: TWritableDataSaver; FileName: PCoreChar; FileSize: QuadWord;
+procedure SaveFile(SaveProc: TSaveProc; FileName: PCoreChar; FileSize: QuadWord;
   Access: TFileAccess);
 var
   F: TFileStream;
@@ -377,15 +364,14 @@ begin
   F.Create(FileName, Access);
   try
     F.SetSize(FileSize);
-    Saver(@F);
+    SaveProc(@F);
     F.SetSize(F.Position);
   finally
     F.Destroy;
   end;
-{$ENDIF}
 end;
 
-procedure SaveFile(Saver: TWritableDataSaver; FileName: PCoreChar;
+procedure SaveFile(SaveProc: TSaveProc; FileName: PCoreChar;
   const FileInfo: TWin32FileAttributeData; Access: TFileAccess);
 var
   F: TFileStream;
@@ -397,7 +383,7 @@ begin
       if (dwFileAttributes <> 0) and not SetFileAttributesW(FileName, dwFileAttributes) then
         RaiseLastPlatformError(FileName);
     F.SetSize(TranslateFileSize(FileInfo));
-    Saver(@F);
+    SaveProc(@F);
     F.SetSize(F.Position);
     with FileInfo do
     begin
@@ -420,7 +406,7 @@ begin
   end;
 end;
 
-procedure SaveFile(Saver: TWritableDataSaver; BackupFileName, FileName: PCoreChar;
+procedure SaveFile(SaveProc: TSaveProc; BackupFileName, FileName: PCoreChar;
   FileSize: QuadWord; Access: TFileAccess; Options: TSaveOptions);
 var
   Info: TWin32FileAttributeData;
@@ -438,7 +424,7 @@ begin
     if not (soCopyTime in Options) then
       FillChar(Info.ftCreationTime, SizeOf(TFileTime) * 3, 0);
   end;
-  SaveFile(Saver, FileName, Info, Access);
+  SaveFile(SaveProc, FileName, Info, Access);
   if not (soBackup in Options) and not DeleteFileW(BackupFileName) then
     RaiseLastPlatformError(BackupFileName);
 end;
