@@ -14,7 +14,7 @@ uses
   Windows, CoreUtils, CoreWrappers, CoreStrings;
 
 type
-  TConsoleAppOptions = set of (caPause, caNoLogo);
+  TConsoleAppOptions = set of (caPause, caNoLogo, caVersion);
 
   PConsoleApplication = ^TConsoleApplication;
   TConsoleApplication = object
@@ -24,11 +24,12 @@ type
   // { placeholder } FOptions: TConsoleAppOptions;
   protected
     procedure Help(UsageFmt, HelpMsg: PLegacyChar);
+    function Logo(LogoFmt: PLegacyChar): Boolean;
+    function Title(Text: PLegacyChar): Boolean;
   public
     constructor Create(ConsoleCP: Word = CP_UTF8);
     destructor Destroy;
     procedure Pause;
-    procedure Run(LogoFmt: PLegacyChar);
 
     property AppName: TCoreString read FAppName;
     property Console: TStreamConsole read FConsole;
@@ -106,15 +107,15 @@ begin
   Include(PConsoleAppCast(@Self).Options, caPause);
 end;
 
-procedure TConsoleApplication.Run(LogoFmt: PLegacyChar);
+function TConsoleApplication.Logo(LogoFmt: PLegacyChar): Boolean;
 var
   VerInfo: TVersionInfo;
   Ver: TVersionBuffer;
 begin
-  if not (caNoLogo in PConsoleAppCast(@Self).Options) then
+  Result := caVersion in PConsoleAppCast(@Self).Options;
+  if Result or not (caNoLogo in PConsoleAppCast(@Self).Options) then
   begin
     FConsole.WriteLn;
-
     with VerInfo do
     begin
       Create(FExeName.RawData);
@@ -122,12 +123,23 @@ begin
         FormatVersion(Ver, sVersionAndRevision);
         if TranslationCount <> 0 then
           FConsole.WriteLn(LogoFmt, 0, [StringInfo(0, 'ProductName'), Ver,
-            StringInfo(0, 'LegalCopyright')], 2);
+            StringInfo(0, 'LegalCopyright')], 1 + Byte(not Result));
       finally
         Destroy;
       end;
     end;
   end;
+end;
+
+function TConsoleApplication.Title(Text: PLegacyChar): Boolean;
+begin
+  Result := caVersion in PConsoleAppCast(@Self).Options;
+  if Result or not (caNoLogo in PConsoleAppCast(@Self).Options) then
+    with FConsole do
+    begin
+      WriteLn;
+      WriteLn(Text, StrLen(Text), 1 + Byte(not Result));
+    end;
 end;
 
 end.

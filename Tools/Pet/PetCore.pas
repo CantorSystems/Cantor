@@ -31,7 +31,8 @@ type
   TFileKind = (fkNone, fkSource, fkInto, fkStub, fkExtract, fkBackup{, fkDump});
   TFileNames = array[fkInto..High(TFileKind)] of TFileName;
 
-  TRunOption = (roPause, roNoLogo, roAuto, roStrip, roTrunc, roKeep, roSafe, roDeep,
+  TRunOption = (roPause, roNoLogo, roVersion, // ordered
+    roAuto, roStrip, roTrunc, roKeep, roSafe, roDeep,
     {roMiniRes, roCleanVer, roMainIcon,} ro3GB);
   TRunOptions = set of TRunOption;
 
@@ -48,10 +49,6 @@ type
   {$IFDEF Kolibri}
     FMenuetKolibri: TMenuetKolibri;
   {$ENDIF}
-
-    procedure LoadImage(Source: PReadableStream; CustomData: Pointer);
-    procedure SaveImage(Dest: PWritableStream; CustomData: Pointer);
-
     procedure Parse(CommandLine: PCoreChar);
     procedure ProcessFile(FileName: PCoreString);
   public
@@ -183,7 +180,7 @@ end;
 procedure TApplication.Parse(CommandLine: PCoreChar);
 const
   OptionKeys: array[TRunOption] of PCoreChar =
-    (sPause, sNoLogo, sAuto, sStrip, sTrunc, sKeep, sSafe, sDeep,
+    (sPause, sNoLogo, sVersion, sAuto, sStrip, sTrunc, sKeep, sSafe, sDeep,
      {sMiniRes, sCleanVer, sMainIcon,} s3GB);
   HexBase: array[Boolean] of LegacyChar = 'A0';
 var
@@ -305,7 +302,7 @@ begin
     Include(FOptions, roPause)
   else
   begin
-    if FSourceFileName.Count = 0 then
+    if (FSourceFileName.Count = 0) and not (roVersion in FOptions) then
       raise ECommandLine.Create(fkSource);
 
     FileName := @FFileNames[fkInto];
@@ -356,7 +353,7 @@ begin
     FindClose(hInfo);}
 
       Processing(sLoadingSource, @FSourceFileName);
-      LoadFile(nil, FSourceFileName.RawData, faRead, @Data, LoadImage);
+//      LoadFile(nil, FSourceFileName.RawData, faRead, @Data, LoadImage); SysUtils
       with Data.Image do
       begin
         ActualSize := Size(False);
@@ -386,7 +383,7 @@ begin
       if roStrip in FOptions then
       begin
         Data.Image.Strip([soStub..soEmptySections] + Deep[roDeep in FOptions]);
-        NewSize := OldSize - Data.Image.Size(roTrunc in FOptions);
+  //      NewSize := OldSize - Data.Image.Size(roTrunc in FOptions);
   //        Processing([sStripping, Percentage(NewSize / OldSize), NewSize], False);
       end
       else
@@ -441,13 +438,13 @@ begin
 
   //      Processing([sSavingInto, FFileNames[fkInto], NewSize]);
         if FFileNames[fkBackup].Count <> 0 then
-          SaveFile(nil, FFileNames[fkInto].RawData, NewSize, faRewrite, @Data.Image, nil, SaveImage)
+//          SaveFile(nil, FFileNames[fkInto].RawData, NewSize, faRewrite, @Data.Image, nil, SaveImage)
         else
         begin
           TmpFileName.Create;
           try
             TmpFileName.AsTempName(@FFileNames[fkInto]);
-            SaveFile(nil, TmpFileName.RawData, NewSize, faRewrite, @Data.Image, nil, SaveImage);
+//            SaveFile(nil, TmpFileName.RawData, NewSize, faRewrite, @Data.Image, nil, SaveImage);
             if not MoveFileExW(TmpFileName.RawData, FFileNames[fkInto].RawData,
               MOVEFILE_COPY_ALLOWED or MOVEFILE_WRITE_THROUGH or MOVEFILE_REPLACE_EXISTING)
             then
@@ -468,18 +465,18 @@ begin
   end;
 end;
 
-procedure TApplication.Run;
+procedure TApplication.Run(CommandLine: PCoreChar);
 begin
-  inherited Run(sLogo);
   Parse(CommandLine);
-
+  if Logo(sLogo) then
+    Exit;
   if FSourceFileName.Count <> 0 then
     ProcessFile(@FSourceFileName)
   else
     Help(sUsage, sHelp);
 end;
 
-procedure TApplication.LoadImage(Source: PReadableStream; CustomData: Pointer);
+{procedure TApplication.LoadImage(Source: PReadableStream; CustomData: Pointer);
 begin
   with PImageData(CustomData)^ do
   begin
@@ -491,7 +488,7 @@ end;
 procedure TApplication.SaveImage(Dest: PWritableStream; CustomData: Pointer);
 begin
   PExeImage(CustomData).Save(Dest, roTrunc in FOptions);
-end;
+end;}
 
 end.
 

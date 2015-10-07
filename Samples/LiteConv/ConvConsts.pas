@@ -15,6 +15,7 @@ const         // short Unicode strings
   sNoLogo   = #6'nologo';
   sPause    = #5'pause';
   sRename   = #6'rename';
+  sVersion  = #7'version';
 
   sBE       = #2'BE';
   sBig5     = #4'Big5';
@@ -38,9 +39,10 @@ const
             #9'%ws -rename source-file [-pause]';
   sHelp =
     'Common options'#10 +
-            #9'-into'#9#9'Replace source file with result'#10 +
+            #9'-into'#9#9#9'Replace source file with result'#10 +
             #9'-into <dest-file>'#9'Write result to <dest-file>'#10 +
-            #9'-pause'#9#9'Wait for ENTER key to exit'#10{#10 +
+            #9'-pause'#9#9#9'Wait for ENTER key to exit'#10 +
+            #9'-version'#9#9'Show version and exit'{#10#10 +
     'Options for both <in-charset> and <out-charset>'#10 +
             #9'-cp N'#9'Use code page N to decode/encode file'#10 +
             #9'-oem'#9'Use current OEM code page to decode file'#10#10 +

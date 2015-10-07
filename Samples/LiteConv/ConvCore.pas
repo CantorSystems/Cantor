@@ -10,7 +10,7 @@ uses
   CoreUtils, CoreExceptions, CoreStrings, CoreApp;
 
 type
-  TRunOption = (roPause, roNoLogo, roRename, roOEM);
+  TRunOption = (roPause, roNoLogo, roVersion, roRename, roOEM);
   TRunOptions = set of TRunOption;
 
   TCommand = (cmNone, cmInto, cmCP);
@@ -113,7 +113,7 @@ end;
 procedure TApplication.Parse(CommandLine: PCoreChar);
 const
   Commands: array[cmInto..cmInto] of PWideChar = (sInto);
-  RunOptions: array[roPause..roRename] of PWideChar = (sPause, sNoLogo, sRename);
+  RunOptions: array[roPause..roRename] of PWideChar = (sPause, sNoLogo, sVersion, sRename);
 var
   CmdLine, Key: TWideString;
   Param: TCommandLineParam;
@@ -195,7 +195,7 @@ begin
 
   if ParamCount = 0 then
     Include(FOptions, roPause)
-  else if FSourceFileName.Count = 0 then
+  else if (FSourceFileName.Count = 0) and not (roVersion in FOptions) then
     raise ECommandParam.Create(cmNone);
 end;
 
@@ -206,12 +206,8 @@ var
   UniFileName: TWideString;
 begin
   Parse(CommandLine);
-  if not (roNoLogo in FOptions) then
-    with Console do
-    begin
-      WriteLn;
-      WriteLn(PLegacyChar(sTitle), StrLen(sTitle),  2);
-    end;
+  if Title(sTitle) then
+    Exit;
 
   if FSourceFileName.Count <> 0 then
   begin

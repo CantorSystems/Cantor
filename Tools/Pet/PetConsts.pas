@@ -14,13 +14,13 @@ interface
 
 { Do not localize }
 
-const
-              // short Unicode strings
+const         // short Unicode strings
   sInto       = #4'into';
   sBackup     = #6'backup';
   sStub       = #4'stub';
   sExtract    = #7'extract';
   sDump       = #4'dump';
+  sVersion    = #7'version';
 
   s3GB        = #3'3GB';
   sAuto       = #4'auto';
@@ -60,7 +60,8 @@ const
             #9'-backup <bak>'#9#9'Backup <source> file to <bak> file'#10#10 +
           //  #9'-dump <dump>'#9'Dump <source> info to <dump> file'#10 +
             #9'-extract <stub>'#9#9'Extract <source> stub to <stub> file'#10 +
-            #9'-into [dest]'#9#9'Save result to [dest] file'#10#10 +
+            #9'-into [dest]'#9#9'Save result to [dest] file'#10 +
+            #9'-version'#9#9'Show version and exit'#10#10 +
     'Option for -extract and -into commands'#10 +
             #9'-strip'#9#9#9'Strip headers, relocations and empty sections'#10 +
             #9#9#9#9'when possible'#10#10 +
