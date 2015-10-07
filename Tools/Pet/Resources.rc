@@ -14,7 +14,7 @@ FILEFLAGS VS_FF_PRERELEASE
 BEGIN
   BLOCK "StringFileInfo"
   BEGIN
-    BLOCK "040904E4"
+    BLOCK "040904E3"
     BEGIN
       VALUE "CompanyName", "Vladislav Javadov\000"
       VALUE "LegalCopyright", "Copyright © 2013-2015 Vladislav Javadov\000"
@@ -23,11 +23,11 @@ BEGIN
       //VALUE "FileDescription", "Portable executable (PE) optimization and dumping tool\000"
       VALUE "OriginalFilename", "Pet.exe\000"
       VALUE "ProductVersion", "0.4\000"
-      VALUE "FileVersion", "r" textrev "\000"
+      VALUE "FileVersion", "r" textrev " #ПокажиКота\000"
     END
   END
   BLOCK "VarFileInfo"
   BEGIN
-    VALUE "Translation", 0x409 1252
+    VALUE "Translation", 0x409 1251
   END
 END
