@@ -293,14 +293,11 @@ function TranslateCodePage(Source: Word): Word;
 
 type
   TModuleFileName = record
-    Value: array[0..MAX_PATH-1] of CoreChar;
-    Length: Integer;
+    Value: array[0..$7FF] of CoreChar;
+    Length, FileNameIndex: Integer;
   end;
 
-  TModuleFileNameOption = (moPath, moExtension);
-  TModuleFileNameOptions = set of TModuleFileNameOption;
-
-function ModuleFileName(Handle: THandle = 0; Options: TModuleFileNameOptions = []): TModuleFileName;
+function ModuleFileName(Handle: THandle = 0): TModuleFileName;
 
 { FreeMem finalization required }
 
@@ -1256,9 +1253,22 @@ begin
   Result := Source;
 end;
 
-function ModuleFileName(Handle: THandle; Options: TModuleFileNameOptions): TModuleFileName;
+function ModuleFileName(Handle: THandle): TModuleFileName;
+var
+  W: PWideChar;
 begin
-  
+  with Result do
+  begin
+    Length := GetModuleFileNameW(Handle, Value, System.Length(Value));
+    if Length <> 0 then
+    begin
+      W := WideStrRScan(Value, Length, PathDelimiter);
+      if W <> nil then
+        FileNameIndex := W - Value + 1
+      else
+        FileNameIndex := 0;
+    end;
+  end;
 end;
 
 { FreeMem finalization required }

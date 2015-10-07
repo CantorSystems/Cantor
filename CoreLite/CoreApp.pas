@@ -49,9 +49,6 @@ type
 { TConsoleApplication }
 
 constructor TConsoleApplication.Create(ConsoleCP: Word);
-var
-  Buf: array[0..MAX_PATH] of CoreChar;
-  BufLen: Integer;
 begin
   with FConsole do
   begin
@@ -59,14 +56,11 @@ begin
     CodePage := ConsoleCP;
   end;
 
-  BufLen := GetModuleFileNameW(0, Buf, Length(Buf));
-  if BufLen = 0 then
-    RaiseLastPlatformError {$IFDEF Debug} (sModuleFileName, Length(Buf)) {$ENDIF} ;
-
   with FExeName do
   begin
     Create;
-    AsWideString(Buf, BufLen);
+    with ModuleFileName do
+      AsWideString(Value, Length);
   end;
 
   with FAppName do

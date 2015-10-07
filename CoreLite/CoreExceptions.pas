@@ -327,9 +327,6 @@ var
   AccessOp: PLegacyChar;
   AccessAddress: Pointer;
   MemInfo: TMemoryBasicInformation;
-  ModuleName: array[0..MAX_PATH] of WideChar;
-  L: Integer;
-  W: PWideChar;
 begin
   with P^ do
   begin
@@ -340,17 +337,13 @@ begin
     AccessAddress := Pointer(ExceptionInformation[1]);
     VirtualQuery(ExceptionAddress, MemInfo, SizeOf(MemInfo));
     if MemInfo.State = MEM_COMMIT then
-    begin
-      L := GetModuleFileNameW(THandle(MemInfo.AllocationBase), ModuleName, Length(ModuleName));
-      if L <> 0 then
-      begin
-        W := WideStrRScan(ModuleName, L, PathDelimiter);
-        Inc(W);
-        Result := EAccessViolation.Create(sModuleAccessViolation, DefaultSystemCodePage,
-          [ExceptionAddress, W, WhitespaceOrLineBreak[IsConsole], AccessOp, AccessAddress]);
-        Exit;
-      end;
-    end;
+      with ModuleFileName(THandle(MemInfo.AllocationBase)) do
+        if Length <> 0 then
+        begin
+          Result := EAccessViolation.Create(sModuleAccessViolation, DefaultSystemCodePage,
+            [ExceptionAddress, Value[FileNameIndex], WhitespaceOrLineBreak[IsConsole], AccessOp, AccessAddress]);
+          Exit;
+        end;
     Result := EAccessViolation.Create(sAccessViolation,
       [ExceptionAddress, WhitespaceOrLineBreak[IsConsole], AccessOp, AccessAddress]);
   end;
