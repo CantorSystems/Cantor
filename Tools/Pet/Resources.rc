@@ -19,7 +19,7 @@ BEGIN
       VALUE "CompanyName", "Vladislav Javadov\000"
       VALUE "LegalCopyright", "Copyright © 2013-2015 Vladislav Javadov\000"
       VALUE "ProductName", "PE Tool\000"
-      VALUE "FileDescription", "Portable executable (PE) optimization tool\000"
+      VALUE "FileDescription", "Portable executable (PE) stripping tool\000"
       //VALUE "FileDescription", "Portable executable (PE) optimization and dumping tool\000"
       VALUE "OriginalFilename", "Pet.exe\000"
       VALUE "ProductVersion", "0.4\000"
