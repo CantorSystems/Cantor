@@ -141,10 +141,17 @@ const
   HexDigits: array [$0..$F] of LegacyChar = '0123456789ABCDEF';
 var
   MainWindow: THandle;
+  DefaultSystemCodePage: Word = CP_LOCALIZATION;
 {$ENDIF}
-{$IF not defined(Tricks) and not UnicodeRTL}
+
+{$IF RTLVersion < 15}
+const
+  CP_THREAD_ACP = 3;
+{$IFEND}
+
+{$IF defined(CoreLiteVCL) and not UnicodeRTL}
 var
-  DefaultSystemCodePage: Word = LocalizationCP;
+  DefaultUnicodeCodePage: Word {$IFNDEF Lite} = CP_THREAD_ACP {$ENDIF};
 {$IFEND}
 
 { Platform support }
@@ -252,6 +259,9 @@ function SysErrorMessage(ErrorCode: LongWord): TCoreStringRec;
 { Legacy Windows service }
 
 const
+  CP_GB18030 = 54936;
+
+{$IF not UnicodeRTL}
   CSTR_LESS_THAN    = 1;
   CSTR_EQUAL        = 2;
   CSTR_GREATER_THAN = 3;
@@ -259,7 +269,18 @@ const
   MB_ERR_INVALID_CHARS = 8;
   WC_NO_BEST_FIT_CHARS = $400;
 
-  CP_GB18030 = 54936;
+type
+  TCPInfoEx = packed record
+    MaxCharSize: LongWord;
+    DefaultChar: array[0..MAX_DEFAULTCHAR - 1] of LegacyChar;
+    LeadByte: array[0..MAX_LEADBYTES - 1] of Byte;
+    UnicodeDefaultChar: WideChar;
+    CodePage: LongWord;
+    CodePageName: array[0..MAX_PATH - 1] of CoreChar;
+  end;
+
+function GetCPInfoEx(CodePage, Flags: LongWord; var CPInfoEx: TCPInfoEx): BOOL; stdcall;
+{$IFEND}
 
 function FormatBuf(Fmt: PLegacyChar; const Args: array of const;
   Buf: PLegacyChar): Integer;
@@ -313,8 +334,7 @@ function FriendlyClassName(var Dest: TClassName; Source: TObject): Byte; overloa
 implementation
 
 {$IFDEF CoreLiteVCL}
-uses
-  SysUtils;
+uses SysUtils;
 {$ENDIF}
 
 { Memory service }
@@ -1123,6 +1143,11 @@ end;
 
 { Legacy Windows service }
 
+{$IF not UnicodeRTL}
+function GetCPInfoEx(CodePage, Flags: LongWord; var CPInfoEx: TCPInfoEx): BOOL; stdcall;
+  external kernel32 name 'GetCPInfoExW';
+{$IFEND}
+
 const
   VarArgSize = SizeOf(TVarRec);
 
@@ -1204,15 +1229,31 @@ begin
 end;
 
 function TranslateCodePage(Source: Word): Word;
+{$IFNDEF Lite}
+var Info: TCPInfoEx;
+{$ENDIF}
 begin
   case Source of
     CP_ACP:
-      Result := GetACP;
+      begin
+        Result := GetACP;
+        Exit;
+      end;
     CP_OEMCP:
-      Result := GetOEMCP;
-  else
-    Result := Source;
+      begin
+        Result := GetOEMCP;
+        Exit;
+      end;
+  {$IFNDEF Lite}
+    CP_THREAD_ACP, CP_MACCP:
+      if GetCPInfoEx(Source, 0, Info) then
+      begin
+        Result := Info.CodePage;
+        Exit;
+      end;
+  {$ENDIF}
   end;
+  Result := Source;
 end;
 
 function ModuleFileName(Handle: THandle; Options: TModuleFileNameOptions): TModuleFileName;
@@ -1349,9 +1390,9 @@ begin
 end;
 
 initialization
-{$IFDEF Tricks}
-  DefaultSystemCodePage := LocalizationCP;
-{$ENDIF}
+{$IF defined(Tricks) or UnicodeRTL}
+  DefaultSystemCodePage := CP_LOCALIZATION;
+{$IFEND}
 
 end.
 

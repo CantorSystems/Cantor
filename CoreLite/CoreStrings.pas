@@ -108,15 +108,6 @@ type
   PLegacyStrings = ^TLegacyStrings;
   PWideStrings = ^TWideStrings;
 
-  TCPInfoEx = packed record
-    MaxCharSize: LongWord;
-    DefaultChar: array[0..MAX_DEFAULTCHAR - 1] of LegacyChar;
-    LeadByte: array[0..MAX_LEADBYTES - 1] of Byte;
-    UnicodeDefaultChar: WideChar;
-    CodePage: LongWord;
-    CodePageName: array[0..MAX_PATH - 1] of CoreChar;
-  end;
-
   PCodePage = ^TCodePage;
   TCodePage = object
   private
@@ -562,19 +553,10 @@ type
 
   TSurrogatePairOptions = set of (poBigEndian, poEncodeBigEndian);
 
-{$IF defined(CoreLiteVCL) and not UnicodeRTL}
-var
-  DefaultUnicodeCodePage: Integer;
-{$IFEND}
-
 function Wrap(Source: PLegacyChar; Length: Integer; CodePage: PCodePage = nil;
   SourceOptions: TRawByteSource = soFromTheWild + soAttach): TLegacyString; overload;
 function Wrap(Source: PWideChar; Length: Integer;
   SourceOptions: TEndianSource = soAttach): TWideString; overload;
-
-{ Legacy Windows service }
-
-function GetCPInfoEx(CodePage, Flags: LongWord; var CPInfoEx: TCPInfoEx): BOOL; stdcall;
 
 implementation
 
@@ -583,11 +565,6 @@ uses
 
 const
   BOMCP: array[Boolean] of Word = (CP_GB18030, CP_UTF7);
-
-{ Legacy Windows service }
-
-function GetCPInfoEx(CodePage, Flags: LongWord; var CPInfoEx: TCPInfoEx): BOOL; stdcall;
-  external kernel32 name 'GetCPInfoExW';
 
 { Helper functions }
 

@@ -11,7 +11,7 @@ unit CoreConsts;
 interface
 
 const
-  LocalizationCP = 1252; // we're using “”, but only in exception messages
+  CP_LOCALIZATION = 1252; // we're using “”, but only in exception messages
 
   sDivByZero          = 'Division by zero';
   sRangeError         = 'Range check error';
