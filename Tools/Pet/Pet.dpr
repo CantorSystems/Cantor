@@ -6,7 +6,6 @@
     Conditional defines:
       * Debug -- Delphi IDE friendly exceptions
       * ForceMMX -- allow MMX with FastCode
-      * Kolibri -- proposed KOLIBRI format support
       * Lite -- CoreLite stream without virtual methods
       * Tricks -- when using tricky lite System unit
 

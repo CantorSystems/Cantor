@@ -32,11 +32,9 @@ type
   TFileNames = array[fkInto..High(TFileKind)] of TFileName;
 
   TRunOption = (roPause, roNoLogo, roVersion, // ordered
-    roAuto, roStrip, roTrunc, roKeep, roSafe, roDeep,
+    roAuto, roStrip, roTrunc, roKeep, roUnsafe, roDeep,
     {roMiniRes, roCleanVer, roMainIcon,} ro3GB);
   TRunOptions = set of TRunOption;
-
-  TMenuetKolibri = (mkNone, mkMenuet, mkKolibri);
 
   TApplication = object(TConsoleApplication)
   private
@@ -46,9 +44,6 @@ type
     FDropSections: TSectionNames;
 //    FImageBase: CoreInt;
     FMajorVersion, FMinorVersion: Word;
-  {$IFDEF Kolibri}
-    FMenuetKolibri: TMenuetKolibri;
-  {$ENDIF}
     procedure Parse(CommandLine: PCoreChar);
     procedure ProcessFile(FileName: PCoreString);
   public
@@ -180,7 +175,7 @@ end;
 procedure TApplication.Parse(CommandLine: PCoreChar);
 const
   OptionKeys: array[TRunOption] of PCoreChar =
-    (sPause, sNoLogo, sVersion, sAuto, sStrip, sTrunc, sKeep, sSafe, sDeep,
+    (sPause, sNoLogo, sVersion, sAuto, sStrip, sTrunc, sKeep, sUnsafe, sDeep,
      {sMiniRes, sCleanVer, sMainIcon,} s3GB);
   HexBase: array[Boolean] of LegacyChar = 'A0';
 var
