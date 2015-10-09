@@ -142,7 +142,7 @@ const
   Postfix: TPostfix = ('.', '$', '$', '$');
 begin
   AsRange(Source, 0);
-  Capacity := Count + Length(Postfix);
+  Capacity := Count + Length(Postfix) + 1;
   PPostfix(RawData + Count)^ := Postfix;
   Append(Length(Postfix));
   RawData[Count] := #0;
@@ -417,16 +417,9 @@ begin
         with Data.Image do
         begin
           if FMajorVersion <> 0 then
-            with (@Headers.OptionalHeader)^ do // WTF?
-            begin
-              MajorOSVersion := FMajorVersion;
-              MinorOSVersion := FMinorVersion;
-              MajorSubsystemVersion := FMajorVersion;
-              MinorSubsystemVersion := FMinorVersion;
-            end;
+            OSVersion(FMajorVersion, FMinorVersion);
           if ro3GB in FOptions then
-            with (@Headers.FileHeader)^ do // WTF?
-              Characteristics := Characteristics or IMAGE_FILE_LARGE_ADDRESS_AWARE;
+            LargeAddressAware;
           Build(Byte(roStrip in FOptions) * 512);
           NewSize := Size(roTrunc in FOptions);
         end;

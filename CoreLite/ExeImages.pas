@@ -94,7 +94,9 @@ type
     function IndexOfSection(HeaderSection: TExeHeaderSection): Integer; overload;
     function IndexOfSection(DirectoryIndex: Byte): Integer; overload;
     function IndexOfSection(Name: PLegacyChar; Length: Integer): Integer; overload;
+    procedure LargeAddressAware(Value: Boolean = True);
     procedure Load(Source: PReadableStream);
+    procedure OSVersion(MajorVersion: Word; MinorVersion: Word = 0);
     procedure Save(Dest: PWritableStream; TruncLastSection: Boolean = True);
     function SectionAlignBytes(Source: LongWord): LongWord;
     function Size(TruncLastSection: Boolean = True): LongWord;
@@ -588,6 +590,12 @@ begin
   Result := -1;
 end;
 
+procedure TExeImage.LargeAddressAware(Value: Boolean);
+begin
+  with FHeaders.FileHeader do
+    Characteristics := Characteristics or (IMAGE_FILE_LARGE_ADDRESS_AWARE and (LongWord(not Value) - 1));
+end;
+
 procedure TExeImage.Load(Source: PReadableStream);
 var
   I: Integer;
@@ -625,6 +633,17 @@ begin
         Create;
         Load(Source);
       end;
+  end;
+end;
+
+procedure TExeImage.OSVersion(MajorVersion, MinorVersion: Word);
+begin
+  with FHeaders.OptionalHeader do
+  begin
+    MajorOSVersion := MajorVersion;
+    MinorOSVersion := MinorVersion;
+    MajorSubsystemVersion := MajorVersion;
+    MinorSubsystemVersion := MinorVersion;
   end;
 end;
 
