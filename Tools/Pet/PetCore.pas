@@ -9,7 +9,8 @@ unit PetCore;
 interface
 
 uses
-  Windows, CoreUtils, CoreExceptions, CoreWrappers, CoreStrings, CoreApp, ExeImages;
+  Windows, CoreUtils, CoreExceptions, CoreWrappers, CoreClasses, CoreStrings,
+  CoreApp, ExeImages;
 
 type
 //  TResourceNames = TWideStringArray;
@@ -22,11 +23,52 @@ type
     function IsDotOrNull: Boolean;
   end;
 
-  PImageData = ^TImageData;
-  TImageData = record
-    Image: TExeImage;
-    FileSize: LongWord;
+  TOutput = object(TCoreObject)
+  private
+    FConsole: PStreamConsole;
+  public
+    procedure Action(Prompt: PCoreChar; FileName: PCoreString); virtual; abstract;
+    procedure Line(Double: Boolean); virtual; abstract;
+    procedure Stats(Read, Actual, Stripped: Integer); virtual; abstract;
+
+    property Console: PStreamConsole read FConsole;
   end;
+
+  TDefaultOutput = object(TOutput)
+  private
+    FActionFormat, FStatsFormat: PWideChar;
+    FActionFixedWidth, FStatsFixedWidth: Integer;
+    FPercentage: TLegacyString;
+  public
+    constructor Create(Dest: PStreamConsole; PromptWidth, FileNameWidth, StatBytesWidth: Word);
+    destructor Destroy; virtual;
+    procedure Action(Prompt: PCoreChar; FileName: PCoreString); virtual;
+    procedure Line(Double: Boolean); virtual;
+    procedure Stats(Read, Actual, Stripped: Integer); virtual;
+
+    property PromptFixedWidth: Integer read FActionFixedWidth;
+    property PromptFormat: PWideChar read FActionFormat;
+    property StatsFixedWidth: Integer read FStatsFixedWidth;
+    property StatsFormat: PWideChar read FStatsFormat;
+  end;
+
+{  TVerboseOutput = object(TOutput)
+  private
+    FActionFormat, FStatsFormat: PWideChar;
+    FActionFixedWidth, FStatsFixedWidth: Integer;
+    FPercentage: TLegacyString;
+  public
+    constructor Create(Dest: PStreamConsole; PromptWidth, FileNameWidth, StatBytesWidth: Word);
+    destructor Destroy; virtual;
+    procedure Action(Prompt: PCoreChar; FileName: PCoreString); virtual;
+    procedure Line(Double: Boolean); virtual;
+    procedure Stats(Read, Actual, Stripped: Integer); virtual;
+
+    property PromptFixedWidth: Integer read FActionFixedWidth;
+    property PromptFormat: PWideChar read FActionFormat;
+    property StatsFixedWidth: Integer read FStatsFixedWidth;
+    property StatsFormat: PWideChar read FStatsFormat;
+  end;}
 
   TFileKind = (fkNone, fkSource, fkInto, fkStub, fkExtract, fkBackup{, fkDump});
   TFileNames = array[fkInto..High(TFileKind)] of TFileName;
@@ -43,6 +85,7 @@ type
     FFileNames: TFileNames;
     FDropSections: TSectionNames;
 //    FImageBase: CoreInt;
+    FImage: TExeImage;
     FMajorVersion, FMinorVersion: Word;
     procedure Parse(CommandLine: PCoreChar);
     procedure ProcessFile(FileName: PCoreString);
@@ -76,7 +119,7 @@ type
 implementation
 
 uses
-  CoreConsts, PetConsts, CoreClasses;
+  CoreConsts, PetConsts;
 
 const
   FileKeys: array[fkInto..High(TFileKind)] of PCoreChar = (sInto, sStub, sExtract, sBackup{, sDump});
@@ -151,6 +194,61 @@ end;
 function TFileName.IsDotOrNull: Boolean;
 begin
   Result := (TypeOf(Self) <> nil) and ((Count = 0) or (Count = 1) and (RawData^ = '.'));
+end;
+
+{ TDefaultOutput }
+
+constructor TDefaultOutput.Create(Dest: PStreamConsole;
+  PromptWidth, FileNameWidth, StatBytesWidth: Word);
+begin
+  FActionFormat := Format(sDefaultActionFmt, DefaultSystemCodePage, 0,
+    [PromptWidth, FileNameWidth]).Value;
+  FActionFixedWidth := PromptWidth + FileNameWidth;
+
+  FStatsFormat := Format(sDefaultStatsFmt, DefaultSystemCodePage, 0,
+    [StatBytesWidth]).Value;
+  FStatsFixedWidth := StatBytesWidth;
+
+  FPercentage.Create;
+end;
+
+destructor TDefaultOutput.Destroy;
+begin
+  FPercentage.Destroy;
+
+  FreeMem(FStatsFormat);
+  FreeMem(FActionFormat);
+end;
+
+procedure TDefaultOutput.Action(Prompt: PCoreChar; FileName: PCoreString);
+begin // TODO: [...]\FileName
+  with WideFormat(FActionFormat, FActionFixedWidth, [Prompt, FileName]) do
+  try
+    FConsole.WriteLn(Value, Length, 0);
+  finally
+    FreeMem(Value);
+  end;
+end;
+
+procedure TDefaultOutput.Line(Double: Boolean);
+begin
+end;
+
+procedure TDefaultOutput.Stats(Read, Actual, Stripped: Integer);
+var
+  ByteCount: Integer;
+begin
+  if Stripped <> 0 then
+  begin
+    FPercentage.AsPercentage(Stripped / Actual);
+    ByteCount := Actual;
+  end
+  else
+  begin
+    FPercentage.AsPercentage(Actual / Read);
+    ByteCount := Read;
+  end;
+  FConsole.WriteLn(sDefaultStatsFmt, FStatsFixedWidth, [ByteCount, FPercentage.RawData]);
 end;
 
 { TApplication }
@@ -329,7 +427,6 @@ end;
 const
   Deep: array[Boolean] of TStripOptions = ([], [soOrphanedSections]);
 var
-  Data: TImageData;
   Stub: TExeStub;
   I, Idx: Integer;
   OldSize, NewSize, RawSize, FixedSize: LongWord;
@@ -338,7 +435,7 @@ var
   hInfo: THandle;}
   TmpFileName: TFileName;
 begin
-  Data.Image.Create;
+  FImage.Create;
   try
     Ratio.Create;
     try
@@ -349,18 +446,18 @@ begin
 
       Processing(sLoadingSource, @FSourceFileName);
 //      LoadFile(nil, FSourceFileName.RawData, faRead, @Data, LoadImage); SysUtils
-      with Data.Image do
+      with FImage do
       begin
         ActualSize := Size(False);
         StrippedSize := Size(roTrunc in FOptions);
       end;
-      Stats(sImageData, Data.FileSize, ActualSize, StrippedSize);
+//      Stats(sImageData, Data.FileSize, ActualSize, StrippedSize);
 
       if FFileNames[fkExtract].Count <> 0 then
       begin
         Stub.Create;
         try
-          Stub.Load(@Data.Image.Stub);
+//          Stub.Load(@Data.Image.Stub);
           Stub.Strip(roStrip in FOptions);
           Processing(sExtractingStub, @FFileNames[fkExtract]);
           SaveFile(Stub.Save, FFileNames[fkExtract].RawData, Stub.Size);
@@ -371,21 +468,21 @@ begin
 
       if FFileNames[fkStub].Count <> 0 then
       begin
-        LoadFile(Data.Image.Stub.Load, FFileNames[fkStub].RawData);
+//        LoadFile(Data.Image.Stub.Load, FFileNames[fkStub].RawData);
   //      Processing([sInsertingStub, FFileNames[fkStub], Size]);
       end;
 
       if roStrip in FOptions then
       begin
-        Data.Image.Strip([soStub..soEmptySections] + Deep[roDeep in FOptions]);
+//        Data.Image.Strip([soStub..soEmptySections] + Deep[roDeep in FOptions]);
   //      NewSize := OldSize - Data.Image.Size(roTrunc in FOptions);
   //        Processing([sStripping, Percentage(NewSize / OldSize), NewSize], False);
       end
       else
-        with Data.Image.Stub do
+//        with Data.Image.Stub do
         begin
           RawSize := Size;
-          Strip(False);
+//          Strip(False);
           FixedSize := Size;
   //        Processing([sFixingStub, Percentage(FixedSize / RawSize), FixedSize], False);
         end;
@@ -414,7 +511,7 @@ begin
             RaiseLastPlatformError(FFileNames[fkBackup].RawData);
         end;
 
-        with Data.Image do
+        with FImage do
         begin
           if FMajorVersion <> 0 then
             OSVersion(FMajorVersion, FMinorVersion);
@@ -449,7 +546,7 @@ begin
       Ratio.Destroy;
     end;
   finally
-    Data.Image.Destroy;
+    FImage.Destroy;
   end;
 end;
 

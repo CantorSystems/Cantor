@@ -111,9 +111,13 @@ const
   sInsertingStub    = 'Inserting stub';
   sSavingInto       = 'Saving into';
   sDroppingSection  = 'Dropping section';
-  sDroppingResource = 'Dropping resource';
   sStripping        = 'Stripping';
   sTotal            = 'Total';
+
+  PromptMaxWidth = Length(sDroppingSection);
+
+  sDefaultActionFmt = '%%%dhs %%%ds';
+  sDefaultStatsFmt = ' %%%du bytes %%hs';
 
   sBackuping      = 'Backuping'#9' %s';
 
