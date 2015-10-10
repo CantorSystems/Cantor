@@ -141,7 +141,9 @@ const
   HexDigits: array [$0..$F] of LegacyChar = '0123456789ABCDEF';
 var
   MainWindow: THandle;
+{$IF not UnicodeRTL}
   DefaultSystemCodePage: Word = CP_LOCALIZATION;
+{$IFEND}  
 {$ENDIF}
 
 {$IF RTLVersion < 15}
