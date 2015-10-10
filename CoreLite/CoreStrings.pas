@@ -1180,15 +1180,10 @@ end;
 
 procedure TLegacyString.AsPercentage(Ratio: Double; Precision: Integer;
   FillChar: LegacyChar);
-var
-  Length: Integer;
-begin    // 100.1%
-  Length := 3 + 1 + Precision + 1;
-  if Attached or (Capacity < Length) then
-    Capacity := Length;
+begin
   AsFloat(Ratio * 100, 2, Precision, FillChar);
+  PWord(FData + Count)^ := Byte('%'); // Fast core
   Append(1);
-  PWord(@FData)^ := Byte('%'); // Fast core
 end;
 
 function TLegacyString.AsNextLine(Source: PLegacyString): Integer;
@@ -2072,15 +2067,10 @@ end;
 
 procedure TWideString.AsPercentage(Ratio: Double; Precision: Integer;
   FillChar: WideChar);
-var
-  Length: Integer;
-begin    // 100.1%
-  Length := 3 + 1 + Precision + 1;
-  if Attached or (Capacity < Length) then
-    Capacity := Length;
+begin
   AsFloat(Ratio * 100, 2, Precision, FillChar);
+  PLongWord(FData + Count)^ := Byte('%'); // Fast core
   Append(1);
-  PLongWord(@FData)^ := Byte('%'); // Fast core
 end;
 
 function TWideString.AsNextLine(Source: PWideString): Integer;
