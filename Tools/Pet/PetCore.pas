@@ -33,7 +33,7 @@ type
 
   TRunOption = (roPause, roNoLogo, roVersion, // ordered
     roAuto, roStrip, roTrunc, roKeep, roUnsafe, roDeep,
-    {roMiniRes, roCleanVer, roMainIcon,} ro3GB);
+    {roMiniRes, roCleanVer, roMainIcon,} ro3GB, roVerbose);
   TRunOptions = set of TRunOption;
 
   TApplication = object(TConsoleApplication)
@@ -176,7 +176,7 @@ procedure TApplication.Parse(CommandLine: PCoreChar);
 const
   OptionKeys: array[TRunOption] of PCoreChar =
     (sPause, sNoLogo, sVersion, sAuto, sStrip, sTrunc, sKeep, sUnsafe, sDeep,
-     {sMiniRes, sCleanVer, sMainIcon,} s3GB);
+     {sMiniRes, sCleanVer, sMainIcon,} s3GB, sVerbose);
   HexBase: array[Boolean] of LegacyChar = 'A0';
 var
   CmdLine, Key: TCoreString;

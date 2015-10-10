@@ -27,9 +27,10 @@ const         // short Unicode strings
   sNoLogo     = #6'nologo';
   sPause      = #5'pause';
   sOSVer      = #5'osver';
-  sUnsafe     = #6'unsafe';
   sStrip      = #5'strip';
   sTrunc      = #5'trunc';
+  sUnsafe     = #6'unsafe';
+  sVerbose    = #7'verbose';
 
   sLogo =
           #9'  /\_/\'#10 +
@@ -66,7 +67,8 @@ const
             #9'-stub [stub]|[.]' +   #9'Replace stub with one from [stub] file'#10 +
             #9'-trunc' +         #9#9#9'Don''t align last section, truncate file'#10 +
                                #9#9#9#9'immediately after data end'#10 +
-            #9'-unsafe' +        #9#9#9'Strip chained overlay or certificate data'#10#10 +
+            #9'-unsafe' +        #9#9#9'Strip chained overlay or certificate data'#10 +
+            #9'-verbose' +         #9#9'Output detailed stripping information'#10#10 +
     'Miscellaneous options'#10 +
             #9'-nologo' +        #9#9#9'Don''t display PET logo'#10 +
             #9'-pause' +         #9#9#9'Wait for ENTER key to exit';
