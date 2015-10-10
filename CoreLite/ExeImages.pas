@@ -633,6 +633,9 @@ begin
         Create;
         Load(Source);
       end;
+    if Capacity <> 0 then
+      with FSections[Count - 1].Header do
+        Source.Position := RawDataOffset + RawDataSize; // for LoadFile result
   end;
 end;
 
