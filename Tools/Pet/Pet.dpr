@@ -6,7 +6,7 @@
     Conditional defines:
       * Debug -- Delphi IDE friendly exceptions
       * ForceMMX -- allow MMX with FastCode
-      * Lite -- CoreLite stream without virtual methods
+      * Lite -- lite CoreWrappers.THandleStream and lite PetCore
       * Tricks -- when using tricky lite System unit
 
     Search path:  ..\..\CoreLite
@@ -31,6 +31,7 @@ var
   Application: TApplication;
 begin
 {$IFDEF Tricks}
+  FpuInit;
   UseErrorMessageWrite;
 {$ENDIF}
   UseExceptionMessageWrite;

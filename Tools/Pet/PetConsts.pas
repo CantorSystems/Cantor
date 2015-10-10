@@ -105,20 +105,23 @@ const
   sDoubleLine = #$E2#$95#$90;
   sSingleLine = #$E2#$94#$80;
 
-  sLoadingSource    = 'Loading source';
+  sPathEllipsis = '[...]';
+
+  sLoading          = 'Loading';
+  sOverlayData      = 'Overlay data';
   sImageData        = 'Image data';
   sExtractingStub   = 'Extracting stub';
   sFixingStub       = 'Fixing stub';
-  sInsertingStub    = 'Inserting stub';
-  sSavingInto       = 'Saving into';
+  sReplacingStub    = 'Replacing stub';
+  sSaving           = 'Saving';
   sDroppingSection  = 'Dropping section';
   sStripping        = 'Stripping';
   sTotal            = 'Total';
 
   PromptMaxWidth = Length(sDroppingSection);
 
-  sDefaultActionFmt = '%%%dhs %%%ds';
-  sDefaultStatsFmt = ' %%%du bytes %%hs';
+  sDefaultActionFmt = '%%%dhs  %%hs%%%ds';
+  sDefaultStatsFmt = '  %%%du bytes  %%6hs';
 
   sBackuping      = 'Backuping'#9' %s';
 
