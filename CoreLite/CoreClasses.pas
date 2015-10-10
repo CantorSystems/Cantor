@@ -104,6 +104,7 @@ type
       CopyProps: Boolean = True); overload;
     procedure Clear; virtual;
     procedure Delete(Index: Integer; ItemCount: Integer = 1);
+    procedure Detach; virtual;
     procedure Insert(Index: Integer; Collection: PCollection; Capture: Boolean = False); overload;
     procedure Skip(ItemCount: Integer = 1);
     function TranslateCapacity(NewCount: Integer): Integer;
@@ -680,6 +681,12 @@ begin
     CheckIndex(Index);
     Cut(Index, ItemCount);
   end;
+end;
+
+procedure TCollection.Detach;
+begin
+  if FAttached then
+    SetCapacity(FCount);
 end;
 
 procedure TCollection.Expand(Index, ItemCount: Integer);

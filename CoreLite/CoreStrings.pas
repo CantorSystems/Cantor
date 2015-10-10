@@ -150,9 +150,6 @@ type
     procedure AsArray(const Values: array of const);
     function AsHexadecimal: QuadInt; overload;
     function AsInteger: QuadInt; overload;
-  {$IFNDEF Lite}
-    procedure Detach; virtual; abstract;
-  {$ENDIF}
     function Estimate(const Values: array of const): Integer;
   {$IFDEF CoreLiteVCL}
     property AsRawByteString: RawByteString read GetRawByteString write SetRawByteString;
@@ -241,7 +238,7 @@ type
       IgnoreCase: Boolean = False): Integer; overload;
     function Compare(Value: PLegacyString; IgnoreCase: Boolean = False): Integer; overload;
 
-    procedure Detach; {$IFNDEF Lite} virtual; {$ENDIF}
+    procedure Detach; virtual;
     function IsBinaryData: Boolean;
     function ValidateUTF8: Integer;
 
@@ -340,7 +337,7 @@ type
       IgnoreCase: Boolean = False): Integer; overload;
     function Compare(Value: PWideString; IgnoreCase: Boolean = False): Integer; overload;
 
-    procedure Detach; {$IFNDEF Lite} virtual; {$ENDIF}
+    procedure Detach; virtual;
 
     function LastIndex(Value: WideChar): Integer;
     function NextIndex(Value: WideChar; StartIndex: Integer = 0): Integer;
