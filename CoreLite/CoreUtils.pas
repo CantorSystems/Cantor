@@ -330,6 +330,15 @@ type
 function FriendlyClassName(var Dest: TClassName; Source: TClass): Byte; overload;
 function FriendlyClassName(var Dest: TClassName; Source: TObject): Byte; overload;
 
+{ Math functions }
+
+function Ceil(const X: Extended): CoreInt;
+function Floor(const X: Extended): CoreInt;
+
+function Log10(const X: Extended): Extended;
+function Log2(const X: Extended): Extended;
+function LogN(const Base, X: Extended): Extended;
+
 implementation
 
 {$IFDEF CoreLiteVCL}
@@ -1399,6 +1408,52 @@ begin
     Dest[SizeOf(LongWord)] := #0;
     Result := SizeOf(LongWord);
   end;
+end;
+
+{ Math functions }
+
+function Ceil(const X: Extended): CoreInt;
+begin
+  Result := Trunc(X);
+  if Frac(X) > 0 then
+    Inc(Result);
+end;
+
+function Floor(const X: Extended): CoreInt;
+begin
+  Result := Trunc(X);
+  if Frac(X) < 0 then
+    Dec(Result);
+end;
+
+function Log10(const X: Extended): Extended;
+// Log.10(X) := Log.2(X) * Log.10(2)
+asm
+        FLDLG2
+        FLD X
+        FYL2X
+        FWAIT
+end;
+
+function Log2(const X: Extended): Extended;
+asm
+        FLD1
+        FLD X
+        FYL2X
+        FWAIT
+end;
+
+function LogN(const Base, X: Extended): Extended;
+// Log.N(X) := Log.2(X) / Log.2(N)
+asm
+        FLD1
+        FLD X
+        FYL2X
+        FLD1
+        FLD Base
+        FYL2X
+        FDIV
+        FWAIT
 end;
 
 initialization
