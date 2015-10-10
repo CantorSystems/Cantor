@@ -110,8 +110,11 @@ type
   PStream = PWritableStream;
   TStream = TWritableStream;
 
-  PFileInformation = ^PByHandleFileInformation;
-  TFileInformation = TByHandleFileInformation;
+  PFileInformation = ^TFileInformation;
+  TFileInformation = record
+    Attributes: LongWord;
+    CreationTime, LastAccessTime, LastWriteTime: TFileTime;
+  end;
 
   PFileStream = PHandleStream;
   TFileStream = object(THandleStream)
@@ -310,10 +313,16 @@ type
   TLoadProc = procedure(Stream: PReadableStream) of object;
   TSaveProc = procedure(Stream: PWritableStream) of object;
 
+  TLoadFileResult = record
+    FileInfo: TFileInformation;
+    FileSize: QuadWord;
+    BytesRead: CoreWord;
+  end;
+
   TSaveOptions = set of (soBackup, soCopyAttr, soCopyTime);
 
 function LoadFile(LoadProc: TLoadProc; FileName: PCoreChar;
-  Access: TFileAccess = faSequentialRead): CoreWord;
+  Access: TFileAccess = faSequentialRead): TLoadFileResult;
 
 procedure SaveFile(SaveProc: TSaveProc; FileName: PCoreChar; FileSize: QuadWord;
   Access: TFileAccess = faSequentialRewrite); overload;
@@ -328,7 +337,7 @@ function TranslateFileSize(const Info: TWin32FileAttributeData): QuadWord;
 { Import Windows functions for Delphi 6/7 }
 
 function GetFileSizeEx(hFile: THandle; var lpFileSize: QuadWord): LongBool; stdcall;
-function SetFilePointerEx(hFile: THandle; liDistanceToMove: QuadWord;
+function SetFilePointerEx(hFile: THandle; liDistanceToMove: QuadInt;
   lpNewFilePointer: PQuadWord; dwMoveMethod: LongWord): LongBool; stdcall;
 
 implementation
@@ -338,22 +347,24 @@ uses
 
 function GetFileSizeEx(hFile: THandle; var lpFileSize: QuadWord): LongBool; stdcall;
   external kernel32 name 'GetFileSizeEx';
-function SetFilePointerEx(hFile: THandle; liDistanceToMove: QuadWord;
+function SetFilePointerEx(hFile: THandle; liDistanceToMove: QuadInt;
   lpNewFilePointer: PQuadWord; dwMoveMethod: LongWord): LongBool; stdcall;
   external kernel32 name 'SetFilePointerEx';
 
 { Helper functions }
 
-function LoadFile(LoadProc: TLoadProc; FileName: PCoreChar; Access: TFileAccess): CoreWord;
+function LoadFile(LoadProc: TLoadProc; FileName: PCoreChar;
+  Access: TFileAccess): TLoadFileResult;
 var
   F: TFileStream;
   Pos: QuadWord;
 begin
   F.Create(FileName, Access);
   try
-    Pos := F.Position;
+    Result.FileSize := F.Size;
+    Result.FileInfo := F.Information;
     LoadProc(@F);
-    Result := F.Position - Pos;
+    Result.BytesRead := F.Position;
   finally
     F.Destroy;
   end;
@@ -697,8 +708,18 @@ end;
 { TFileStream }
 
 function TFileStream.Information: TFileInformation;
+var
+  Info: TByHandleFileInformation;
 begin
-  if not GetFileInformationByHandle(FHandle, Result) then
+  if GetFileInformationByHandle(FHandle, Info) then
+    with Info, Result do
+    begin
+      Attributes := dwFileAttributes;
+      CreationTime := ftCreationTime;
+      LastAccessTime := ftLastAccessTime;
+      LastWriteTime := ftLastWriteTime;
+    end
+  else
     RaiseLastPlatformError(nil);
 end;
 
