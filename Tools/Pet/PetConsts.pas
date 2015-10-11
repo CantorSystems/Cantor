@@ -125,6 +125,8 @@ const
 
   sBackuping      = 'Backuping'#9' %s';
 
+  sOverlayDataFound = 'Overlay data found, safe stripping stopped';
+
 implementation
 
 uses

@@ -262,6 +262,7 @@ begin
       W := FileName.RawData
   else
     W := nil;
+
   with WideFormat(FActionFormat, FActionFixedWidth, [Prompt, nil, W]) do
   try
     FConsole.WriteLn(Value, Length, 0);
@@ -488,6 +489,11 @@ begin
         begin
           Action(sOverlayData, nil);
           Stats(Loaded.FileSize, Loaded.BytesRead);
+          if not (roUnsafe in FOptions) then
+          begin
+            FConsole.WriteLn(PLegacyChar(sOverlayDataFound), StrLen(sOverlayDataFound));
+            Exit;
+          end;
           // TODO: overlay data found
         end;
       end;
