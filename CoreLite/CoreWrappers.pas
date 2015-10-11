@@ -111,9 +111,9 @@ type
   TStream = TWritableStream;
 
   PFileInformation = ^TFileInformation;
-  TFileInformation = record
-    Attributes: LongWord;
+  TFileInformation = packed record
     CreationTime, LastAccessTime, LastWriteTime: TFileTime;
+    Attributes: LongWord;
   end;
 
   PFileStream = PHandleStream;
@@ -337,8 +337,6 @@ procedure SaveFile(SaveProc: TSaveProc; BackupFileName, FileName: PCoreChar;
   FileSize: QuadWord; Access: TFileAccess = faSequentialRewrite;
   Options: TSaveOptions = [soBackup..soCopyTime]); overload;
 
-function TranslateFileSize(const Info: TWin32FileAttributeData): QuadWord;
-
 { Import Windows functions for Delphi 6/7 }
 
 function GetFileSizeEx(hFile: THandle; var lpFileSize: QuadWord): LongBool; stdcall;
@@ -430,15 +428,9 @@ begin
     else
       FillChar(NewInfo.CreationTime, SizeOf(TFileTime) * 3, 0);
   end;
-  SaveFile(SaveProc, FileName, TranslateFileSize(OldInfo), NewInfo, Access);
+  SaveFile(SaveProc, FileName, FileSize, NewInfo, Access);
   if not (soBackup in Options) and not DeleteFileW(BackupFileName) then
     RaiseLastPlatformError(BackupFileName);
-end;
-
-function TranslateFileSize(const Info: TWin32FileAttributeData): QuadWord;
-begin
-  with Info do
-    Result := nFileSizeLow or nFileSizeHigh shl 32;
 end;
 
 { EStream }
