@@ -118,9 +118,14 @@ type
 
   PFileStream = PHandleStream;
   TFileStream = object(THandleStream)
+  private
+    function GetInformation: TFileInformation;
+  //  procedure SetInformation(const Value: TFileInformation); // TODO Windows6
   public
-    function Information: TFileInformation;
-    procedure SetTime(Creation, LastAccess, LastWrite: PFileTime);
+    procedure SetTime(Creation, LastAccess, LastWrite: PFileTime); overload;
+    procedure SetTime(const Info: TFileInformation); overload;
+
+    property Information: TFileInformation read GetInformation {write SetInformation};
   end;
 
   TMappingOption = (maRead, maWrite, maCopy, maExecute, maImage, maReserve, maNoCache);
@@ -326,8 +331,8 @@ function LoadFile(LoadProc: TLoadProc; FileName: PCoreChar;
 
 procedure SaveFile(SaveProc: TSaveProc; FileName: PCoreChar; FileSize: QuadWord;
   Access: TFileAccess = faSequentialRewrite); overload;
-procedure SaveFile(SaveProc: TSaveProc; FileName: PCoreChar;
-  const FileInfo: TWin32FileAttributeData; Access: TFileAccess = faSequentialRewrite); overload;
+procedure SaveFile(SaveProc: TSaveProc; FileName: PCoreChar; FileSize: QuadWord;
+  const FileInfo: TFileInformation; Access: TFileAccess = faSequentialRewrite); overload;
 procedure SaveFile(SaveProc: TSaveProc; BackupFileName, FileName: PCoreChar;
   FileSize: QuadWord; Access: TFileAccess = faSequentialRewrite;
   Options: TSaveOptions = [soBackup..soCopyTime]); overload;
@@ -357,7 +362,6 @@ function LoadFile(LoadProc: TLoadProc; FileName: PCoreChar;
   Access: TFileAccess): TLoadFileResult;
 var
   F: TFileStream;
-  Pos: QuadWord;
 begin
   F.Create(FileName, Access);
   try
@@ -385,36 +389,19 @@ begin
   end;
 end;
 
-procedure SaveFile(SaveProc: TSaveProc; FileName: PCoreChar;
-  const FileInfo: TWin32FileAttributeData; Access: TFileAccess);
+procedure SaveFile(SaveProc: TSaveProc; FileName: PCoreChar; FileSize: QuadWord;
+  const FileInfo: TFileInformation; Access: TFileAccess);
 var
   F: TFileStream;
-  Creation, LastAccess, LastWrite: PFileTime;
 begin
   F.Create(FileName, Access);
   try
-    with FileInfo do
-      if (dwFileAttributes <> 0) and not SetFileAttributesW(FileName, dwFileAttributes) then
-        RaiseLastPlatformError(FileName);
-    F.SetSize(TranslateFileSize(FileInfo));
+    if (FileInfo.Attributes <> 0) and not SetFileAttributesW(FileName, FileInfo.Attributes) then
+      RaiseLastPlatformError(FileName);
+    F.SetSize(FileSize);
     SaveProc(@F);
     F.SetSize(F.Position);
-    with FileInfo do
-    begin
-      if QuadWord(ftCreationTime) <> 0 then
-        Creation := @ftCreationTime
-      else
-        Creation := nil;
-      if QuadWord(ftLastAccessTime) <> 0 then
-        LastAccess := @ftLastAccessTime
-      else
-        LastAccess := nil;
-      if QuadWord(ftLastWriteTime) <> 0 then
-        LastWrite := @ftLastWriteTime
-      else
-        LastWrite := nil;
-    end;
-    F.SetTime(Creation, LastAccess, LastWrite);
+    F.SetTime(FileInfo);
   finally
     F.Destroy;
   end;
@@ -423,7 +410,8 @@ end;
 procedure SaveFile(SaveProc: TSaveProc; BackupFileName, FileName: PCoreChar;
   FileSize: QuadWord; Access: TFileAccess; Options: TSaveOptions);
 var
-  Info: TWin32FileAttributeData;
+  OldInfo: TWin32FileAttributeData;
+  NewInfo: TFileInformation;
 begin
   if not MoveFileExW(FileName, BackupFileName,
     MOVEFILE_COPY_ALLOWED or MOVEFILE_WRITE_THROUGH or MOVEFILE_REPLACE_EXISTING)
@@ -431,14 +419,18 @@ begin
     RaiseLastPlatformError(FileName);
   if Options * [soCopyAttr..soCopyTime] <> [] then
   begin
-    if not GetFileAttributesExW(BackupFileName, GetFileExMaxInfoLevel, @Info) then
+    if not GetFileAttributesExW(BackupFileName, GetFileExMaxInfoLevel, @OldInfo) then
       RaiseLastPlatformError(BackupFileName);
-    if not (soCopyAttr in Options) then
-      Info.dwFileAttributes := 0;
-    if not (soCopyTime in Options) then
-      FillChar(Info.ftCreationTime, SizeOf(TFileTime) * 3, 0);
+    if soCopyAttr in Options then
+      NewInfo.Attributes := OldInfo.dwFileAttributes
+    else
+      NewInfo.Attributes := 0;
+    if soCopyTime in Options then
+      Move(OldInfo.ftCreationTime, NewInfo.CreationTime, SizeOf(TFileTime) * 3)
+    else
+      FillChar(NewInfo.CreationTime, SizeOf(TFileTime) * 3, 0);
   end;
-  SaveFile(SaveProc, FileName, Info, Access);
+  SaveFile(SaveProc, FileName, TranslateFileSize(OldInfo), NewInfo, Access);
   if not (soBackup in Options) and not DeleteFileW(BackupFileName) then
     RaiseLastPlatformError(BackupFileName);
 end;
@@ -707,7 +699,7 @@ end;
 
 { TFileStream }
 
-function TFileStream.Information: TFileInformation;
+function TFileStream.GetInformation: TFileInformation;
 var
   Info: TByHandleFileInformation;
 begin
@@ -727,6 +719,28 @@ procedure TFileStream.SetTime(Creation, LastAccess, LastWrite: PFileTime);
 begin
   if not SetFileTime(FHandle, Creation, LastAccess, LastWrite) then
     RaiseLastPlatformError(nil);
+end;
+
+procedure TFileStream.SetTime(const Info: TFileInformation);
+var
+  Creation, LastAccess, LastWrite: PFileTime;
+begin
+  with Info do
+  begin
+    if QuadWord(CreationTime) <> 0 then
+      Creation := @CreationTime
+    else
+      Creation := nil;
+    if QuadWord(LastAccessTime) <> 0 then
+      LastAccess := @LastAccessTime
+    else
+      LastAccess := nil;
+    if QuadWord(LastWriteTime) <> 0 then
+      LastWrite := @LastWriteTime
+    else
+      LastWrite := nil;
+  end;
+  SetTime(Creation, LastAccess, LastWrite);
 end;
 
 { TFileMapping }
