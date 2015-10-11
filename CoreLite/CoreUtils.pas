@@ -201,6 +201,8 @@ const
   DecimalCurrency = DecimalExtended;
 
 function EstimateArgs(const Args: array of const): Integer;
+procedure FillWideChar(var Buf; Count: Integer; Value: WideChar);
+procedure MoveBytesZeroExpand(const Source; var Dest; Count: Integer);
 
 {$IFNDEF CoreLiteVCL}
 function StrAlloc(Length: Integer): PLegacyChar;
@@ -289,13 +291,14 @@ function FormatBuf(Fmt: PLegacyChar; const Args: array of const;
 function WideFormatBuf(Fmt: PWideChar; const Args: array of const;
   Buf: PWideChar): Integer;
 
+function ExtractCodePageName(const Info: TCPInfoEx): TCoreStringRec;
 { MaxCharBytes(5022x, 52936) = 0, e. g. estimate on each string }
 function MaxCharBytes(CodePage: Word; SurrogatePairs: Boolean = True): Byte;
 function TranslateCodePage(Source: Word): Word;
 
 type
   TModuleFileName = record
-    Value: array[0..$7FF] of CoreChar;
+    Value: array[0..$3FF] of CoreChar;
     Length, FileNameIndex: Integer;
   end;
 
@@ -539,6 +542,35 @@ begin
         Inc(Result, PLongInt(PAddress(TVarRec(Args[I]).VWideString) - SizeOf(LongInt))^ div SizeOf(WideChar));
     {$IFEND}
     end;
+end;
+
+procedure FillWideChar(var Buf; Count: Integer; Value: WideChar);
+var
+  P: PWideChar;
+begin
+  P := @Buf;
+  while Count <> 0 do
+  begin
+    P^ := Value;
+    Inc(P);
+    Dec(Count);
+  end;
+end;
+
+procedure MoveBytesZeroExpand(const Source; var Dest; Count: Integer);
+var
+  S: PByte;
+  D: PWord;
+begin
+  S := @Source;
+  D := @Dest;
+  while Count <> 0 do
+  begin
+    D^ := S^;
+    Inc(S);
+    Inc(D);
+    Dec(Count);
+  end;
 end;
 
 {$IFNDEF CoreLiteVCL}
@@ -1207,6 +1239,38 @@ asm
         MOV ESP, EBX
         POP EBX
         POP EDI
+end;
+
+function ExtractCodePageName(const Info: TCPInfoEx): TCoreStringRec;
+var
+  P, Limit: PCoreChar;
+begin
+  Result.Value := Info.CodePageName;
+  Limit := Info.CodePageName + Length(Info.CodePageName);
+
+  while Result.Value < Limit do
+  begin
+    case Result.Value^ of
+      CoreChar(0)..CoreChar(32), CoreChar('0')..CoreChar('9'):
+        begin
+          Inc(Result.Value);
+          Continue;
+        end;
+      CoreChar('('):
+        begin
+          Result.Length := WideStrLen(Result.Value, Limit - Result.Value);
+          P := Result.Value + Result.Length - 1;
+          if P^ = CoreChar(')') then
+          begin
+            Inc(Result.Value);
+            Dec(Result.Length, 2);
+          end;
+          Exit;
+        end;
+    end;
+    Break;
+  end;
+  Result.Length := Limit - Result.Value;
 end;
 
 function MaxCharBytes(CodePage: Word; SurrogatePairs: Boolean): Byte;

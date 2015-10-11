@@ -548,12 +548,7 @@ type
 
   TNonUnicode = $110000..$FFFFFFFF;
 
-  TSurrogatePairOptions = set of (poBigEndian, poEncodeBigEndian);
-
-function Wrap(Source: PLegacyChar; Length: Integer; CodePage: PCodePage = nil;
-  SourceOptions: TRawByteSource = soFromTheWild + soAttach): TLegacyString; overload;
-function Wrap(Source: PWideChar; Length: Integer;
-  SourceOptions: TEndianSource = soAttach): TWideString; overload;
+//  TSurrogatePairOptions = set of (poBigEndian, poEncodeBigEndian);
 
 implementation
 
@@ -564,65 +559,6 @@ const
   BOMCP: array[Boolean] of Word = (CP_GB18030, CP_UTF7);
 
 { Helper functions }
-
-function Wrap(Source: PLegacyChar; Length: Integer; CodePage: PCodePage;
-  SourceOptions: TRawByteSource): TLegacyString;
-begin
-  Result.Create;
-  Result.CodePage := CodePage;
-  Result.Assign(Source, Length, SourceOptions);
-end;
-
-function Wrap(Source: PWideChar; Length: Integer; SourceOptions: TEndianSource): TWideString;
-begin
-  Result.Create;
-  Result.Assign(Source, Length, SourceOptions);
-end;
-
-function ExtractCodePageName(const Info: TCPInfoEx): TCoreStringRec;
-var
-  P, Limit: PCoreChar;
-begin
-  Result.Value := Info.CodePageName;
-  Limit := Info.CodePageName + Length(Info.CodePageName);
-
-  while Result.Value < Limit do
-  begin
-    case Result.Value^ of
-      CoreChar(0)..CoreChar(32), CoreChar('0')..CoreChar('9'):
-        begin
-          Inc(Result.Value);
-          Continue;
-        end;
-      CoreChar('('):
-        begin
-          Result.Length := WideStrLen(Result.Value, Limit - Result.Value);
-          P := Result.Value + Result.Length - 1;
-          if P^ = CoreChar(')') then
-          begin
-            Inc(Result.Value);
-            Dec(Result.Length, 2);
-          end;
-          Exit;
-        end;
-    end;
-    Break;
-  end;
-  Result.Length := Limit - Result.Value;
-end;
-
-procedure FillWideChar(var Buf; Count: Integer; Value: WideChar);
-var
-  P: PWideChar;
-begin
-  P := @Buf;
-  while Count <> 0 do
-  begin
-    P^ := Value;
-    Inc(P);
-    Dec(Count);
-  end;
-end;
 
 type
   TIntegerString = record
@@ -684,23 +620,7 @@ begin
   end;
 end;
 
-procedure MoveZeroExpand(const Source; var Dest; Count: Integer);
-var
-  S: PByte;
-  D: PWord;
-begin
-  S := @Source;
-  D := @Dest;
-  while Count <> 0 do
-  begin
-    D^ := S^;
-    Inc(S);
-    Inc(D);
-    Dec(Count);
-  end;
-end;
-
-procedure PutHexDigits(const Source; var Dest; Count: Integer; WideChar: Boolean); // don't used here
+{procedure PutHexDigits(const Source; var Dest; Count: Integer; WideChar: Boolean); // not used here
 var
   S: PByte;
   W: PWord;
@@ -731,7 +651,7 @@ begin
       Dec(Count);
     end;
   end;
-end;
+end;}
 
 { EIntegerString }
 
@@ -2132,18 +2052,18 @@ begin
     begin
       MinWidth := -MinWidth - Length;
       FillWideChar(FData[Index], MinWidth, FillChar);
-      MoveZeroExpand(Digits^, FData[Index + MinWidth], Length);
+      MoveBytesZeroExpand(Digits^, FData[Index + MinWidth], Length);
     end
     else
     begin
-      MoveZeroExpand(Digits^, FData[Index], Length);
+      MoveBytesZeroExpand(Digits^, FData[Index], Length);
       FillWideChar(FData[Index + Length], MinWidth - Length, FillChar);
     end;
     Result := Abs(Length);
     Exit;
   end
   else
-    MoveZeroExpand(Digits^, FData[Index], Length);
+    MoveBytesZeroExpand(Digits^, FData[Index], Length);
   Result := Length;
 end;
 

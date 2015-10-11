@@ -1162,14 +1162,14 @@ end;
 function TVersionInfo.StringInfo(TranslationIndex: LongWord;
   Ident: PLegacyChar; var Info: PCoreChar; var Length: LongWord): Boolean;
 var
-  W: PWideChar;
+  W: PCoreChar;
 begin
   with FTranslations[TranslationIndex] do
     W := Format('\StringFileInfo\%04X%04X\%hs', DefaultSystemCodePage, 0, [Locale, CodePage, Ident]).Value;
   try
     Result := VerQueryValueW(FData, W, Pointer(Info), Length);
     if Result then
-      Length := Length div SizeOf(WideChar); // TODO: non-Unicode
+      Length := Length div SizeOf(CoreChar); // TODO: non-Unicode
   finally
     FreeMem(W);
   end;
