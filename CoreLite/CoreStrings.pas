@@ -132,6 +132,11 @@ type
     property SysRelpacementChar: LegacyChar read FSysReplacementChar;
   end;
 
+  TBinaryData = record
+    Data: Pointer;
+    Length: Integer;
+  end;
+
   PString = ^TString;
   TString = object(TCollection)
   private
@@ -148,6 +153,7 @@ type
   {$ENDIF}
   public
     procedure AsArray(const Values: array of const);
+    function AsBinaryData(DetachBuffer: Boolean): TBinaryData;
     function AsHexadecimal: QuadInt; overload;
     function AsInteger: QuadInt; overload;
     function Estimate(const Values: array of const): Integer;
@@ -161,11 +167,6 @@ type
 
   TNumberFormat = (nfFillChar, nfThousandsSeparator, nfDecimalSeparator);
   TIntegerFormat = nfFillChar..nfThousandsSeparator;
-
-  TBinaryData = record
-    Data: Pointer;
-    Length: Integer;
-  end;
 
   TLegacyCharNumberFormat = array[TNumberFormat] of LegacyChar;
   TLegacyCharIntegerFormat = array[TIntegerFormat] of LegacyChar;
@@ -202,8 +203,6 @@ type
     procedure SetUnicodeString(Value: UnicodeString); virtual;
   {$ENDIF}
   public
-    function AsBinaryData(DetachBuffer: Boolean): TBinaryData;
-
     procedure AsHexBuffer(const Value; Length: Integer;
       LowerCase: Boolean = False);
     procedure AsHexadecimal(Value: QuadInt; MinWidth: Integer = 0;
@@ -895,12 +894,23 @@ begin
   if Length <> 0 then
   begin
     Inc(Length, SizeOf(WideChar));
-    if Attached or (Capacity < Length)  then
+    if (BufferKind = bkAttached) or (Capacity < Length)  then
       Capacity := Length;
     Length := AssignArray(0, Values);
     Append(Length);
     PWideChar(PLegacyString(@Self).FData + Length * CollectionInfo.ItemSize)^ := #0;
   end
+end;
+
+function TString.AsBinaryData(DetachBuffer: Boolean): TBinaryData;
+begin
+  if DetachBuffer then
+  begin
+    Detach;
+    inherited Attach;
+  end;
+  Result.Data := PLegacyString(@Self).FData;
+  Result.Length := Count;
 end;
 
 function TString.AsHexadecimal: QuadInt;
@@ -1016,17 +1026,6 @@ begin
   end;
 end;
 
-function TLegacyString.AsBinaryData(DetachBuffer: Boolean): TBinaryData;
-begin
-  if DetachBuffer then
-  begin
-    Detach;
-    inherited Attach;
-  end;
-  Result.Data := FData;
-  Result.Length := Count;
-end;
-
 procedure TLegacyString.AsHexBuffer(const Value; Length: Integer;
   LowerCase: Boolean);
 var
@@ -1034,7 +1033,7 @@ var
 begin
   Clear;
   L := Length * 2;
-  if Attached or (Capacity < L) then
+  if (BufferKind = bkAttached) or (Capacity < L) then
     Capacity := L + 1;
   AssignHexBuffer(0, Value, Length, LowerCase);
   Append(L);
@@ -1052,7 +1051,7 @@ begin
   else
     Length := HexQuadInt;
   Inc(Length);
-  if Attached or (Capacity < Length) then
+  if (BufferKind = bkAttached) or (Capacity < Length) then
     Capacity := Length;
   Length := AssignHexadecimal(0, Value, MinWidth, LowerCase, FillChar);
   Append(Length);
@@ -1070,7 +1069,7 @@ begin
   else
     Length := DecimalQuadInt;
   Inc(Length);
-  if Attached or (Capacity < Length) then
+  if (BufferKind = bkAttached) or (Capacity < Length) then
     Capacity := Length;
   Length := AssignInteger(0, Value, MinWidth, FillChar);
   Append(Length);
@@ -1088,7 +1087,7 @@ begin
   else
     Length := DecimalExtended;
   Inc(Length);
-  if Attached or (Capacity < Length) then
+  if (BufferKind = bkAttached) or (Capacity < Length) then
     Capacity := Length;
   Length := AssignFloat(0, Value, MinWidth, Precision, FillChar);
   Append(Length);
@@ -1473,7 +1472,7 @@ begin
       CharBytes := 3;
 
     CharBytes := (Source.Count + 1) * CharBytes;
-    if Attached or (Capacity < CharBytes) then
+    if (BufferKind = bkAttached) or (Capacity < CharBytes) then
       Capacity := CharBytes;
 
     with AssignWideString(0, Source, EncodeOptions) do
@@ -1506,7 +1505,7 @@ begin
       if EstimatedLength = 0 then
         Exit;
       Len := EstimatedLength + Delimiter.Count * Source.Count;
-      if Attached or (Capacity < Len) then
+      if (BufferKind = bkAttached) or (Capacity < Len) then
         Capacity := Len;
     end;
 
@@ -1588,7 +1587,7 @@ end;
 
 procedure TLegacyString.Detach;
 begin
-  if Attached then
+  if BufferKind = bkAttached then
     Capacity := Count + 1;
   if Capacity > Count then
     FData[Count] := #0;
@@ -1751,7 +1750,7 @@ begin
   Length := Source.Size - Source.Position;
   if Length <> 0 then
   begin
-    if Attached or (Capacity < Length + 1) then
+    if (BufferKind = bkAttached) or (Capacity < Length + 1) then
       Capacity := Length + 1;
     Source.ReadBuffer(FData^, Length);
     Append(Length);
@@ -1921,7 +1920,7 @@ var
 begin
   Clear;
   L := Length * 2;
-  if Attached or (Capacity < L) then
+  if (BufferKind = bkAttached) or (Capacity < L) then
     Capacity := L + 1;
   AssignHexBuffer(0, Value, Length, LowerCase);
   Append(L);
@@ -1939,7 +1938,7 @@ begin
   else
     Length := HexQuadInt;
   Inc(Length);
-  if Attached or (Capacity < Length) then
+  if (BufferKind = bkAttached) or (Capacity < Length) then
     Capacity := Length;
   Length := AssignHexadecimal(0, Value, MinWidth, LowerCase, FillChar);
   Append(Length);
@@ -1957,7 +1956,7 @@ begin
   else
     Length := DecimalQuadInt;
   Inc(Length);
-  if Attached or (Capacity < Length) then
+  if (BufferKind = bkAttached) or (Capacity < Length) then
     Capacity := Length;
   Length := AssignInteger(0, Value, MinWidth, FillChar);
   Append(Length);
@@ -1975,7 +1974,7 @@ begin
   else
     Length := DecimalExtended;
   Inc(Length);
-  if Attached or (Capacity < Length) then
+  if (BufferKind = bkAttached) or (Capacity < Length) then
     Capacity := Length;
   Length := AssignFloat(0, Value, MinWidth, Precision, FillChar);
   Append(Length);
@@ -2375,7 +2374,7 @@ begin
   if (Source <> nil) and (Source.Count <> 0) then
   begin
     Length := Source.Count + 1;
-    if Attached or (Capacity < Length) then
+    if (BufferKind = bkAttached) or (Capacity < Length) then
       Capacity := Length;
       
     with AssignString(0, Source, EncodeOptions) do
@@ -2436,7 +2435,7 @@ end;
 
 procedure TWideString.Detach;
 begin
-  if Attached then
+  if BufferKind = bkAttached then
     Capacity := Count + 1;
   if Capacity > Count then
     FData[Count] := #0;
@@ -2545,7 +2544,7 @@ begin
   Length := (Source.Size - Source.Position) div SizeOf(WideChar);
   if Length <> 0 then
   begin
-    if Attached or (Capacity < Length + 1) then
+    if (BufferKind = bkAttached) or (Capacity < Length + 1) then
       Capacity := Length + 1;
     Source.ReadBuffer(FData^, Length * SizeOf(WideChar));
     FOptions := [];
@@ -2680,7 +2679,7 @@ begin
   Result := 0;
   if (Source <> nil) and (Source.Count <> 0) then
   begin
-    if Attached or (Capacity = 0) then
+    if (BufferKind = bkAttached) or (Capacity = 0) then
     begin
       Capacity := Source.Count div AverageStringLength;
       if Delta = 0 then
@@ -2709,7 +2708,7 @@ begin
   Result := 0;
   if (Source <> nil) and (Source.Count <> 0) then
   begin
-    if Attached or (Capacity = 0) then
+    if (BufferKind = bkAttached) or (Capacity = 0) then
     begin
       Capacity := Source.Count div AverageStringLength;
       if Delta = 0 then
@@ -3010,7 +3009,7 @@ begin
   Result := 0;
   if (Source <> nil) and (Source.Count <> 0) then
   begin
-    if Attached or (Capacity = 0) then
+    if (BufferKind = bkAttached) or (Capacity = 0) then
     begin
       Capacity := Source.Count div AverageStringLength;
       if Delta = 0 then
@@ -3038,7 +3037,7 @@ begin
   Result := 0;
   if Source <> nil then
   begin
-    if Attached or (Capacity = 0) then
+    if (BufferKind = bkAttached) or (Capacity = 0) then
     begin
       Capacity := Source.Count div AverageStringLength;
       if Delta = 0 then

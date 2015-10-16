@@ -72,13 +72,15 @@ type
 
   TCollectionItemMode = (imInline, imFreeMem, imFinalize, imFree);
   TSharingMode = (smCopy, smAttach, smCapture);
+  TBufferKind = (bkAttached, bkExternal, bkAllocated);
+  TBufferMode = bkAttached..bkExternal; // TODO
 
   PCollection = ^TCollection;
   TCollection = object(TIndexed)
   private
     FCapacity, FDelta: Integer;
     FItemMode: TCollectionItemMode;
-    FAttached: Boolean;
+    FBufferKind: TBufferKind;
   { placeholder } // FItems: Pointer;
     procedure Copy(Index: Integer; Collection: PCollection; Capture: Boolean);
     procedure Cut(Index, ItemCount: Integer);
@@ -105,13 +107,14 @@ type
     procedure Clear; virtual;
     procedure Delete(Index: Integer; ItemCount: Integer = 1);
     procedure Detach; virtual;
+    procedure ExternalBuffer(Source: Pointer; ItemCount: Integer); 
     procedure Insert(Index: Integer; Collection: PCollection; Capture: Boolean = False); overload;
     procedure Skip(ItemCount: Integer = 1);
     function TranslateCapacity(NewCount: Integer): Integer;
     function TranslateDelta: Integer;
     procedure Truncate(ItemCount: Integer);
 
-    property Attached: Boolean read FAttached;
+    property BufferKind: TBufferKind read FBufferKind;
     property Capacity: Integer read FCapacity write SetCapacity;
     property Delta: Integer read FDelta write FDelta;
     property ItemMode: TCollectionItemMode read FItemMode;
@@ -512,7 +515,7 @@ begin
       SetCapacity(ItemsCapacity);
     Move(Source^, PCollectionCast(@Self).Items^, ItemCount * CollectionInfo.ItemSize);
   end;
-  FAttached := AttachBuffer;
+  FBufferKind := TBufferKind(Byte(not AttachBuffer) shl 1); // Fast core
   FItemMode := imInline;
   FCount := ItemCount;
 end;
@@ -523,14 +526,14 @@ var
 begin
   if Source <> nil then
   begin
-    CanCapture := (Mode = smCapture) and not Source.Attached;
+    CanCapture := (Mode = smCapture) and (Source.BufferKind <> bkAttached);
     Assign(PCollectionCast(@Source).Items, Source.FCount, Source.FCapacity,
       (Mode = smAttach) or CanCapture);
     if CanCapture then
     begin
       FItemMode := Source.FItemMode;
-      FAttached := False;
-      Source.FAttached := True;
+      FBufferKind := bkAllocated;
+      Source.FBufferKind := bkAttached;
     end;
   end
   else
@@ -567,7 +570,7 @@ end;
 procedure TCollection.Attach;
 begin
   if FCapacity <> 0 then
-    FAttached := True;
+    FBufferKind := bkAttached;
 end;
 
 procedure TCollection.CheckCapacity(ItemCount: Integer);
@@ -581,10 +584,10 @@ end;
 
 procedure TCollection.Clear;
 begin
-  if FAttached then
+  if FBufferKind = bkAttached then
   begin
     PCollectionCast(@Self).Items := nil;
-    FAttached := False;
+    FBufferKind := bkAllocated;
     FCapacity := 0;
   end
   else if FItemMode <> imInline then
@@ -592,8 +595,7 @@ begin
   FCount := 0;
 end;
 
-procedure TCollection.Copy(Index: Integer; Collection: PCollection;
-  Capture: Boolean);
+procedure TCollection.Copy(Index: Integer; Collection: PCollection; Capture: Boolean);
 var
   ItemSize, MinItemSize, SourceItemSize, I: Integer;
   Source, Dest: PAddress;
@@ -606,12 +608,12 @@ begin
     with PCollectionCast(Collection)^ do
     begin
       Move(Items^, PCollectionCast(@Self).Items[Index * ItemSize], Count * ItemSize);
-      if Capture and not FAttached then
+      if Capture and (FBufferKind <> bkAttached) then
       begin
         FreeMem(Items);
         Items := PCollectionCast(@Self).Items + Index * ItemSize;
         FCapacity := Count;
-        FAttached := True;
+        FBufferKind := bkAttached;
       end;
       Exit;
     end
@@ -642,7 +644,7 @@ begin
   FirstBytes := Index * ItemSize;
   LastBytes := ItemCount * ItemSize;
 
-  if FAttached then
+  if FBufferKind = bkAttached then
   begin
     if Index = 0 then
     begin
@@ -660,7 +662,7 @@ begin
         Items := NewItems;
       end;
       FCapacity := NewCapacity;
-      FAttached := False;
+      FBufferKind := bkAllocated;
     end;
   end
   else
@@ -685,7 +687,7 @@ end;
 
 procedure TCollection.Detach;
 begin
-  if FAttached then
+  if FBufferKind = bkAttached then
     SetCapacity(FCount);
 end;
 
@@ -700,7 +702,7 @@ begin
 {$ENDIF}
   ItemSize := CollectionInfo.ItemSize;
   NewCount := FCount + ItemCount;
-  if (NewCount <= FCapacity) and not FAttached then
+  if (NewCount <= FCapacity) and (FBufferKind <> bkAttached) then
     with PCollectionCast(@Self)^ do
     begin
       Src := Items + Index * ItemSize;
@@ -722,9 +724,18 @@ begin
       Items := NewItems;
     end;
     FCapacity := NewCapacity;
-    FAttached := False;
+    FBufferKind := bkAllocated;
   end;
   FCount := NewCount;
+end;
+
+procedure TCollection.ExternalBuffer(Source: Pointer; ItemCount: Integer);
+begin
+  Clear;
+  PCollectionCast(@Self).Items := Source;
+  FCapacity := ItemCount;
+  FDelta := 0;
+  FBufferKind := bkExternal;
 end;
 
 procedure TCollection.FreeItems(Index, ItemCount: Integer);
@@ -774,11 +785,11 @@ begin
   if Value < 0 then
     Inc(Value, FCapacity);
 
-  if (Value < FCount) and (FItemMode <> imInline) and not FAttached then
+  if (Value < FCount) and (FItemMode <> imInline) and (FBufferKind <> bkAttached) then
     FreeItems(Value, FCount - Value);
 
   ItemSize := CollectionInfo.ItemSize;  
-  if FAttached then
+  if FBufferKind <> bkAllocated then
   begin
     if Value <> 0 then
     begin
@@ -788,7 +799,7 @@ begin
     end
     else
       PCollectionCast(@Self).Items := nil;
-    FAttached := False;
+    FBufferKind := bkAllocated;
   end
   else if (FCount <> 0) and (Value <> 0) then
     ReallocMem(PCollectionCast(@Self).Items, Value * ItemSize)
@@ -848,7 +859,7 @@ begin
   NewCount := FCount - ItemCount;
   if NewCount > 0 then
   begin
-    if not FAttached and (FItemMode <> imInline) then
+    if (FBufferKind <> bkAttached) and (FItemMode <> imInline) then
       FreeItems(NewCount, ItemCount);
     FCount := NewCount;
   end
