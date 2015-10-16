@@ -119,6 +119,7 @@ const
   sTotal            = 'Total';
 
   PromptMaxWidth = Length(sDroppingSection);
+  PercentageWidth = 6;
 
   sDefaultActionFmt = '%%%dhs  %%hs%%%ds';
   sDefaultStatsFmt = '  %%%du bytes  %%6hs';

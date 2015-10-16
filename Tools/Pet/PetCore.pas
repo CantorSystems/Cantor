@@ -35,21 +35,26 @@ type
   TOutput = object(TCoreObject)
   private
     FConsole: PStreamConsole;
+    FPercentage: TLegacyString;
+    FPercentageBuf: array[0..$F] of LegacyChar;
   public
+    constructor Create(Dest: PStreamConsole);
     procedure Action(Prompt: PLegacyChar; FileName: PFileName); virtual; abstract;
-    procedure Stats(OldSize, NewSize: LongWord); virtual; abstract;
+    procedure LoadStats(SourceSize, ActualSize: LongWord); virtual; abstract;
+    procedure StripStats(SourceSize, StrippedSize: LongWord); virtual; abstract;
   end;
 
   TDefaultOutput = object(TOutput)
   private
-    FActionFormat, FActionEllipsisFormat, FStatsFormat: PWideChar;
-    FFileNameWidth, FActionFixedWidth, FStatsFixedWidth: Integer;
-    FPercentage: TLegacyString;
+    FActionFormat, FActionEllipsisFormat, FStatsFormat,
+    FActionBuf, FStatsBuf: PWideChar;
+    FFileNameWidth: Integer;
   public
     constructor Create(Dest: PStreamConsole; PromptWidth, FileNameWidth, StatBytesWidth: Integer);
     destructor Destroy; virtual;
     procedure Action(Prompt: PLegacyChar; FileName: PFileName); virtual;
-    procedure Stats(OldSize, NewSize: LongWord); virtual;
+    procedure LoadStats(SourceSize, ActualSize: LongWord); virtual;
+    procedure StripStats(SourceSize, StrippedSize: LongWord); virtual;
   end;
 
 {  TVerboseOutput = object(TOutput)
@@ -213,33 +218,46 @@ begin
     Dec(Result, FPathDelimiterIndex);
 end;
 
+{ TOutput }
+
+constructor TOutput.Create(Dest: PStreamConsole);
+begin
+  InitInstance;
+  FConsole := Dest;
+  FPercentage.Create;
+  FPercentage.ExternalBuffer(@FPercentageBuf, Length(FPercentageBuf));
+end;
+
 { TDefaultOutput }
 
 constructor TDefaultOutput.Create(Dest: PStreamConsole;
   PromptWidth, FileNameWidth, StatBytesWidth: Integer);
 begin
-  FConsole := Dest;
-  
+  inherited Create(Dest);
+
   FActionFormat := Format(sDefaultActionFmt, DefaultSystemCodePage, 0,
     [PromptWidth, -FileNameWidth]).Value;
   FActionEllipsisFormat := Format(sDefaultActionFmt, DefaultSystemCodePage, 0,
     [PromptWidth, -(FileNameWidth - Length(sPathEllipsis))]).Value;
-  FFileNameWidth := FileNameWidth;  
-  FActionFixedWidth := PromptWidth + FileNameWidth + Length(sPathEllipsis);
+  FFileNameWidth := FileNameWidth;
+  GetMem(FActionBuf, (PromptWidth + FileNameWidth + Length(sPathEllipsis) + Length(sDefaultActionFmt)) * SizeOf(WideChar));
 
   FStatsFormat := Format(sDefaultStatsFmt, DefaultSystemCodePage, 0, [StatBytesWidth]).Value;
-  FStatsFixedWidth := StatBytesWidth;
-
-  FPercentage.Create;
+  GetMem(FStatsBuf, (StatBytesWidth + PercentageWidth + Length(sDefaultStatsFmt)) * SizeOf(WideChar));
 end;
 
 destructor TDefaultOutput.Destroy;
 begin
-  FPercentage.Destroy;
+  FreeMem(FStatsBuf);
+  FreeMem(FActionBuf);
 
   FreeMem(FStatsFormat);
   FreeMem(FActionEllipsisFormat);
   FreeMem(FActionFormat);
+
+{$IFNDEF Lite}
+  inherited;
+{$ENDIF}
 end;
 
 procedure TDefaultOutput.Action(Prompt: PLegacyChar; FileName: PFileName);
@@ -249,49 +267,30 @@ begin
   if FileName <> nil then
     if FileName.Count > FFileNameWidth then
     begin
-      with WideFormat(FActionFormat, FActionFixedWidth, [Prompt, PLegacyChar(sPathEllipsis),
-        FileName.RawData + FileName.PathDelimiterIndex]) do
-      try
-        FConsole.WriteLn(Value, Length, 0);
-      finally
-        FreeMem(Value);
-      end;
+      FConsole.WriteLn(FActionBuf, WideFormatBuf(FActionFormat, [Prompt, PLegacyChar(sPathEllipsis),
+        FileName.RawData + FileName.PathDelimiterIndex], FActionBuf), 0);
       Exit;
     end
     else
       W := FileName.RawData
   else
     W := nil;
-
-  with WideFormat(FActionFormat, FActionFixedWidth, [Prompt, nil, W]) do
-  try
-    FConsole.WriteLn(Value, Length, 0);
-  finally
-    FreeMem(Value);
-  end;
+  FConsole.WriteLn(FActionBuf, WideFormatBuf(FActionFormat, [Prompt, nil, W], FActionBuf), 0);
 end;
 
-procedure TDefaultOutput.Stats(OldSize, NewSize: LongWord);
-var
-  ByteCount: LongWord;
+procedure TDefaultOutput.LoadStats(SourceSize, ActualSize: LongWord);
 begin
-  if NewSize < OldSize then
-  begin
-    ByteCount := OldSize - NewSize;
-    FPercentage.AsPercentage(ByteCount / OldSize);
-  end
-  else
-  begin
-    ByteCount := OldSize;
-    FPercentage.AsPercentage(NewSize / OldSize);
-  end;
+  FPercentage.AsPercentage(ActualSize / SourceSize);
+  FConsole.WriteLn(FStatsBuf, WideFormatBuf(FStatsFormat, [SourceSize, FPercentage.RawData], FStatsBuf));
+end;
 
-  with WideFormat(FStatsFormat, FStatsFixedWidth, [ByteCount, FPercentage.RawData]) do
-  try
-    FConsole.WriteLn(Value, Length);
-  finally
-    FreeMem(Value);
-  end;
+procedure TDefaultOutput.StripStats(SourceSize, StrippedSize: LongWord);
+var
+  DiffBytes: LongWord;
+begin
+  DiffBytes := SourceSize - StrippedSize;
+  FPercentage.AsPercentage(DiffBytes / SourceSize);
+  FConsole.WriteLn(FStatsBuf, WideFormatBuf(FStatsFormat, [DiffBytes, FPercentage.RawData], FStatsBuf));
 end;
 
 { TApplication }
@@ -484,11 +483,11 @@ begin
       with Output do
       begin
         Action(sLoading, @FSourceFileName);
-        Stats(Loaded.BytesRead, FImage.Size(False));
+        LoadStats(Loaded.BytesRead, FImage.Size(False));
         if Loaded.FileSize <> Loaded.BytesRead then
         begin
           Action(sOverlayData, nil);
-          Stats(Loaded.FileSize, Loaded.BytesRead);
+          StripStats(Loaded.FileSize, Loaded.BytesRead);
           if not (roUnsafe in FOptions) then
           begin
             FConsole.WriteLn(PLegacyChar(sOverlayDataFound), StrLen(sOverlayDataFound));
