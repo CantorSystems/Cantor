@@ -953,7 +953,7 @@ end;
 procedure TList.Append(Item, After: Pointer);
 begin
   if After = nil then
-    After := PListCast(@Self).Last;
+    After := PListCast(@Self).Last; // TODO
 end;
 
 procedure TList.Clear;
@@ -964,7 +964,7 @@ end;
 procedure TList.Prepend(Item, Before: Pointer);
 begin
   if Before = nil then
-    Before := PListCast(@Self).First;
+    Before := PListCast(@Self).First; // TODO
 end;
 
 function TList.Skip(UpTo: Pointer): Integer;
