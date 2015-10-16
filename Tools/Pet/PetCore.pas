@@ -19,19 +19,6 @@ type
 //  TResourceNames = TWideStringArray;
   TSectionNames = TLegacyStrings;
 
-  PFileName = ^TFileName;
-  TFileName = object(TCoreString)
-  private
-    FPathDelimiterIndex: Integer;
-  public
-    procedure AsTempName(Source: PCoreString);
-    procedure Detach; virtual;
-    function IsDotOrNull: Boolean;
-    function Width(MaxWidth: Integer): Integer;
-
-    property PathDelimiterIndex: Integer read FPathDelimiterIndex;
-  end;
-
   TOutput = object(TCoreObject)
   private
     FConsole: PStreamConsole;
@@ -178,44 +165,6 @@ constructor ECommandLine.Create(DuplicateParam: PLegacyChar; ParamValue: PCoreSt
 begin
   inherited Create(sDuplicateParam, DefaultSystemCodePage, [DuplicateParam, ParamValue.Data]);
   FDuplicateParam := ParamValue;
-end;
-
-{ TFileName }
-
-procedure TFileName.AsTempName(Source: PCoreString);
-type
-  PPostfix = ^TPostfix;
-  TPostfix = array[0..3] of CoreChar;
-const
-  Postfix: TPostfix = ('.', '$', '$', '$');
-begin
-  AsRange(Source, 0);
-  Capacity := Count + Length(Postfix) + 1;
-  PPostfix(RawData + Count)^ := Postfix;
-  Append(Length(Postfix));
-  RawData[Count] := #0;
-end;
-
-procedure TFileName.Detach;
-begin
-  inherited;
-  FPathDelimiterIndex := LastIndex(PathDelimiter);
-{$IFDEF MSWINDOWS}
-  if FPathDelimiterIndex < 0 then
-    FPathDelimiterIndex := LastIndex('/');
-{$ENDIF}    
-end;
-
-function TFileName.IsDotOrNull: Boolean;
-begin
-  Result := (TypeOf(Self) <> nil) and ((Count = 0) or (Count = 1) and (RawData^ = '.'));
-end;
-
-function TFileName.Width(MaxWidth: Integer): Integer;
-begin
-  Result := Count;
-  if (Count > MaxWidth) and (FPathDelimiterIndex >= 0) then
-    Dec(Result, FPathDelimiterIndex);
 end;
 
 { TOutput }
