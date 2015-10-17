@@ -2397,24 +2397,24 @@ end;
 
 procedure TWideString.AsText(Source: PLegacyStrings; EncodeOptions: TEncodeRawBytes);
 begin
-
+  // TODO
 end;
 
 procedure TWideString.AsText(Source: PLegacyStrings; Delimiter: PLegacyString;
   EncodeOptions: TEncodeRawBytes);
 begin
-
+  // TODO
 end;
 
 procedure TWideString.AsWideText(Source: PWideStrings; AggregateOptions: TAggregateUTF16);
 begin
-
+  // TODO
 end;
 
 procedure TWideString.AsWideText(Source: PWideStrings; Delimiter: PWideString;
   AggregateOptions: TAggregateUTF16);
 begin
-
+  // TODO
 end;
 
 function TWideString.Compare(Value: PWideChar; Length: Integer;
