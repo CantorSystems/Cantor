@@ -529,7 +529,7 @@ type
     constructor Create(Source: PString);
   end;
 
-{ Helper functions }
+{ Helpers }
 
 const
   AverageStringLength = 64;
@@ -547,8 +547,6 @@ type
 
   TNonUnicode = $110000..$FFFFFFFF;
 
-//  TSurrogatePairOptions = set of (poBigEndian, poEncodeBigEndian);
-
 implementation
 
 uses
@@ -556,101 +554,6 @@ uses
 
 const
   BOMCP: array[Boolean] of Word = (CP_GB18030, CP_UTF7);
-
-{ Helper functions }
-
-type
-  TIntegerString = record
-    Data: array[0..DecimalQuadInt - 1] of LegacyChar;
-    Digits: PLegacyChar;
-  end;
-
-function FormatHexadecimal(Value: QuadInt; MinWidth: Integer;
-  UpperCase: Boolean): TIntegerString;
-var
-  LowerCaseMask: Word;
-begin
-  LowerCaseMask := Byte(not UpperCase) * $20;
-  Inc(LowerCaseMask, LowerCaseMask shl 8);
-
-  with Result do
-    Digits := @Data[Length(Data) - SizeOf(Word)];
-
-  repeat
-    PWord(Result.Digits)^ := Byte(HexDigits[Byte(Value) shr 4]) or
-      (Byte(HexDigits[Byte(Value) and $F]) shl 8) or LowerCaseMask; // Fast core
-    Value := Value shr 8;
-    if Value = 0 then
-      Break;
-    Dec(Result.Digits, SizeOf(Word));
-  until False;
-
-  if Result.Digits^ = '0' then
-    Inc(Result.Digits);
-end;
-
-function FormatInteger(Value: QuadInt; MinWidth: Integer): TIntegerString;
-var
-  Minus: Boolean;
-begin
-  if Value < 0 then
-  begin
-    Minus := True;
-    Value := Abs(Value);
-  end
-  else
-    Minus := False;
-
-  with Result do
-    Digits := @Data[High(Data)];
-
-  repeat
-    Result.Digits^ := LegacyChar(Value mod 10 + Byte('0'));
-    Value := Value div 10;
-    if Value = 0 then
-      Break;
-    Dec(Result.Digits);
-  until False;
-
-  if Minus then
-  begin
-    Dec(Result.Digits);
-    Result.Digits^ := '-';
-  end;
-end;
-
-{procedure PutHexDigits(const Source; var Dest; Count: Integer; WideChar: Boolean); // not used here
-var
-  S: PByte;
-  W: PWord;
-  L: PLongWord;
-begin
-  S := @Source;
-  if WideChar then
-  begin
-    L := @Dest;
-    Inc(L, Count - 1); // platform
-    while Count <> 0 do
-    begin
-      L^ := Byte(HexDigits[S^ and $F]) or (Byte(HexDigits[S^ shr 4]) shl 16);
-      Inc(S);
-      Dec(L);
-      Dec(Count);
-    end;
-  end
-  else
-  begin
-    W := @Dest;
-    Inc(W, Count - 1); // platform
-    while Count <> 0 do
-    begin
-      W^ := Byte(HexDigits[S^ and $F]) or (Byte(HexDigits[S^ shr 4]) shl 8);
-      Inc(S);
-      Dec(W);
-      Dec(Count);
-    end;
-  end;
-end;}
 
 { EIntegerString }
 

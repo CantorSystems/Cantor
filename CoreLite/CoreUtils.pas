@@ -200,6 +200,15 @@ const
   DecimalExtended = 22;
   DecimalCurrency = DecimalExtended;
 
+type
+  TIntegerString = record
+    Data: array[0..DecimalQuadInt - 1] of LegacyChar;
+    Digits: PLegacyChar;
+  end;
+
+function FormatHexadecimal(Value: QuadInt; MinWidth: Integer; UpperCase: Boolean): TIntegerString;
+function FormatInteger(Value: QuadInt; MinWidth: Integer): TIntegerString;
+
 function EstimateArgs(const Args: array of const): Integer;
 procedure FillWideChar(var Buf; Count: Integer; Value: WideChar);
 procedure MoveBytesZeroExpand(const Source; var Dest; Count: Integer);
@@ -256,10 +265,6 @@ function StrComp(Str1: PLegacyChar; Count1: Integer; Str2: PLegacyChar; Count2: 
 function WideStrComp(Str1: PWideChar; Count1: Integer; Str2: PWideChar; Count2: Integer;
   IgnoreFlags: LongWord = NORM_IGNORECASE; Locale: LongWord = LOCALE_USER_DEFAULT): Integer;
 
-{ LocalFree finalization required }
-
-function SysErrorMessage(ErrorCode: LongWord): TCoreStringRec;
-
 { Legacy Windows service }
 
 const
@@ -303,6 +308,10 @@ type
   end;
 
 function ModuleFileName(Handle: THandle = 0): TModuleFileName;
+
+{ LocalFree finalization required }
+
+function SysErrorMessage(ErrorCode: LongWord): TCoreStringRec;
 
 { FreeMem finalization required }
 
@@ -510,6 +519,59 @@ end;
 {$ENDIF}
 
 { String service }
+
+function FormatHexadecimal(Value: QuadInt; MinWidth: Integer; UpperCase: Boolean): TIntegerString;
+var
+  LowerCaseMask: Word;
+begin
+  LowerCaseMask := Byte(not UpperCase) * $20;
+  Inc(LowerCaseMask, LowerCaseMask shl 8);
+
+  with Result do
+    Digits := @Data[Length(Data) - SizeOf(Word)];
+
+  repeat
+    PWord(Result.Digits)^ := Byte(HexDigits[Byte(Value) shr 4]) or
+      (Byte(HexDigits[Byte(Value) and $F]) shl 8) or LowerCaseMask; // Fast core
+    Value := Value shr 8;
+    if Value = 0 then
+      Break;
+    Dec(Result.Digits, SizeOf(Word));
+  until False;
+
+  if Result.Digits^ = '0' then
+    Inc(Result.Digits);
+end;
+
+function FormatInteger(Value: QuadInt; MinWidth: Integer): TIntegerString;
+var
+  Minus: Boolean;
+begin
+  if Value < 0 then
+  begin
+    Minus := True;
+    Value := Abs(Value);
+  end
+  else
+    Minus := False;
+
+  with Result do
+    Digits := @Data[High(Data)];
+
+  repeat
+    Result.Digits^ := LegacyChar(Value mod 10 + Byte('0'));
+    Value := Value div 10;
+    if Value = 0 then
+      Break;
+    Dec(Result.Digits);
+  until False;
+
+  if Minus then
+  begin
+    Dec(Result.Digits);
+    Result.Digits^ := '-';
+  end;
+end;
 
 function EstimateArgs(const Args: array of const): Integer;
 var
@@ -1163,24 +1225,6 @@ begin
   Result := CompareStringW(Locale, IgnoreFlags, Str1, Count1, Str2, Count2) - CSTR_EQUAL;
 end;
 
-{ LocalFree finalization required }
-
-function SysErrorMessage(ErrorCode: LongWord): TCoreStringRec;
-begin
-  with Result do
-  begin
-    Length := FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM or FORMAT_MESSAGE_ALLOCATE_BUFFER,
-      nil, ErrorCode, 0, Pointer(@Result.Value), 0, nil);
-    while (Length <> 0) and
-      ((Value[Length] >= CoreChar(0)) and (Value[Length] <= CoreChar(32)) or
-       (Value[Length] = CoreChar('.')))
-    do
-      Dec(Length);
-    if Length <> 0 then
-      Value[Length + 1] := CoreChar(0);
-  end;
-end;
-
 { Legacy Windows service }
 
 {$IF not UnicodeRTL}
@@ -1343,6 +1387,24 @@ begin
       else
         FileNameIndex := 0;
     end;
+  end;
+end;
+
+{ LocalFree finalization required }
+
+function SysErrorMessage(ErrorCode: LongWord): TCoreStringRec;
+begin
+  with Result do
+  begin
+    Length := FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM or FORMAT_MESSAGE_ALLOCATE_BUFFER,
+      nil, ErrorCode, 0, Pointer(@Result.Value), 0, nil);
+    while (Length <> 0) and
+      ((Value[Length] >= CoreChar(0)) and (Value[Length] <= CoreChar(32)) or
+       (Value[Length] = CoreChar('.')))
+    do
+      Dec(Length);
+    if Length <> 0 then
+      Value[Length + 1] := CoreChar(0);
   end;
 end;
 
