@@ -344,6 +344,23 @@ function FriendlyClassName(var Dest: TClassName; Source: TObject): Byte; overloa
 
 { Math functions }
 
+const   // Ranges of the IEEE floating point types
+  MinSingle   =  1.5e-45;
+  MaxSingle   =  3.4e+38;
+  MinDouble   =  5.0e-324;
+  MaxDouble   =  1.7e+308;
+  MinExtended =  3.4e-4932;
+  MaxExtended =  1.1e+4932;
+  MinComp     = -9.223372036854775807e+18;
+  MaxComp     =  9.223372036854775807e+18;
+
+  NaN         =  0.0 / 0.0;
+  Infinity    =  1.0 / 0.0;
+  NegInfinity = -1.0 / 0.0;
+
+function IsNan(const Value: Double): Boolean;
+function IsInfinite(const Value: Double): Boolean;
+
 function Ceil(const X: Extended): CoreInt;
 function Floor(const X: Extended): CoreInt;
 
@@ -1537,6 +1554,20 @@ begin
 end;
 
 { Math functions }
+
+function IsNan(const Value: Double): Boolean;
+begin
+  Result :=
+    ((PInt64(@Value)^ and $7FF0000000000000) =  $7FF0000000000000) and
+    ((PInt64(@Value)^ and $000FFFFFFFFFFFFF) <> $0000000000000000)
+end;
+
+function IsInfinite(const Value: Double): Boolean;
+begin
+  Result :=
+    ((PInt64(@Value)^ and $7FF0000000000000) = $7FF0000000000000) and
+    ((PInt64(@Value)^ and $000FFFFFFFFFFFFF) = $0000000000000000)
+end;
 
 function Ceil(const X: Extended): CoreInt;
 begin

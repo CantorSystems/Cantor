@@ -165,12 +165,6 @@ type
     function TryInteger(var Value: QuadInt): Boolean; overload;
   end;
 
-  TNumberFormat = (nfFillChar, nfThousandsSeparator, nfDecimalSeparator);
-  TIntegerFormat = nfFillChar..nfThousandsSeparator;
-
-  TLegacyCharNumberFormat = array[TNumberFormat] of LegacyChar;
-  TLegacyCharIntegerFormat = array[TIntegerFormat] of LegacyChar;
-
   TLegacyString = object(TString)
   private
   { hold } FData: PLegacyChar;
@@ -189,8 +183,8 @@ type
       LowerCase: Boolean = False; FillChar: LegacyChar = #32): Integer;
     function AssignInteger(Index: Integer; Value: QuadInt; MinWidth: Integer = 0;
       FillChar: LegacyChar = #32): Integer;
-    function AssignFloat(Index: Integer; Value: Extended; MinWidth, Precision: Integer;
-      FillChar: LegacyChar = #32): Integer;
+    function AssignFloat(Index: Integer; const Value: Extended;
+      MinWidth, Precision: Integer; FillChar: LegacyChar = #32): Integer;
     function AssignString(Index: Integer; Source: PLegacyString;
       EncodeOptions: TEncodeRawBytes = []): TConvertResult;
     function AssignWideString(Index: Integer; Source: PWideString;
@@ -209,9 +203,9 @@ type
       LowerCase: Boolean = False; FillChar: LegacyChar = #32); overload;
     procedure AsInteger(Value: QuadInt; MinWidth: Integer = 0;
       FillChar: LegacyChar = #32); overload;
-    procedure AsFloat(Value: Extended; MinWidth, Precision: Integer;
+    procedure AsFloat(const Value: Extended; MinWidth, Precision: Integer;
       FillChar: LegacyChar = #32);
-    procedure AsPercentage(Ratio: Double; Precision: Integer = 1;
+    procedure AsPercentage(const Ratio: Double; Precision: Integer = 1;
       FillChar: LegacyChar = #32);
 
     function AsNextLine(Source: PLegacyString): Integer;
@@ -268,9 +262,6 @@ type
   //  procedure SwapByteOrder; overload;
   end;
 
-  TWideCharNumberFormat = array[TNumberFormat] of WideChar;
-  TWideCharIntegerFormat = array[TIntegerFormat] of WideChar;
-
   TWideString = object(TEndianString)
   private
   { hold } FData: PWideChar;
@@ -288,8 +279,8 @@ type
       LowerCase: Boolean = False; FillChar: WideChar = #32): Integer;
     function AssignInteger(Index: Integer; Value: QuadInt; MinWidth: Integer = 0;
       FillChar: WideChar = #32): Integer;
-    function AssignFloat(Index: Integer; Value: Extended; MinWidth, Precision: Integer;
-      FillChar: WideChar = #32): Integer;
+    function AssignFloat(Index: Integer; const Value: Extended;
+      MinWidth, Precision: Integer; FillChar: WideChar = #32): Integer;
     function AssignString(Index: Integer; Source: PLegacyString;
       EncodeOptions: TEncodeUTF16 = coUTF16): TConvertResult;
     function AssignWideString(Index: Integer; Source: PWideString;
@@ -308,9 +299,9 @@ type
       LowerCase: Boolean = False; FillChar: WideChar = #32); overload;
     procedure AsInteger(Value: QuadInt; MinWidth: Integer = 0;
       FillChar: WideChar = #32); overload;
-    procedure AsFloat(Value: Extended; MinWidth, Precision: Integer;
+    procedure AsFloat(const Value: Extended; MinWidth, Precision: Integer;
       FillChar: WideChar = #32);
-    procedure AsPercentage(Ratio: Double; Precision: Integer = 1;
+    procedure AsPercentage(const Ratio: Double; Precision: Integer = 1;
       FillChar: WideChar = #32);
 
     function AsNextLine(Source: PWideString): Integer;
@@ -441,6 +432,60 @@ type
     property Items: PWideStringArray read FItems;   
   end;
 
+  TBinaryScale = (bsKilobytes, bsMegabytes, bsGigabytes, bsTerabytes, bsPetabytes,
+    bsExabytes, bsZettabytes, bsYottabytes);
+
+  TDecimalFormat = packed record
+    ZeroSign, ThousandSeparator, DecimalSeparator, PercentSign, BinaryScaleSeparator: QuadChar;
+    BinaryScale: array[TBinaryScale] of QuadChar; // K, M, G, T, P, E, Z, Y
+  end;
+
+  PDecimalFormatArray = ^TDecimalFormatArray;
+  TDecimalFormatArray = array[0..MaxInt div SizeOf(TDecimalFormat) - 1] of TDecimalFormat;
+
+  TDecimalFormats = object(TCollection)
+  private
+  { hold } FItems: PDecimalFormatArray;
+  protected
+    class function CollectionInfo: TCollectionInfo; virtual;
+  public
+    function Append(Locale: Word): Integer;
+    property Items: PDecimalFormatArray read FItems;
+  end;
+
+  THexadecimalFormat = record
+    ChunkBytes: Integer;
+    ChunkSeparator: QuadChar;
+  end;
+
+  TFormatResult = record
+    SourceCount, DestCount: Integer;
+    InvalidChar: QuadChar; // TODO
+  end;
+
+  TFormatterDefaults = set of (fdBuiltIn, fdFromSystem);
+
+  TStringFormatter = object(TCoreObject) (* {“0:+-05i1?{(none)}”} *)
+  private
+    FDecimalFormats: TDecimalFormats;
+  protected
+    function IsNullAddress(Index: Integer; const Value): Boolean; virtual;
+    function IsNullCardinal(Index: Integer; Value: QuadWord): Boolean; virtual;
+    function IsNullChar(Index: Integer; Value: QuadChar): Boolean; virtual;
+    function IsNullFloat(Index: Integer; const Value: Extended): Boolean; virtual;
+    function IsNullInteger(Index: Integer; Value: QuadInt): Boolean; virtual;
+    function IsNullPercent(Index: Integer; const Value: Double): Boolean; virtual;
+    function IsNullString(Index: Integer; Value: Pointer): Boolean; virtual;
+  public
+    constructor Create(Defaults: TFormatterDefaults); 
+    destructor Destroy; virtual;
+    function Estimate(Fmt: PLegacyString; const Args: array of const): Integer; overload; // TODO
+    function Estimate(Fmt: PWideString; const Args: array of const): Integer; overload; // TODO
+//    function Format(Fmt: PLegacyString; const Args: array of const; Dest: P
+
+    property DecimalFormats: TDecimalFormats read FDecimalFormats;
+  end;
+
 { Exceptions }
 
   TErrorSource = record
@@ -508,10 +553,6 @@ type
 
 { Helpers }
 
-const
-  AverageStringLength = 64;
-  AverageStringsDelta = -4;
-
 type
   THighSurrogates = $D800..$DBFF;
   TLowSurrogates  = $DC00..$DFFF;
@@ -523,6 +564,20 @@ type
   TUnicodePUA = $0F0000..$10FFFF;  // Private Use Area
 
   TNonUnicode = $110000..$FFFFFFFF;
+
+const
+  AverageStringLength = 64;
+  AverageStringsDelta = -4;
+
+  DefaultDecimalFormat: TDecimalFormat = (
+    ZeroSign: QuadChar('0');
+    ThousandSeparator: 0;
+    DecimalSeparator: QuadChar('.');
+    PercentSign: QuadChar('%');
+    BinaryScaleSeparator: 160; // non-breaking space
+    BinaryScale: (QuadChar('K'), QuadChar('M'), QuadChar('G'), QuadChar('T'),
+      QuadChar('P'), QuadChar('E'), QuadChar('Z'), QuadChar('Y'))
+  );
 
 implementation
 
@@ -956,7 +1011,7 @@ begin
   FData[Length] := #0;
 end;
 
-procedure TLegacyString.AsFloat(Value: Extended; MinWidth, Precision: Integer;
+procedure TLegacyString.AsFloat(const Value: Extended; MinWidth, Precision: Integer;
   FillChar: LegacyChar);
 var
   Length: Integer;
@@ -974,7 +1029,7 @@ begin
   FData[Length] := #0;
 end;
 
-procedure TLegacyString.AsPercentage(Ratio: Double; Precision: Integer;
+procedure TLegacyString.AsPercentage(const Ratio: Double; Precision: Integer;
   FillChar: LegacyChar);
 begin
   AsFloat(Ratio * 100, 2, Precision, FillChar);
@@ -1095,7 +1150,7 @@ begin
     Result := AssignDigits(Index, Digits, PLegacyChar(@Data) + Length(Data) - Digits, MinWidth, FillChar);
 end;
 
-function TLegacyString.AssignFloat(Index: Integer; Value: Extended;
+function TLegacyString.AssignFloat(Index: Integer; const Value: Extended;
   MinWidth, Precision: Integer; FillChar: LegacyChar): Integer;
 var
   Digits: string[DecimalExtended];
@@ -1843,7 +1898,7 @@ begin
   FData[Length] := #0;
 end;
 
-procedure TWideString.AsFloat(Value: Extended; MinWidth, Precision: Integer;
+procedure TWideString.AsFloat(const Value: Extended; MinWidth, Precision: Integer;
   FillChar: WideChar);
 var
   Length: Integer;
@@ -1861,7 +1916,7 @@ begin
   FData[Length] := #0;
 end;
 
-procedure TWideString.AsPercentage(Ratio: Double; Precision: Integer;
+procedure TWideString.AsPercentage(const Ratio: Double; Precision: Integer;
   FillChar: WideChar);
 begin
   AsFloat(Ratio * 100, 2, Precision, FillChar);
@@ -1981,7 +2036,7 @@ begin
     Result := AssignDigits(Index, Digits, PLegacyChar(@Data) + Length(Data) - Digits, MinWidth, FillChar);
 end;
 
-function TWideString.AssignFloat(Index: Integer; Value: Extended;
+function TWideString.AssignFloat(Index: Integer; const Value: Extended;
   MinWidth, Precision: Integer; FillChar: WideChar): Integer;
 var
   Digits: string[DecimalExtended];
@@ -3032,6 +3087,105 @@ begin
   Result := TotalCount;
   if Result <> 0 then
     Inc(Result, WideStrLen(Delimiter) * (Count - 1));
+end;
+
+{ TDecimalFormats }
+
+function TDecimalFormats.Append(Locale: Word): Integer;
+var
+  Info: array[0..10] of CoreChar;
+begin
+  Result := inherited Append;
+  FItems[Result] := DefaultDecimalFormat;
+  if Locale <> 0 then
+    with FItems[Result] do
+    begin
+      if GetLocaleInfoW(Locale, LOCALE_STHOUSAND, PWideChar(@Info), Length(Info)) = 0 then
+        RaiseLastPlatformError {$IFDEF Debug} (sLocaleInfo, Length(Info)) {$ENDIF} ;
+      ThousandSeparator := QuadChar(Info[0]);
+      if GetLocaleInfoW(Locale, LOCALE_SDECIMAL, PWideChar(@Info), Length(Info)) = 0 then
+        RaiseLastPlatformError {$IFDEF Debug} (sLocaleInfo, Length(Info)) {$ENDIF} ;
+      DecimalSeparator := QuadChar(Info[0]);
+      if GetLocaleInfoW(Locale, LOCALE_SNATIVEDIGITS, PWideChar(@Info), Length(Info)) = 0 then
+        RaiseLastPlatformError {$IFDEF Debug} (sLocaleInfo, Length(Info)) {$ENDIF} ;
+      ZeroSign := QuadChar(Info[0]);
+    end;
+end;
+
+class function TDecimalFormats.CollectionInfo: TCollectionInfo;
+begin
+  with Result do
+  begin
+    ClassName := sDecimalFormats;
+    ItemSize := SizeOf(TDecimalFormat);
+  end;
+end;
+
+{ TStringFormatter }
+
+constructor TStringFormatter.Create(Defaults: TFormatterDefaults);
+begin
+  with FDecimalFormats do
+  begin
+    Create;
+    Capacity := Byte(Defaults) - 1; // Fast core
+    Delta := 1;
+    if fdBuiltIn in Defaults then
+      Append(0);
+    if fdFromSystem in Defaults then
+      Append(LOCALE_USER_DEFAULT);
+  end;
+end;
+
+destructor TStringFormatter.Destroy;
+begin
+  FDecimalFormats.Finalize;
+  inherited;
+end;
+
+function TStringFormatter.Estimate(Fmt: PLegacyString; const Args: array of const): Integer;
+begin
+  Result := 0; // TODO
+end;
+
+function TStringFormatter.Estimate(Fmt: PWideString; const Args: array of const): Integer;
+begin
+  Result := 0; // TODO
+end;
+
+function TStringFormatter.IsNullAddress(Index: Integer; const Value): Boolean;
+begin
+  Result := IsNullCardinal(Index, CoreWord(Value));
+end;
+
+function TStringFormatter.IsNullCardinal(Index: Integer; Value: QuadWord): Boolean;
+begin
+  Result := Value = 0;
+end;
+
+function TStringFormatter.IsNullChar(Index: Integer; Value: QuadChar): Boolean;
+begin
+  Result := Value = 0;
+end;
+
+function TStringFormatter.IsNullFloat(Index: Integer; const Value: Extended): Boolean;
+begin
+  Result := IsNaN(Value) or IsInfinite(Value) or (Value = 0.0);
+end;
+
+function TStringFormatter.IsNullInteger(Index: Integer; Value: QuadInt): Boolean;
+begin
+  Result := Value = 0;
+end;
+
+function TStringFormatter.IsNullPercent(Index: Integer; const Value: Double): Boolean;
+begin
+  Result := IsNullFloat(Index, Value);
+end;
+
+function TStringFormatter.IsNullString(Index: Integer; Value: Pointer): Boolean;
+begin
+  Result := (Value = nil) or (PEnumerable(Value).Count = 0); // TODO
 end;
 
 end.

@@ -93,6 +93,10 @@ const
   sLegacyText = 'text';
   sWideText = 'UTF-16 text';
 
+  sDecimalFormats = 'decimal formats';
+  sHexadecimalFormats = 'hexadecimal formats';
+  sLocaleInfo = 'locale info';
+
   sInteger = 'integer';
   sHexadecimal = 'hexadecimal';
   sInvalidInteger = '“%s” is not a valid %hs value';
