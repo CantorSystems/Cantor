@@ -435,9 +435,11 @@ type
   TBinaryScale = (bsKilobytes, bsMegabytes, bsGigabytes, bsTerabytes, bsPetabytes,
     bsExabytes, bsZettabytes, bsYottabytes);
 
-  TDecimalFormat = packed record
+  TDecimalFormat = packed object
     ZeroSign, ThousandSeparator, DecimalSeparator, PercentSign, BinaryScaleSeparator: QuadChar;
     BinaryScale: array[TBinaryScale] of QuadChar; // K, M, G, T, P, E, Z, Y
+  protected
+    procedure Init(Locale: Word; UseNativeDigits: Boolean = False);
   end;
 
   PDecimalFormatArray = ^TDecimalFormatArray;
@@ -449,7 +451,8 @@ type
   protected
     class function CollectionInfo: TCollectionInfo; virtual;
   public
-    function Append(Locale: Word): Integer;
+    function Append(Locale: Word; UseNativeDigits: Boolean = False): Integer;
+    procedure Insert(Index: Integer; Locale: Word; UseNativeDigits: Boolean = False);
     property Items: PDecimalFormatArray read FItems;
   end;
 
@@ -3089,27 +3092,37 @@ begin
     Inc(Result, WideStrLen(Delimiter) * (Count - 1));
 end;
 
-{ TDecimalFormats }
+{ TDecimalFormat }
 
-function TDecimalFormats.Append(Locale: Word): Integer;
+procedure TDecimalFormat.Init(Locale: Word; UseNativeDigits: Boolean);
 var
   Info: array[0..10] of CoreChar;
 begin
-  Result := inherited Append;
-  FItems[Result] := DefaultDecimalFormat;
+  Self := DefaultDecimalFormat;
   if Locale <> 0 then
-    with FItems[Result] do
+  begin
+    if GetLocaleInfoW(Locale, LOCALE_STHOUSAND, PWideChar(@Info), Length(Info)) = 0 then
+      RaiseLastPlatformError {$IFDEF Debug} (sLocaleInfo, Length(Info)) {$ENDIF} ;
+    ThousandSeparator := QuadChar(Info[0]);
+
+    if GetLocaleInfoW(Locale, LOCALE_SDECIMAL, PWideChar(@Info), Length(Info)) = 0 then
+      RaiseLastPlatformError {$IFDEF Debug} (sLocaleInfo, Length(Info)) {$ENDIF} ;
+    DecimalSeparator := QuadChar(Info[0]);
+
+    if UseNativeDigits then
     begin
-      if GetLocaleInfoW(Locale, LOCALE_STHOUSAND, PWideChar(@Info), Length(Info)) = 0 then
-        RaiseLastPlatformError {$IFDEF Debug} (sLocaleInfo, Length(Info)) {$ENDIF} ;
-      ThousandSeparator := QuadChar(Info[0]);
-      if GetLocaleInfoW(Locale, LOCALE_SDECIMAL, PWideChar(@Info), Length(Info)) = 0 then
-        RaiseLastPlatformError {$IFDEF Debug} (sLocaleInfo, Length(Info)) {$ENDIF} ;
-      DecimalSeparator := QuadChar(Info[0]);
       if GetLocaleInfoW(Locale, LOCALE_SNATIVEDIGITS, PWideChar(@Info), Length(Info)) = 0 then
         RaiseLastPlatformError {$IFDEF Debug} (sLocaleInfo, Length(Info)) {$ENDIF} ;
       ZeroSign := QuadChar(Info[0]);
     end;
+  end;
+end;
+
+{ TDecimalFormats }
+
+function TDecimalFormats.Append(Locale: Word; UseNativeDigits: Boolean): Integer;
+begin
+  FItems[inherited Append].Init(Locale, UseNativeDigits);
 end;
 
 class function TDecimalFormats.CollectionInfo: TCollectionInfo;
@@ -3119,6 +3132,12 @@ begin
     ClassName := sDecimalFormats;
     ItemSize := SizeOf(TDecimalFormat);
   end;
+end;
+
+procedure TDecimalFormats.Insert(Index: Integer; Locale: Word; UseNativeDigits: Boolean);
+begin
+  inherited Insert(Index);
+  FItems[Index].Init(Locale, UseNativeDigits);
 end;
 
 { TStringFormatter }
