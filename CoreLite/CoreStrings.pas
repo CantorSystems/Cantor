@@ -441,29 +441,6 @@ type
     property Items: PWideStringArray read FItems;   
   end;
 
-  PLegacyCommandLineParam = ^TLegacyCommandLineParam;
-  TLegacyCommandLineParam = object(TLegacyString)
-  private
-    FQuoted: Boolean;
-  public
-    function AsNextParam(CommandLine: PLegacyString): TLegacyString;
-    procedure Clear; virtual;
-    property Quoted: Boolean read FQuoted;
-  end;
-
-  PWideCommandLineParam = ^TWideCommandLineParam;
-  TWideCommandLineParam = object(TWideString)
-  private
-    FQuoted: Boolean;
-  public
-    function AsNextParam(CommandLine: PWideString): TWideString;
-    procedure Clear; virtual;
-    property Quoted: Boolean read FQuoted;
-  end;
-
-  PCommandLineParam = PWideCommandLineParam;
-  TCommandLineParam = TWideCommandLineParam;
-
 { Exceptions }
 
   TErrorSource = record
@@ -3055,87 +3032,6 @@ begin
   Result := TotalCount;
   if Result <> 0 then
     Inc(Result, WideStrLen(Delimiter) * (Count - 1));
-end;
-
-{ TLegacyCommandLineParam }
-
-function TLegacyCommandLineParam.AsNextParam(CommandLine: PLegacyString): TLegacyString;
-begin
-  Result.Create;
-  Result := CommandLine^;
-
-  while (Result.Count <> 0) and (Result.RawData^ in [#32, #9, #10, #13]) do
-    Result.Skip;
-
-  if Result.Count <> 0 then
-  begin
-    if Result.RawData^ = '"' then
-    begin
-      Result.Skip;
-      AsRange(@Result, 0, Result.NextIndex('"'));
-      FQuoted := True;
-      Result.Skip(Count + 1);
-    end
-    else
-    begin
-      AsRange(@Result, 0);
-      FQuoted := False;
-    end;
-    
-    while (Result.Count <> 0) and not (Result.RawData^ in [#32, #9, #10, #13]) do
-      Result.Skip;
-
-    Truncate(Result.Count);
-  end
-  else
-    Clear;
-end;
-
-procedure TLegacyCommandLineParam.Clear;
-begin
-  inherited;
-  FQuoted := False;
-end;
-
-{ TWideCommandLineParam }
-
-function TWideCommandLineParam.AsNextParam(CommandLine: PWideString): TWideString;
-begin
-  Result.Create;
-  Result := CommandLine^;
-
-  while (Result.Count <> 0) and ((Result.RawData^ = #32) or (Result.RawData^ = #9) or
-    (Result.RawData^ = #10) or (Result.RawData^ = #13))
-  do
-    Result.Skip;
-
-  if Result.Count <> 0 then
-  begin
-    if Result.RawData^ = '"' then
-    begin
-      Result.Skip;
-      AsRange(@Result, 0, Result.NextIndex(WideChar('"')));
-      FQuoted := True;
-      Result.Skip(Count + 1);
-      Exit;
-    end;
-
-    AsRange(@Result, 0);
-    while (Result.Count <> 0) and (Result.RawData^ <> #32) and (Result.RawData^ <> #9) and
-      (Result.RawData^ <> #10) and (Result.RawData^ <> #13)
-    do
-      Result.Skip;
-
-    Truncate(Result.Count);
-  end
-  else
-    Clear;
-end;
-
-procedure TWideCommandLineParam.Clear;
-begin
-  inherited;
-  FQuoted := False;
 end;
 
 end.

@@ -14,19 +14,6 @@ uses
   Windows, CoreUtils, CoreWrappers, CoreStrings;
 
 type
-  PFileName = ^TFileName;
-  TFileName = object(TCoreString)
-  private
-    FPathDelimiterIndex: Integer;
-  public
-    procedure AsTempName(Source: PCoreString);
-    procedure Detach; virtual;
-    function IsDotOrNull: Boolean;
-    function Width(MaxWidth: Integer): Integer;
-
-    property PathDelimiterIndex: Integer read FPathDelimiterIndex;
-  end;
-
   TConsoleAppOptions = set of (caPause, caNoLogo, caVersion);
 
   PConsoleApplication = ^TConsoleApplication;
@@ -47,6 +34,42 @@ type
     property AppName: TCoreString read FAppName;
     property Console: TStreamConsole read FConsole;
     property ExeName: TCoreString read FExeName;
+  end;
+
+  PLegacyCommandLineParam = ^TLegacyCommandLineParam;
+  TLegacyCommandLineParam = object(TLegacyString)
+  private
+    FQuoted: Boolean;
+  public
+    function AsNextParam(CommandLine: PLegacyString): TLegacyString;
+    procedure Clear; virtual;
+    property Quoted: Boolean read FQuoted;
+  end;
+
+  PWideCommandLineParam = ^TWideCommandLineParam;
+  TWideCommandLineParam = object(TWideString)
+  private
+    FQuoted: Boolean;
+  public
+    function AsNextParam(CommandLine: PWideString): TWideString;
+    procedure Clear; virtual;
+    property Quoted: Boolean read FQuoted;
+  end;
+
+  PCommandLineParam = PWideCommandLineParam;
+  TCommandLineParam = TWideCommandLineParam;
+
+  PFileName = ^TFileName;
+  TFileName = object(TCoreString)
+  private
+    FPathDelimiterIndex: Integer;
+  public
+    procedure AsTempName(Source: PCoreString);
+    procedure Detach; virtual;
+    function IsDotOrNull: Boolean;
+    function Width(MaxWidth: Integer): Integer;
+
+    property PathDelimiterIndex: Integer read FPathDelimiterIndex;
   end;
 
 implementation
@@ -94,7 +117,7 @@ end;
 function TFileName.Width(MaxWidth: Integer): Integer;
 begin
   Result := Count;
-  if (Count > MaxWidth) and (FPathDelimiterIndex >= 0) then
+  if (Result > MaxWidth) and (FPathDelimiterIndex >= 0) then
     Dec(Result, FPathDelimiterIndex);
 end;
 
@@ -191,6 +214,87 @@ begin
       WriteLn;
       WriteLn(Text, StrLen(Text), 1 + Byte(not Result));
     end;
+end;
+
+{ TLegacyCommandLineParam }
+
+function TLegacyCommandLineParam.AsNextParam(CommandLine: PLegacyString): TLegacyString;
+begin
+  Result.Create;
+  Result := CommandLine^;
+
+  while (Result.Count <> 0) and (Result.RawData^ in [#32, #9, #10, #13]) do
+    Result.Skip;
+
+  if Result.Count <> 0 then
+  begin
+    if Result.RawData^ = '"' then
+    begin
+      Result.Skip;
+      AsRange(@Result, 0, Result.NextIndex('"'));
+      FQuoted := True;
+      Result.Skip(Count + 1);
+    end
+    else
+    begin
+      AsRange(@Result, 0);
+      FQuoted := False;
+    end;
+    
+    while (Result.Count <> 0) and not (Result.RawData^ in [#32, #9, #10, #13]) do
+      Result.Skip;
+
+    Truncate(Result.Count);
+  end
+  else
+    Clear;
+end;
+
+procedure TLegacyCommandLineParam.Clear;
+begin
+  inherited;
+  FQuoted := False;
+end;
+
+{ TWideCommandLineParam }
+
+function TWideCommandLineParam.AsNextParam(CommandLine: PWideString): TWideString;
+begin
+  Result.Create;
+  Result := CommandLine^;
+
+  while (Result.Count <> 0) and ((Result.RawData^ = #32) or (Result.RawData^ = #9) or
+    (Result.RawData^ = #10) or (Result.RawData^ = #13))
+  do
+    Result.Skip;
+
+  if Result.Count <> 0 then
+  begin
+    if Result.RawData^ = '"' then
+    begin
+      Result.Skip;
+      AsRange(@Result, 0, Result.NextIndex(WideChar('"')));
+      FQuoted := True;
+      Result.Skip(Count + 1);
+      Exit;
+    end;
+
+    AsRange(@Result, 0);
+    while (Result.Count <> 0) and (Result.RawData^ <> #32) and (Result.RawData^ <> #9) and
+      (Result.RawData^ <> #10) and (Result.RawData^ <> #13)
+    do
+      Result.Skip;
+
+    Truncate(Result.Count);
+  end
+  else
+    Clear;
+end;
+
+procedure TWideCommandLineParam.Clear;
+begin
+  inherited;
+  FQuoted := False;
 end;
 
 end.
