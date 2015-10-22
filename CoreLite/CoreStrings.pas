@@ -432,7 +432,7 @@ type
     property Items: PWideStringArray read FItems;   
   end;
 
-  TBinaryScale = (bsKilobytes, bsMegabytes, bsGigabytes, bsTerabytes, bsPetabytes,
+  TBinaryScale = (bsBytes, bsKilobytes, bsMegabytes, bsGigabytes, bsTerabytes, bsPetabytes,
     bsExabytes, bsZettabytes, bsYottabytes);
 
   TDecimalFormat = packed object
@@ -461,6 +461,20 @@ type
     ChunkSeparator: QuadChar;
   end;
 
+  PHexadecimalFormatArray = ^THexadecimalFormatArray;
+  THexadecimalFormatArray = array[0..MaxInt div SizeOf(THexadecimalFormat) - 1] of THexadecimalFormat;
+
+  THexadecimalFormats = object(TCollection)
+  private
+  { hold } FItems: PHexadecimalFormatArray;
+  protected
+    class function CollectionInfo: TCollectionInfo; virtual;
+  public
+    function Append(HexChunkBytes: Integer; HexChunkSeparator: QuadChar): Integer;
+    procedure Insert(Index, HexChunkBytes: Integer; HexChunkSeparator: QuadChar);
+    property Items: PHexadecimalFormatArray read FItems;
+  end;
+
   TFormatResult = record
     SourceCount, DestCount: Integer;
     InvalidChar: QuadChar; // TODO
@@ -471,6 +485,7 @@ type
   TStringFormatter = object(TCoreObject) (* {“0:+-05i1?{(none)}”} *)
   private
     FDecimalFormats: TDecimalFormats;
+    FHexadecimalFormats: THexadecimalFormats;
   protected
     function IsNullAddress(Index: Integer; const Value): Boolean; virtual;
     function IsNullCardinal(Index: Integer; Value: QuadWord): Boolean; virtual;
@@ -487,6 +502,7 @@ type
 //    function Format(Fmt: PLegacyString; const Args: array of const; Dest: P
 
     property DecimalFormats: TDecimalFormats read FDecimalFormats;
+    property HexadecimalFormats: THexadecimalFormats read FHexadecimalFormats;
   end;
 
 { Exceptions }
@@ -578,7 +594,7 @@ const
     DecimalSeparator: QuadChar('.');
     PercentSign: QuadChar('%');
     BinaryScaleSeparator: 160; // non-breaking space
-    BinaryScale: (QuadChar('K'), QuadChar('M'), QuadChar('G'), QuadChar('T'),
+    BinaryScale: (0, QuadChar('K'), QuadChar('M'), QuadChar('G'), QuadChar('T'),
       QuadChar('P'), QuadChar('E'), QuadChar('Z'), QuadChar('Y'))
   );
 
@@ -3122,7 +3138,8 @@ end;
 
 function TDecimalFormats.Append(Locale: Word; UseNativeDigits: Boolean): Integer;
 begin
-  FItems[inherited Append].Init(Locale, UseNativeDigits);
+  Result := inherited Append;
+  FItems[Result].Init(Locale, UseNativeDigits);
 end;
 
 class function TDecimalFormats.CollectionInfo: TCollectionInfo;
@@ -3138,6 +3155,37 @@ procedure TDecimalFormats.Insert(Index: Integer; Locale: Word; UseNativeDigits: 
 begin
   inherited Insert(Index);
   FItems[Index].Init(Locale, UseNativeDigits);
+end;
+
+{ THexadecimalFormats }
+
+function THexadecimalFormats.Append(HexChunkBytes: Integer; HexChunkSeparator: QuadChar): Integer;
+begin
+  Result := inherited Append;
+  with FItems[Result] do
+  begin
+    ChunkBytes := HexChunkBytes;
+    ChunkSeparator := HexChunkSeparator;
+  end;
+end;
+
+class function THexadecimalFormats.CollectionInfo: TCollectionInfo;
+begin
+  with Result do
+  begin
+    ClassName := sHexadecimalFormats;
+    ItemSize := SizeOf(THexadecimalFormat);
+  end;
+end;
+
+procedure THexadecimalFormats.Insert(Index, HexChunkBytes: Integer; HexChunkSeparator: QuadChar);
+begin
+  inherited Insert(Index);
+  with FItems[Index] do
+  begin
+    ChunkBytes := HexChunkBytes;
+    ChunkSeparator := HexChunkSeparator;
+  end;
 end;
 
 { TStringFormatter }
