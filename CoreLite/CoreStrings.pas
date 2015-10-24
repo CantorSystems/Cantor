@@ -177,6 +177,7 @@ type
     procedure SetData(Value: PLegacyChar);
   protected
     class function CollectionInfo: TCollectionInfo; virtual;
+
     procedure AssignHexBuffer(Index: Integer; const Buffer; Length: Integer;
       LowerCase: Boolean = False);
     function AssignHexadecimal(Index: Integer; Value: QuadInt; MinWidth: Integer = 0;
@@ -189,6 +190,7 @@ type
       EncodeOptions: TEncodeRawBytes = []): TConvertResult;
     function AssignWideString(Index: Integer; Source: PWideString;
       EncodeOptions: TEncodeRawBytes = []): TConvertResult;
+
     function Compatible(Value: PLegacyString): Boolean;
   {$IFDEF CoreLiteVCL}
     function GetRawByteString: RawByteString; virtual;
@@ -241,6 +243,11 @@ type
     function PrevIndex(Index: Integer): Integer; overload;
     function PrevIndex(Value: LegacyChar; StartIndex: Integer): Integer; overload;
 
+    function RawNextIndex(Index: Integer): Integer; overload;
+    function RawNextIndex(Value: LegacyChar; StartIndex: Integer = 0): Integer; overload;
+    function RawPrevIndex(Index: Integer): Integer; overload;
+    function RawPrevIndex(Value: LegacyChar; StartIndex: Integer): Integer; overload;
+
     procedure Load(Source: PReadableStream); overload;
     function Load(Source: PReadableStream; AllowBOM: Boolean;
       SourceOptions: TRawByteOptions = soFromTheWild): TReadableBOM; overload;
@@ -273,6 +280,7 @@ type
     procedure SetData(Value: PWideChar);
   protected
     class function CollectionInfo: TCollectionInfo; virtual;
+
     procedure AssignHexBuffer(Index: Integer; const Buffer; Length: Integer;
       LowerCase: Boolean = False);
     function AssignHexadecimal(Index: Integer; Value: QuadInt; MinWidth: Integer = 0;
@@ -285,6 +293,7 @@ type
       EncodeOptions: TEncodeUTF16 = coUTF16): TConvertResult;
     function AssignWideString(Index: Integer; Source: PWideString;
       EncodeOptions: TEncodeUTF16 = coUTF16): TConvertResult;
+
     procedure SwapByteOrder(Index, Length: Integer); overload;
   {$IFDEF CoreLiteVCL}
     function GetRawByteString: RawByteString; virtual;
@@ -332,6 +341,9 @@ type
     function LastIndex(Value: WideChar): Integer;
     function NextIndex(Value: WideChar; StartIndex: Integer = 0): Integer;
     function PrevIndex(Value: WideChar; StartIndex: Integer): Integer;
+
+    function RawNextIndex(Value: WideChar; StartIndex: Integer = 0): Integer;
+    function RawPrevIndex(Value: WideChar; StartIndex: Integer): Integer;
 
     procedure Load(Source: PReadableStream); overload;
     function Load(Source: PReadableStream; ByteOrder: TByteOrder;
@@ -436,8 +448,8 @@ type
     bsExabytes, bsZettabytes, bsYottabytes);
 
   TDecimalFormat = packed object
-    ZeroSign, ThousandSeparator, DecimalSeparator, PercentSign, BinaryScaleSeparator: QuadChar;
-    BinaryScale: array[TBinaryScale] of QuadChar; // K, M, G, T, P, E, Z, Y
+    ZeroSign, ThousandSeparator, DecimalSeparator, PercentSign, BinaryScaleSeparator: LiteChar;
+    BinaryScale: array[TBinaryScale] of LiteChar; // K, M, G, T, P, E, Z, Y
   protected
     procedure Init(Locale: Word; UseNativeDigits: Boolean = False);
   end;
@@ -480,12 +492,11 @@ type
     InvalidChar: QuadChar; // TODO
   end;
 
-  TFormatterDefaults = set of (fdBuiltIn, fdFromSystem);
-
   TStringFormatter = object(TCoreObject) (* {“0:+-05i1?{(none)}”} *)
   private
     FDecimalFormats: TDecimalFormats;
     FHexadecimalFormats: THexadecimalFormats;
+    FDefaultDecimalFormat, FDefaultHexadecimalFormat: Integer;
   protected
     function IsNullAddress(Index: Integer; const Value): Boolean; virtual;
     function IsNullCardinal(Index: Integer; Value: QuadWord): Boolean; virtual;
@@ -495,10 +506,10 @@ type
     function IsNullPercent(Index: Integer; const Value: Double): Boolean; virtual;
     function IsNullString(Index: Integer; Value: Pointer): Boolean; virtual;
   public
-    constructor Create(Defaults: TFormatterDefaults); 
+    constructor Create;
     destructor Destroy; virtual;
-    function Estimate(Fmt: PLegacyString; const Args: array of const): Integer; overload; // TODO
-    function Estimate(Fmt: PWideString; const Args: array of const): Integer; overload; // TODO
+    function Estimate(Fmt: PLegacyString; const Args: array of const): Integer; overload;
+    function Estimate(Fmt: PWideString; const Args: array of const): Integer; overload;
 //    function Format(Fmt: PLegacyString; const Args: array of const; Dest: P
 
     property DecimalFormats: TDecimalFormats read FDecimalFormats;
@@ -576,11 +587,13 @@ type
   THighSurrogates = $D800..$DBFF;
   TLowSurrogates  = $DC00..$DFFF;
 
-  TUnicodeBMP = $000000..$00FFFF;  // Basic Multilingual Plane
-  TUnicodeSMP = $010000..$01FFFF;  // Supplementary Multilingual Plane
-  TUnicodeSIP = $020000..$02FFFF;  // Supplementary Ideographic Plane
-  TUnicodeSSP = $0E0000..$0EFFFF;  // Supplementary Special-purpose Plane
-  TUnicodePUA = $0F0000..$10FFFF;  // Private Use Area
+  TUnicodeBMP = $000000..$00FFFF;    // Basic Multilingual Plane
+  TUnicodeSMP = $010000..$01FFFF;    // Supplementary Multilingual Plane
+  TUnicodeSIP = $020000..$02FFFF;    // Supplementary Ideographic Plane
+  TUnicodeSSP = $0E0000..$0EFFFF;    // Supplementary Special-purpose Plane
+  TUnicodeSPUA = $0F0000..$10FFFF;   // Supplementary Private Use Area
+  TUnicodeSPUAA = $0F0000..$0FFFFF;  // Supplementary Private Use Area A
+  TUnicodeSPUAB = $100000..$10FFFF;  // Supplementary Private Use Area B
 
   TNonUnicode = $110000..$FFFFFFFF;
 
@@ -589,13 +602,13 @@ const
   AverageStringsDelta = -4;
 
   DefaultDecimalFormat: TDecimalFormat = (
-    ZeroSign: QuadChar('0');
-    ThousandSeparator: 0;
-    DecimalSeparator: QuadChar('.');
-    PercentSign: QuadChar('%');
-    BinaryScaleSeparator: 160; // non-breaking space
-    BinaryScale: (0, QuadChar('K'), QuadChar('M'), QuadChar('G'), QuadChar('T'),
-      QuadChar('P'), QuadChar('E'), QuadChar('Z'), QuadChar('Y'))
+    ZeroSign: LiteChar('0');
+    ThousandSeparator: LiteChar(0);
+    DecimalSeparator: LiteChar('.');
+    PercentSign: LiteChar('%');
+    BinaryScaleSeparator: LiteChar(160); // non-breaking space
+    BinaryScale: (LiteChar(0), LiteChar('K'), LiteChar('M'), LiteChar('G'), LiteChar('T'),
+      LiteChar('P'), LiteChar('E'), LiteChar('Z'), LiteChar('Y'))
   );
 
 implementation
@@ -701,7 +714,7 @@ begin
       case Info.InvalidChar of
         $80..$9F:
           Msg := sInvalidChar;
-        Low(TUnicodeSMP)..High(TUnicodePUA):
+        Low(TUnicodeSMP)..High(TUnicodeSPUA):
           Msg := sNonBMP;
       else
         Msg := sNonUnicode;
@@ -1591,6 +1604,32 @@ end;
 function TLegacyString.NextIndex(Index: Integer): Integer;
 begin
   CheckIndex(Index);
+  Result := RawNextIndex(Index);
+end;
+
+function TLegacyString.NextIndex(Value: LegacyChar; StartIndex: Integer): Integer;
+begin
+  CheckIndex(StartIndex);
+  Result := RawNextIndex(Value, StartIndex);
+end;
+
+function TLegacyString.PrevIndex(Index: Integer): Integer;
+begin
+  CheckIndex(Index);
+  Result := RawPrevIndex(Index);
+end;
+
+function TLegacyString.PrevIndex(Value: LegacyChar; StartIndex: Integer): Integer;
+begin
+  CheckIndex(StartIndex);
+  Result := RawPrevIndex(Value, StartIndex);
+end;
+
+function TLegacyString.RawNextIndex(Index: Integer): Integer;
+begin
+{$IFDEF Debug}
+  CheckIndex(Index);
+{$ENDIF}
   if FCodePage <> nil then
   begin
     Result := Index;
@@ -1601,11 +1640,13 @@ begin
     Result := Index + 1;
 end;
 
-function TLegacyString.NextIndex(Value: LegacyChar; StartIndex: Integer): Integer;
+function TLegacyString.RawNextIndex(Value: LegacyChar; StartIndex: Integer): Integer;
 var
   S: PLegacyChar;
 begin
+{$IFDEF Debug}
   CheckIndex(StartIndex);
+{$ENDIF}
   S := StrScan(FData, Count, Value);
   if S <> nil then
     Result := S - FData
@@ -1613,22 +1654,26 @@ begin
     Result := -1;
 end;
 
-function TLegacyString.PrevIndex(Index: Integer): Integer;
+function TLegacyString.RawPrevIndex(Index: Integer): Integer;
 begin
+{$IFDEF Debug}
   CheckIndex(Index);
+{$ENDIF}
   Result := Index - 1;
   if FCodePage <> nil then
-    while not (FData[Index] in [#0..#127] + FCodePage.LeadBytes) do
+    while not (FData[Result] in [#0..#127] + FCodePage.LeadBytes) do
       Dec(Result)
   else
     Result := Index - 1;
 end;
 
-function TLegacyString.PrevIndex(Value: LegacyChar; StartIndex: Integer): Integer;
+function TLegacyString.RawPrevIndex(Value: LegacyChar; StartIndex: Integer): Integer;
 var
   S: PLegacyChar;
 begin
+{$IFDEF Debug}
   CheckIndex(StartIndex);
+{$ENDIF}
   S := StrRScan(FData, Count - StartIndex, Value);
   if S <> nil then
     Result := S - FData
@@ -2181,7 +2226,7 @@ begin
         Low(TNonUnicode)..High(TNonUnicode):
           ;
 
-        Low(TUnicodeSMP)..High(TUnicodePUA):
+        Low(TUnicodeSMP)..High(TUnicodeSPUA):
           if coSurrogatePairs in EncodeOptions then
           begin
             if Limit - Dest < 2 then
@@ -2419,10 +2464,24 @@ begin
 end;
 
 function TWideString.NextIndex(Value: WideChar; StartIndex: Integer): Integer;
+begin
+  CheckIndex(StartIndex);
+  Result := RawNextIndex(Value, StartIndex);
+end;
+
+function TWideString.PrevIndex(Value: WideChar; StartIndex: Integer): Integer;
+begin
+  CheckIndex(StartIndex);
+  Result := RawPrevIndex(Value, StartIndex);
+end;
+
+function TWideString.RawNextIndex(Value: WideChar; StartIndex: Integer): Integer;
 var
   W: PWideChar;
 begin
+{$IFDEF Debug}
   CheckIndex(StartIndex);
+{$ENDIF}
   W := WideStrScan(FData + StartIndex, Count - StartIndex, Value);
   if W <> nil then
     Result := W - FData
@@ -2430,11 +2489,13 @@ begin
     Result := -1;
 end;
 
-function TWideString.PrevIndex(Value: WideChar; StartIndex: Integer): Integer;
+function TWideString.RawPrevIndex(Value: WideChar; StartIndex: Integer): Integer;
 var
   W: PWideChar;
 begin
+{$IFDEF Debug}
   CheckIndex(StartIndex);
+{$ENDIF}
   W := WideStrRScan(FData, Count - StartIndex, Value);
   if W <> nil then
     Result := W - FData
@@ -3119,17 +3180,17 @@ begin
   begin
     if GetLocaleInfoW(Locale, LOCALE_STHOUSAND, PWideChar(@Info), Length(Info)) = 0 then
       RaiseLastPlatformError {$IFDEF Debug} (sLocaleInfo, Length(Info)) {$ENDIF} ;
-    ThousandSeparator := QuadChar(Info[0]);
+    ThousandSeparator := LiteChar(Info[0]);
 
     if GetLocaleInfoW(Locale, LOCALE_SDECIMAL, PWideChar(@Info), Length(Info)) = 0 then
       RaiseLastPlatformError {$IFDEF Debug} (sLocaleInfo, Length(Info)) {$ENDIF} ;
-    DecimalSeparator := QuadChar(Info[0]);
+    DecimalSeparator := LiteChar(Info[0]);
 
     if UseNativeDigits then
     begin
       if GetLocaleInfoW(Locale, LOCALE_SNATIVEDIGITS, PWideChar(@Info), Length(Info)) = 0 then
         RaiseLastPlatformError {$IFDEF Debug} (sLocaleInfo, Length(Info)) {$ENDIF} ;
-      ZeroSign := QuadChar(Info[0]);
+      ZeroSign := LiteChar(Info[0]);
     end;
   end;
 end;
@@ -3190,29 +3251,27 @@ end;
 
 { TStringFormatter }
 
-constructor TStringFormatter.Create(Defaults: TFormatterDefaults);
+constructor TStringFormatter.Create;
 begin
-  with FDecimalFormats do
-  begin
-    Create;
-    Capacity := Byte(Defaults) - 1; // Fast core
-    Delta := 1;
-    if fdBuiltIn in Defaults then
-      Append(0);
-    if fdFromSystem in Defaults then
-      Append(LOCALE_USER_DEFAULT);
-  end;
+  FDecimalFormats.Create;
+  FHexadecimalFormats.Create;
+  FDefaultDecimalFormat := -1;
+  FDefaultHexadecimalFormat := -1;
 end;
 
 destructor TStringFormatter.Destroy;
 begin
+  FHexadecimalFormats.Finalize;
   FDecimalFormats.Finalize;
   inherited;
 end;
 
 function TStringFormatter.Estimate(Fmt: PLegacyString; const Args: array of const): Integer;
+var
+  Source: PLegacyChar;
 begin
-  Result := 0; // TODO
+  Source := Fmt.RawData;
+  Result := 0;
 end;
 
 function TStringFormatter.Estimate(Fmt: PWideString; const Args: array of const): Integer;

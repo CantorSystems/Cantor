@@ -231,7 +231,7 @@ begin
     if Result.RawData^ = '"' then
     begin
       Result.Skip;
-      AsRange(@Result, 0, Result.NextIndex('"'));
+      AsRange(@Result, 0, Result.RawNextIndex('"'));
       FQuoted := True;
       Result.Skip(Count + 1);
     end
@@ -273,7 +273,7 @@ begin
     if Result.RawData^ = '"' then
     begin
       Result.Skip;
-      AsRange(@Result, 0, Result.NextIndex(WideChar('"')));
+      AsRange(@Result, 0, Result.RawNextIndex(WideChar('"')));
       FQuoted := True;
       Result.Skip(Count + 1);
       Exit;

@@ -91,6 +91,16 @@ type
   CharCode      = Word;         // TODO: non-Unicode
   PCharCode     = PWord;
 
+{$IFDEF Lite}
+  LiteChar      = WideChar;
+  PLiteChar     = PWideChar;
+  PPLiteChar    = PPWideChar;
+{$ELSE}
+  LiteChar      = QuadChar;
+  PLiteChar     = PQuadChar;
+  PPLiteChar    = PPQuadChar;
+{$ENDIF}
+
   PAddress      = PLegacyChar;  // for address arithmetic
 
   TLegacyStringRec = record
