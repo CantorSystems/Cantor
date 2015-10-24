@@ -326,14 +326,14 @@ type
 
   TSaveOptions = set of (soBackup, soCopyAttr, soCopyTime);
 
-function LoadFile(LoadProc: TLoadProc; FileName: PCoreChar;
+function LoadFile(const LoadProc: TLoadProc; FileName: PCoreChar;
   Access: TFileAccess = faSequentialRead): TLoadFileResult;
 
-procedure SaveFile(SaveProc: TSaveProc; FileName: PCoreChar; FileSize: QuadWord;
+procedure SaveFile(const SaveProc: TSaveProc; FileName: PCoreChar; FileSize: QuadWord;
   Access: TFileAccess = faSequentialRewrite); overload;
-procedure SaveFile(SaveProc: TSaveProc; FileName: PCoreChar; FileSize: QuadWord;
+procedure SaveFile(const SaveProc: TSaveProc; FileName: PCoreChar; FileSize: QuadWord;
   const FileInfo: TFileInformation; Access: TFileAccess = faSequentialRewrite); overload;
-procedure SaveFile(SaveProc: TSaveProc; BackupFileName, FileName: PCoreChar;
+procedure SaveFile(const SaveProc: TSaveProc; BackupFileName, FileName: PCoreChar;
   FileSize: QuadWord; Access: TFileAccess = faSequentialRewrite;
   Options: TSaveOptions = [soBackup..soCopyTime]); overload;
 
@@ -356,7 +356,7 @@ function SetFilePointerEx(hFile: THandle; liDistanceToMove: QuadInt;
 
 { Helper functions }
 
-function LoadFile(LoadProc: TLoadProc; FileName: PCoreChar;
+function LoadFile(const LoadProc: TLoadProc; FileName: PCoreChar;
   Access: TFileAccess): TLoadFileResult;
 var
   F: TFileStream;
@@ -372,7 +372,7 @@ begin
   end;
 end;
 
-procedure SaveFile(SaveProc: TSaveProc; FileName: PCoreChar; FileSize: QuadWord;
+procedure SaveFile(const SaveProc: TSaveProc; FileName: PCoreChar; FileSize: QuadWord;
   Access: TFileAccess);
 var
   F: TFileStream;
@@ -387,7 +387,7 @@ begin
   end;
 end;
 
-procedure SaveFile(SaveProc: TSaveProc; FileName: PCoreChar; FileSize: QuadWord;
+procedure SaveFile(const SaveProc: TSaveProc; FileName: PCoreChar; FileSize: QuadWord;
   const FileInfo: TFileInformation; Access: TFileAccess);
 var
   F: TFileStream;
@@ -405,7 +405,7 @@ begin
   end;
 end;
 
-procedure SaveFile(SaveProc: TSaveProc; BackupFileName, FileName: PCoreChar;
+procedure SaveFile(const SaveProc: TSaveProc; BackupFileName, FileName: PCoreChar;
   FileSize: QuadWord; Access: TFileAccess; Options: TSaveOptions);
 var
   OldInfo: TWin32FileAttributeData;
