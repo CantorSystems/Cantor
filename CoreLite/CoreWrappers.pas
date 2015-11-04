@@ -924,11 +924,12 @@ begin
 end;
 
 procedure TStreamConsole.WriteLn(LineBreaks: Integer);
+const
+  LFx4: LongWord = $0A0A0A0A;
 var
   I: Integer;
-  BytesWritten, LFx4: LongWord;
+  BytesWritten: LongWord;
 begin // Fast core
-  LFx4 := $0A0A0A0A;
   for I := 0 to LineBreaks div 4 - 1 do {$IFDEF Tricks} System. {$ENDIF}
     WriteFile(FOutput, LFx4, 4, BytesWritten, nil);
   if LineBreaks mod 4 <> 0 then {$IFDEF Tricks} System. {$ENDIF}
@@ -1014,12 +1015,12 @@ begin
 end;
 
 procedure TScreenConsole.WriteLn(LineBreaks: Integer);
+const
+  WideLFx4: QuadWord = $000A000A000A000A;
 var
   I: Integer;
   Written: LongWord;
-  WideLFx4: QuadWord;
 begin // Fast core
-  WideLFx4 := $000A000A000A000A;
   for I := 0 to LineBreaks div 4 - 1 do
     WriteConsoleW(FOutput, @WideLFx4, 4, Written, nil);
   if LineBreaks mod 4 <> 0 then
