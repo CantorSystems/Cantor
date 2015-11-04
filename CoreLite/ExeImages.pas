@@ -698,16 +698,16 @@ var
 begin
   Result := 0;
   Inc(Result, FStub.Size);
-
   Inc(Result, HeadersSize);
   Inc(Result, SizeOf(TImageSectionHeader) * Count);
   Inc(Result, FileAlignBytes(Result));
   for I := 0 to Count - 1 do
   begin
     Inc(Result, FSections[I].Size);;
-    if (I < Count - 1) or not TruncLastSection then
-      Inc(Result, FileAlignBytes(Result));
+    Inc(Result, FileAlignBytes(Result));
   end;
+  if TruncLastSection and (Count <> 0) then
+    Dec(Result, FileAlignBytes(FSections[Count - 1].Size));
 end;
 
 procedure TExeImage.Strip(Options: TStripOptions);
