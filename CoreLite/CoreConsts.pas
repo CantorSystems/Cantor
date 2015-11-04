@@ -85,6 +85,7 @@ const
   sNullCapacity     = 'Cannot add %d item into null container';
 
   sPosition = 'position';
+  sSize = 'size';
   sCodePage = 'code page';
   sConsoleCodePage = 'console code page';
 

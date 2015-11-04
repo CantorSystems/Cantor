@@ -26,7 +26,7 @@ type
     function Open(FileName: PWideChar; Access: TFileAccess;
       Attributes: TFileAttributes = [faNormal]): Boolean; overload;
 
-    function Seek(Offset: QuadWord; Origin: TSeekOrigin): QuadWord;
+    function Seek(Offset: QuadInt; Origin: TSeekOrigin): QuadInt;
 
     function Read(var Data; Count: LongWord): LongWord;
     function ReadBOM: TReadableBOM;

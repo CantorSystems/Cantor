@@ -96,7 +96,7 @@ type
     function Open(FileName: PCoreChar; Access: TFileAccess;
       Attributes: TFileAttributes = [faNormal]): Boolean; overload;
 
-    function Seek(Offset: QuadWord; Origin: TSeekOrigin): QuadWord;
+    function Seek(Offset: QuadInt; Origin: TSeekOrigin): QuadWord;
     function Read(var Data; Count: LongWord): LongWord; virtual;
     function Write(const Data; Count: LongWord): LongWord; virtual;
 
@@ -593,13 +593,13 @@ end;
 function THandleStream.GetPosition: QuadWord;
 begin
   if not SetFilePointerEx(FHandle, 0, @Result, FILE_CURRENT) then
-    Result := -1;
+    RaiseLastPlatformError(nil);
 end;
 
 function THandleStream.GetSize: QuadWord;
 begin
   if not GetFileSizeEx(FHandle, Result) then
-    Result := -1;
+    RaiseLastPlatformError(nil);
 end;
 
 function THandleStream.Lock(Offset, Count: QuadWord): Boolean;
@@ -652,10 +652,10 @@ begin
   ReadFile(FHandle, Data, Count, Result, nil);  // TODO: Windows x64
 end;
 
-function THandleStream.Seek(Offset: QuadWord; Origin: TSeekOrigin): QuadWord;
+function THandleStream.Seek(Offset: QuadInt; Origin: TSeekOrigin): QuadInt;
 begin
-  if not SetFilePointerEx(FHandle, Offset, @Result, LongWord(Origin)) then
-    Result := QuadWord(-1);
+  if not SetFilePointerEx(FHandle, Offset, PQuadWord(@Result), LongWord(Origin)) then
+    Result := -1;
 end;
 
 procedure THandleStream.SetPosition(Value: QuadWord);
@@ -1045,9 +1045,12 @@ end;
 { TPerformanceCounter }
 
 constructor TPerformanceCounter.Create;
+var
+  Freq: QuadInt;
 begin
-  if not QueryPerformanceFrequency(FFrequency) then
+  if not QueryPerformanceFrequency(Freq) then
     RaiseLastPlatformError(sPerformanceFrequency, 0);
+  FFrequency := Freq;
 end;
 
 function TPerformanceCounter.MillisecondsFrom(StartValue: QuadWord): Double;
@@ -1056,9 +1059,12 @@ begin
 end;
 
 function TPerformanceCounter.GetValue: QuadWord;
+var
+  Rslt: QuadInt;
 begin
-  if not QueryPerformanceCounter(Result) then
+  if not QueryPerformanceCounter(Rslt) then
     RaiseLastPlatformError(sPerformanceCounter, 0);
+  Result := Rslt;
 end;
 
 function TPerformanceCounter.MillisecondsBetween(Value1, Value2: QuadWord): Double;

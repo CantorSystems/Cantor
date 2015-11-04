@@ -40,11 +40,12 @@ type
   CoreWord  = LongWord;
   PCoreWord = PLongWord;
 
-  QuadWord  = {$IF RTLVersion >= 15} {type} UInt64 {$ELSE} Int64 {$IFEND};
-  PQuadWord = {$IF RTLVersion >= 15} {type} ^UInt64 {$ELSE} PInt64 {$IFEND};
+  QuadWord  = {$IF CompilerVersion < 15} {type} Int64 {$ELSE} UInt64 {$IFEND};
+  PQuadWord = {$IF CompilerVersion < 15} {type} PInt64 {$ELSE} ^UInt64 {$IFEND};
 {$ENDIF}
 
   QuadInt   = Int64;
+  PQuadInt  = PInt64;
 
   WordRec = packed record
     case Byte of
