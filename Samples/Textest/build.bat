@@ -1,7 +1,7 @@
 @echo off
 
 set System=..\..\..\..\System
-set Units=..\..\CoreLite;%System%\MMX;%System%
+set Units=..\..\CoreLite;%System%\MMX.%DelphiVer%;%System%
 
 set Options=-b -gp -$C- -$I-
 set Exe=..\Textest.exe
