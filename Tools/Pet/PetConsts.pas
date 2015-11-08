@@ -121,8 +121,8 @@ const
   PromptMaxWidth = Length(sDroppingSection);
   PercentageWidth = 6;
 
-  sDefaultActionFmt = '%%%dhs  %%hs%%%ds';
-  sDefaultStatsFmt = '  %%%du bytes  %%6hs';
+  sDefaultActionFmt = '%%%dhs  %%hs%%%ds';   // '{*s}  {*s?{s1}}'
+  sDefaultStatsFmt = '  %%%du bytes  %%6hs'; // '  {*u?{u'#160'bytes}}  {6p}'
 
   sBackuping      = 'Backuping'#9' %s';
 

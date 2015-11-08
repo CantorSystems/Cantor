@@ -176,6 +176,19 @@ begin
   FPercentage.Create;
   FPercentage.ExternalBuffer(@FPercentageBuf, Length(FPercentageBuf));
 end;
+{
+  with FFormatter do
+  begin
+    Create;
+    with DecimalFormats do
+    begin
+//      Append(0);
+      Capacity := 2;
+      Append(LOCALE_USER_DEFAULT);
+      Append((SORT_DEFAULT shl 16) or LANG_ARABIC, True);
+    end;
+  end;
+}
 
 { TDefaultOutput }
 
@@ -189,7 +202,8 @@ begin
   FActionEllipsisFormat := Format(sDefaultActionFmt, DefaultSystemCodePage, 0,
     [PromptWidth, -(FileNameWidth - Length(sPathEllipsis))]).Value;
   FFileNameWidth := FileNameWidth;
-  GetMem(FActionBuf, (PromptWidth + FileNameWidth + Length(sPathEllipsis) + Length(sDefaultActionFmt)) * SizeOf(WideChar));
+  GetMem(FActionBuf, (PromptWidth + FileNameWidth + Length(sPathEllipsis) +
+    Length(sDefaultActionFmt)) * SizeOf(WideChar));
 
   FStatsFormat := Format(sDefaultStatsFmt, DefaultSystemCodePage, 0, [StatBytesWidth]).Value;
   GetMem(FStatsBuf, (StatBytesWidth + PercentageWidth + Length(sDefaultStatsFmt)) * SizeOf(WideChar));
@@ -204,9 +218,7 @@ begin
   FreeMem(FActionEllipsisFormat);
   FreeMem(FActionFormat);
 
-{$IFNDEF Lite}
   inherited;
-{$ENDIF}
 end;
 
 procedure TDefaultOutput.Action(Prompt: PLegacyChar; FileName: PFileName);
@@ -345,7 +357,7 @@ begin
             raise ECommandLine.Create(sOSVersion, @Param);
           with Param do
           begin
-            Dot := NextIndex('.');
+            Dot := RawNextIndex(WideChar('.'));
             if Dot >= 0 then
             begin
               FMajorVersion := AsRange(0, Dot - 1).AsInteger;
