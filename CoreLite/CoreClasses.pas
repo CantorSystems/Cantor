@@ -642,7 +642,7 @@ begin
   ItemSize := CollectionInfo.ItemSize;
   NewCount := FCount - ItemCount;
   FirstBytes := Index * ItemSize;
-  LastBytes := ItemCount * ItemSize;
+  LastBytes := (Index + ItemCount) * ItemSize;
 
   if FBufferKind = bkAttached then
   begin

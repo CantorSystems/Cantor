@@ -85,10 +85,11 @@ type
     function IndexOfAddress(Address: LongWord): Integer;
   protected
     class function CollectionInfo: TCollectionInfo; virtual;
+    procedure Cut(Index, ItemCount: Integer); virtual;
   public
+    constructor Create;
     destructor Destroy; virtual;
     procedure Build(FileAlignment: LongWord = 512);
-    procedure Delete(Index: Integer); reintroduce;
     function FileAlignBytes(Source: LongWord): LongWord;
     function HeadersSize: LongWord;
     function IndexOfSection(HeaderSection: TExeHeaderSection): Integer; overload;
@@ -107,6 +108,7 @@ type
     property Stub: TExeStub read FStub;
   end;
 
+  PKolibriImage = ^TKolibriImage;
   TKolibriImage = object
   private
     FHeader: TKolibriHeader;
@@ -466,6 +468,11 @@ end;
 
 { TExeImage }
 
+constructor TExeImage.Create;
+begin
+  inherited Create(imFinalize);
+end;
+
 destructor TExeImage.Destroy;
 begin
   FStub.Finalize;
@@ -527,13 +534,54 @@ begin
   end;
 end;
 
-procedure TExeImage.Delete(Index: Integer);
+procedure TExeImage.Cut(Index, ItemCount: Integer);
+type
+  TDirectoryEntry = (deExports, deImports, deResources, deExceptions, deCertificates,
+    deRelocations, deDebug, deCopyrights, deGlobalPtr, deTLS, deLoadConfig, deBoundImports,
+    deIAT, deDelayImport, deCOMDescriptor);
+  TDirectoryEntries = set of TDirectoryEntry;
+const
+  deSecurity = deCertificates;
+var
+  Increment: LongWord;
+  I, Idx: Integer;
+  Entries: TDirectoryEntries;
 begin
-  if (Index <> 0) and (FSections[Index].FHeader.VirtualSize <> 0) then
+  if Index <> 0 then
+  begin
+    Increment := 0;
+    for I := Index to Index + ItemCount - 1 do
+      with FSections[I].FHeader do
+        if VirtualSize <> 0 then
+          Inc(Increment, VirtualSize + SectionAlignBytes(VirtualSize));
     with FSections[Index - 1].FHeader do
-      Inc(VirtualSize, SectionAlignBytes(VirtualSize) + FSections[Index].FHeader.VirtualSize);
-  inherited Delete(Index);
-  Dec(FHeaders.FileHeader.SectionCount);
+      Inc(VirtualSize, SectionAlignBytes(VirtualSize) + Increment);
+  end;
+
+  Entries := [];
+  for I := Index to Index + ItemCount - 1 do
+  begin
+    Idx := FSections[I].DirectoryIndex(FHeaders.OptionalHeader);
+    if Idx >= 0 then
+      Include(Entries, TDirectoryEntry(Idx));
+  end;
+
+  inherited;
+  Dec(FHeaders.FileHeader.SectionCount, ItemCount);
+
+  if Entries <> [] then
+    if deRelocations in Entries then
+    begin
+      for I := 0 to Count - 1 do
+        with FSections[I].FHeader do
+        begin
+          RelocationsOffset := 0;
+          RelocationCount := 0;
+        end;
+      QuadWord(FHeaders.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC]) := 0; // Fast core
+      with FHeaders.FileHeader do
+        Characteristics := Characteristics or IMAGE_FILE_RELOCS_STRIPPED;
+    end;
 end;
 
 function TExeImage.FileAlignBytes(Source: LongWord): LongWord;
@@ -709,7 +757,7 @@ end;
 
 procedure TExeImage.Strip(Options: TStripOptions);
 var
-  I: Integer;
+  I, Idx: Integer;
 begin
   if soStub in Options then
     FStub.Strip;
@@ -718,18 +766,9 @@ begin
     (FHeaders.OptionalHeader.Subsystem in [IMAGE_SUBSYSTEM_WINDOWS_GUI, IMAGE_SUBSYSTEM_WINDOWS_CUI]) and
     (FHeaders.OptionalHeader.DirectoryEntryCount >= IMAGE_DIRECTORY_ENTRY_BASERELOC) then
   begin
-    I := IndexOfSection(IMAGE_DIRECTORY_ENTRY_BASERELOC);
-    if I >= 0 then
-      Delete(I);
-    for I := 0 to Count - 1 do
-      with FSections[I].FHeader do
-      begin
-        RelocationsOffset := 0;
-        RelocationCount := 0;
-      end;
-    QuadWord(FHeaders.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC]) := 0; // Fast core
-    with FHeaders.FileHeader do
-      Characteristics := Characteristics or IMAGE_FILE_RELOCS_STRIPPED;
+    Idx := IndexOfSection(IMAGE_DIRECTORY_ENTRY_BASERELOC);
+    if Idx >= 0 then
+      Delete(Idx);
   end;
 
   if Options * [soSectionData..soOrphanedSections] <> [] then
