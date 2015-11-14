@@ -122,7 +122,7 @@ const
   PercentageWidth = 6;
 
   sDefaultActionFmt = '%%%dhs  %%hs%%%ds';   // '{*s}  {*s?{s1}}'
-  sDefaultStatsFmt = '  %%%du bytes  %%6hs'; // '  {*u?{u'#160'bytes}}  {6p}'
+  sDefaultStatsFmt = '  %%%di bytes  %%7hs'; // '  {*u?{u'#160'bytes}}  {6p}'
 
   sBackuping      = 'Backuping'#9' %s';
 
