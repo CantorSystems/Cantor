@@ -583,9 +583,7 @@ function TExeImage.IndexOfSection(Name: PLegacyChar; Length: Integer): Integer;
 begin
   for Result := 0 to Count - 1 do
     with FSections[Result] do
-      if CompareStringA(LOCALE_USER_DEFAULT, NORM_IGNORECASE, Name, Length,
-        FHeader.Name, StrLen(FHeader.Name, IMAGE_SIZEOF_SHORT_NAME)) = CSTR_EQUAL
-      then
+      if StrComp(Name, Length, FHeader.Name, StrLen(FHeader.Name, IMAGE_SIZEOF_SHORT_NAME)) = CSTR_EQUAL then
         Exit;
   Result := -1;
 end;
@@ -601,7 +599,7 @@ var
   I: Integer;
 begin
   Clear;
-  
+ 
   FStub.Load(Source);
 
   if (FStub.Size >= SizeOf(TImageLegacyHeader)) and
@@ -696,8 +694,7 @@ function TExeImage.Size(TruncLastSection: Boolean): LongWord;
 var
   I: Integer;
 begin
-  Result := 0;
-  Inc(Result, FStub.Size);
+  Result := FStub.Size;
   Inc(Result, HeadersSize);
   Inc(Result, SizeOf(TImageSectionHeader) * Count);
   Inc(Result, FileAlignBytes(Result));

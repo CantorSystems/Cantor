@@ -21,7 +21,7 @@ type
     FSourceFileName: TCoreString;
     FCommandParams: array[TCommand] of TCoreString;
     FSourceFileCP: Word;
-    procedure Parse(CommandLine: PCoreChar);
+    procedure ParseCommandLine(Source: PCoreChar);
     procedure Help;
   public
     destructor Destroy;
@@ -110,7 +110,7 @@ begin
   end;
 end;
 
-procedure TApplication.Parse(CommandLine: PCoreChar);
+procedure TApplication.ParseCommandLine(Source: PCoreChar);
 const
   Commands: array[cmInto..cmInto] of PWideChar = (sInto);
   RunOptions: array[roPause..roRename] of PWideChar = (sPause, sNoLogo, sVersion, sRename);
@@ -123,7 +123,7 @@ var
   W: PWideChar;
 begin
   CmdLine.Create;
-  CmdLine.AsWideString(CommandLine, WideStrLen(CommandLine), soAttach);
+  CmdLine.AsWideString(Source, WideStrLen(Source), soAttach);
   Param.Create;
   CmdLine := Param.AsNextParam(@CmdLine); // skip own file name
 
@@ -136,7 +136,7 @@ begin
     Inc(ParamCount);
     Key.Create;
     Key.AsRange(@Param, 1);
-    if not Param.Quoted and (Param.RawData^ = '-') then
+    if Param.IsKey then
     begin
       W := sOEM;
       if Key.Compare(W + 1, PCharCode(W)^, True) = 0 then
@@ -154,7 +154,7 @@ begin
           end;
     end;
 
-    if (Param.Count <> 0) and (Param.RawData^ = '-') then
+    if Param.IsKey then
     begin
       {W := sCP;
       if Key.Compare(W + 1, PCharCode(W)^, True) = 0 then
@@ -205,7 +205,7 @@ var
   LegacyFileName: TLegacyString;
   UniFileName: TWideString;
 begin
-  Parse(CommandLine);
+  ParseCommandLine(CommandLine);
   if Title(sTitle) then
     Exit;
 

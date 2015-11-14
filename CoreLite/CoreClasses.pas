@@ -83,7 +83,6 @@ type
     FBufferKind: TBufferKind;
   { placeholder } // FItems: Pointer;
     procedure Copy(Index: Integer; Collection: PCollection; Capture: Boolean);
-    procedure Cut(Index, ItemCount: Integer);
     procedure Expand(Index, ItemCount: Integer);
     procedure FreeItems(Index, ItemCount: Integer);
     procedure SetCapacity(Value: Integer);
@@ -95,6 +94,7 @@ type
     procedure Assign(Source: PCollection; Mode: TSharingMode); overload;
     procedure Attach;
     procedure CheckCapacity(ItemCount: Integer);
+    procedure Cut(Index, ItemCount: Integer); virtual;
     procedure Insert(Index: Integer; ItemCount: Integer = 1); overload;
   public
     constructor Create(CollectionItemMode: TCollectionItemMode = imInline);

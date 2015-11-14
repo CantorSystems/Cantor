@@ -43,6 +43,7 @@ type
   public
     function AsNextParam(CommandLine: PLegacyString): TLegacyString;
     procedure Clear; virtual;
+    function IsKey: Boolean;
     property Quoted: Boolean read FQuoted;
   end;
 
@@ -53,6 +54,7 @@ type
   public
     function AsNextParam(CommandLine: PWideString): TWideString;
     procedure Clear; virtual;
+    function IsKey: Boolean;
     property Quoted: Boolean read FQuoted;
   end;
 
@@ -118,7 +120,7 @@ function TFileName.Width(MaxWidth: Integer): Integer;
 begin
   Result := Count;
   if (Result > MaxWidth) and (FPathDelimiterIndex >= 0) then
-    Dec(Result, FPathDelimiterIndex);
+    Dec(Result, FPathDelimiterIndex + 1);
 end;
 
 { TConsoleApplication }
@@ -168,7 +170,10 @@ procedure TConsoleApplication.Help(UsageFmt, HelpMsg: PLegacyChar);
 begin
   with FConsole do
   begin
-    WriteLn;
+  {$IFNDEF Lite}
+    if caVersion in PConsoleAppCast(@Self).Options then
+      WriteLn;
+  {$ENDIF}
     WriteLn(UsageFmt, 0, [FAppName.Data], 2);
     WriteLn(HelpMsg, StrLen(HelpMsg), 2);
     if CodePage = CP_UTF8 then
@@ -256,6 +261,11 @@ begin
   FQuoted := False;
 end;
 
+function TLegacyCommandLineParam.IsKey: Boolean;
+begin
+  Result := (Count <> 0) and not FQuoted and (RawData^ = '-');
+end;
+
 { TWideCommandLineParam }
 
 function TWideCommandLineParam.AsNextParam(CommandLine: PWideString): TWideString;
@@ -295,6 +305,11 @@ procedure TWideCommandLineParam.Clear;
 begin
   inherited;
   FQuoted := False;
+end;
+
+function TWideCommandLineParam.IsKey: Boolean;
+begin
+  Result := (Count <> 0) and not FQuoted and (RawData^ = '-');
 end;
 
 end.

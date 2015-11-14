@@ -22,7 +22,7 @@ type
     FFallbackCP, FDummy: Word;
     FCounter: TPerformanceCounter;
     FSourceFileName, FIntoFileName: TCoreString;
-    procedure Parse(CommandLine: PWideChar);
+    procedure ParseCommandLine(Source: PWideChar);
   protected
     property Dummy: Word read FDummy;
   public
@@ -87,7 +87,7 @@ begin
   inherited;
 end;
 
-procedure TApplication.Parse(CommandLine: PWideChar);
+procedure TApplication.ParseCommandLine(Source: PWideChar);
 var
   CmdLine, Key: TWideString;
   Param: TCommandLineParam; 
@@ -95,7 +95,7 @@ var
   W: PWideChar;
 begin
   CmdLine.Create;
-  CmdLine.AsWideString(CommandLine, WideStrLen(CommandLine), soAttach);
+  CmdLine.AsWideString(Source, WideStrLen(Source), soAttach);
   Param.Create;
   CmdLine := Param.AsNextParam(@CmdLine); // skip own file name
 
@@ -108,7 +108,7 @@ begin
 
     Inc(ParamCount);
     Key.AsRange(@Param, 1);
-    if not Param.Quoted and (Param.RawData^ = '-') then
+    if Param.IsKey then
     begin
       W := sOEM;
       if Key.Compare(W + 1, PCharCode(W)^, True) = 0 then
@@ -132,7 +132,7 @@ begin
       end;
     end;
 
-    if (Param.Count <> 0) and (Param.RawData^ = '-') then
+    if Param.IsKey then
     begin
       W := sCP;
       if Key.Compare(W + 1, PCharCode(W)^, True) = 0 then
@@ -297,7 +297,7 @@ end;
 
 begin
   Console.WriteLn(PLegacyChar(sTitle), StrLen(sTitle), 2);
-  Parse(CommandLine);
+  ParseCommandLine(CommandLine);
 
   if FSourceFileName.Count <> 0 then
   begin
