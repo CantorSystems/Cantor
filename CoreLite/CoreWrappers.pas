@@ -314,6 +314,8 @@ type
 
 { Helper functions }
 
+//proce
+
 type
   TLoadProc = procedure(Stream: PReadableStream) of object;
   TSaveProc = procedure(Stream: PWritableStream) of object;
@@ -324,18 +326,20 @@ type
     BytesRead: CoreWord;
   end;
 
-  TSaveOptions = set of (soBackup, soCopyAttr, soCopyTime);
+  TSaveOptions = set of (soCopyAttr, soCopyTime);
 
 function LoadFile(const LoadProc: TLoadProc; FileName: PCoreChar;
   Access: TFileAccess = faSequentialRead): TLoadFileResult;
 
-procedure SaveFile(const SaveProc: TSaveProc; FileName: PCoreChar; FileSize: QuadWord;
-  Access: TFileAccess = faSequentialRewrite); overload;
-procedure SaveFile(const SaveProc: TSaveProc; FileName: PCoreChar; FileSize: QuadWord;
-  const FileInfo: TFileInformation; Access: TFileAccess = faSequentialRewrite); overload;
-procedure SaveFile(const SaveProc: TSaveProc; BackupFileName, FileName: PCoreChar;
+function SaveFile(const SaveProc: TSaveProc; FileName: PCoreChar; FileSize: QuadWord;
+  Access: TFileAccess = faSequentialRewrite): QuadWord; overload;
+function SaveFile(const SaveProc: TSaveProc; FileName: PCoreChar; FileSize: QuadWord;
+  const FileInfo: TFileInformation; Access: TFileAccess = faSequentialRewrite): QuadWord; overload;
+function SaveFile(const SaveProc: TSaveProc; BackupFileName, FileName, SwapFileName: PCoreChar;
   FileSize: QuadWord; Access: TFileAccess = faSequentialRewrite;
-  Options: TSaveOptions = [soBackup..soCopyTime]); overload;
+  Options: TSaveOptions = [soCopyAttr..soCopyTime]): QuadWord; overload;
+
+procedure MoveFile(SourceFileName, DestFileName: PCoreChar);
 
 { Import Windows functions for Delphi 6/7 }
 
@@ -356,6 +360,14 @@ function SetFilePointerEx(hFile: THandle; liDistanceToMove: QuadInt;
 
 { Helper functions }
 
+procedure MoveFile(SourceFileName, DestFileName: PCoreChar);
+begin
+  if not MoveFileExW(SourceFileName, DestFileName,
+    MOVEFILE_COPY_ALLOWED or MOVEFILE_WRITE_THROUGH or MOVEFILE_REPLACE_EXISTING)
+  then
+    RaiseLastPlatformError(DestFileName);
+end;
+
 function LoadFile(const LoadProc: TLoadProc; FileName: PCoreChar;
   Access: TFileAccess): TLoadFileResult;
 var
@@ -372,8 +384,8 @@ begin
   end;
 end;
 
-procedure SaveFile(const SaveProc: TSaveProc; FileName: PCoreChar; FileSize: QuadWord;
-  Access: TFileAccess);
+function SaveFile(const SaveProc: TSaveProc; FileName: PCoreChar; FileSize: QuadWord;
+  Access: TFileAccess): QuadWord;
 var
   F: TFileStream;
 begin
@@ -381,14 +393,15 @@ begin
   try
     F.SetSize(FileSize);
     SaveProc(@F);
-    F.SetSize(F.Position);
+    Result := F.Position;
+    F.SetSize(Result);
   finally
     F.Destroy;
   end;
 end;
 
-procedure SaveFile(const SaveProc: TSaveProc; FileName: PCoreChar; FileSize: QuadWord;
-  const FileInfo: TFileInformation; Access: TFileAccess);
+function SaveFile(const SaveProc: TSaveProc; FileName: PCoreChar; FileSize: QuadWord;
+  const FileInfo: TFileInformation; Access: TFileAccess): QuadWord;
 var
   F: TFileStream;
 begin
@@ -398,27 +411,24 @@ begin
       RaiseLastPlatformError(FileName);
     F.SetSize(FileSize);
     SaveProc(@F);
-    F.SetSize(F.Position);
+    Result := F.Position;
+    F.SetSize(Result);
     F.SetTime(FileInfo);
   finally
     F.Destroy;
   end;
 end;
 
-procedure SaveFile(const SaveProc: TSaveProc; BackupFileName, FileName: PCoreChar;
-  FileSize: QuadWord; Access: TFileAccess; Options: TSaveOptions);
+function SaveFile(const SaveProc: TSaveProc; BackupFileName, FileName, SwapFileName: PCoreChar;
+  FileSize: QuadWord; Access: TFileAccess; Options: TSaveOptions): QuadWord;
 var
   OldInfo: TWin32FileAttributeData;
   NewInfo: TFileInformation;
 begin
-  if not MoveFileExW(FileName, BackupFileName,
-    MOVEFILE_COPY_ALLOWED or MOVEFILE_WRITE_THROUGH or MOVEFILE_REPLACE_EXISTING)
-  then
-    RaiseLastPlatformError(FileName);
   if Options * [soCopyAttr..soCopyTime] <> [] then
   begin
-    if not GetFileAttributesExW(BackupFileName, GetFileExMaxInfoLevel, @OldInfo) then
-      RaiseLastPlatformError(BackupFileName);
+    if not GetFileAttributesExW(FileName, GetFileExMaxInfoLevel, @OldInfo) then
+      RaiseLastPlatformError(FileName);
     if soCopyAttr in Options then
       NewInfo.Attributes := OldInfo.dwFileAttributes
     else
@@ -428,9 +438,17 @@ begin
     else
       FillChar(NewInfo.CreationTime, SizeOf(TFileTime) * 3, 0);
   end;
-  SaveFile(SaveProc, FileName, FileSize, NewInfo, Access);
-  if not (soBackup in Options) and not DeleteFileW(BackupFileName) then
-    RaiseLastPlatformError(BackupFileName);
+
+  if BackupFileName <> nil then
+    MoveFile(FileName, BackupFileName);
+
+  if SwapFileName <> nil then
+  begin
+    Result := SaveFile(SaveProc, SwapFileName, FileSize, NewInfo, Access);
+    MoveFile(SwapFileName, FileName);
+  end
+  else
+    Result := SaveFile(SaveProc, FileName, FileSize, NewInfo, Access);
 end;
 
 { EStream }
