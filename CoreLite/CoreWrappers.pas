@@ -339,6 +339,7 @@ function SaveFile(const SaveProc: TSaveProc; BackupFileName, FileName, SwapFileN
   FileSize: QuadWord; Access: TFileAccess = faSequentialRewrite;
   Options: TSaveOptions = [soCopyAttr..soCopyTime]): QuadWord; overload;
 
+// TODO: DeleteFile?  
 procedure MoveFile(SourceFileName, DestFileName: PCoreChar);
 
 { Import Windows functions for Delphi 6/7 }
