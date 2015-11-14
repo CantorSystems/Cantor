@@ -426,18 +426,15 @@ var
   OldInfo: TWin32FileAttributeData;
   NewInfo: TFileInformation;
 begin
+  FillChar(NewInfo, SizeOf(NewInfo), 0);
   if Options * [soCopyAttr..soCopyTime] <> [] then
   begin
     if not GetFileAttributesExW(FileName, GetFileExMaxInfoLevel, @OldInfo) then
       RaiseLastPlatformError(FileName);
     if soCopyAttr in Options then
-      NewInfo.Attributes := OldInfo.dwFileAttributes
-    else
-      NewInfo.Attributes := 0;
+      NewInfo.Attributes := OldInfo.dwFileAttributes;
     if soCopyTime in Options then
-      Move(OldInfo.ftCreationTime, NewInfo.CreationTime, SizeOf(TFileTime) * 3)
-    else
-      FillChar(NewInfo.CreationTime, SizeOf(TFileTime) * 3, 0);
+      Move(OldInfo.ftCreationTime, NewInfo.CreationTime, SizeOf(TFileTime) * 3);
   end;
 
   if BackupFileName <> nil then
