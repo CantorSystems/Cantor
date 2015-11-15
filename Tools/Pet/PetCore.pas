@@ -66,7 +66,7 @@ type
   TFileNames = array[fkInto..High(TFileKind)] of TFileName;
 
   TRunOption = (roPause, roNoLogo, roVersion, // ordered
-    roAuto, roStrip, roTrunc, roKeep, roUnsafe, roDeep,
+    roAuto, roStrip, roTrunc, roTouch, roUnsafe, roDeep,
     {roMiniRes, roCleanVer, roMainIcon,} ro3GB, roVerbose);
   TRunOptions = set of TRunOption;
 
@@ -292,7 +292,7 @@ end;
 procedure TApplication.ParseCommandLine(Source: PCoreChar);
 const
   OptionKeys: array[TRunOption] of PCoreChar =
-    (sPause, sNoLogo, sVersion, sAuto, sStrip, sTrunc, sKeep, sUnsafe, sDeep,
+    (sPause, sNoLogo, sVersion, sAuto, sStrip, sTrunc, sTouch, sUnsafe, sDeep,
      {sMiniRes, sCleanVer, sMainIcon,} s3GB, sVerbose);
   HexBase: array[Boolean] of LegacyChar = 'A0';
 var
@@ -438,7 +438,7 @@ end;
 procedure TApplication.ProcessFile(FileName: PCoreString);
 const
   Deep: array[Boolean] of TStripOptions = ([], [soOrphanedSections]);
-  Keep: array[Boolean] of TSaveOptions = ([], [soCopyAttr..soCopyTime]);
+  Touch: array[Boolean] of TSaveOptions = ([], [soTouch]);
 var
   Stub: TExeStub;
   TmpFileName: TFileName;
@@ -463,11 +463,11 @@ begin
       begin
         Output.Action(sOverlayData, nil);
         Output.StripStats(Loaded.FileSize, Loaded.BytesRead);
-        {if not (roUnsafe in FOptions) then
+        if not (roUnsafe in FOptions) then
         begin
           Console.WriteLn(PLegacyChar(sOverlayDataFound), StrLen(sOverlayDataFound)); // TODO?
           Exit;
-        end;}
+        end;
       end;
 
       if FFileNames[fkExtract].Count <> 0 then
@@ -535,16 +535,28 @@ begin
             LargeAddressAware;
         end;
 
-        TmpFileName.Create;
-        try
-          TmpFileName.AsTempName(@FFileNames[fkInto]);
-          BytesSaved := SaveFile(SaveImage, FFileNames[fkBackup].RawData,
-            FFileNames[fkInto].RawData, TmpFileName.RawData, FImage.Size(roTrunc in FOptions),
-            faRandomRewrite, Keep[roKeep in FOptions]);
-          Output.TransferStats(0, BytesSaved);
-        finally
-          TmpFileName.Destroy;
+        if FFileNames[fkBackup].Count <> 0 then
+          BytesSaved := SaveFile(
+            SaveImage, FSourceFileName.RawData, FFileNames[fkBackup].RawData,
+            FFileNames[fkInto].RawData, FImage.Size(roTrunc in FOptions),
+            faRandomRewrite, Touch[roTouch in FOptions] + [soBackup]
+          )
+        else
+        begin
+          TmpFileName.Create;
+          try
+            TmpFileName.AsTempName(@FFileNames[fkInto]);
+            BytesSaved := SaveFile(
+              SaveImage, fSourceFileName.RawData, TmpFileName.RawData,
+              FFileNames[fkInto].RawData, FImage.Size(roTrunc in FOptions),
+              faRandomRewrite, Touch[roTouch in FOptions]
+            );
+          finally
+            TmpFileName.Destroy;
+          end;
         end;
+
+        Output.TransferStats(0, BytesSaved);
       end
       else
         BytesSaved := FImage.Size(roTrunc in FOptions);

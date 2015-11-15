@@ -314,7 +314,9 @@ type
 
 { Helper functions }
 
-//proce
+// TODO: DeleteFile?
+function FileExists(FileName: PCoreChar): Boolean;
+procedure MoveFile(SourceFileName, DestFileName: PCoreChar);
 
 type
   TLoadProc = procedure(Stream: PReadableStream) of object;
@@ -326,7 +328,7 @@ type
     BytesRead: CoreWord;
   end;
 
-  TSaveOptions = set of (soCopyAttr, soCopyTime);
+  TSaveOptions = set of (soBackup, soTouch);
 
 function LoadFile(const LoadProc: TLoadProc; FileName: PCoreChar;
   Access: TFileAccess = faSequentialRead): TLoadFileResult;
@@ -335,12 +337,8 @@ function SaveFile(const SaveProc: TSaveProc; FileName: PCoreChar; FileSize: Quad
   Access: TFileAccess = faSequentialRewrite): QuadWord; overload;
 function SaveFile(const SaveProc: TSaveProc; FileName: PCoreChar; FileSize: QuadWord;
   const FileInfo: TFileInformation; Access: TFileAccess = faSequentialRewrite): QuadWord; overload;
-function SaveFile(const SaveProc: TSaveProc; BackupFileName, FileName, SwapFileName: PCoreChar;
-  FileSize: QuadWord; Access: TFileAccess = faSequentialRewrite;
-  Options: TSaveOptions = [soCopyAttr..soCopyTime]): QuadWord; overload;
-
-// TODO: DeleteFile?  
-procedure MoveFile(SourceFileName, DestFileName: PCoreChar);
+function SaveFile(const SaveProc: TSaveProc; SourceFileName, SwapFileName, DestFileName: PCoreChar;
+  FileSize: QuadWord; Access: TFileAccess = faSequentialRewrite; Options: TSaveOptions = []): QuadWord; overload;
 
 { Import Windows functions for Delphi 6/7 }
 
@@ -360,6 +358,21 @@ function SetFilePointerEx(hFile: THandle; liDistanceToMove: QuadInt;
   external kernel32 name 'SetFilePointerEx';
 
 { Helper functions }
+
+function FileExists(FileName: PCoreChar): Boolean;
+var
+  Data: TWin32FindDataW;
+  Handle: THandle;
+begin
+  Handle := FindFirstFileW(FileName, Data);
+  if Handle <> INVALID_HANDLE_VALUE then
+  begin
+    FindClose(Handle);
+    Result := True;
+  end
+  else
+    Result := False;
+end;
 
 procedure MoveFile(SourceFileName, DestFileName: PCoreChar);
 begin
@@ -420,33 +433,32 @@ begin
   end;
 end;
 
-function SaveFile(const SaveProc: TSaveProc; BackupFileName, FileName, SwapFileName: PCoreChar;
+function SaveFile(const SaveProc: TSaveProc; SourceFileName, SwapFileName, DestFileName: PCoreChar;
   FileSize: QuadWord; Access: TFileAccess; Options: TSaveOptions): QuadWord;
 var
   OldInfo: TWin32FileAttributeData;
   NewInfo: TFileInformation;
 begin
   FillChar(NewInfo, SizeOf(NewInfo), 0);
-  if Options * [soCopyAttr..soCopyTime] <> [] then
+  if (SourceFileName <> nil) and GetFileAttributesExW(SourceFileName, GetFileExInfoStandard, @OldInfo) then
   begin
-    if not GetFileAttributesExW(FileName, GetFileExMaxInfoLevel, @OldInfo) then
-      RaiseLastPlatformError(FileName);
-    if soCopyAttr in Options then
-      NewInfo.Attributes := OldInfo.dwFileAttributes;
-    if soCopyTime in Options then
-      Move(OldInfo.ftCreationTime, NewInfo.CreationTime, SizeOf(TFileTime) * 3);
+    NewInfo.Attributes := OldInfo.dwFileAttributes;
+    Move(OldInfo.ftCreationTime, NewInfo.CreationTime, SizeOf(TFileTime) * (3 - Byte(soTouch in Options)));
   end;
 
-  if BackupFileName <> nil then
-    MoveFile(FileName, BackupFileName);
-
   if SwapFileName <> nil then
-  begin
-    Result := SaveFile(SaveProc, SwapFileName, FileSize, NewInfo, Access);
-    MoveFile(SwapFileName, FileName);
-  end
+    if soBackup in Options then
+    begin
+      MoveFile(DestFileName, SwapFileName);
+      Result := SaveFile(SaveProc, DestFileName, FileSize, NewInfo, Access);
+    end
+    else
+    begin
+      Result := SaveFile(SaveProc, SwapFileName, FileSize, NewInfo, Access);
+      MoveFile(SwapFileName, DestFileName);
+    end
   else
-    Result := SaveFile(SaveProc, FileName, FileSize, NewInfo, Access);
+    Result := SaveFile(SaveProc, DestFileName, FileSize, NewInfo, Access);
 end;
 
 { EStream }

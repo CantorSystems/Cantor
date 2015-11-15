@@ -23,11 +23,11 @@ const         // short Unicode strings
   sCleanVer   = #8'cleanver';
   sDeep       = #4'deep';
   sDropSect   = #8'dropsect';
-  sKeep       = #4'keep';
   sNoLogo     = #6'nologo';
   sPause      = #5'pause';
   sOSVer      = #5'osver';
   sStrip      = #5'strip';
+  sTouch      = #5'touch';
   sTrunc      = #5'trunc';
   sUnsafe     = #6'unsafe';
   sVerbose    = #7'verbose';
@@ -62,10 +62,11 @@ const
                                #9#9#9#9'volume cluster size'#10 +
             #9'-deep' +          #9#9#9'Strip orphaned sections too (unsafe!)'#10 +
             #9'-dropsect <s1,s2,...>'#9'Drop sections <s1>, <s2>, etc.'#10 +
-            #9'-keep' +          #9#9#9'Keep original timestamp and attributes'#10 +
             #9'-osver <#[.#]>'+    #9#9'Set required OS version to <#> or <#.#>'#10 +
             #9'-stub [stub]|[.]' +   #9'Replace stub with one from [stub] file or take'#10 +
                                #9#9#9#9'stub from PE Tool itself'#10 +
+            #9'-touch' +         #9#9#9'Don''t keep original file timestamp and'#10 + 
+                               #9#9#9#9'attributes'#10 +
             #9'-trunc' +         #9#9#9'Don''t align last section, truncate file'#10 +
                                #9#9#9#9'immediately after data end'#10 +
             #9'-unsafe' +        #9#9#9'Strip chained overlay or certificate data'#10 +
