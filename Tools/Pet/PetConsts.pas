@@ -60,17 +60,16 @@ const
                                #9#9#9#9'original file when stripped size is equal or'#10 +
                                #9#9#9#9'greater given number of bytes, percent or'#10 +
                                #9#9#9#9'volume cluster size'#10 +
-            #9'-deep' +          #9#9#9'Strip orphaned sections too (unsafe!)'#10 +
+            #9'-deep' +          #9#9#9'Strip orphaned sections (unsafe!)'#10 +
             #9'-dropsect <s1,s2,...>'#9'Drop sections <s1>, <s2>, etc.'#10 +
             #9'-osver <#[.#]>'+    #9#9'Set required OS version to <#> or <#.#>'#10 +
             #9'-stub [stub]|[.]' +   #9'Replace stub with one from [stub] file or take'#10 +
                                #9#9#9#9'stub from PE Tool itself'#10 +
-            #9'-touch' +         #9#9#9'Don''t keep original file timestamp and'#10 + 
-                               #9#9#9#9'attributes'#10 +
+            #9'-touch' +         #9#9#9'Don''t keep original file timestamp'#10 + 
             #9'-trunc' +         #9#9#9'Don''t align last section, truncate file'#10 +
                                #9#9#9#9'immediately after data end'#10 +
             #9'-unsafe' +        #9#9#9'Strip chained overlay or certificate data'#10 +
-            #9'-verbose' +         #9#9'Output detailed stripping information'#10#10 +
+            {#9'-verbose' +         #9#9'Output detailed stripping information'#10}#10 +
     'Miscellaneous options'#10 +
             #9'-nologo' +        #9#9#9'Don''t display PET logo'#10 +
             #9'-pause' +         #9#9#9'Wait for ENTER key to exit';

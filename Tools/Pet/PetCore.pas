@@ -67,7 +67,7 @@ type
 
   TRunOption = (roPause, roNoLogo, roVersion, // ordered
     roAuto, roStrip, roTrunc, roTouch, roUnsafe, roDeep,
-    {roMiniRes, roCleanVer, roMainIcon,} ro3GB, roVerbose);
+    {roMiniRes, roCleanVer, roMainIcon, roVerbose} ro3GB);
   TRunOptions = set of TRunOption;
 
   TApplication = object(TConsoleApplication)
@@ -293,7 +293,7 @@ procedure TApplication.ParseCommandLine(Source: PCoreChar);
 const
   OptionKeys: array[TRunOption] of PCoreChar =
     (sPause, sNoLogo, sVersion, sAuto, sStrip, sTrunc, sTouch, sUnsafe, sDeep,
-     {sMiniRes, sCleanVer, sMainIcon,} s3GB, sVerbose);
+     {sMiniRes, sCleanVer, sMainIcon, sVerbose,} s3GB);
   HexBase: array[Boolean] of LegacyChar = 'A0';
 var
   CmdLine, Key: TCoreString;
@@ -309,17 +309,18 @@ begin
   Param.Create;
   CmdLine := Param.AsNextParam(@CmdLine); // skip own file name
 
-  Key.Create;
   ParamCount := 0;
+  Key.Create;
   repeat
     CmdLine := Param.AsNextParam(@CmdLine);
     if Param.Count = 0 then
       Break;
 
     Inc(ParamCount);
-    Key.AsRange(@Param, 1);
     if Param.IsKey then
     begin
+      Key.AsRange(@Param, 1);
+      
       for R := Low(OptionKeys) to High(OptionKeys) do
       begin
         W := OptionKeys[R];
@@ -574,8 +575,10 @@ end;
 procedure TApplication.Run(CommandLine: PCoreChar);
 begin
   ParseCommandLine(CommandLine);
+
   if Logo(sLogo) then
     Exit;
+
   if FSourceFileName.Count <> 0 then
     ProcessFile(@FSourceFileName)
   else
