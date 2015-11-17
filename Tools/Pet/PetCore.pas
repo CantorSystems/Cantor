@@ -563,7 +563,7 @@ begin
         BytesSaved := FImage.Size(roTrunc in FOptions);
 
       Output.Action(sTotal, nil);
-      Output.StripStats(Loaded.BytesRead, BytesSaved);
+      Output.StripStats(Loaded.FileSize, BytesSaved);
     finally
       Output.Destroy;
     end;
