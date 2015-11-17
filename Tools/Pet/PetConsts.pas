@@ -56,12 +56,12 @@ const
                                #9#9#9#9'when possible'#10#10 +
     'Options for -into command'#10 +
             #9'-3GB' +           #9#9#9'Set large address aware application flag'#10 +
-            #9'-auto [#[%]]|[.]'    +#9'Using '#$E2#$80#$9C'-keep -strip -trunc -stub'#$E2#$80#$9D' mode, replace'#10 +
+            {#9'-auto [#[%]]|[.]'    +#9'Using '#$E2#$80#$9C'-keep -strip -trunc -stub'#$E2#$80#$9D' mode, replace'#10 +
                                #9#9#9#9'original file when stripped size is equal or'#10 +
                                #9#9#9#9'greater given number of bytes, percent or'#10 +
-                               #9#9#9#9'volume cluster size'#10 +
+                               #9#9#9#9'volume cluster size'#10 +}
             #9'-deep' +          #9#9#9'Strip orphaned sections (unsafe!)'#10 +
-            #9'-dropsect <s1,s2,...>'#9'Drop sections <s1>, <s2>, etc.'#10 +
+            //#9'-dropsect <s1,s2,...>'#9'Drop sections <s1>, <s2>, etc.'#10 +
             #9'-osver <#[.#]>'+    #9#9'Set required OS version to <#> or <#.#>'#10 +
             #9'-stub [stub]|[.]' +   #9'Replace stub with one from [stub] file or take'#10 +
                                #9#9#9#9'stub from PE Tool itself'#10 +
