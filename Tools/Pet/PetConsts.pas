@@ -47,7 +47,7 @@ const
     'Usage:'#9'%s <source> [commands [options]]';
   sHelp =
     'Commands'#10 +
-            #9'-backup <bak>' +    #9#9'Backup <source> file to <bak> file'#10#10 +
+            #9'-backup <bak>' +    #9#9'Backup <source> file to <bak> file'#10 +
             #9'-extract <stub>' +  #9#9'Extract <source> stub to <stub> file'#10 +
             #9'-into [dest]|[.]' +   #9'Save result to [dest] file or replace source'#10 +
             #9'-version' +         #9#9'Show version and exit'#10#10 +
@@ -68,7 +68,7 @@ const
             #9'-touch' +         #9#9#9'Don''t keep original file timestamp'#10 + 
             #9'-trunc' +         #9#9#9'Don''t align last section, truncate file'#10 +
                                #9#9#9#9'immediately after data end'#10 +
-            #9'-unsafe' +        #9#9#9'Strip chained overlay or certificate data'#10 +
+            #9'-unsafe' +        #9#9#9'Strip chained data or certificate'#10 +
             {#9'-verbose' +         #9#9'Output detailed stripping information'#10}#10 +
     'Miscellaneous options'#10 +
             #9'-nologo' +        #9#9#9'Don''t display PET logo'#10 +
@@ -108,7 +108,7 @@ const
   sPathEllipsis = '[...]';
 
   sLoading          = 'Loading';
-  sOverlayData      = 'Overlay data';
+  sChainedData      = 'Chained data';
   sImageData        = 'Image data';
   sExtractingStub   = 'Extracting stub';
   sFixingStub       = 'Fixing stub';
@@ -126,7 +126,7 @@ const
 
   sBackuping      = 'Backuping'#9' %s';
 
-  sOverlayDataFound = 'Overlay data found, safe stripping stopped';
+  sChainedDataFound = 'Chained data found, safe stripping stopped';
 
 implementation
 

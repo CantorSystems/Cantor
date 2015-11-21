@@ -462,11 +462,11 @@ begin
 
       if Loaded.FileSize <> Loaded.BytesRead then // overlay found
       begin
-        Output.Action(sOverlayData, nil);
+        Output.Action(sChainedData, nil);
         Output.StripStats(Loaded.FileSize, Loaded.BytesRead);
         if not (roUnsafe in FOptions) then
         begin
-          Console.WriteLn(PLegacyChar(sOverlayDataFound), StrLen(sOverlayDataFound)); // TODO?
+          Console.WriteLn(PLegacyChar(sChainedDataFound), StrLen(sChainedDataFound)); // TODO?
           Exit;
         end;
       end;
