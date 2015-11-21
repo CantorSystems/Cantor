@@ -68,8 +68,8 @@ type
     property Header: TImageSectionHeader read FHeader;
   end;
 
-  TStripOptions = set of (soStub, soDataDirectory, soRelocations, soCleanVersionInfo,
-    soSectionData, soPadding, soEmptySections, soOrphanedSections);
+  TStripOptions = set of (soStub, soDataDirectory, soRelocations, soExports,
+    soCleanVersionInfo, soSectionData, soPadding, soEmptySections, soOrphanedSections);
 
   PExeSectionArray = ^TExeSectionArray;
   TExeSectionArray = array[0..MaxInt div SizeOf(TExeSection) - 1] of TExeSection;
@@ -85,7 +85,7 @@ type
     function IndexOfAddress(Address: LongWord): Integer;
   protected
     class function CollectionInfo: TCollectionInfo; virtual;
-    procedure Cut(Index, ItemCount: Integer); virtual;
+    procedure Cut(Index: Integer; ItemCount: Integer = 1); virtual;
   public
     constructor Create;
     destructor Destroy; virtual;
@@ -757,18 +757,18 @@ end;
 
 procedure TExeImage.Strip(Options: TStripOptions);
 var
-  I, Idx: Integer;
+  I: Integer;
 begin
   if soStub in Options then
     FStub.Strip;
 
-  if (soRelocations in Options) and (FHeaders.FileHeader.Characteristics and IMAGE_FILE_DLL = 0) and
-    (FHeaders.OptionalHeader.Subsystem in [IMAGE_SUBSYSTEM_WINDOWS_GUI, IMAGE_SUBSYSTEM_WINDOWS_CUI]) and
-    (FHeaders.OptionalHeader.DirectoryEntryCount >= IMAGE_DIRECTORY_ENTRY_BASERELOC) then
+  if (FHeaders.FileHeader.Characteristics and IMAGE_FILE_DLL = 0) and
+    (FHeaders.OptionalHeader.Subsystem in [IMAGE_SUBSYSTEM_WINDOWS_GUI, IMAGE_SUBSYSTEM_WINDOWS_CUI]) then
   begin
-    Idx := IndexOfSection(IMAGE_DIRECTORY_ENTRY_BASERELOC);
-    if Idx >= 0 then
-      Delete(Idx);
+    if (soRelocations in Options) and (FHeaders.OptionalHeader.DirectoryEntryCount >= IMAGE_DIRECTORY_ENTRY_BASERELOC) then
+      DeleteExisting(IndexOfSection(IMAGE_DIRECTORY_ENTRY_BASERELOC));
+    if soExports in Options then
+      DeleteExisting(IndexOfSection(IMAGE_DIRECTORY_ENTRY_EXPORT));
   end;
 
   if Options * [soSectionData..soOrphanedSections] <> [] then
@@ -781,7 +781,7 @@ begin
         if ((soEmptySections in Options) and (Header.RawDataSize = 0)) or
           ((soOrphanedSections in Options) and IsOrphaned(FHeaders.OptionalHeader))
         then
-          Delete(I);
+          Cut(I);
       end;
   end;
 
