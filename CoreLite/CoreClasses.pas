@@ -94,7 +94,7 @@ type
     procedure Assign(Source: PCollection; Mode: TSharingMode); overload;
     procedure Attach;
     procedure CheckCapacity(ItemCount: Integer);
-    procedure Cut(Index, ItemCount: Integer); virtual;
+    procedure Cut(Index: Integer; ItemCount: Integer = 1); virtual;
     procedure Insert(Index: Integer; ItemCount: Integer = 1); overload;
   public
     constructor Create(CollectionItemMode: TCollectionItemMode = imInline);
@@ -106,8 +106,9 @@ type
       CopyProps: Boolean = True); overload;
     procedure Clear; virtual;
     procedure Delete(Index: Integer; ItemCount: Integer = 1);
+    procedure DeleteExisting(Index: Integer; ItemCount: Integer = 1);
     procedure Detach; virtual;
-    procedure ExternalBuffer(Source: Pointer; ItemCount: Integer); 
+    procedure ExternalBuffer(Source: Pointer; ItemCount: Integer);
     procedure Insert(Index: Integer; Collection: PCollection; Capture: Boolean = False); overload;
     procedure Skip(ItemCount: Integer = 1);
     function TranslateCapacity(NewCount: Integer): Integer;
@@ -125,6 +126,7 @@ type
     function Append(Item: Pointer): Integer;
     procedure Exchange(Index1, Index2: Integer);
     function Extract(Index: Integer): Pointer;
+    function ExtractExisting(Index: Integer): Pointer;
     function IndexOf(Item: Pointer): Integer;
     procedure Insert(Index: Integer; Item: Pointer);
   end;
@@ -685,6 +687,19 @@ begin
   end;
 end;
 
+procedure TCollection.DeleteExisting(Index, ItemCount: Integer);
+var
+  ExistingCount: Integer;
+begin
+  if Index >= 0 then
+  begin
+    ExistingCount := Count - Index;
+    if ItemCount > ExistingCount then
+      ItemCount := ExistingCount;
+    Cut(Index, ItemCount);
+  end;
+end;
+
 procedure TCollection.Detach;
 begin
   if FBufferKind = bkAttached then
@@ -888,6 +903,17 @@ begin
   CheckIndex(Index);
   Result := PPointersCast(@Self).Items[Index];
   Delete(Index);
+end;
+
+function TPointers.ExtractExisting(Index: Integer): Pointer;
+begin
+  if Index >= 0 then
+  begin
+    Result := PPointersCast(@Self).Items[Index];
+    Delete(Index);
+  end
+  else
+    Result := nil;
 end;
 
 function TPointers.IndexOf(Item: Pointer): Integer;
