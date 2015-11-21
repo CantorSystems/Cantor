@@ -68,7 +68,7 @@ const
             #9'-touch' +         #9#9#9'Don''t keep original file timestamp'#10 + 
             #9'-trunc' +         #9#9#9'Don''t align last section, truncate file'#10 +
                                #9#9#9#9'immediately after data end'#10 +
-            #9'-unsafe' +        #9#9#9'Strip chained data or certificate'#10 +
+            #9'-unsafe' +        #9#9#9'Strip chained certificate and other data'#10 +
             {#9'-verbose' +         #9#9'Output detailed stripping information'#10}#10 +
     'Miscellaneous options'#10 +
             #9'-nologo' +        #9#9#9'Don''t display PET logo'#10 +
