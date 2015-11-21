@@ -315,7 +315,7 @@ type
 { Helper functions }
 
 // TODO: DeleteFile?
-function FileExists(FileName: PCoreChar): Boolean;
+function FileAttributes(FileName: PCoreChar): LongWord;
 procedure MoveFile(SourceFileName, DestFileName: PCoreChar);
 
 type
@@ -359,19 +359,13 @@ function SetFilePointerEx(hFile: THandle; liDistanceToMove: QuadInt;
 
 { Helper functions }
 
-function FileExists(FileName: PCoreChar): Boolean;
-var
-  Data: TWin32FindDataW;
-  Handle: THandle;
+function FileAttributes(FileName: PCoreChar): LongWord;
+const
+  INVALID_FILE_ATTRIBUTES = $FFFFFFFF;
 begin
-  Handle := FindFirstFileW(FileName, Data);
-  if Handle <> INVALID_HANDLE_VALUE then
-  begin
-    FindClose(Handle);
-    Result := True;
-  end
-  else
-    Result := False;
+  Result := GetFileAttributesW(FileName);
+  if Result = INVALID_FILE_ATTRIBUTES then
+    Result := 0;
 end;
 
 procedure MoveFile(SourceFileName, DestFileName: PCoreChar);
