@@ -68,7 +68,7 @@ type
     property Header: TImageSectionHeader read FHeader;
   end;
 
-  TStripOptions = set of (soStub, soDataDirectory, soRelocations, soExports,
+  TStripOptions = set of (soStub, soDataDirectory, soDebug, soRelocations, soExports,
     soCleanVersionInfo, soSectionData, soPadding, soEmptySections, soOrphanedSections);
 
   PExeSectionArray = ^TExeSectionArray;
@@ -570,6 +570,11 @@ begin
   Dec(FHeaders.FileHeader.SectionCount, ItemCount);
 
   if Entries <> [] then
+  begin
+    if deDebug in Entries then
+      with FHeaders.FileHeader do
+        Characteristics := Characteristics or IMAGE_FILE_DEBUG_STRIPPED;
+
     if deRelocations in Entries then
     begin
       for I := 0 to Count - 1 do
@@ -582,6 +587,7 @@ begin
       with FHeaders.FileHeader do
         Characteristics := Characteristics or IMAGE_FILE_RELOCS_STRIPPED;
     end;
+  end;
 end;
 
 function TExeImage.FileAlignBytes(Source: LongWord): LongWord;
@@ -761,6 +767,9 @@ var
 begin
   if soStub in Options then
     FStub.Strip;
+
+  if soDebug in Options then
+    DeleteExisting(IndexOfSection(IMAGE_DIRECTORY_ENTRY_DEBUG));
 
   if (FHeaders.FileHeader.Characteristics and IMAGE_FILE_DLL = 0) and
     (FHeaders.OptionalHeader.Subsystem in [IMAGE_SUBSYSTEM_WINDOWS_GUI, IMAGE_SUBSYSTEM_WINDOWS_CUI]) then
