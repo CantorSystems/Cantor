@@ -137,13 +137,16 @@ type
     Length: Integer;
   end;
 
+  PStringFormatter = ^TStringFormatter;
+
   PString = ^TString;
   TString = object(TCollection)
   private
   { placeholder } // FOptions: TStringOptions;
   protected
     procedure Assign(Source: Pointer; Length: Integer; Options: TStringSource); overload;
-    function AssignArray(Index: Integer; const Values: array of const): Integer;
+    function AssignArray(Index: Integer; Formatter: PStringFormatter;
+      const Args: array of const): Integer;
     function CharSetName(EncodeOptions: TEncodeOptions): PLegacyChar;
   {$IFDEF CoreLiteVCL}
     function GetRawByteString: RawByteString; virtual; abstract;
@@ -152,11 +155,10 @@ type
     procedure SetUnicodeString(Value: UnicodeString); virtual; abstract;
   {$ENDIF}
   public
-    procedure AsArray(const Values: array of const);
+    procedure AsArray(Formatter: PStringFormatter; const Args: array of const);
     function AsBinaryData(DetachBuffer: Boolean): TBinaryData;
     function AsHexadecimal: QuadInt; overload;
     function AsInteger: QuadInt; overload;
-    function Estimate(const Values: array of const): Integer;
   {$IFDEF CoreLiteVCL}
     property AsRawByteString: RawByteString read GetRawByteString write SetRawByteString;
     property AsUnicodeString: UnicodeString read GetUnicodeString write SetUnicodeString;
@@ -508,6 +510,7 @@ type
   public
     constructor Create;
     destructor Destroy; virtual;
+    function Estimate(const Args: array of const): Integer; overload;
     function Estimate(Fmt: PLegacyString; const Args: array of const): Integer; overload;
     function Estimate(Fmt: PWideString; const Args: array of const): Integer; overload;
 //    function Format(Fmt: PLegacyString; const Args: array of const; Dest: P
@@ -844,7 +847,8 @@ begin
   PLegacyString(@Self).FOptions := Options - soBuiltIn;
 end;
 
-function TString.AssignArray(Index: Integer; const Values: array of const): Integer;
+function TString.AssignArray(Index: Integer; Formatter: PStringFormatter;
+  const Args: array of const): Integer;
 begin
 {$IFDEF Debug}
   CheckIndex(Index);
@@ -852,18 +856,18 @@ begin
   Result := 0; // TODO
 end;
 
-procedure TString.AsArray(const Values: array of const);
+procedure TString.AsArray(Formatter: PStringFormatter; const Args: array of const);
 var
   Length: Integer;
 begin
   Clear;
-  Length := Estimate(Values);
+  Length := Formatter.Estimate(Args);
   if Length <> 0 then
   begin
     Inc(Length, SizeOf(WideChar));
     if (BufferKind = bkAttached) or (Capacity < Length)  then
       Capacity := Length;
-    Length := AssignArray(0, Values);
+    Length := AssignArray(0, Formatter, Args);
     Append(Length);
     PWideChar(PLegacyString(@Self).FData + Length * CollectionInfo.ItemSize)^ := #0;
   end
@@ -903,11 +907,6 @@ begin
       Result := sUTF8
   else
     Result := sUTF16;
-end;
-
-function TString.Estimate(const Values: array of const): Integer;
-begin
-  Result := 0; // TODO
 end;
 
 function TString.TryHexadecimal(var Value: QuadInt): Boolean;
@@ -3266,12 +3265,55 @@ begin
   inherited;
 end;
 
+function TStringFormatter.Estimate(const Args: array of const): Integer;
+begin
+  Result := 0; // TODO
+end;
+
 function TStringFormatter.Estimate(Fmt: PLegacyString; const Args: array of const): Integer;
 var
-  Source: PLegacyChar;
+  Index: Integer;
+  Token: TLegacyString;
 begin
-  Source := Fmt.RawData;
+  Token.Create;
   Result := 0;
+  Index := 0;
+(*  repeat         
+//    Token.AsRange(Fmt, 0, Fmt.RawNextIndex('{', ));
+    if Index < 0 then
+      Break;
+
+    Inc(Index);
+    Token := Fmt.RawData + Index;
+    while (Token < Limit) and (Token <> '}') do
+    begin
+      Index := Fmt.RawNextIndex(Index);
+      Token := Fmt.RawData + Index;
+      if (Token < Limit) and (Token = '%') then
+      begin
+        Inc(Token);
+        if (Token < Limit) and (Token <> '%') then
+        begin
+          case Token^ of
+            '0'..'9': ;
+            '?': ;
+          else
+            case LegacyChar(PByte(Token)^ and not $20) of
+              'A', 'X': ;
+              'C': ;
+              'D': ;
+              'F', 'P': ;
+              'I', 'U': ;
+              'K': ;
+              'S': ;
+            end;
+          end;
+        end
+        else
+          Inc(Index);
+      end;
+    end;
+  until False; *)
 end;
 
 function TStringFormatter.Estimate(Fmt: PWideString; const Args: array of const): Integer;
@@ -3315,4 +3357,3 @@ begin
 end;
 
 end.
-
