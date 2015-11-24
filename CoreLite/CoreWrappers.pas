@@ -319,6 +319,15 @@ function FileAttributes(FileName: PCoreChar): LongWord;
 procedure MoveFile(SourceFileName, DestFileName: PCoreChar);
 
 type
+  TFindFileProc = procedure(const Data: TWin32FindDataW; var Found: Boolean) of object;
+
+  TFileNameMatching = (nmFile, nmDirectory, nmDevice);
+  TFindFileOptions = set of (ffBasic, ffCaseSensitive, ffLargeFetch);
+
+function FindFiles(const FindProc: TFindFileProc; FileMask: PCoreChar;
+  Matching: TFileNameMatching = nmFile; Options: TFindFileOptions = [ffLargeFetch]): Integer;
+
+type
   TLoadProc = procedure(Stream: PReadableStream) of object;
   TSaveProc = procedure(Stream: PWritableStream) of object;
 
@@ -374,6 +383,45 @@ begin
     MOVEFILE_COPY_ALLOWED or MOVEFILE_WRITE_THROUGH or MOVEFILE_REPLACE_EXISTING)
   then
     RaiseLastPlatformError(DestFileName);
+end;
+
+function FindFiles(const FindProc: TFindFileProc; FileMask: PCoreChar;
+  Matching: TFileNameMatching; Options: TFindFileOptions): Integer;
+var
+  Data: TWin32FindDataW;
+  Search: THandle;
+  ErrCode: LongWord;
+  Level: FINDEX_INFO_LEVELS;
+  Found: Boolean;
+begin
+  if Byte(GetVersion) = 6 then // Vista+
+    Level := FINDEX_INFO_LEVELS(ffBasic in Options)
+  else
+  begin
+    Level := FindExInfoStandard;
+    Exclude(Options, ffLargeFetch);
+  end;
+
+  Result := 0;
+  Search := THandle(FindFirstFileExW(FileMask, Level, @Data,
+    FINDEX_SEARCH_OPS(Matching), nil, Byte(Options) shr 1));
+  if Search <> INVALID_HANDLE_VALUE then
+    try
+      Found := False;
+      repeat
+        FindProc(Data, Found);
+        Inc(Result);
+      until Found or not FindNextFileW(Search, Data);
+
+      if not Found then
+      begin
+        ErrCode := GetLastError; 
+        if ErrCode <> ERROR_NO_MORE_FILES then
+          RaiseLastPlatformError(FileMask);
+      end;
+    finally
+      FindClose(Search);
+    end;
 end;
 
 function LoadFile(const LoadProc: TLoadProc; FileName: PCoreChar;
@@ -1227,4 +1275,3 @@ begin
 end;
 
 end.
-
