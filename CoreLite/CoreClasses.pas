@@ -89,6 +89,7 @@ type
   protected
   { ordered } class function CollectionInfo: TCollectionInfo; virtual; abstract;
     function Append(ItemCount: Integer = 1): Integer; overload;
+    procedure Append(Source: Pointer; ItemCount, ItemsCapacity: Integer); overload;
     procedure Assign(Source: Pointer; ItemCount, ItemsCapacity: Integer;
       AttachBuffer: Boolean); overload;
     procedure Assign(Source: PCollection; Mode: TSharingMode); overload;
@@ -499,7 +500,20 @@ end;
 procedure TCollection.Append(Collection: PCollection; Capture: Boolean);
 begin
   if Collection <> nil then
-    Copy(FCount, Collection, Capture)
+    Copy(FCount, Collection, Capture);
+end;
+
+procedure TCollection.Append(Source: Pointer; ItemCount, ItemsCapacity: Integer);
+var
+  NewCapacity: Integer;
+begin
+  NewCapacity := FCapacity + ItemsCapacity;
+  if (FBufferKind = bkAttached) or (FCapacity < NewCapacity) then
+    SetCapacity(NewCapacity);
+  with CollectionInfo do
+    Move(Source^, PCollectionCast(@Self).Items[FCount * ItemSize], ItemCount * ItemSize);
+  Inc(FCount, ItemCount);
+  FItemMode := imInline;
 end;
 
 procedure TCollection.Assign(Source: Pointer; ItemCount, ItemsCapacity: Integer;

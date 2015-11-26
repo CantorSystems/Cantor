@@ -304,6 +304,8 @@ type
     procedure SetUnicodeString(Value: UnicodeString); virtual;
   {$ENDIF}
   public
+    procedure Append(Source: PWideChar; Length: Integer); overload;
+
     procedure AsHexBuffer(const Value; Length: Integer;
       LowerCase: Boolean = False);
     procedure AsHexadecimal(Value: QuadInt; MinWidth: Integer = 0;
@@ -1909,6 +1911,12 @@ begin
     ClassName := sWideString;
     ItemSize := SizeOf(WideChar);
   end;
+end;
+
+procedure TWideString.Append(Source: PWideChar; Length: Integer);
+begin
+  inherited Append(Source, Length, Length + 1);
+  FData[Count] := #0;
 end;
 
 procedure TWideString.AsHexBuffer(const Value; Length: Integer;

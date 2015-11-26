@@ -68,6 +68,8 @@ type
   public
     procedure AsTempName(Source: PCoreString);
     procedure Detach; virtual;
+    procedure ChangeFileName(Source: PCoreChar; Length: Integer); overload;
+    procedure ChangeFileName(Source: PCoreString); overload;
     function IsDotOrNull: Boolean;
     function Width(MaxWidth: Integer): Integer;
 
@@ -99,6 +101,17 @@ begin
   PPostfix(RawData + Count)^ := Postfix;
   Append(Length(Postfix));
   RawData[Count] := #0;
+end;
+
+procedure TFileName.ChangeFileName(Source: PCoreChar; Length: Integer);
+begin
+  Truncate(Count - PathDelimiterIndex - 1);
+  Append(Source, Length);
+end;
+
+procedure TFileName.ChangeFileName(Source: PCoreString);
+begin
+  ChangeFileName(Source.RawData, Source.Count);
 end;
 
 procedure TFileName.Detach;
