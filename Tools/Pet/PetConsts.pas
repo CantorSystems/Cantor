@@ -127,6 +127,8 @@ const
   sBackuping      = 'Backuping'#9' %s';
 
   sChainedDataFound = 'Chained data found, safe stripping stopped';
+  sTotalFiles = #10'%u file(s)'{, %d bytes (%s)'};
+  sNoFilesFound = 'No files found for “%s”';
 
 implementation
 

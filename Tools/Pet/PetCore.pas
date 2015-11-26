@@ -78,9 +78,11 @@ type
     FDropSections: TSectionNames;
     FMajorVersion, FMinorVersion: Word;
     FImage: TExeImage;
+    FFileName: TFileName;
+    FFileCount: LongWord;
     function MaxFileNameWidth(MaxWidth: Integer): Integer;
     procedure ParseCommandLine(Source: PCoreChar);
-    procedure ProcessFile(FileName: PCoreString);
+    procedure ProcessFile(const Data: TWin32FindDataW; var Found: Boolean);
     procedure SaveImage(Dest: PWritableStream);
   public
     destructor Destroy;
@@ -268,6 +270,9 @@ destructor TApplication.Destroy;
 var
   K: TFileKind;
 begin
+  FFileName.Finalize;
+  FImage.Finalize;
+
   FDropSections.Finalize;
   for K := Low(FFileNames) to High(FFileNames) do
     FFileNames[K].Finalize;
@@ -345,7 +350,7 @@ begin
             begin
               if Count <> 0 then
                 raise ECommandLine.Create(K, @Param);
-              Create;
+              PPointer(@FFileNames[K])^ := TypeOf(TFileName); // Fast core
               AsRange(@Param, 0);
               Detach;
             end;
@@ -402,9 +407,9 @@ begin
     begin
       if FSourceFileName.Count <> 0 then
         raise ECommandLine.Create(fkSource, @Param);
+      PPointer(@FSourceFileName)^ := TypeOf(TFileName); // Fast core
       with FSourceFileName do
       begin
-        Create;
         AsRange(@Param, 0);
         Detach;
       end;
@@ -436,7 +441,7 @@ begin
   end;
 end;
 
-procedure TApplication.ProcessFile(FileName: PCoreString);
+procedure TApplication.ProcessFile(const Data: TWin32FindDataW; var Found: Boolean);
 const
   Deep: array[Boolean] of TStripOptions = ([], [soOrphanedSections]);
   Touch: array[Boolean] of TSaveOptions = ([], [soTouch]);
@@ -448,127 +453,129 @@ var
   BytesSaved: QuadWord;
   ImageSize, OldSize: LongWord;
 begin
-  FImage.Create;
+  with Data do
+    FFileName.ChangeFileName(cFileName, WideStrLen(cFileName, Length(cFileName)));
+
+  Loaded := LoadFile(FImage.Load, FFileName.RawData, faRandomRead);
+  Output.Create(@Console, PromptMaxWidth, MaxFileNameWidth(40), Ceil(Log10(Loaded.FileSize)) + 1);
   try
-    Loaded := LoadFile(FImage.Load, FileName.Data, faRandomRead);
-    Output.Create(@Console, PromptMaxWidth, MaxFileNameWidth(40), Ceil(Log10(Loaded.FileSize)) + 1);
-    try
-      Output.Action(sLoading, @FSourceFileName);
-      Output.TransferStats(Loaded.FileSize, Loaded.BytesRead);
+    if FFileCount <> 0 then
+      Console.WriteLn;
 
-      ImageSize := FImage.Size(False);
-      Output.Action(sImageData, nil);
-      Output.TransferStats(Loaded.BytesRead, ImageSize);
+    Output.Action(sLoading, @FFileName);
+    Output.TransferStats(Loaded.FileSize, Loaded.BytesRead);
 
-      if Loaded.FileSize <> Loaded.BytesRead then // overlay found
+    ImageSize := FImage.Size(False);
+    Output.Action(sImageData, nil);
+    Output.TransferStats(Loaded.BytesRead, ImageSize);
+
+    if Loaded.FileSize <> Loaded.BytesRead then // chained data found
+    begin
+      Output.Action(sChainedData, nil);
+      Output.StripStats(Loaded.FileSize, Loaded.BytesRead);
+      if not (roUnsafe in FOptions) then
       begin
-        Output.Action(sChainedData, nil);
-        Output.StripStats(Loaded.FileSize, Loaded.BytesRead);
-        if not (roUnsafe in FOptions) then
-        begin
-          Console.WriteLn(PLegacyChar(sChainedDataFound), StrLen(sChainedDataFound)); // TODO?
-          Exit;
+        Console.WriteLn(PLegacyChar(sChainedDataFound), StrLen(sChainedDataFound)); // TODO?
+        Exit;
+      end;
+    end;
+
+    if FFileNames[fkExtract].Count <> 0 then
+      with Stub do
+      begin
+        Create;
+        try
+          Output.Action(sExtractingStub, @FFileNames[fkExtract]);
+          Load(@FImage.Stub);
+          Strip(roStrip in FOptions);
+          Output.TransferStats(0, SaveFile(Save, FFileNames[fkExtract].RawData, Size));
+        finally
+          Destroy;
         end;
       end;
 
-      if FFileNames[fkExtract].Count <> 0 then
-        with Stub do
-        begin
-          Create;
-          try
-            Output.Action(sExtractingStub, @FFileNames[fkExtract]);
-            Load(@FImage.Stub);
-            Strip(roStrip in FOptions);
-            Output.TransferStats(0, SaveFile(Save, FFileNames[fkExtract].RawData, Size));
-          finally
-            Destroy;
-          end;
-        end;
-
-      if FFileNames[fkStub].Count <> 0 then
-        with FImage.Stub do
-        begin
-          Output.Action(sReplacingStub, @FFileNames[fkStub]);
-          OldSize := Size;
-          LoadFile(Load, FFileNames[fkStub].RawData);
-          Output.TransferStats(OldSize, Size);
-        end;
+    if FFileNames[fkStub].Count <> 0 then
+      with FImage.Stub do
+      begin
+        Output.Action(sReplacingStub, @FFileNames[fkStub]);
+        OldSize := Size;
+        LoadFile(Load, FFileNames[fkStub].RawData);
+        Output.TransferStats(OldSize, Size);
+      end;
 
 {    if FDropSections <> nil then
-      for I := 0 to FDropSections.Count - 1 do
+    for I := 0 to FDropSections.Count - 1 do
+    begin
+      with FDropSections.Items[I] do
+        Idx := Image.IndexOfSection(Value, Length);
+      if Idx >= 0 then
       begin
-        with FDropSections.Items[I] do
-          Idx := Image.IndexOfSection(Value, Length);
-        if Idx >= 0 then
-        begin
-          with Image.Sections[Idx].Header do
-            Processing([sDroppingSection, Name, RawDataSize], False);
-          Image.Extract(Idx).Free;
-        end;
-      end;}
+        with Image.Sections[Idx].Header do
+          Processing([sDroppingSection, Name, RawDataSize], False);
+        Image.Extract(Idx).Free;
+      end;
+    end;}
 
-      if roStrip in FOptions then
+    if roStrip in FOptions then
+    begin
+      Output.Action(sStripping, nil);
+      FImage.Strip([soStub..soEmptySections] + Deep[roDeep in FOptions]);
+      Output.StripStats(ImageSize, FImage.Size(roTrunc in FOptions));
+    end
+    else
+      with FImage.Stub do
       begin
-        Output.Action(sStripping, nil);
-        FImage.Strip([soStub..soEmptySections] + Deep[roDeep in FOptions]);
-        Output.StripStats(ImageSize, FImage.Size(roTrunc in FOptions));
-      end
+        Output.Action(sFixingStub, nil);
+        OldSize := Size;
+        Strip(False);
+        Output.StripStats(OldSize, Size);
+      end;
+
+    FImage.Build(Byte(roStrip in FOptions) * 512);
+
+    if FFileNames[fkInto].Count <> 0 then
+    begin
+      Output.Action(sSaving, @FFileNames[fkInto]);
+
+      with FImage do
+      begin
+        if FMajorVersion <> 0 then
+          OSVersion(FMajorVersion, FMinorVersion);
+        if ro3GB in FOptions then
+          LargeAddressAware;
+      end;
+
+      if FFileNames[fkBackup].Count <> 0 then
+        BytesSaved := SaveFile(
+          SaveImage, FSourceFileName.RawData, FFileNames[fkBackup].RawData,
+          FFileNames[fkInto].RawData, FImage.Size(roTrunc in FOptions),
+          faRandomRewrite, Touch[roTouch in FOptions] + [soBackup]
+        )
       else
-        with FImage.Stub do
-        begin
-          Output.Action(sFixingStub, nil);
-          OldSize := Size;
-          Strip(False);
-          Output.StripStats(OldSize, Size);
-        end;
-
-      FImage.Build(Byte(roStrip in FOptions) * 512);
-
-      if FFileNames[fkInto].Count <> 0 then
       begin
-        Output.Action(sSaving, @FFileNames[fkInto]);
-
-        with FImage do
-        begin
-          if FMajorVersion <> 0 then
-            OSVersion(FMajorVersion, FMinorVersion);
-          if ro3GB in FOptions then
-            LargeAddressAware;
-        end;
-
-        if FFileNames[fkBackup].Count <> 0 then
-          BytesSaved := SaveFile(
-            SaveImage, FSourceFileName.RawData, FFileNames[fkBackup].RawData,
+        TmpFileName.Create;
+        try
+          TmpFileName.AsTempName(@FFileNames[fkInto]);
+           BytesSaved := SaveFile(
+            SaveImage, FFileName.RawData, TmpFileName.RawData,
             FFileNames[fkInto].RawData, FImage.Size(roTrunc in FOptions),
-            faRandomRewrite, Touch[roTouch in FOptions] + [soBackup]
-          )
-        else
-        begin
-          TmpFileName.Create;
-          try
-            TmpFileName.AsTempName(@FFileNames[fkInto]);
-            BytesSaved := SaveFile(
-              SaveImage, fSourceFileName.RawData, TmpFileName.RawData,
-              FFileNames[fkInto].RawData, FImage.Size(roTrunc in FOptions),
-              faRandomRewrite, Touch[roTouch in FOptions]
-            );
-          finally
-            TmpFileName.Destroy;
-          end;
+            faRandomRewrite, Touch[roTouch in FOptions]
+          );
+        finally
+          TmpFileName.Destroy;
         end;
+      end;
 
-        Output.TransferStats(0, BytesSaved);
-      end
-      else
-        BytesSaved := FImage.Size(roTrunc in FOptions);
+      Output.TransferStats(0, BytesSaved);
+    end
+    else
+      BytesSaved := FImage.Size(roTrunc in FOptions);
 
-      Output.Action(sTotal, nil);
-      Output.StripStats(Loaded.FileSize, BytesSaved);
-    finally
-      Output.Destroy;
-    end;
+    Output.Action(sTotal, nil);
+    Output.StripStats(Loaded.FileSize, BytesSaved);
   finally
-    FImage.Destroy;
+    Inc(FFileCount);
+    Output.Destroy;
   end;
 end;
 
@@ -580,7 +587,24 @@ begin
     Exit;
 
   if FSourceFileName.Count <> 0 then
-    ProcessFile(@FSourceFileName)
+  begin
+    FImage.Create;
+    PPointer(@FFileName)^ := TypeOf(TFileName); // Fast core
+    with FFileName do
+    begin
+      AsRange(@FSourceFileName, 0, FSourceFileName.PathDelimiterIndex + 1);
+      Detach;
+    end;
+    try
+      if FindFiles(ProcessFile, FSourceFileName.RawData) <> 0 then
+        Console.WriteLn(sTotalFiles, 0, [FFileCount])
+      else
+        Console.WriteLn(sNoFilesFound, 0, [FSourceFileName.RawData]);
+    except
+      on E: Exception do
+        ShowException(E);
+    end;
+  end
   else
     Help(sUsage, sHelp);
 end;
@@ -591,4 +615,3 @@ begin
 end;
 
 end.
-
