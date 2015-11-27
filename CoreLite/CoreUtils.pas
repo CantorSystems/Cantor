@@ -139,7 +139,7 @@ var
   WideEllipsis: WideChar = WideChar(8230);
 
 const
-  PathDelimiter = WideChar('\'); // platform;
+  PathDelimiter = '\'; // platform;
   LegacyReplacementChar = #127;
 
   CRLF: array[0..1] of LegacyChar = #13#10;

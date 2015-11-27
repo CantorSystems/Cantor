@@ -319,7 +319,7 @@ function FileAttributes(FileName: PCoreChar): LongWord;
 procedure MoveFile(SourceFileName, DestFileName: PCoreChar);
 
 type
-  TFindFileProc = procedure(const Data: TWin32FindDataW; var Found: Boolean) of object;
+  TFindFileProc = procedure(const Info: TWin32FindDataW; var Found: Boolean) of object;
 
   TFileNameMatching = (nmFile, nmDirectory, nmDevice);
   TFindFileOptions = set of (ffBasic, ffCaseSensitive, ffLargeFetch);
