@@ -11,7 +11,7 @@ unit CoreApp;
 interface
 
 uses
-  Windows, CoreUtils, CoreWrappers, CoreStrings;
+  Windows, CoreUtils, CoreClasses, CoreWrappers, CoreStrings;
 
 type
   TConsoleAppOptions = set of (caPause, caNoLogo, caVersion);
@@ -71,9 +71,32 @@ type
     procedure ChangeFileName(Source: PCoreChar; Length: Integer); overload;
     procedure ChangeFileName(Source: PCoreString); overload;
     function IsDotOrNull: Boolean;
+    function IsPath: Boolean;
     function Width(MaxWidth: Integer): Integer;
 
     property PathDelimiterIndex: Integer read FPathDelimiterIndex;
+  end;
+
+  PFileNameList = ^TFileNameList;
+
+  PFileNameListItem = ^TFileNameListItem;
+  TFileNameListItem = object(TFileName)
+  private
+  { hold } FOwner: PFileNameList;
+  { hold } FNext: PFileNameListItem;
+  public
+    property Owner: PFileNameList read FOwner;
+    property Next: PFileNameListItem read FNext;
+  end;
+
+  TFileNameList = object(TList)
+  private
+  { hold } FFirst, FLast: PFileNameListItem;
+  protected
+    class function ListInfo: TListInfo; virtual;
+  public
+    property First: PFileNameListItem read FFirst;
+    property Last: PFileNameListItem read FLast;
   end;
 
 implementation
@@ -127,6 +150,16 @@ end;
 function TFileName.IsDotOrNull: Boolean;
 begin
   Result := (TypeOf(Self) <> nil) and ((Count = 0) or (Count = 1) and (RawData^ = '.'));
+end;
+
+function TFileName.IsPath: Boolean;
+begin
+  Result := False;
+  if Count <> 0 then
+    case RawData[Count - 1] of
+    {$IFDEF MSWINDOWS} '/', {$ENDIF} PathDelimiter:
+      Inc(Result);
+    end;
 end;
 
 function TFileName.Width(MaxWidth: Integer): Integer;
@@ -323,6 +356,17 @@ end;
 function TWideCommandLineParam.IsKey: Boolean;
 begin
   Result := (Count <> 0) and not FQuoted and (RawData^ = '-');
+end;
+
+{ TFileNameList }
+
+class function TFileNameList.ListInfo: TListInfo;
+begin
+  with Result do
+  begin
+    ClassName := sFileNameList;
+    ItemOffset := PAddress(@PFileNameListItem(nil).FOwner) - nil;
+  end;
 end;
 
 end.
