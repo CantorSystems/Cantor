@@ -443,10 +443,6 @@ begin
       end;
     end;
 
-    FileName := @FFileNames[fkInto];
-    if FileName.IsDotOrNull then
-      FileName.AsRange(@FSourceFileName, 0);
-
     FileName := @FFileNames[fkStub];
     if FileName.IsDotOrNull then
       FileName.AsRange(@ExeName, 0);
@@ -465,6 +461,7 @@ var
   BytesSaved: QuadWord;
   ImageSize, OldSize: LongWord;
   FileName: PFileNameListItem;
+  DestFileName: PFileName;
 begin
   ParseCommandLine(CommandLine);
 
@@ -571,9 +568,13 @@ begin
 
         FImage.Build(Byte(roStrip in FOptions) * 512);
 
-        if FFileNames[fkInto].Count <> 0 then
+        DestFileName := @FFileNames[fkInto];
+        if DestFileName.Count <> 0 then
         begin
-          Output.Action(sSaving, @FFileNames[fkInto]);
+          if DestFileName.IsDotOrNull then
+            DestFileName := FileName;
+
+          Output.Action(sSaving, DestFileName);
 
           with FImage do
           begin
@@ -585,8 +586,8 @@ begin
 
           if FFileNames[fkBackup].Count <> 0 then
             BytesSaved := SaveFile(
-              SaveImage, FSourceFileName.RawData, FFileNames[fkBackup].RawData,
-              FFileNames[fkInto].RawData, FImage.Size(roTrunc in FOptions),
+              SaveImage, FileName.RawData, FFileNames[fkBackup].RawData,
+              DestFileName.RawData, FImage.Size(roTrunc in FOptions),
               faRandomRewrite, Touch[roTouch in FOptions] + [soBackup]
             )
           else
