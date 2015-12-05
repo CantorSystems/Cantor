@@ -116,6 +116,7 @@ const
   sSaving           = 'Saving';
   sDroppingSection  = 'Dropping section';
   sStripping        = 'Stripping';
+  sBackuping        = 'Backuping';
   sTotal            = 'Total';
 
   PromptMaxWidth = Length(sDroppingSection);
@@ -124,10 +125,8 @@ const
   sDefaultActionFmt = '%%%dhs  %%hs%%%ds';   // '{*s}  {*s?{s1}}'
   sDefaultStatsFmt = '  %%%di bytes  %%7hs'; // '  {*u?{u'#160'bytes}}  {6p}'
 
-  sBackuping      = 'Backuping'#9' %s';
-
   sChainedDataFound = 'Chained data found, safe stripping stopped';
-  sTotals = #10'%u file(s) %d bytes (%hs)';
+  sTotals = #10'%u files %d bytes (%hs)';
   sNoFilesFound = 'No files found';
 
 implementation

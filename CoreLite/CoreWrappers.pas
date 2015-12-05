@@ -491,7 +491,7 @@ begin
   if SwapFileName <> nil then
     if soBackup in Options then
     begin
-      MoveFile(DestFileName, SwapFileName);
+      MoveFile(SourceFileName, SwapFileName);
       Result := SaveFile(SaveProc, DestFileName, FileSize, NewInfo, Access);
     end
     else

@@ -615,8 +615,6 @@ begin
           else
             DestFileName.ChangeFileName(FileName);
 
-          Output.Action(sSaving, DestFileName);
-
           with FImage do
           begin
             if FMajorVersion <> 0 then
@@ -626,16 +624,22 @@ begin
           end;
 
           if FFileNames[fkBackup].Count <> 0 then
+          begin
+            Output.Action(sBackuping, @FFileNames[fkBackup]);
+            Console.WriteLn;
+            Output.Action(sSaving, DestFileName);
             BytesSaved := SaveFile(
               SaveImage, FileName.RawData, FFileNames[fkBackup].RawData,
               DestFileName.RawData, FImage.Size(roTrunc in FOptions),
               faRandomRewrite, Touch[roTouch in FOptions] + [soBackup]
             )
+          end
           else
           begin
             TmpFileName.Create;
             try
               TmpFileName.AsTempName(@FFileNames[fkInto]);
+              Output.Action(sSaving, DestFileName);
               BytesSaved := SaveFile(
                 SaveImage, FileName.RawData, TmpFileName.RawData,
                 DestFileName.RawData, FImage.Size(roTrunc in FOptions),
@@ -662,7 +666,9 @@ begin
       end;
       FileName := FileName.Next;
     end;
-    Output.TotalStats(FFileNameList.Count, TotalBytes, TotalSaved);
+
+    if FFileNameList.Count > 1 then
+      Output.TotalStats(FFileNameList.Count, TotalBytes, TotalSaved);
   finally
     Output.Destroy;
   end;
