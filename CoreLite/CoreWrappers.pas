@@ -325,7 +325,7 @@ type
   TFindFileOptions = set of (ffBasic, ffCaseSensitive, ffLargeFetch);
 
 function FindFiles(const FindProc: TFindFileProc; FileMask: PCoreChar;
-  Matching: TFileNameMatching = nmFile; Options: TFindFileOptions = [ffLargeFetch]): Integer;
+  Matching: TFileNameMatching = nmFile; Options: TFindFileOptions = [ffLargeFetch]): QuadWord;
 
 type
   TLoadProc = procedure(Stream: PReadableStream) of object;
@@ -386,7 +386,7 @@ begin
 end;
 
 function FindFiles(const FindProc: TFindFileProc; FileMask: PCoreChar;
-  Matching: TFileNameMatching; Options: TFindFileOptions): Integer;
+  Matching: TFileNameMatching; Options: TFindFileOptions): QuadWord;
 var
   Data: TWin32FindDataW;
   Search: THandle;

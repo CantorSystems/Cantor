@@ -44,7 +44,7 @@ const         // short Unicode strings
 
 const
   sUsage =
-    'Usage:'#9'%s <source> [commands [options]]';
+    'Usage:'#9'%s <source> [[<source>...] [commands [options]]]';
   sHelp =
     'Commands'#10 +
             #9'-backup <bak>' +    #9#9'Backup <source> file to <bak> file'#10 +
@@ -128,7 +128,7 @@ const
 
   sChainedDataFound = 'Chained data found, safe stripping stopped';
   sTotals = #10'%u file(s) %d bytes (%hs)';
-  sNoFilesFound = 'No files found for “%s”';
+  sNoFilesFound = 'No files found';
 
 implementation
 

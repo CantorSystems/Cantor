@@ -75,7 +75,7 @@ type
   TApplication = object(TConsoleApplication)
   private
   { hold } FOptions: TRunOptions;
-    FSourceFileName: TFileName; // TODO
+    FSourceFileNames: TFileNameList; 
     FFileNames: TFileNames;
     FDropSections: TSectionNames;
     FMajorVersion, FMinorVersion: Word;
@@ -290,7 +290,7 @@ begin
   FDropSections.Finalize;
   for K := Low(FFileNames) to High(FFileNames) do
     FFileNames[K].Finalize;
-  FSourceFileName.Finalize;
+  FSourceFileNames.Finalize;
   inherited;
 end;
 
@@ -320,7 +320,7 @@ var
   K: TFileKind;
   Width: Integer;
 begin
-  Result := FSourceFileName.Width(MaxWidth);
+  Result := 0;
   for K := Low(FFileNames) to High(FFileNames) do
   begin
     Width := FFileNames[K].Width(MaxWidth);
@@ -343,6 +343,7 @@ var
   W: PCoreChar;
   K: TFileKind;
   R: TRunOption;
+  SourceFileName: PFileNameListItem;
 begin
   CmdLine.Create;
   CmdLine.AsWideString(Source, WideStrLen(Source), soAttach);
@@ -440,36 +441,29 @@ begin
 
     if Param.Count <> 0 then
     begin
-      if FSourceFileName.Count <> 0 then
-        raise ECommandLine.Create(fkSource, @Param);
-      PPointer(@FSourceFileName)^ := TypeOf(TFileName); // Fast core
-      with FSourceFileName do
+      if FSourceFileNames.Count = 0 then
+        FSourceFileNames.Create;
+      New(SourceFileName, Create);
+      with SourceFileName^ do
       begin
         AsRange(@Param, 0);
         Detach;
       end;
+      FSourceFileNames.Append(SourceFileName);
     end;
   until False;
 
-  if ParamCount = 0 then
-    Include(FOptions, roPause)
-  else
+  if ParamCount <> 0 then
   begin
-    with FSourceFileName do
-    begin
-      if (Count = 0) and not (roVersion in FOptions) then
-        raise ECommandLine.Create(fkSource);
-      if IsDot then
-      begin
-        AsRange(@ExeName, 0);
-        Detach;
-      end;
-    end;
+    if (FSourceFileNames.Count = 0) and not (roVersion in FOptions) then
+      raise ECommandLine.Create(fkSource);
 
     FileName := @FFileNames[fkStub];
     if FileName.IsDot then
       FileName.AsRange(@ExeName, 0);
-  end;
+  end
+  else
+    Include(FOptions, roPause)
 end;
 
 procedure TApplication.Run(CommandLine: PCoreChar);
@@ -481,7 +475,7 @@ var
   TmpFileName: TFileName;
   Output: TDefaultOutput;
   Loaded: TLoadFileResult;
-  BytesSaved, TotalBytes, TotalSaved: QuadWord;
+  FileCount, BytesSaved, TotalBytes, TotalSaved: QuadWord;
   ImageSize, OldSize: LongWord;
   FileName: PFileNameListItem;
   DestFileName: PFileName;
@@ -491,24 +485,32 @@ begin
   if Logo(sLogo) then
     Exit;
 
-  if FSourceFileName.Count = 0 then
+  if FSourceFileNames.Count = 0 then
   begin
     Help(sUsage, sHelp);
     Exit;
   end;
 
   PPointer(@FCurrentPath)^ := TypeOf(TFileName); // Fast core
-  with FCurrentPath do
+  FFileNameList.Create;
+  FMaxWidth := MaxFileNameWidth(40);
+  FileCount := 0;
+
+  FileName := FSourceFileNames.First;
+  while FileName <> nil do
   begin
-    AsRange(@FSourceFileName, 0, FSourceFileName.NameIndex);
-    Detach;
+    with FCurrentPath do
+    begin
+      AsRange(FileName, 0, FileName.NameIndex);
+      Detach;
+    end;
+    Inc(FileCount, FindFiles(AddFile, FileName.RawData));
+    FileName := FileName.Next;
   end;
 
-  FMaxWidth := 40;
-  FFileNameList.Create;
-  if FindFiles(AddFile, FSourceFileName.RawData) = 0 then
+  if FileCount = 0 then
   begin
-    Console.WriteLn(sNoFilesFound, 0, [FSourceFileName.RawData]);
+    Console.WriteLn(PLegacyChar(sNoFilesFound), StrLen(sNoFilesFound));
     Exit;
   end;
 
@@ -524,7 +526,7 @@ begin
   end;
 
   FImage.Create;
-  Output.Create(@Console, PromptMaxWidth, MaxFileNameWidth(FMaxWidth), Ceil(Log10(FMaxSize)) + 1);
+  Output.Create(@Console, PromptMaxWidth, FMaxWidth, Ceil(Log10(FMaxSize)) + 1);
   try
     TotalBytes := 0;
     TotalSaved := 0;
@@ -548,7 +550,7 @@ begin
           Output.StripStats(Loaded.FileSize, Loaded.BytesRead);
           if not (roUnsafe in FOptions) then
           begin
-            Console.WriteLn(PLegacyChar(sChainedDataFound), StrLen(sChainedDataFound)); // TODO?
+            Console.WriteLn(PLegacyChar(sChainedDataFound), StrLen(sChainedDataFound));
             Exit;
           end;
         end;
@@ -653,6 +655,8 @@ begin
         Output.StripStats(Loaded.FileSize, BytesSaved);
         Inc(TotalSaved, BytesSaved);
       except
+        on E: EBadImage do
+          Console.WriteLn('%hs: %s', 0, [E.Message.AsString, FileName.RawData]);
         on E: EPlatform do
           ShowException(E);
       end;
