@@ -341,7 +341,7 @@ begin
         if Length <> 0 then
         begin
           Result := EAccessViolation.Create(sModuleAccessViolation, DefaultSystemCodePage,
-            [ExceptionAddress, Value[FileNameIndex], WhitespaceOrLineBreak[IsConsole], AccessOp, AccessAddress]);
+            [ExceptionAddress, @Value[FileNameIndex], WhitespaceOrLineBreak[IsConsole], AccessOp, AccessAddress]);
           Exit;
         end;
     Result := EAccessViolation.Create(sAccessViolation,
