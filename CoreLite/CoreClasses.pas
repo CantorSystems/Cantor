@@ -71,7 +71,7 @@ type
     ItemSize: Integer;
   end;
 
-  TCollectionItemMode = (imInline, imFreeMem, imFinalize, imFree);
+  TItemMode = (imInline, imFreeMem, imFinalize, imFree);
   TSharingMode = (smCopy, smAttach, smCapture);
   TBufferKind = (bkAttached, bkExternal, bkAllocated);
   TBufferMode = bkAttached..bkExternal; // TODO
@@ -80,7 +80,7 @@ type
   TCollection = object(TIndexed)
   private
     FCapacity, FDelta: Integer;
-    FItemMode: TCollectionItemMode;
+    FItemMode: TItemMode;
     FBufferKind: TBufferKind;
   { placeholder } // FItems: Pointer;
     procedure Copy(Index: Integer; Collection: PCollection; Capture: Boolean);
@@ -99,7 +99,7 @@ type
     procedure Cut(Index: Integer; ItemCount: Integer = 1); virtual;
     procedure Insert(Index: Integer; ItemCount: Integer = 1); overload;
   public
-    constructor Create(CollectionItemMode: TCollectionItemMode = imInline);
+    constructor Create(CollectionItemMode: TItemMode = imInline);
     destructor Destroy; virtual;
     procedure Append(Collection: PCollection; Capture: Boolean = False); overload;
     procedure AsRange(Source: PCollection; Index: Integer;
@@ -120,7 +120,7 @@ type
     property BufferKind: TBufferKind read FBufferKind;
     property Capacity: Integer read FCapacity write SetCapacity;
     property Delta: Integer read FDelta write FDelta;
-    property ItemMode: TCollectionItemMode read FItemMode;
+    property ItemMode: TItemMode read FItemMode;
   end;
 
   PPointers = ^TPointers;
@@ -148,16 +148,25 @@ type
   PList = ^TList;
   TList = object(TEnumerable)
   private
+    FItemMode: TItemMode;
   { placeholder } // FFirst, FLast: PListItem;
   protected
   { ordered } class function ListInfo: TListInfo; virtual; abstract;
   public
-    procedure Append(Item: Pointer; AfterItem: Pointer = nil); overload;
-    procedure Append(FirstItem, LastItem, AfterItem: Pointer); overload;
+    constructor Create(ListItemMode: TItemMode = imFree);
+    procedure Append(Item: Pointer); overload;
+    function Append(FirstItem, LastItem: Pointer): Integer; overload;
+    class procedure AppendItem(Item, AfterItem: Pointer); overload;
+    class function AppendItem(FirstItem, LastItem, AfterItem: Pointer): Integer; overload;
     procedure Clear; virtual;
+    class procedure Delete(Item: Pointer); overload;
+    class function Delete(FirstItem, LastItem: Pointer): Integer; overload;
+    class procedure Extract(Item: Pointer);
     //procedure Prepend(Item: Pointer; Before: Pointer = nil);
     function Skip(LastItem: Pointer): Integer;
     function Truncate(FirstItem: Pointer): Integer;
+
+    property ItemMode: TItemMode read FItemMode;
   end;
 
   TCRC32Table = array[0..$FF] of LongWord;
@@ -261,15 +270,15 @@ type
     Items: PCollection;
   end;
 
-  PListItem = ^TListItem;
-  TListItem = object
-    Owner: PList;
-    Next: PAddress;
-  end;
-
   PListCast = ^TListCast;
   TListCast = object(TList)
     First, Last: PAddress;
+  end;
+
+  PListItem = ^TListItem;
+  TListItem = object
+    Owner: PListCast;
+    Prev, Next: PAddress;
   end;
 
 { Helper functions }
@@ -486,7 +495,7 @@ end;
 
 { TCollection }
 
-constructor TCollection.Create(CollectionItemMode: TCollectionItemMode);
+constructor TCollection.Create(CollectionItemMode: TItemMode);
 begin
   InitInstance;
   FItemMode := CollectionItemMode;
@@ -994,21 +1003,101 @@ end;
 
 { TList }
 
-procedure TList.Append(Item, AfterItem: Pointer);
+constructor TList.Create(ListItemMode: TItemMode);
 begin
-  if AfterItem = nil then
-    AfterItem := PListCast(@Self).Last; // TODO
+  InitInstance;
+  FItemMode := ListItemMode;
 end;
 
-procedure TList.Append(FirstItem, LastItem, AfterItem: Pointer);
+procedure TList.Append(Item: Pointer);
 begin
+  with PListCast(@Self)^ do
+    if Last <> nil then
+      AppendItem(Item, Last)
+    else
+    begin
+      Extract(Item);
+      PListItem(PAddress(Item) + ListInfo.ItemOffset).Owner := Pointer(@Self);
+      First := Item;
+      Last := Item;
+      Inc(FCount);
+    end;
+end;
 
+function TList.Append(FirstItem, LastItem: Pointer): Integer;
+begin
+  Result := AppendItem(FirstItem, LastItem, PListCast(@Self).Last); // TODO
+end;
+
+class procedure TList.AppendItem(Item, AfterItem: Pointer);
+var
+  After: PListItem;
+begin
+  with ListInfo, PListItem(PAddress(Item) + ItemOffset)^ do
+  begin
+    if Owner <> nil then
+      Owner.Extract(Item);
+    Prev := AfterItem;
+    After := PListItem(PAddress(AfterItem) + ItemOffset);
+    Next := After.Next;
+    After.Next := Item;
+    Owner := After.Owner;
+    Inc(Owner.FCount);
+  end;
+end;
+
+class function TList.AppendItem(FirstItem, LastItem, AfterItem: Pointer): Integer;
+begin
+  Result := 0; // TODO
 end;
 
 procedure TList.Clear;
-asm
-        XOR EDX, EDX
-        JMP Skip
+begin
+  Delete(nil, nil);
+end;
+
+class procedure TList.Delete(Item: Pointer);
+var
+  DeleteMode: TItemMode;
+begin
+  DeleteMode := PListItem(PAddress(Item) + ListInfo.ItemOffset).Owner.ItemMode;
+  Extract(Item);
+  case DeleteMode of
+    imFreeMem:
+      FreeMem(Item);
+    imFinalize:
+      PCoreObject(Item).Finalize;
+    imFree:
+      PCoreObject(Item).Free;
+  end;
+end;
+
+class function TList.Delete(FirstItem, LastItem: Pointer): Integer;
+begin
+  Result := 0; // TODO
+end;
+
+class procedure TList.Extract(Item: Pointer);
+begin
+  with ListInfo, PListItem(PAddress(Item) + ItemOffset)^ do
+  begin
+    if Prev <> nil then
+      PListItem(PAddress(Prev) + ItemOffset).Next := Next
+    else if Owner <> nil then
+      Owner.First := Next;
+
+    if Next <> nil then
+      PListItem(PAddress(Next) + ItemOffset).Prev := Prev
+    else if Owner <> nil then
+      Owner.Last := Prev;
+
+    if Owner <> nil then
+      Dec(Owner.FCount);
+
+    Owner := nil;
+    Prev := nil;
+    Next := nil;
+  end;
 end;
 
 {procedure TList.Prepend(Item, Before: Pointer);
@@ -1019,12 +1108,12 @@ end;}
 
 function TList.Skip(LastItem: Pointer): Integer;
 begin
-  Result := 0; // TODO
+  Result := Delete(nil, LastItem);
 end;
 
 function TList.Truncate(FirstItem: Pointer): Integer;
 begin
-  Result := 0; // TODO
+  Result := Delete(FirstItem, nil);
 end;
 
 { TCRC32 }
