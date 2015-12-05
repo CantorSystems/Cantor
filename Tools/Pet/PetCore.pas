@@ -28,6 +28,7 @@ type
     constructor Create(Dest: PStreamConsole);
     procedure Action(Prompt: PLegacyChar; FileName: PFileName); virtual; abstract;
     procedure StripStats(SourceSize, StrippedSize: LongWord); virtual; abstract;
+    procedure TotalStats(FileCount, TotalBytes, BytesSaved: LongWord); virtual; abstract;
     procedure TransferStats(SourceSize, ActualSize: LongWord); virtual; abstract;
   end;
 
@@ -41,6 +42,7 @@ type
     destructor Destroy; virtual;
     procedure Action(Prompt: PLegacyChar; FileName: PFileName); virtual;
     procedure StripStats(SourceSize, StrippedSize: LongWord); virtual;
+    procedure TotalStats(FileCount, TotalBytes, BytesSaved: LongWord); virtual;
     procedure TransferStats(SourceSize, ActualSize: LongWord); virtual;
   end;
 
@@ -80,6 +82,8 @@ type
     FFileNameList: TFileNameList;
     FImage: TExeImage;
     FCurrentPath: TFileName;
+    FMaxWidth: Integer;
+    FMaxSize: QuadWord;
     procedure AddFile(const Data: TWin32FindDataW; var Found: Boolean);
     function MaxFileNameWidth(MaxWidth: Integer): Integer;
     procedure ParseCommandLine(Source: PCoreChar);
@@ -231,7 +235,7 @@ begin
     if FileName.Count > FFileNameWidth then
     begin
       FConsole.WriteLn(FActionBuf, WideFormatBuf(FActionEllipsisFormat, [Prompt, PLegacyChar(sPathEllipsis),
-        FileName.RawData + FileName.PathDelimiterIndex + 1], FActionBuf), 0);
+        FileName.RawData + FileName.NameIndex], FActionBuf), 0);
       Exit;
     end
     else
@@ -264,6 +268,15 @@ begin
   FConsole.WriteLn(FStatsBuf, WideFormatBuf(FStatsFormat, [DiffBytes, FPercentage.RawData], FStatsBuf));
 end;
 
+procedure TDefaultOutput.TotalStats(FileCount, TotalBytes, BytesSaved: LongWord);
+var
+  DiffBytes: LongInt;
+begin
+  DiffBytes := BytesSaved - TotalBytes;
+  FPercentage.AsPercentage(DiffBytes / TotalBytes);
+  FConsole.WriteLn(sTotals, 0, [FileCount, DiffBytes, FPercentage.RawData]);
+end;
+
 { TApplication }
 
 destructor TApplication.Destroy;
@@ -284,11 +297,21 @@ end;
 procedure TApplication.AddFile(const Data: TWin32FindDataW; var Found: Boolean);
 var
   Item: PFileNameListItem;
+  Width: Integer;
+  FileSize: QuadWord;
 begin
   New(Item, Create);
   Item.AsRange(@FCurrentPath, 0);
   with Data do
+  begin
     Item.ChangeFileName(cFileName, WideStrLen(cFileName, Length(cFileName)));
+    FileSize := nFileSizeHigh shr 32 or nFileSizeLow;
+    if FileSize > FMaxSize then
+      FMaxSize := FileSize;
+  end;
+  Width := Item.Width(FMaxWidth);
+  if Width > FMaxWidth then
+    FMaxWidth := Width;
   FFileNameList.Append(Item);
 end;
 
@@ -436,7 +459,7 @@ begin
     begin
       if (Count = 0) and not (roVersion in FOptions) then
         raise ECommandLine.Create(fkSource);
-      if IsDotOrNull then
+      if IsDot then
       begin
         AsRange(@ExeName, 0);
         Detach;
@@ -444,7 +467,7 @@ begin
     end;
 
     FileName := @FFileNames[fkStub];
-    if FileName.IsDotOrNull then
+    if FileName.IsDot then
       FileName.AsRange(@ExeName, 0);
   end;
 end;
@@ -458,7 +481,7 @@ var
   TmpFileName: TFileName;
   Output: TDefaultOutput;
   Loaded: TLoadFileResult;
-  BytesSaved: QuadWord;
+  BytesSaved, TotalBytes, TotalSaved: QuadWord;
   ImageSize, OldSize: LongWord;
   FileName: PFileNameListItem;
   DestFileName: PFileName;
@@ -477,10 +500,11 @@ begin
   PPointer(@FCurrentPath)^ := TypeOf(TFileName); // Fast core
   with FCurrentPath do
   begin
-    AsRange(@FSourceFileName, 0, FSourceFileName.PathDelimiterIndex + 1);
+    AsRange(@FSourceFileName, 0, FSourceFileName.NameIndex);
     Detach;
   end;
 
+  FMaxWidth := 40;
   FFileNameList.Create;
   if FindFiles(AddFile, FSourceFileName.RawData) = 0 then
   begin
@@ -488,9 +512,22 @@ begin
     Exit;
   end;
 
+  DestFileName := @FFileNames[fkInto];
+  if DestFileName.IsPath then
+  begin
+    with FCurrentPath do
+    begin
+      AsRange(DestFileName, 0);
+      Detach;
+    end;
+    DestFileName := @FCurrentPath;
+  end;
+
   FImage.Create;
-  Output.Create(@Console, PromptMaxWidth, MaxFileNameWidth(40), Ceil(Log10(Loaded.FileSize)) + 1); // TODO
+  Output.Create(@Console, PromptMaxWidth, MaxFileNameWidth(FMaxWidth), Ceil(Log10(FMaxSize)) + 1);
   try
+    TotalBytes := 0;
+    TotalSaved := 0;
     FileName := FFileNameList.First;
     while FileName <> nil do
     begin
@@ -499,6 +536,7 @@ begin
         Loaded := LoadFile(FImage.Load, FileName.RawData, faRandomRead);
         Output.Action(sLoading, FileName);
         Output.TransferStats(Loaded.FileSize, Loaded.BytesRead);
+        Inc(TotalBytes, Loaded.FileSize);
 
         ImageSize := FImage.Size(False);
         Output.Action(sImageData, nil);
@@ -568,11 +606,12 @@ begin
 
         FImage.Build(Byte(roStrip in FOptions) * 512);
 
-        DestFileName := @FFileNames[fkInto];
         if DestFileName.Count <> 0 then
         begin
-          if DestFileName.IsDotOrNull then
-            DestFileName := FileName;
+          if DestFileName.IsDot then
+            DestFileName := FileName
+          else
+            DestFileName.ChangeFileName(FileName);
 
           Output.Action(sSaving, DestFileName);
 
@@ -597,7 +636,7 @@ begin
               TmpFileName.AsTempName(@FFileNames[fkInto]);
               BytesSaved := SaveFile(
                 SaveImage, FileName.RawData, TmpFileName.RawData,
-                FFileNames[fkInto].RawData, FImage.Size(roTrunc in FOptions),
+                DestFileName.RawData, FImage.Size(roTrunc in FOptions),
                 faRandomRewrite, Touch[roTouch in FOptions]
               );
             finally
@@ -605,24 +644,24 @@ begin
             end;
           end;
 
-          Output.TransferStats(0, BytesSaved);
+          Output.TransferStats(Loaded.FileSize, BytesSaved);
         end
         else
           BytesSaved := FImage.Size(roTrunc in FOptions);
 
         Output.Action(sTotal, nil);
         Output.StripStats(Loaded.FileSize, BytesSaved);
+        Inc(TotalSaved, BytesSaved);
       except
         on E: EPlatform do
           ShowException(E);
       end;
       FileName := FileName.Next;
     end;
+    Output.TotalStats(FFileNameList.Count, TotalBytes, TotalSaved);
   finally
     Output.Destroy;
   end;
-
-  Console.WriteLn(sTotalFiles, 0, [FFileNameList.Count])
 end;
 
 procedure TApplication.SaveImage(Dest: PWritableStream);

@@ -64,17 +64,18 @@ type
   PFileName = ^TFileName;
   TFileName = object(TCoreString)
   private
-    FPathDelimiterIndex: Integer;
+    FNameIndex: Integer;
   public
     procedure AsTempName(Source: PCoreString);
     procedure Detach; virtual;
     procedure ChangeFileName(Source: PCoreChar; Length: Integer); overload;
-    procedure ChangeFileName(Source: PCoreString); overload;
-    function IsDotOrNull: Boolean;
+    procedure ChangeFileName(Source: PCoreString; Index: Integer); overload;
+    procedure ChangeFileName(Source: PFileName); overload;
+    function IsDot: Boolean;
     function IsPath: Boolean;
     function Width(MaxWidth: Integer): Integer;
 
-    property PathDelimiterIndex: Integer read FPathDelimiterIndex;
+    property NameIndex: Integer read FNameIndex;
   end;
 
   PFileNameList = ^TFileNameList;
@@ -83,9 +84,10 @@ type
   TFileNameListItem = object(TFileName)
   private
   { hold } FOwner: PFileNameList;
-  { hold } FNext: PFileNameListItem;
+  { hold } FPrev, FNext: PFileNameListItem;
   public
     property Owner: PFileNameList read FOwner;
+    property Prev: PFileNameListItem read FPrev;
     property Next: PFileNameListItem read FNext;
   end;
 
@@ -128,34 +130,40 @@ end;
 
 procedure TFileName.ChangeFileName(Source: PCoreChar; Length: Integer);
 begin
-  Truncate(Count - PathDelimiterIndex - 1);
+  Truncate(Count - FNameIndex);
   Append(Source, Length);
 end;
 
-procedure TFileName.ChangeFileName(Source: PCoreString);
+procedure TFileName.ChangeFileName(Source: PCoreString; Index: Integer);
 begin
-  ChangeFileName(Source.RawData, Source.Count);
+  ChangeFileName(Source.RawData + Index, Source.Count - Index);
+end;
+
+procedure TFileName.ChangeFileName(Source: PFileName);
+begin
+  ChangeFileName(Source, Source.NameIndex);
 end;
 
 procedure TFileName.Detach;
 begin
   inherited;
-  FPathDelimiterIndex := LastIndex(PathDelimiter);
+  FNameIndex := LastIndex(PathDelimiter) + 1;
 {$IFDEF MSWINDOWS}
-  if FPathDelimiterIndex < 0 then
-    FPathDelimiterIndex := LastIndex('/');
+  if FNameIndex = 0 then
+    FNameIndex := LastIndex('/') + 1;
 {$ENDIF}
 end;
 
-function TFileName.IsDotOrNull: Boolean;
+function TFileName.IsDot: Boolean;
 begin
-  Result := (TypeOf(Self) <> nil) and ((Count = 0) or (Count = 1) and (RawData^ = '.'));
+  Result := {$IFNDEF Lite} (TypeOf(Self) <> nil) and {$ENDIF}
+    (Count = 1) and (RawData^ = '.');
 end;
 
 function TFileName.IsPath: Boolean;
 begin
   Result := False;
-  if Count <> 0 then
+  if {$IFNDEF Lite} (TypeOf(Self) <> nil) and {$ENDIF} (Count <> 0) then
     case RawData[Count - 1] of
     {$IFDEF MSWINDOWS} '/', {$ENDIF} PathDelimiter:
       Inc(Result);
@@ -165,8 +173,8 @@ end;
 function TFileName.Width(MaxWidth: Integer): Integer;
 begin
   Result := Count;
-  if (Result > MaxWidth) and (FPathDelimiterIndex >= 0) then
-    Dec(Result, FPathDelimiterIndex + 1);
+  if Result > MaxWidth then
+    Dec(Result, FNameIndex);
 end;
 
 { TConsoleApplication }
