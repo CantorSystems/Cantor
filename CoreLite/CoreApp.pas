@@ -72,6 +72,8 @@ type
     procedure ChangeFileName(Source: PCoreString; Index: Integer); overload;
     procedure ChangeFileName(Source: PFileName); overload;
     function IsDot: Boolean;
+    function IsDotOrNull: Boolean;
+    function IsNull: Boolean;
     function IsPath: Boolean;
     function Width(MaxWidth: Integer): Integer;
 
@@ -156,8 +158,17 @@ end;
 
 function TFileName.IsDot: Boolean;
 begin
-  Result := {$IFNDEF Lite} (TypeOf(Self) <> nil) and {$ENDIF}
-    (Count = 1) and (RawData^ = '.');
+  Result := (Count = 1) and (RawData^ = '.');
+end;
+
+function TFileName.IsDotOrNull: Boolean;
+begin
+  Result := (TypeOf(Self) <> nil) and ((Count = 0) or (Count = 1) and (RawData^ = '.'));
+end;
+
+function TFileName.IsNull: Boolean;
+begin
+  Result := (TypeOf(Self) <> nil) and (Count = 0);
 end;
 
 function TFileName.IsPath: Boolean;
