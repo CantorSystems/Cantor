@@ -459,7 +459,7 @@ begin
       raise ECommandLine.Create(fkSource);
 
     FileName := @FFileNames[fkStub];
-    if FileName.IsDot then
+    if FileName.IsDotOrNull then
       FileName.AsRange(@ExeName, 0);
   end
   else
@@ -610,13 +610,13 @@ begin
 
         FImage.Build(Byte(roStrip in FOptions) * 512);
 
+        if DestFileName.IsDotOrNull then
+          DestFileName := FileName
+        else if DestFileName = @FCurrentPath then
+          FCurrentPath.ChangeFileName(FileName);
+
         if DestFileName.Count <> 0 then
         begin
-          if DestFileName.IsDot then
-            DestFileName := FileName
-          else
-            DestFileName.ChangeFileName(FileName);
-
           with FImage do
           begin
             if FMajorVersion <> 0 then
@@ -640,7 +640,7 @@ begin
           begin
             TmpFileName.Create;
             try
-              TmpFileName.AsTempName(@FFileNames[fkInto]);
+              TmpFileName.AsTempName(DestFileName);
               Output.Action(sSaving, DestFileName);
               BytesSaved := SaveFile(
                 SaveImage, FileName.RawData, TmpFileName.RawData,
@@ -651,6 +651,9 @@ begin
               TmpFileName.Destroy;
             end;
           end;
+
+          if DestFileName = FileName then
+            DestFileName := @FFileNames[fkInto];
 
           Output.TransferStats(Loaded.FileSize, BytesSaved);
         end
