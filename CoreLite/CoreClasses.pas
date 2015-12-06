@@ -1042,6 +1042,8 @@ begin
     Next := After.Next;
     After.Next := Item;
     Owner := After.Owner;
+    if Next = nil then
+      Owner.Last := Item;
     Inc(Owner.FCount);
   end;
 end;
