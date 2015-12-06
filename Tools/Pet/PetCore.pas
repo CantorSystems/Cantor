@@ -499,6 +499,8 @@ begin
   FileName := FSourceFileNames.First;
   while FileName <> nil do
   begin
+    if FileName.IsDot then
+      FileName.AsRange(@ExeName, 0);
     with FCurrentPath do
     begin
       AsRange(FileName, 0, FileName.NameIndex);
