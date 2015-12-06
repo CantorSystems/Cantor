@@ -52,8 +52,8 @@ const
             #9'-into [dest]|[.]' +   #9'Save result to [dest] file or replace source'#10 +
             #9'-version' +         #9#9'Show version and exit'#10#10 +
     'Option for -extract and -into commands'#10 +
-            #9'-strip' +         #9#9#9'Strip headers, relocations and empty sections'#10 +
-                               #9#9#9#9'when possible'#10#10 +
+            #9'-strip' +         #9#9#9'Strip headers, exports, debug information,'#10 +
+                               #9#9#9#9'relocations and empty sections when possible'#10#10 +
     'Options for -into command'#10 +
             #9'-3GB' +           #9#9#9'Set large address aware application flag'#10 +
             {#9'-auto [#[%]]|[.]'    +#9'Using '#$E2#$80#$9C'-keep -strip -trunc -stub'#$E2#$80#$9D' mode, replace'#10 +
