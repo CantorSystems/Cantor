@@ -553,7 +553,8 @@ begin
           if not (roUnsafe in FOptions) then
           begin
             Console.WriteLn(PLegacyChar(sChainedDataFound), StrLen(sChainedDataFound));
-            Exit;
+            FileName := FileName.Next;
+            Continue;
           end;
         end;
 
