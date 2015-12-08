@@ -14,13 +14,33 @@ uses
   Windows, CoreUtils, CoreClasses, CoreWrappers, CoreStrings;
 
 type
+  PFileName = ^TFileName;
+  TFileName = object(TCoreString)
+  private
+    FNameIndex: Integer;
+  public
+    procedure AsTempName(Source: PCoreString);
+    procedure Detach; virtual;
+    procedure ChangeFileName(Source: PCoreChar; Length: Integer); overload;
+    procedure ChangeFileName(Source: PCoreString; Index: Integer); overload;
+    procedure ChangeFileName(Source: PFileName); overload;
+    function IsDot: Boolean;
+    function IsDotOrNull: Boolean;
+    function IsNull: Boolean;
+    function IsPath: Boolean;
+    function Width(MaxWidth: Integer): Integer;
+
+    property NameIndex: Integer read FNameIndex;
+  end;
+
   TConsoleAppOptions = set of (caPause, caNoLogo, caVersion);
 
   PConsoleApplication = ^TConsoleApplication;
   TConsoleApplication = object
   private
     FConsole: TStreamConsole;
-    FAppName, FExeName: TCoreString;
+    FAppName: TCoreString;
+    FExeName: TFileName;
   // { placeholder } FOptions: TConsoleAppOptions;
   protected
     procedure Help(UsageFmt, HelpMsg: PLegacyChar);
@@ -33,7 +53,7 @@ type
 
     property AppName: TCoreString read FAppName;
     property Console: TStreamConsole read FConsole;
-    property ExeName: TCoreString read FExeName;
+    property ExeName: TFileName read FExeName;
   end;
 
   PLegacyCommandLineParam = ^TLegacyCommandLineParam;
@@ -60,25 +80,6 @@ type
 
   PCommandLineParam = PWideCommandLineParam;
   TCommandLineParam = TWideCommandLineParam;
-
-  PFileName = ^TFileName;
-  TFileName = object(TCoreString)
-  private
-    FNameIndex: Integer;
-  public
-    procedure AsTempName(Source: PCoreString);
-    procedure Detach; virtual;
-    procedure ChangeFileName(Source: PCoreChar; Length: Integer); overload;
-    procedure ChangeFileName(Source: PCoreString; Index: Integer); overload;
-    procedure ChangeFileName(Source: PFileName); overload;
-    function IsDot: Boolean;
-    function IsDotOrNull: Boolean;
-    function IsNull: Boolean;
-    function IsPath: Boolean;
-    function Width(MaxWidth: Integer): Integer;
-
-    property NameIndex: Integer read FNameIndex;
-  end;
 
   PFileNameList = ^TFileNameList;
 
@@ -198,17 +199,21 @@ begin
     CodePage := ConsoleCP;
   end;
 
-  with FExeName do
+{$IFDEF Lite}
+  PPointer(@FExeName)^ := TypeOf(TFileName); // Fast core
+{$ELSE}
+  FExeName.Create;
+{$ENDIF}
+  with FExeName, ModuleFileName do
   begin
-    Create;
-    with ModuleFileName do
-      AsWideString(Value, Length);
+    AsWideString(Value, Length);
+    FNameIndex := FileNameIndex; // Fast core
   end;
 
   with FAppName do
   begin
     Create;
-    AsRange(@FExeName, FExeName.LastIndex(PathDelimiter) + 1);
+    AsRange(@FExeName, FExeName.NameIndex);
     Truncate(Count - LastIndex(WideChar('.')));
   end;
 end;
