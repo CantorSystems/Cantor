@@ -67,6 +67,8 @@ type
   TFileKind = (fkNone, fkSource, fkInto, fkStub, fkExtract, fkBackup{, fkDump});
   TFileNames = array[fkInto..High(TFileKind)] of TFileName;
 
+  TLogStyle = (lsTotals, lsActions, lsDetails);
+
   TRunOption = (roPause, roNoLogo, roVersion, // ordered
     roAuto, roStrip, roTrunc, roTouch, roUnsafe, roDeep,
     {roMiniRes, roCleanVer, roMainIcon, roVerbose} ro3GB);
@@ -79,6 +81,7 @@ type
     FFileNames: TFileNames;
     FDropSections: TSectionNames;
     FMajorVersion, FMinorVersion: Word;
+    FLogStyle: TLogStyle;
     FFileNameList: TFileNameList;
     FImage: TExeImage;
     FCurrentPath: TFileName;
@@ -182,19 +185,6 @@ begin
   FPercentage.Create;
   FPercentage.ExternalBuffer(@FPercentageBuf, Length(FPercentageBuf));
 end;
-{
-  with FFormatter do
-  begin
-    Create;
-    with DecimalFormats do
-    begin
-//      Append(0);
-      Capacity := 2;
-      Append(LOCALE_USER_DEFAULT);
-      Append((SORT_DEFAULT shl 16) or LANG_ARABIC, True);
-    end;
-  end;
-}
 
 { TDefaultOutput }
 
@@ -475,7 +465,7 @@ var
   TmpFileName: TFileName;
   Output: TDefaultOutput;
   Loaded: TLoadFileResult;
-  FileCount, BytesSaved, TotalBytes, TotalSaved: QuadWord;
+  BytesSaved, TotalBytes, TotalSaved: QuadWord;
   ImageSize, OldSize: LongWord;
   FileName: PFileNameListItem;
   DestFileName: PFileName;
@@ -493,8 +483,7 @@ begin
 
   PPointer(@FCurrentPath)^ := TypeOf(TFileName); // Fast core
   FFileNameList.Create;
-  FMaxWidth := MaxFileNameWidth(40);
-  FileCount := 0;
+  FMaxWidth := MaxFileNameWidth(40); // magic
 
   FileName := FSourceFileNames.First;
   while FileName <> nil do
@@ -506,14 +495,21 @@ begin
       AsRange(FileName, 0, FileName.NameIndex);
       Detach;
     end;
-    Inc(FileCount, FindFiles(AddFile, FileName.RawData));
+    FindFiles(AddFile, FileName.RawData);
     FileName := FileName.Next;
   end;
 
-  if FileCount = 0 then
-  begin
-    Console.WriteLn(PLegacyChar(sNoFilesFound), StrLen(sNoFilesFound));
-    Exit;
+  case FFileNameList.Count of
+    0:
+      begin
+        Console.WriteLn(PLegacyChar(sNoFilesFound), StrLen(sNoFilesFound));
+        Exit;
+      end;
+    1:
+      if FLogStyle = lsTotals then
+        Inc(FLogStyle);
+  else
+    Console.WriteLn; // TODO
   end;
 
   DestFileName := @FFileNames[fkInto];
@@ -535,23 +531,37 @@ begin
     FileName := FFileNameList.First;
     while FileName <> nil do
     begin
-      Console.WriteLn;
+      if FLogStyle <> lsTotals then
+        Console.WriteLn;
       try
         Loaded := LoadFile(FImage.Load, FileName.RawData, faRandomRead);
-        Output.Action(sLoading, FileName);
-        Output.TransferStats(Loaded.FileSize, Loaded.BytesRead);
+        if FLogStyle <> lsTotals then
+        begin
+          Output.Action(sLoading, FileName);
+          Output.TransferStats(Loaded.FileSize, Loaded.BytesRead);
+        end
+        else
+          Output.Action(sStripping, FileName);
         Inc(TotalBytes, Loaded.FileSize);
 
         ImageSize := FImage.Size(False);
-        Output.Action(sImageData, nil);
-        Output.TransferStats(Loaded.BytesRead, ImageSize);
+        if FLogStyle <> lsTotals then
+        begin
+          Output.Action(sImageData, nil);
+          Output.TransferStats(Loaded.BytesRead, ImageSize);
+        end;
 
         if Loaded.FileSize <> Loaded.BytesRead then // chained data found
         begin
-          Output.Action(sChainedData, nil);
-          Output.StripStats(Loaded.FileSize, Loaded.BytesRead);
+          if FLogStyle <> lsTotals then
+          begin
+            Output.Action(sChainedData, nil);
+            Output.StripStats(Loaded.FileSize, Loaded.BytesRead);
+          end;
           if not (roUnsafe in FOptions) then
           begin
+            if FLogStyle = lsTotals then
+              Console.WriteLn;
             Console.WriteLn(PLegacyChar(sChainedDataFound), StrLen(sChainedDataFound));
             FileName := FileName.Next;
             Continue;
@@ -563,10 +573,12 @@ begin
           begin
             Create;
             try
-              Output.Action(sExtractingStub, @FFileNames[fkExtract]);
+              if FLogStyle <> lsTotals then
+                Output.Action(sExtractingStub, @FFileNames[fkExtract]);  // TODO
               Load(@FImage.Stub);
               Strip(roStrip in FOptions);
-              Output.TransferStats(0, SaveFile(Save, FFileNames[fkExtract].RawData, Size));
+              if FLogStyle <> lsTotals then
+                Output.TransferStats(0, SaveFile(Save, FFileNames[fkExtract].RawData, Size));
             finally
               Destroy;
             end;
@@ -575,10 +587,12 @@ begin
         if FFileNames[fkStub].Count <> 0 then
           with FImage.Stub do
           begin
-            Output.Action(sReplacingStub, @FFileNames[fkStub]);
+            if FLogStyle <> lsTotals then
+              Output.Action(sReplacingStub, @FFileNames[fkStub]);
             OldSize := Size;
             LoadFile(Load, FFileNames[fkStub].RawData);
-            Output.TransferStats(OldSize, Size);
+            if FLogStyle <> lsTotals then
+              Output.TransferStats(OldSize, Size);
           end;
 
     {    if FDropSections <> nil then
@@ -596,17 +610,21 @@ begin
 
         if roStrip in FOptions then
         begin
-          Output.Action(sStripping, nil);
+          if FLogStyle <> lsTotals then
+            Output.Action(sStripping, nil);
           FImage.Strip([soStub..soEmptySections] + Deep[roDeep in FOptions]);
-          Output.StripStats(ImageSize, FImage.Size(roTrunc in FOptions));
+          if FLogStyle <> lsTotals then
+            Output.StripStats(ImageSize, FImage.Size(roTrunc in FOptions));
         end
         else
           with FImage.Stub do
           begin
-            Output.Action(sFixingStub, nil);
+            if FLogStyle <> lsTotals then
+              Output.Action(sFixingStub, nil);
             OldSize := Size;
             Strip(False);
-            Output.StripStats(OldSize, Size);
+            if FLogStyle <> lsTotals then
+              Output.StripStats(OldSize, Size);
           end;
 
         FImage.Build(Byte(roStrip in FOptions) * 512);
@@ -628,9 +646,12 @@ begin
 
           if FFileNames[fkBackup].Count <> 0 then
           begin
-            Output.Action(sBackuping, @FFileNames[fkBackup]);
-            Console.WriteLn;
-            Output.Action(sSaving, DestFileName);
+            if FLogStyle <> lsTotals then
+            begin
+              Output.Action(sBackuping, @FFileNames[fkBackup]);
+              Console.WriteLn;
+              Output.Action(sSaving, DestFileName);
+            end;
             BytesSaved := SaveFile(
               SaveImage, FileName.RawData, FFileNames[fkBackup].RawData,
               DestFileName.RawData, FImage.Size(roTrunc in FOptions),
@@ -642,7 +663,8 @@ begin
             TmpFileName.Create;
             try
               TmpFileName.AsTempName(DestFileName);
-              Output.Action(sSaving, DestFileName);
+              if FLogStyle <> lsTotals then
+                Output.Action(sSaving, DestFileName);
               BytesSaved := SaveFile(
                 SaveImage, FileName.RawData, TmpFileName.RawData,
                 DestFileName.RawData, FImage.Size(roTrunc in FOptions),
@@ -656,12 +678,14 @@ begin
           if DestFileName = FileName then
             DestFileName := @FFileNames[fkInto];
 
-          Output.TransferStats(Loaded.FileSize, BytesSaved);
+          if FLogStyle <> lsTotals then
+            Output.TransferStats(Loaded.FileSize, BytesSaved);
         end
         else
           BytesSaved := FImage.Size(roTrunc in FOptions);
 
-        Output.Action(sTotal, nil);
+        if FLogStyle <> lsTotals then
+          Output.Action(sTotal, nil);
         Output.StripStats(Loaded.FileSize, BytesSaved);
         Inc(TotalSaved, BytesSaved);
       except
