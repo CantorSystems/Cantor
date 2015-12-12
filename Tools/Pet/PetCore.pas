@@ -554,13 +554,14 @@ begin
         if Loaded.FileSize <> Loaded.BytesRead then // chained data found
         begin
           if FLogStyle <> lsTotals then
-          begin
             Output.Action(sChainedData, nil);
-            Output.StripStats(Loaded.FileSize, Loaded.BytesRead);
-          end;
-          if not (roUnsafe in FOptions) then
+          if roUnsafe in FOptions then
+            Output.StripStats(Loaded.FileSize, Loaded.BytesRead)
+          else
           begin
-            if FLogStyle = lsTotals then
+            if FLogStyle <> lsTotals then
+              Output.TransferStats(Loaded.FileSize, Loaded.FileSize - Loaded.BytesRead)
+            else
               Console.WriteLn;
             Console.WriteLn(PLegacyChar(sChainedDataFound), StrLen(sChainedDataFound));
             FileName := FileName.Next;
