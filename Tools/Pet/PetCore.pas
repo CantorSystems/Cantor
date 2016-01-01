@@ -1,7 +1,7 @@
 (*
     PE Tool's core
 
-    Copyright (c) 2013-2015 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2013-2016 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
       * Lite -- avoid redundant bloatness of code, without functionality loss 
@@ -635,60 +635,62 @@ begin
         else if DestFileName = @FCurrentPath then
           FCurrentPath.ChangeFileName(FileName);
 
-        if DestFileName.Count <> 0 then
-        begin
-          with FImage do
-          begin
-            if FMajorVersion <> 0 then
-              OSVersion(FMajorVersion, FMinorVersion);
-            if ro3GB in FOptions then
-              LargeAddressAware;
-          end;
-
-          if FFileNames[fkBackup].Count <> 0 then
-          begin
-            if FLogStyle <> lsTotals then
+        BytesSaved := FImage.Size(roTrunc in FOptions);
+        try
+          if DestFileName.Count <> 0 then
+          try
+            with FImage do
             begin
-              Output.Action(sBackuping, @FFileNames[fkBackup]);
-              Console.WriteLn;
-              Output.Action(sSaving, DestFileName);
+              if FMajorVersion <> 0 then
+                OSVersion(FMajorVersion, FMinorVersion);
+              if ro3GB in FOptions then
+                LargeAddressAware;
             end;
-            BytesSaved := SaveFile(
-              SaveImage, FileName.RawData, FFileNames[fkBackup].RawData,
-              DestFileName.RawData, FImage.Size(roTrunc in FOptions),
-              faRandomRewrite, Touch[roTouch in FOptions] + [soBackup]
-            )
-          end
-          else
-          begin
-            TmpFileName.Create;
-            try
-              TmpFileName.AsTempName(DestFileName);
-              if FLogStyle <> lsTotals then
-                Output.Action(sSaving, DestFileName);
-              BytesSaved := SaveFile(
-                SaveImage, FileName.RawData, TmpFileName.RawData,
-                DestFileName.RawData, FImage.Size(roTrunc in FOptions),
-                faRandomRewrite, Touch[roTouch in FOptions]
-              );
-            finally
-              TmpFileName.Destroy;
-            end;
-          end;
 
-          if DestFileName = FileName then
-            DestFileName := @FFileNames[fkInto];
+            if FFileNames[fkBackup].Count <> 0 then
+            begin
+              if FLogStyle <> lsTotals then
+              begin
+                Output.Action(sBackuping, @FFileNames[fkBackup]);
+                Console.WriteLn;
+                Output.Action(sSaving, DestFileName);
+              end;
+              BytesSaved := SaveFile(
+                SaveImage, FileName.RawData, FFileNames[fkBackup].RawData,
+                DestFileName.RawData, FImage.Size(roTrunc in FOptions),
+                faRandomRewrite, Touch[roTouch in FOptions] + [soBackup]
+              )
+            end
+            else
+            begin
+              TmpFileName.Create;
+              try
+                TmpFileName.AsTempName(DestFileName);
+                if FLogStyle <> lsTotals then
+                  Output.Action(sSaving, DestFileName);
+                BytesSaved := SaveFile(
+                  SaveImage, FileName.RawData, TmpFileName.RawData,
+                  DestFileName.RawData, FImage.Size(roTrunc in FOptions),
+                  faRandomRewrite, Touch[roTouch in FOptions]
+                );
+              finally
+                TmpFileName.Destroy;
+              end;
+            end;
+
+            if FLogStyle <> lsTotals then
+              Output.TransferStats(Loaded.FileSize, BytesSaved);
+          finally
+            if DestFileName = FileName then
+              DestFileName := @FFileNames[fkInto];
+          end;
 
           if FLogStyle <> lsTotals then
-            Output.TransferStats(Loaded.FileSize, BytesSaved);
-        end
-        else
-          BytesSaved := FImage.Size(roTrunc in FOptions);
-
-        if FLogStyle <> lsTotals then
-          Output.Action(sTotal, nil);
-        Output.StripStats(Loaded.FileSize, BytesSaved);
-        Inc(TotalSaved, BytesSaved);
+            Output.Action(sTotal, nil);
+          Output.StripStats(Loaded.FileSize, BytesSaved);
+        finally
+          Inc(TotalSaved, BytesSaved);
+        end;
       except
         on E: EBadImage do
           Console.WriteLn('%hs: %s', 0, [E.Message.AsString, FileName.RawData]);
