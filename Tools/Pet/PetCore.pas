@@ -224,8 +224,8 @@ begin
   if FileName <> nil then
     if FileName.Count > FFileNameWidth then
     begin
-      FConsole.WriteLn(FActionBuf, WideFormatBuf(FActionEllipsisFormat, [Prompt, PLegacyChar(sPathEllipsis),
-        FileName.RawData + FileName.NameIndex], FActionBuf), 0);
+      FConsole.WriteLn(FActionBuf, WideFormatBuf(FActionEllipsisFormat, [Prompt,
+        PLegacyChar(sPathEllipsis), FileName.RawData + FileName.NameIndex], FActionBuf), 0);
       Exit;
     end
     else
@@ -499,6 +499,7 @@ begin
     FileName := FileName.Next;
   end;
 
+  Console.EndOfLine;
   case FFileNameList.Count of
     0:
       begin
@@ -508,8 +509,6 @@ begin
     1:
       if FLogStyle = lsTotals then
         Inc(FLogStyle);
-  else
-    Console.WriteLn; // TODO
   end;
 
   DestFileName := @FFileNames[fkInto];
@@ -531,8 +530,6 @@ begin
     FileName := FFileNameList.First;
     while FileName <> nil do
     begin
-      if FLogStyle <> lsTotals then
-        Console.WriteLn;
       try
         Loaded := LoadFile(FImage.Load, FileName.RawData, faRandomRead);
         if FLogStyle <> lsTotals then
@@ -564,6 +561,7 @@ begin
             else
               Console.WriteLn;
             Console.WriteLn(PLegacyChar(sChainedDataFound), StrLen(sChainedDataFound));
+            Inc(TotalSaved, Loaded.FileSize);
             FileName := FileName.Next;
             Continue;
           end;
@@ -659,7 +657,7 @@ begin
                 SaveImage, FileName.RawData, FFileNames[fkBackup].RawData,
                 DestFileName.RawData, FImage.Size(roTrunc in FOptions),
                 faRandomRewrite, Touch[roTouch in FOptions] + [soBackup]
-              )
+              );
             end
             else
             begin
@@ -697,6 +695,9 @@ begin
         on E: EPlatform do
           ShowException(E);
       end;
+
+      if FLogStyle <> lsTotals then
+        Console.WriteLn;
       FileName := FileName.Next;
     end;
 
