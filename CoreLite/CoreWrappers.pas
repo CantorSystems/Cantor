@@ -3,7 +3,7 @@
 
     OOP-style platform-dependent wrappers
 
-    Copyright (c) 2007-2015 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2007-2016 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
       * Debug -- force ANSI code page for TStreamConsole
@@ -193,6 +193,8 @@ type
   {$IFDEF Debug}
     constructor Create(ErrorOutput: Boolean = False);
   {$ENDIF}
+    procedure EndOfLine;
+
     procedure ReadLn(Prompt: PLegacyChar; Count: Integer; LineBreaks: Integer = 1);
 
     procedure WriteLn(LineBreaks: Integer = 1); overload;
@@ -207,6 +209,8 @@ type
   private
     procedure SetTextAttribute(Value: Word);
   public
+    procedure EndOfLine;
+
     procedure ReadLn(Prompt: PLegacyChar; Count: Integer; LineBreaks: Integer = 1); overload;
     procedure ReadLn(Prompt: PWideChar; Count: Integer; LineBreaks: Integer = 1); overload;
 
@@ -487,7 +491,6 @@ begin
     NewInfo.Attributes := OldInfo.dwFileAttributes;
     Move(OldInfo.ftCreationTime, NewInfo.CreationTime, SizeOf(TFileTime) * (3 - Byte(soTouch in Options)));
   end;
-
   if SwapFileName <> nil then
     if soBackup in Options then
     begin
@@ -980,12 +983,17 @@ begin
 end;
 {$ENDIF}
 
+procedure TStreamConsole.EndOfLine;
+begin
+  if NeedEOL then
+    WriteLn;
+end;
+
 procedure TStreamConsole.ReadLn(Prompt: PLegacyChar; Count, LineBreaks: Integer);
 var
   Dummy: array[0..$FF] of LegacyChar; // preventing flood
   BytesRead: LongWord;
 begin
-  WriteLn;
   WriteLn(Prompt, Count, 0);
   WriteLn(PLegacyChar(@Ellipsis), SizeOf(Ellipsis), 0);
 {$IFDEF Tricks} System. {$ENDIF}
@@ -1004,6 +1012,7 @@ begin // Fast core
     WriteFile(FOutput, LFx4, 4, BytesWritten, nil);
   if LineBreaks mod 4 <> 0 then {$IFDEF Tricks} System. {$ENDIF}
     WriteFile(FOutput, LFx4, LineBreaks mod 4, BytesWritten, nil);
+  NeedEOL := LineBreaks = 0; 
 end;
 
 procedure TStreamConsole.WriteLn(Text: PLegacyChar; Count, LineBreaks: Integer);
@@ -1012,7 +1021,10 @@ var
 begin
 {$IFDEF Tricks} System. {$ENDIF}
   WriteFile(FOutput, Text^, Count, BytesWritten, nil);  // TODO: Windows x64
-  WriteLn(LineBreaks);
+  if LineBreaks <> 0 then
+    WriteLn(LineBreaks)
+  else
+    NeedEOL := True;
 end;
 
 procedure TStreamConsole.WriteLn(Fmt: PLegacyChar; FixedWidth: Integer;
@@ -1060,11 +1072,16 @@ var
   Dummy: array[0..$FF] of LegacyChar; // preventing flood
   Read: LongWord;
 begin
-  WriteLn;
   WriteLn(Prompt, Count, 0);
   WriteLn(Ellipsis, Length(Ellipsis), 0);
   ReadConsoleA(FInput, @Dummy, Length(Dummy), Read, nil);
   WriteLn(LineBreaks - 1);
+end;
+
+procedure TScreenConsole.EndOfLine;
+begin
+  if NeedEOL then
+    WriteLn;
 end;
 
 procedure TScreenConsole.ReadLn(Prompt: PWideChar; Count, LineBreaks: Integer);
@@ -1072,7 +1089,6 @@ var
   Dummy: array[0..$FF] of WideChar; // preventing flood
   Read: LongWord;
 begin
-  WriteLn;
   WriteLn(Prompt, Count, 0);
   WriteLn(PWideChar(@WideEllipsis), 1, 0);
   ReadConsoleW(FInput, @Dummy, Length(Dummy), Read, nil);
@@ -1095,22 +1111,29 @@ begin // Fast core
     WriteConsoleW(FOutput, @WideLFx4, 4, Written, nil);
   if LineBreaks mod 4 <> 0 then
     WriteConsoleW(FOutput, @WideLFx4, LineBreaks mod 4, Written, nil);
+  NeedEOL := LineBreaks = 0;
 end;
 
 procedure TScreenConsole.WriteLn(Text: PLegacyChar; Count, LineBreaks: Integer);
 var
   Written: LongWord;
 begin
-  WriteConsoleA(FOutput, Text, Count, Written, nil);  // TODO: Windows x64
-  WriteLn(LineBreaks);
+  WriteConsoleA(FOutput, Text, Count, Written, nil);  // TODO: UTF-8 console
+  if LineBreaks <> 0 then
+    WriteLn(LineBreaks)
+  else
+    NeedEOL := True;
 end;
 
 procedure TScreenConsole.WriteLn(Text: PWideChar; Count, LineBreaks: Integer);
 var
   Written: LongWord;
 begin
-  WriteConsoleW(FOutput, Text, Count, Written, nil);  // TODO: Windows x64
-  WriteLn(LineBreaks);
+  WriteConsoleW(FOutput, Text, Count, Written, nil);  // TODO: UTF-8 console
+  if LineBreaks <> 0 then
+    WriteLn(LineBreaks)
+  else
+    NeedEOL := True;
 end;
 
 { TPerformanceCounter }

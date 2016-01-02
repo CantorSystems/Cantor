@@ -155,6 +155,7 @@ var
 {$IF not UnicodeRTL}
   DefaultSystemCodePage: Word = CP_LOCALIZATION;
 {$IFEND}
+  NeedEOL: Boolean;
 {$ENDIF}
 
 {$IF RTLVersion < 15}

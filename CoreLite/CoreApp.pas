@@ -229,6 +229,7 @@ begin
     begin
       Create(True);
       try
+        WriteLn(Byte(NeedEOL) + 1);
         ReadLn(sPressEnterToExit, StrLen(sPressEnterToExit));
       finally
         Destroy;
