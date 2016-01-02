@@ -3,7 +3,7 @@
 
     Core strings and character sets implementation
 
-    Copyright (c) 2015 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2015-2016 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
       * CoreLiteVCL -- TCoreString and UnicodeString types for VCL applications
@@ -1826,7 +1826,7 @@ begin
   if FCodePage <> nil then
     CP := FCodePage.Number
   else
-    CP := DefaultUnicodeCodePage;
+    CP := CP_UTF8;
   System.SetCodePage(Result, CP, False);
 {$IFEND}
 end;
@@ -2514,7 +2514,7 @@ procedure TWideString.Load(Source: PReadableStream);
 var
   FallbackCP: TCodePage;
 begin
-  FallbackCP.Create {$IFDEF CoreLiteVCL} (DefaultUnicodeCodePage) {$ENDIF} ;
+  FallbackCP.Create;
   Load(Source, boFromBOM, @FallbackCP);
 end;
 
@@ -2633,13 +2633,13 @@ begin
   S.Create;
   try
   {$IF not UnicodeRTL}
-    CP.Create(DefaultUnicodeCodePage);
+    CP.Create;
     S.FCodePage := @CP;
   {$IFEND}
     S.AsWideString(@Self);
     SetString(Result, S.FData, S.Count);
   {$IF UnicodeRTL}
-    System.SetCodePage(Result, DefaultUnicodeCodePage, False);
+    System.SetCodePage(Result, CP.Number, False);
   {$IFEND}
   finally
     S.Destroy;
@@ -2657,7 +2657,7 @@ begin
   {$IF UnicodeRTL}
     CPNum := StringCodePage(Value);
   {$ELSE}
-    CPNum := DefaultUnicodeCodePage;
+    CPNum := CP_ACP;
     Include(S.FOptions, soDetectUTF8);
   {$IFEND}
     if CPNum <> CP_UTF8 then

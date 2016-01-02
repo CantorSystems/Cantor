@@ -3,7 +3,7 @@
 
     Typecast and platform-based non-OOP utilites
 
-    Copyright (c) 2007-2015 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2007-2016 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
       * CoreLiteVCL -- the same as Debug, but also partial use of SysUtils
@@ -154,17 +154,12 @@ var
   MainWindow: THandle;
 {$IF not UnicodeRTL}
   DefaultSystemCodePage: Word = CP_LOCALIZATION;
-{$IFEND}  
+{$IFEND}
 {$ENDIF}
 
 {$IF RTLVersion < 15}
 const
   CP_THREAD_ACP = 3;
-{$IFEND}
-
-{$IF defined(CoreLiteVCL) and not UnicodeRTL}
-var
-  DefaultUnicodeCodePage: Word {$IFNDEF Lite} = CP_THREAD_ACP {$ENDIF};
 {$IFEND}
 
 { Platform support }
