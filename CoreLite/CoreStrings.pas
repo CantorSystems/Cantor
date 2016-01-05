@@ -111,12 +111,11 @@ type
   PCodePage = ^TCodePage;
   TCodePage = object
   private
-    FName: PCoreChar;
     FNumber: Word;
     FMaxCharBytes: Byte;
     FReplacementChar, FSysReplacementChar: LegacyChar;
     FLeadBytes: TLeadBytes;
-    FInfo: TCPInfoEx;
+    FName: TCodePageName;
   public
     constructor Create(CodePage: Word = CP_ACP; DefaultReplacementChar: LegacyChar = LegacyReplacementChar);
     function DecodeUTF16(Source: PWideString; Dest: PLegacyString; DestIndex: Integer;
@@ -126,7 +125,7 @@ type
 
     property LeadBytes: TLeadBytes read FLeadBytes;
     property MaxCharBytes: Byte read FMaxCharBytes;
-    property Name: PCoreChar read FName;
+    property Name: TCodePageName read FName;
     property Number: Word read FNumber;
     property ReplacementChar: LegacyChar read FReplacementChar write FReplacementChar;
     property SysRelpacementChar: LegacyChar read FSysReplacementChar;
@@ -755,25 +754,26 @@ end;
 constructor TCodePage.Create(CodePage: Word; DefaultReplacementChar: LegacyChar);
 var
   P, Limit: PLegacyChar;
+  Info: TCPInfoEx;
 begin
   FillChar(Self, SizeOf(Self), 0);
   FReplacementChar := DefaultReplacementChar;
 
-  if not GetCPInfoEx(CodePage, 0, FInfo) then
+  if not GetCPInfoEx(CodePage, 0, Info) then
     RaiseLastPlatformError(sCodePage, CodePage);
 
-  FNumber := FInfo.CodePage;
-  FMaxCharBytes := FInfo.MaxCharSize;
-  FSysReplacementChar := LegacyChar(FInfo.DefaultChar[0]);
+  FNumber := Info.CodePage;
+  FMaxCharBytes := Info.MaxCharSize;
+  FSysReplacementChar := LegacyChar(Info.DefaultChar[0]);
 
-  with ExtractCodePageName(FInfo) do
+  with ExtractCodePageName(Info) do
   begin
-    FName := Value;
+    Move(Value^, FName, Length);
     FName[Length] := #0;
   end;
 
-  P := Pointer(@FInfo.LeadByte);
-  Limit := P + SizeOf(FInfo.LeadByte);
+  P := Pointer(@Info.LeadByte);
+  Limit := P + SizeOf(Info.LeadByte);
   while P < Limit do
     if (P[0] <> #0) and (P[1] <> #0) then
     begin
