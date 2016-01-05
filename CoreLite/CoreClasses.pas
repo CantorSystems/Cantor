@@ -66,6 +66,20 @@ type
     procedure CheckRange(Index, ItemCount: Integer);
   end;
 
+  TItem = record
+    Instance: Pointer;
+    case Byte of
+      0: (Index: Integer);
+      1: (Prior: Pointer);
+  end;
+
+  TIteration = record
+    Item: TItem;
+    Last: function(var Item: TItem): Boolean of object;
+  end;
+
+  TIterator = function(var Iteration: TIteration): Boolean of object;
+
   TCollectionInfo = record
   { hold } ClassName: PLegacyChar;
     ItemSize: Integer;
@@ -111,7 +125,11 @@ type
     procedure DeleteExisting(Index: Integer; ItemCount: Integer = 1);
     procedure Detach; virtual;
     procedure ExternalBuffer(Source: Pointer; ItemCount: Integer);
+    function FirstBackward(var Iteration: TIteration): Boolean;
+    function FirstForward(var Iteration: TIteration): Boolean;
     procedure Insert(Index: Integer; Collection: PCollection; Capture: Boolean = False); overload;
+    function LastBackward(var Item: TItem): Boolean;
+    function LastForward(var Item: TItem): Boolean;
     procedure Skip(ItemCount: Integer = 1);
     function TranslateCapacity(NewCount: Integer): Integer;
     function TranslateDelta: Integer;
@@ -133,12 +151,8 @@ type
     procedure Insert(Index: Integer; Item: Pointer);
   end;
 
-  PCollections = ^TCollection;
-  TCollections = object(TCollection)
-  public
-    function AverageCount: Integer;
-    function TotalCount: Integer;
-  end;
+  PCollections = PCollection;
+  TCollections = TCollection;
 
   TListInfo = record
   { hold } ClassName: PLegacyChar;
@@ -162,12 +176,19 @@ type
     class procedure Delete(Item: Pointer); overload;
     class function Delete(FirstItem, LastItem: Pointer): Integer; overload;
     class procedure Extract(Item: Pointer);
+    function FirstBackward(var Iteration: TIteration): Boolean;
+    function FirstForward(var Iteration: TIteration): Boolean;
+    function LastBackward(var Item: TItem): Boolean;
+    function LastForward(var Item: TItem): Boolean;
     //procedure Prepend(Item: Pointer; Before: Pointer = nil);
     function Skip(LastItem: Pointer): Integer;
     function Truncate(FirstItem: Pointer): Integer;
 
     property ItemMode: TItemMode read FItemMode;
   end;
+
+  PCollectionList = PList;
+  TCollectionList = TList;
 
   TCRC32Table = array[0..$FF] of LongWord;
 
@@ -236,7 +257,7 @@ type
     FCollection: PCollection;
     FItemCount: Integer;
   public
-    constructor Create(Collection: PCollection; ItemCount: Integer); 
+    constructor Create(Collection: PCollection; ItemCount: Integer);
     property Collection: PCollection read FCollection;
     property ItemCount: Integer read FItemCount;
   end;
@@ -244,6 +265,11 @@ type
 { Helper functions }
 
 procedure FreeAndNil(var Instance: PCoreObject);
+
+function AverageCount(const Iterator: TIterator): Integer;
+function TotalCount(const Iterator: TIterator): Integer;
+
+procedure DetachItems(const Iterator: TIterator);
 
 implementation
 
@@ -289,6 +315,38 @@ asm
         XCHG [EAX], EDX  // XCHG enforces LOCK
         MOV EAX, EDX
         JMP TCoreObject.Free
+end;
+
+function AverageCount(const Iterator: TIterator): Integer;
+begin
+  with PCollection(TMethod(Iterator).Data)^ do
+    if Count <> 0 then
+      Result := Round(TotalCount(Iterator) / Count)
+    else
+      Result := 0;
+end;
+
+function TotalCount(const Iterator: TIterator): Integer;
+var
+  Iteration: TIteration;
+begin
+  Result := 0;
+  if Iterator(Iteration) then
+    with Iteration do
+      repeat
+        Inc(Result, PCollection(Item.Instance).Count);
+      until Last(Item);
+end;
+
+procedure DetachItems(const Iterator: TIterator);
+var
+  Iteration: TIteration;
+begin
+  if Iterator(Iteration) then
+    with Iteration do
+      repeat
+        PCollection(Item.Instance).Detach;
+      until Last(Item);
 end;
 
 { ECast }
@@ -785,6 +843,28 @@ begin
   FBufferKind := bkExternal;
 end;
 
+function TCollection.FirstBackward(var Iteration: TIteration): Boolean;
+begin
+  with Iteration, Item do
+  begin
+    Last := LastBackward;
+    Index := FCount - 1;
+    Instance := PCollectionCast(@Self).Items + Index * CollectionInfo.ItemSize;
+    Result := Index >= 0;
+  end;
+end;
+
+function TCollection.FirstForward(var Iteration: TIteration): Boolean;
+begin
+  with Iteration, Item do
+  begin
+    Last := LastForward;
+    Index := 0;
+    Instance := PCollectionCast(@Self).Items + Index * CollectionInfo.ItemSize;
+    Result := Index >= 0;
+  end;
+end;
+
 procedure TCollection.FreeItems(Index, ItemCount: Integer);
 var
   I, ItemSize: Integer;
@@ -824,6 +904,26 @@ begin
   end;
 end;
 
+function TCollection.LastBackward(var Item: TItem): Boolean;
+begin
+  with Item do
+  begin
+    Dec(Index);
+    Instance := PCollectionCast(@Self).Items + Index * CollectionInfo.ItemSize;
+    Result := Index < 0;
+  end;
+end;
+
+function TCollection.LastForward(var Item: TItem): Boolean;
+begin
+  with Item do
+  begin
+    Inc(Index);
+    Instance := PCollectionCast(@Self).Items + Index * CollectionInfo.ItemSize;
+    Result := Index >= FCount;
+  end;
+end;
+
 procedure TCollection.SetCapacity(Value: Integer);
 var
   ItemSize: Integer;
@@ -835,7 +935,7 @@ begin
   if (Value < FCount) and (FItemMode <> imInline) and (FBufferKind <> bkAttached) then
     FreeItems(Value, FCount - Value);
 
-  ItemSize := CollectionInfo.ItemSize;  
+  ItemSize := CollectionInfo.ItemSize;
   if FBufferKind <> bkAllocated then
   begin
     if Value <> 0 then
@@ -962,45 +1062,6 @@ begin
   PPointersCast(@Self).Items[Index] := Item;
 end;
 
-{ TCollections }
-
-function TCollections.AverageCount: Integer;
-var
-  I, ItemSize: Integer;
-  Item: PCollection;
-begin
-  Result := 0;
-  if FCount <> 0 then
-  begin
-    ItemSize := CollectionInfo.ItemSize;
-    Item := PCollectionsCast(@Self).Items;
-    for I := 0 to FCount - 1 do
-    begin
-      Inc(Result, Item.Count);
-      Inc(PAddress(Item), ItemSize);
-    end;
-    Result := Result div FCount;
-  end;
-end;
-
-function TCollections.TotalCount: Integer;
-var
-  I, ItemSize: Integer;
-  Item: PCollection;
-begin
-  Result := 0;
-  if FCount <> 0 then
-  begin
-    ItemSize := CollectionInfo.ItemSize;
-    Item := PCollectionsCast(@Self).Items;
-    for I := 0 to FCount - 1 do
-    begin
-      Inc(Result, Item.Count);
-      Inc(PAddress(Item), ItemSize);
-    end;
-  end;
-end;
-
 { TList }
 
 constructor TList.Create(ListItemMode: TItemMode);
@@ -1099,6 +1160,44 @@ begin
     Owner := nil;
     Prev := nil;
     Next := nil;
+  end;
+end;
+
+function TList.FirstBackward(var Iteration: TIteration): Boolean;
+begin
+  with Iteration, Item do
+  begin
+    Last := LastBackward;
+    Instance := PListCast(@Self).Last;
+    Result := Instance <> nil;
+  end;
+end;
+
+function TList.FirstForward(var Iteration: TIteration): Boolean;
+begin
+  with Iteration, Item do
+  begin
+    Last := LastForward;
+    Instance := PListCast(@Self).First;
+    Result := Instance <> nil;
+  end;
+end;
+
+function TList.LastBackward(var Item: TItem): Boolean;
+begin
+  with Item do
+  begin
+    Instance := PListItem(PAddress(Instance) + ListInfo.ItemOffset).Prev;
+    Result := Instance = nil;
+  end;
+end;
+
+function TList.LastForward(var Item: TItem): Boolean;
+begin
+  with Item do
+  begin
+    Instance := PListItem(PAddress(Instance) + ListInfo.ItemOffset).Next;
+    Result := Instance = nil;
   end;
 end;
 
