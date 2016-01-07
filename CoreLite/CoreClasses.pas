@@ -319,11 +319,9 @@ end;
 
 function AverageCount(const Iterator: TIterator): Integer;
 begin
-  with PCollection(TMethod(Iterator).Data)^ do
-    if Count <> 0 then
-      Result := Round(TotalCount(Iterator) / Count)
-    else
-      Result := 0;
+  Result := PCollection(TMethod(Iterator).Data).Count;
+  if Result <> 0 then
+    Result := Round(TotalCount(Iterator) / Result);
 end;
 
 function TotalCount(const Iterator: TIterator): Integer;
