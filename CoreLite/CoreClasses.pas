@@ -3,7 +3,7 @@
 
     Platform-independent general purpose classes
 
-    Copyright (c) 2015 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2015-2016 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
       * Lite -- TCoreObject.InitInstance with built-in SizeOf(Pointer)
