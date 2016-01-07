@@ -53,7 +53,7 @@ type
 implementation
 
 uses
-  Windows, CoreConsts, TestConsts, Classes;
+  Windows, CoreClasses, CoreConsts, TestConsts, Classes;
 
 { ECommandParam }
 
@@ -239,7 +239,7 @@ end;
 var
   CP: TCodePage;
   S: TLegacyString;
-  Text: TLegacyStrings;
+  Text: TLegacyText;
 
 procedure CoreLiteTest(AverageStringLength: Integer);
 var
@@ -254,9 +254,9 @@ begin
       Capacity := S.Count div AverageStringLength;
       Delta := AverageStringsDelta;
     end;
-    Text.AppendText(@S, True);
+    LoadText(Text.Append, @S, [toClear, toAttach]);
     Stats(FCounter.MillisecondsFrom(StartTime), S.Count, AverageStringLength,
-      Text.Capacity, Text.Count, Text.AverageCount, SizeOf(TLegacyString));
+      Text.Capacity, Text.Count, AverageCount(Text.FirstForward), SizeOf(TLegacyString));
   except
     on E: TObject do
     begin
@@ -330,7 +330,7 @@ begin
         begin
           Console.WriteLn;
           Console.WriteLn(sFileNameFmt, 0, [PLegacyChar(sSavingInto), FIntoFileName.Data]);
-          SaveFile(Text.Save, FIntoFileName.RawData, Text.EstimateText.EstimatedLength);
+          //SaveFile(Text.Save, FIntoFileName.RawData, Text.EstimateText.EstimatedLength);
         end;
       finally
         Text.Destroy;
