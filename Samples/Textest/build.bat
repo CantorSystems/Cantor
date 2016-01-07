@@ -13,6 +13,6 @@ dcc32 %~dp0Textest.dpr -d"CoreLiteVCL;Tricks;ForceMMX;Lite;%1" -e.. %Options% -u
 if errorlevel 1 goto exit
 
 call StripRes %~dp0%Exe%
-pet -strip -trunc %Exe% -into %Exe% -osver 5 -stub
+pet -nologo -strip -trunc %Exe% -into %Exe% -osver 5 -dropsect .rsrc -stub
 
 :exit
