@@ -122,7 +122,7 @@ type
       CopyProps: Boolean = True); overload;
     procedure Clear; virtual;
     procedure Delete(Index: Integer; ItemCount: Integer = 1);
-    procedure DeleteExisting(Index: Integer; ItemCount: Integer = 1);
+    function DeleteExisting(Index: Integer; ItemCount: Integer = 1): Integer;
     procedure Detach; virtual;
     procedure ExternalBuffer(Source: Pointer; ItemCount: Integer);
     function FirstBackward(var Iteration: TIteration): Boolean;
@@ -777,17 +777,17 @@ begin
   end;
 end;
 
-procedure TCollection.DeleteExisting(Index, ItemCount: Integer);
-var
-  ExistingCount: Integer;
+function TCollection.DeleteExisting(Index, ItemCount: Integer): Integer;
 begin
   if Index >= 0 then
   begin
-    ExistingCount := Count - Index;
-    if ItemCount > ExistingCount then
-      ItemCount := ExistingCount;
-    Cut(Index, ItemCount);
-  end;
+    Result := Count - Index;
+    if ItemCount < Result then
+      Result := ItemCount;
+    Cut(Index, Result);
+  end
+  else
+    Result := 0;
 end;
 
 procedure TCollection.Detach;

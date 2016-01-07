@@ -119,8 +119,9 @@ const
 
   sInvalidString = '%s string contains %s';
   sInvalidChar = 'invalid character (U+%04X)';
-  sNonUnicode = 'character outside of Unicode range (U+%04X)';
-  sNonBMP = 'character outside of Basic Multilingual Plane (U+%04X),%hcbut surrogate pairs are not allowed here';
+  sNonLatin1 = 'a character outside of Latin-1 range (U+%04X)';
+  sNonUnicode = 'a character outside of Unicode range (U+%04X)';
+  sNonBMP = 'a character outside of Basic Multilingual Plane (U+%04X),%hcbut surrogate pairs are not allowed here';
 
   sBadUTF8 = 'Bad UTF-8 sequence starting with byte $%02X';
   sBrokenUTF8 = 'Broken %u-byte UTF-8 sequence or unexpected end of string';

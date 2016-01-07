@@ -1,7 +1,7 @@
 (*
     PE Tool's strings and messages
 
-    Copyright (c) 2012-2015 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2012-2016 Vladislav Javadov (aka Freeman)
 *)
 
 unit PetConsts;
@@ -61,7 +61,7 @@ const
                                #9#9#9#9'greater given number of bytes, percent or'#10 +
                                #9#9#9#9'volume cluster size'#10 +}
             #9'-deep' +          #9#9#9'Strip orphaned sections (unsafe!)'#10 +
-            //#9'-dropsect <s1,s2,...>'#9'Drop sections <s1>, <s2>, etc.'#10 +
+            #9'-dropsect <s1,s2,...>'#9'Drop sections <s1>, <s2>, etc.'#10 +
             #9'-osver <#[.#]>'+    #9#9'Set required OS version to <#> or <#.#>'#10 +
             #9'-stub [stub]|[.]' +   #9'Replace stub with one from [stub] file or take'#10 +
                                #9#9#9#9'stub from PE Tool itself'#10 +
@@ -119,7 +119,8 @@ const
   sBackuping        = 'Backuping';
   sTotal            = 'Total';
 
-  PromptMaxWidth = Length(sDroppingSection);
+  DefaultMaxWidth = sDroppingSection;
+  TotalsMaxWidth = sStripping;
   PercentageWidth = 6;
 
   sDefaultActionFmt = '%%%dhs  %%hs%%%ds';   // '{*s}  {*s?{s1}}'

@@ -576,8 +576,7 @@ type
     FErrorCode: LongWord;
     FCodePage: PCodePage;
   public
-    constructor Create(Source: PString; CodePage: PCodePage;
-      Mode: TConvertMode);
+    constructor Create(Source: PString; CodePage: PCodePage; Mode: TConvertMode);
     property ErrorCode: LongWord read FErrorCode;
     property CodePage: PCodePage read FCodePage;
   end;
@@ -649,13 +648,13 @@ function LoadText(const NewLine: TNewLegacyLineFunc; Source: PWideString; CP: PC
 function LoadText(const NewLine: TNewLegacyLineFunc; Source: PWideString; Delimiter: WideChar;
   CP: PCodePage = nil; EncodeOptions: TEncodeRawBytes = []; ClearDest: Boolean = True): Integer; overload;
 
-function LoadText(const NewLine: TNewWideLineFunc; Source: PLegacyString;
+function LoadWideText(const NewLine: TNewWideLineFunc; Source: PLegacyString;
   EncodeOptions: TEncodeUTF16 = []; ClearDest: Boolean = True): Integer; overload;
-function LoadText(const NewLine: TNewWideLineFunc; Source: PLegacyString; Delimiter: LegacyChar;
+function LoadWideText(const NewLine: TNewWideLineFunc; Source: PLegacyString; Delimiter: LegacyChar;
   EncodeOptions: TEncodeUTF16 = []; ClearDest: Boolean = True): Integer; overload;
-function LoadText(const NewLine: TNewWideLineFunc; Source: PWideString;
+function LoadWideText(const NewLine: TNewWideLineFunc; Source: PWideString;
   DestOptions: TTextOptions = [toClear]): Integer; overload;
-function LoadText(const NewLine: TNewWideLineFunc; Source: PWideString;
+function LoadWideText(const NewLine: TNewWideLineFunc; Source: PWideString;
   Delimiter: WideChar; DestOptions: TTextOptions = [toClear]): Integer; overload;
 
 type  
@@ -781,7 +780,7 @@ begin
   end;
 end;
 
-function LoadText(const NewLine: TNewWideLineFunc; Source: PLegacyString;
+function LoadWideText(const NewLine: TNewWideLineFunc; Source: PLegacyString;
   EncodeOptions: TEncodeUTF16; ClearDest: Boolean): Integer;
 var
   Index: Integer;
@@ -803,7 +802,7 @@ begin
   end;
 end;
 
-function LoadText(const NewLine: TNewWideLineFunc; Source: PLegacyString;
+function LoadWideText(const NewLine: TNewWideLineFunc; Source: PLegacyString;
   Delimiter: LegacyChar; EncodeOptions: TEncodeUTF16; ClearDest: Boolean): Integer;
 var
   Index: Integer;
@@ -825,7 +824,7 @@ begin
   end;
 end;
 
-function LoadText(const NewLine: TNewWideLineFunc; Source: PWideString;
+function LoadWideText(const NewLine: TNewWideLineFunc; Source: PWideString;
   DestOptions: TTextOptions): Integer;
 var
   Index: Integer;
@@ -849,7 +848,7 @@ begin
   end;
 end;
 
-function LoadText(const NewLine: TNewWideLineFunc; Source: PWideString;
+function LoadWideText(const NewLine: TNewWideLineFunc; Source: PWideString;
   Delimiter: WideChar; DestOptions: TTextOptions): Integer;
 var
   Index: Integer;
@@ -971,7 +970,10 @@ begin
         Low(TUnicodeSMP)..High(TUnicodeSPUA):
           Msg := sNonBMP;
       else
-        Msg := sNonUnicode;
+        if coLatin1 in EncodeOptions then
+          Msg := sNonLatin1
+        else
+          Msg := sNonUnicode;
       end;
       FormatBuf(Msg, [Info.InvalidChar, WhitespaceOrLineBreak[IsConsole]], Buf);
       inherited Create(sInvalidString, [CharSet, @Buf]);
@@ -1932,14 +1934,13 @@ begin
   Result := Source.RawNextIndex(Delimiter, StartIndex);
   if Result >= 0 then
   begin
-    Dec(Result, StartIndex);
-    AsRange(Source, StartIndex, Result);
+    AsRange(Source, StartIndex, Result - StartIndex);
     Inc(Result);
   end
   else
   begin
     AsRange(Source, StartIndex);
-    Result := Source.Count - StartIndex;
+    Result := Source.Count;
   end;
 end;
 
@@ -2803,14 +2804,13 @@ begin
   Result := Source.RawNextIndex(Delimiter, StartIndex);
   if Result >= 0 then
   begin
-    Dec(Result, StartIndex);
-    AsRange(Source, StartIndex, Result);
+    AsRange(Source, StartIndex, Result - StartIndex);
     Inc(Result);
   end
   else
   begin
     AsRange(Source, StartIndex);
-    Result := Source.Count - StartIndex;
+    Result := Source.Count;
   end;
 end;
 

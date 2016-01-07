@@ -28,6 +28,7 @@ type
     function IsDotOrNull: Boolean;
     function IsNull: Boolean;
     function IsPath: Boolean;
+    procedure MakePath;
     function Width(MaxWidth: Integer): Integer;
 
     property NameIndex: Integer read FNameIndex;
@@ -180,6 +181,17 @@ begin
     {$IFDEF MSWINDOWS} '/', {$ENDIF} PathDelimiter:
       Inc(Result);
     end;
+end;
+
+procedure TFileName.MakePath;
+begin
+  if IsPath then
+    Detach
+  else
+  begin
+    Append(PathDelimiter, 1);
+    FNameIndex := Count;
+  end;
 end;
 
 function TFileName.Width(MaxWidth: Integer): Integer;

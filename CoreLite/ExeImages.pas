@@ -90,11 +90,12 @@ type
     constructor Create;
     destructor Destroy; virtual;
     procedure Build(FileAlignment: LongWord = 512);
+    function Delete(Name: PLegacyChar; Length: Integer): Integer; overload;
     function FileAlignBytes(Source: LongWord): LongWord;
     function HeadersSize: LongWord;
-    function IndexOfSection(HeaderSection: TExeHeaderSection): Integer; overload;
-    function IndexOfSection(DirectoryIndex: Byte): Integer; overload;
-    function IndexOfSection(Name: PLegacyChar; Length: Integer): Integer; overload;
+    function IndexOf(HeaderSection: TExeHeaderSection): Integer; overload;
+    function IndexOf(DirectoryIndex: Byte): Integer; overload;
+    function IndexOf(Name: PLegacyChar; Length: Integer): Integer; overload;
     procedure LargeAddressAware(Value: Boolean = True);
     procedure Load(Source: PReadableStream);
     procedure OSVersion(MajorVersion: Word; MinorVersion: Word = 0);
@@ -590,6 +591,21 @@ begin
   end;
 end;
 
+function TExeImage.Delete(Name: PLegacyChar; Length: Integer): Integer;
+var
+  Index: Integer;
+begin
+  Index := IndexOf(Name, Length);
+  if Index >= 0 then
+  begin
+    with FSections[Index] do
+      Result := Size + SizeOf(FHeader);
+    Cut(Index);
+  end
+  else
+    Result := 0;
+end;
+
 function TExeImage.FileAlignBytes(Source: LongWord): LongWord;
 begin
   Result := FHeaders.OptionalHeader.FileAlignment;
@@ -619,7 +635,7 @@ begin
   Result := -1;
 end;
 
-function TExeImage.IndexOfSection(HeaderSection: TExeHeaderSection): Integer;
+function TExeImage.IndexOf(HeaderSection: TExeHeaderSection): Integer;
 begin
   with FHeaders.OptionalHeader do
     if HeaderSection = hsCode then
@@ -628,16 +644,16 @@ begin
       Result := IndexOfAddress(DataBase);
 end;
 
-function TExeImage.IndexOfSection(DirectoryIndex: Byte): Integer;
+function TExeImage.IndexOf(DirectoryIndex: Byte): Integer;
 begin
   Result := IndexOfAddress(FHeaders.OptionalHeader.DataDirectory[DirectoryIndex].VirtualAddress);
 end;
 
-function TExeImage.IndexOfSection(Name: PLegacyChar; Length: Integer): Integer;
+function TExeImage.IndexOf(Name: PLegacyChar; Length: Integer): Integer;
 begin
   for Result := 0 to Count - 1 do
     with FSections[Result] do
-      if StrComp(Name, Length, FHeader.Name, StrLen(FHeader.Name, IMAGE_SIZEOF_SHORT_NAME)) = CSTR_EQUAL then
+      if StrComp(Name, Length, FHeader.Name, StrLen(FHeader.Name, IMAGE_SIZEOF_SHORT_NAME)) = 0 then
         Exit;
   Result := -1;
 end;
@@ -769,15 +785,15 @@ begin
     FStub.Strip;
 
   if soDebug in Options then
-    DeleteExisting(IndexOfSection(IMAGE_DIRECTORY_ENTRY_DEBUG));
+    DeleteExisting(IndexOf(IMAGE_DIRECTORY_ENTRY_DEBUG));
 
   if (FHeaders.FileHeader.Characteristics and IMAGE_FILE_DLL = 0) and
     (FHeaders.OptionalHeader.Subsystem in [IMAGE_SUBSYSTEM_WINDOWS_GUI, IMAGE_SUBSYSTEM_WINDOWS_CUI]) then
   begin
     if (soRelocations in Options) and (FHeaders.OptionalHeader.DirectoryEntryCount >= IMAGE_DIRECTORY_ENTRY_BASERELOC) then
-      DeleteExisting(IndexOfSection(IMAGE_DIRECTORY_ENTRY_BASERELOC));
+      DeleteExisting(IndexOf(IMAGE_DIRECTORY_ENTRY_BASERELOC));
     if soExports in Options then
-      DeleteExisting(IndexOfSection(IMAGE_DIRECTORY_ENTRY_EXPORT));
+      DeleteExisting(IndexOf(IMAGE_DIRECTORY_ENTRY_EXPORT));
   end;
 
   if Options * [soSectionData..soOrphanedSections] <> [] then
@@ -837,7 +853,7 @@ procedure LoadEntry(Entry: TExeHeaderSection; var Data: Pointer; var Size: LongW
 var
   Idx: Integer;
 begin
-  Idx := Image.IndexOfSection(Entry);
+  Idx := Image.IndexOf(Entry);
   if Idx >= 0 then
   begin
     Size := Image.Sections[Idx].Size;
@@ -849,7 +865,7 @@ procedure LoadEntry(Entry: Byte; var Data: Pointer; var Size: LongWord); overloa
 var
   Idx: Integer;
 begin
-  Idx := Image.IndexOfSection(Entry);
+  Idx := Image.IndexOf(Entry);
   if Idx >= 0 then
   begin
     Size := Image.Sections[Idx].Size;
