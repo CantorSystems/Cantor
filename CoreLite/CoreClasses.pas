@@ -23,7 +23,6 @@ type
   PCoreObject = ^TCoreObject;
   TCoreObject = object
   protected
-    procedure Cast(DestName: PLegacyChar; DestInfo: Pointer);
     procedure InitInstance;
   public
     constructor Create;
@@ -31,7 +30,6 @@ type
     procedure Finalize;
     procedure Free;
     function InstanceSize: Integer;
-    function IsType(Info: Pointer): Boolean; // null <> null :-)
     function TypeInfo: Pointer;
   end;
 
@@ -44,8 +42,6 @@ type
 
   PContainer = ^TContainer;
   TContainer = object(TClearable)
-  protected
-    procedure Cast(Source: PContainer);
   public
     class function ClassName: PLegacyChar;
   end;
@@ -203,18 +199,6 @@ type
 
 { Exceptions }
 
-  ECast = class(Exception)
-  private
-    FInstance: PCoreObject;
-    FDestInfo: Pointer;
-    FDestName: PLegacyChar;
-  public
-    constructor Create(Instance: PCoreObject; DestName: PLegacyChar; DestInfo: Pointer);
-    property Instance: PCoreObject read FInstance;
-    property DestInfo: Pointer read FDestInfo;
-    property DestName: PLegacyChar read FDestName;
-  end;
-
   EContainer = class(Exception);
 
   EIndexed = EContainer; // future class of (EContainer)
@@ -347,38 +331,6 @@ begin
       until Last(Item);
 end;
 
-{ ECast }
-
-constructor ECast.Create(Instance: PCoreObject; DestName: PLegacyChar; DestInfo: Pointer);
-var
-  Msg: PLegacyChar;
-begin
-  if Instance <> nil then
-    if TypeOf(Instance^) <> nil then
-      if Instance.IsType(TypeOf(TContainer)) then
-      begin
-        if DestInfo <> nil then
-          Msg := sCastMistmatch2
-        else
-          Msg := sCastToNull2;
-        inherited Create(Msg, [PContainer(Instance).ClassName, DestName]);
-        Msg := nil;
-      end
-      else
-        if DestInfo <> nil then
-          Msg := sCastMistmatch
-        else
-          Msg := sCastToNull
-    else
-      Msg := sCastUntyped
-  else
-    Msg := sCastNull;
-  inherited Create(Msg, [DestName]);
-  FInstance := Instance;
-  FDestInfo := DestInfo;
-  FDestName := DestName;
-end;
-
 { EIndex }
 
 constructor EIndex.Create(Container: PIndexed; Index: Integer);
@@ -431,14 +383,6 @@ begin
   InitInstance;
 end;
 
-procedure TCoreObject.Cast(DestName: PLegacyChar; DestInfo: Pointer);
-begin
-  if (DestInfo <> nil) and (InstanceSize = PInteger(PAddress(DestInfo) + InstanceSizeIndex)^) then
-    PPointer(@Self)^ := DestInfo
-  else
-    raise ECast.Create(@Self, DestName, DestInfo);
-end;
-
 procedure TCoreObject.Finalize;
 begin
   if TypeOf(Self) <> nil then
@@ -474,26 +418,6 @@ begin
     Result := 0;
 end;
 
-function TCoreObject.IsType(Info: Pointer): Boolean;
-var
-  This: Pointer;
-begin
-  if Info <> nil then
-  begin
-    This := TypeInfo;
-    while This <> nil do
-    begin
-      if This = Info then
-      begin
-        Result := True;
-        Exit;
-      end;
-      This := PPointer(This)^;
-    end;
-  end;
-  Result := False;
-end;
-
 function TCoreObject.TypeInfo: Pointer;
 begin
   if @Self <> nil then
@@ -510,11 +434,6 @@ begin
 end;
 
 { TContainer }
-
-procedure TContainer.Cast(Source: PContainer);
-begin
-  inherited Cast(ClassName, Source.TypeInfo);
-end;
 
 class function TContainer.ClassName: PLegacyChar;
 begin

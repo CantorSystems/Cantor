@@ -920,7 +920,9 @@ begin
     end;
     CharSet := nil;
   end
-  else if PWideString(Source).FDataSource.IsType(TypeOf(TLegacyString)) then
+  else if (PWideString(Source).FDataSource <> nil) and
+    (PWideString(Source).FDataSource.CollectionInfo.ItemSize = SizeOf(LegacyChar))
+  then
     if PWideString(Source).FDataSource.CodePage <> nil then
     begin
       with PWideString(Source).FDataSource.CodePage^ do
