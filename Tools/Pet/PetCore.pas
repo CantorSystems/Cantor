@@ -459,7 +459,8 @@ end;
 function TApplication.PrepareFileName(Kind: TFileKind; FileName: PFileName): PFileName;
 begin
   Result := @FFileNames[Kind];
-  if Result.IsPath or (FileAttributes(Result.RawData) and FILE_ATTRIBUTE_DIRECTORY <> 0) then
+  if Result.IsPath or
+    not Result.IsDot and (FileAttributes(Result.RawData) and FILE_ATTRIBUTE_DIRECTORY <> 0) then
   begin
     with FileName^ do
     begin
