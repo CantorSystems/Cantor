@@ -206,6 +206,7 @@ type
   EIndex = class(EIndexed)
   private
     FIndex: Integer;
+  { placeholder } // FContainer: PIndexed;
   public
     constructor Create(Container: PIndexed; Index: Integer);
     property Index: Integer read FIndex;
@@ -214,6 +215,7 @@ type
   ERange = class(EIndexed)
   private
     FLowBound, FHighBound: Integer;
+  { placeholder } // FContainer: PIndexed;
   public
     constructor Create(Container: PIndexed; Index, ItemCount: Integer);
     property LowBound: Integer read FLowBound;
@@ -222,14 +224,14 @@ type
 
   ECollectionIndex = class(EIndex)
   private
-    FCollection: PCollection;
+  { hold } FCollection: PCollection;
   public
     property Collection: PCollection read FCollection;
   end;
 
   ECollectionRange = class(ERange)
   private
-    FCollection: PCollection;
+  { hold } FCollection: PCollection;
   public
     property Collection: PCollection read FCollection;
   end;
