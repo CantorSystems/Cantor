@@ -594,6 +594,7 @@ begin
           end;
           if not (roUnsafe in FOptions) then
           begin
+            Console.EndOfLine;
             Console.WriteLn(PLegacyChar(sChainedDataFound), StrLen(sChainedDataFound));
             Inc(TotalSaved, Loaded.FileSize);
             FileName := FileName.Next;
