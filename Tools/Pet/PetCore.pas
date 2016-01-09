@@ -359,6 +359,7 @@ var
   K: TFileKind;
   R: TRunOption;
   SourceFileName: PFileNameListItem;
+  CP: TCodePage;
 begin
   CmdLine.Create;
   CmdLine.AsWideString(Source, WideStrLen(Source), soAttach);
@@ -446,7 +447,8 @@ begin
               raise ECommandLine.Create(sSectionNames);
             if TypeOf(FDropSections) = nil then
               FDropSections.Create;
-            LoadText(FDropSections.Append, @Param, CoreChar(','), nil, [coLatin1]); 
+            CP.Create;
+            LoadText(FDropSections.Append, @Param, CoreChar(','), @CP); 
             Param.Clear;
           end
         end;
