@@ -114,7 +114,7 @@ type
     FLeadBytes: TLeadBytes;
     FName: TCodePageName;
   public
-    constructor Create(CodePage: Word = CP_ACP; DefaultReplacementChar: LegacyChar = LegacyReplacementChar);
+    constructor Create(CodePage: Word = CP_THREAD_ACP; DefaultReplacementChar: LegacyChar = LegacyReplacementChar);
     function DecodeUTF16(Source: PWideString; Dest: PLegacyString; DestIndex: Integer;
       EncodeOptions: TEncodeCodePage): Integer;
     function EncodeUTF16(Source: PLegacyString; Dest: PWideString; DestIndex: Integer;
@@ -1022,7 +1022,7 @@ begin
 
   with ExtractCodePageName(Info) do
   begin
-    Move(Value^, FName, Length);
+    Move(Value^, FName, Length * SizeOf(CoreChar));
     FName[Length] := #0;
   end;
 
@@ -1730,7 +1730,7 @@ begin
 
     with AssignWideString(0, Source, EncodeOptions) do
     begin
-      if (DestCount <= 0) and (FCodePage <> nil) then
+      if (DestCount <= 0) and (FCodePage <> nil) and not (coReplaceInvalid in EncodeOptions) then
         raise ECodePage.Create(Source, FCodePage, cmDecodeUTF16);
       if ErrorInfo.RawData <> 0 then
         raise EUnicode.Create(Source, EncodeOptions, ErrorInfo);
