@@ -28,7 +28,7 @@ type
     function HeaderSize: LongWord;
     procedure Load(Source: PExeStub); overload;
     procedure Load(Source: PReadableStream); overload;
-    procedure Save(Dest: PWritableStream); overload;
+    procedure Save(Dest: PWritableStream);
     function Size: LongWord;
     procedure Strip(Heuristics: Boolean = True);
 
@@ -226,6 +226,8 @@ var
 begin
   FHeader := Source.FHeader;
   L := DataSize;
+  if L >= SizeOf(FHeader.Ext) then
+    Dec(L, SizeOf(FHeader.Ext));
   ReallocMem(FData, L);
   Move(Source.FData^, FData^, L);
 end;
