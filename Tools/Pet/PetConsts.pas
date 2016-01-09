@@ -119,12 +119,13 @@ const
   sBackuping        = 'Backuping';
   sTotal            = 'Total';
 
-  DefaultMaxWidth = sDroppingSection;
-  TotalsMaxWidth = sStripping;
+  DefaultMaxWidth = sChainedData;
+  TotalsMaxWidth  = sStripping;
+  
   PercentageWidth = 6;
 
   sDefaultActionFmt = '%%%dhs  %%hs%%%ds';   // '{*s}  {*s?{s1}}'
-  sDefaultStatsFmt = '  %%%di bytes  %%7hs'; // '  {*u?{u'#160'bytes}}  {6p}'
+  sDefaultStatsFmt = '  %%%di bytes  %%6hs'; // '  {*u?{u'#160'bytes}}  {6p}'
 
   sChainedDataFound = 'Chained data found, safe stripping stopped';
   sTotals = #10'%u files %d bytes (%hs)';

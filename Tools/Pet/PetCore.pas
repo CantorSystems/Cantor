@@ -89,6 +89,7 @@ type
     FMaxSize: QuadWord;
     procedure AddFile(const Data: TWin32FindDataW; var Found: Boolean);
     function MaxFileNameWidth(MaxWidth: Integer): Integer;
+    function MaxPromptWidth: Integer;
     procedure ParseCommandLine(Source: PCoreChar);
     function PrepareFileName(Kind: TFileKind; FileName: PFileName): PFileName;
     procedure SaveImage(Dest: PWritableStream);
@@ -320,6 +321,29 @@ begin
   end;
 end;
 
+function TApplication.MaxPromptWidth: Integer;
+const
+  Prompts: array[fkInto..High(TFileKind)] of PLegacyChar =
+    (sSaving, sReplacingStub, sExtractingStub, sBackuping);
+var
+  K: TFileKind;
+  Width: Integer;
+begin
+  if FLogStyle <> lsTotals then
+  begin
+    Result := StrLen(DefaultMaxWidth);
+    for K := Low(Prompts) to High(Prompts) do
+      if TypeOf(FFileNames[K]) <> nil then
+      begin
+        Width := StrLen(Prompts[K]);
+        if Width > Result then
+          Result := Width;
+      end;
+  end
+  else
+    Result := StrLen(TotalsMaxWidth);
+end;
+
 procedure TApplication.ParseCommandLine(Source: PCoreChar);
 const
   OptionKeys: array[TRunOption] of PCoreChar =
@@ -475,7 +499,6 @@ procedure TApplication.Run(CommandLine: PCoreChar);
 const
   Deep: array[Boolean] of TStripOptions = ([], [soOrphanedSections]);
   Touch: array[Boolean] of TSaveOptions = ([], [soTouch]);
-  MaxWidth: array[Boolean] of PLegacyChar = (DefaultMaxWidth, TotalsMaxWidth); 
 var
   Stub: TExeStub;
   TmpFileName: TFileName;
@@ -534,7 +557,7 @@ begin
   FImage.Create;
 
   TmpFileName.Create;
-  Output.Create(@Console, StrLen(MaxWidth[FLogStyle = lsTotals]), FMaxWidth, Ceil(Log10(FMaxSize)) + 1);
+  Output.Create(@Console, MaxPromptWidth, FMaxWidth, Ceil(Log10(FMaxSize)));
   try
     TotalBytes := 0;
     TotalSaved := 0;
