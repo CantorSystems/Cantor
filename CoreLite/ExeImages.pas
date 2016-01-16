@@ -366,6 +366,7 @@ end;
 procedure TExeSection.Load(Source: PReadableStream);
 var
   Pos: QuadWord;
+  BytesRead: LongWord;
 begin
   Source.ReadBuffer(FHeader, SizeOf(FHeader));
   ReallocMem(FData, FHeader.RawDataSize);
@@ -374,7 +375,9 @@ begin
     Pos := Position;
     try
       Position := FHeader.RawDataOffset;
-      ReadBuffer(FData^, FHeader.RawDataSize);
+      BytesRead := Read(FData^, FHeader.RawDataSize);
+      if BytesRead < FHeader.RawDataSize then // Watcom linker workaround
+        FillChar(PLegacyChar(FData)[BytesRead], FHeader.RawDataSize - BytesRead, 0);
     finally
       Position := Pos;
     end;
