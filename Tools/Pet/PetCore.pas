@@ -564,8 +564,8 @@ begin
   DestFileName := PrepareFileName(fkInto, @FCurrentPath);
   FImage.Create;
 
-  TmpFileName.Create;
-  Output.Create(@Console, MaxPromptWidth, FMaxWidth, Ceil(Log10(FMaxSize)));
+  TmpFileName.Create;                                                      // ,-- sign
+  Output.Create(@Console, MaxPromptWidth, FMaxWidth, Ceil(Log10(FMaxSize)) +  1);
   try
     TotalBytes := 0;
     TotalSaved := 0;
