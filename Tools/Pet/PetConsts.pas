@@ -34,7 +34,7 @@ const         // short Unicode strings
 
   sLogo =
           #9'  /\_/\'#10 +
-    '     ____/ o o \    %s %hs #ПокажиКота'#10 +
+    '     ____/ o o \    %s %hs'#10 +
     '   /~____ ==t==/'#10 +
     '  (_______)_m_m)    %s'#10 +
     #10 +
@@ -133,11 +133,6 @@ const
 
 implementation
 
-uses
-  CoreConsts;
-
-initialization
-  DefaultSystemCodePage := 1251; // #ПокажиКота
 
 end.
 
