@@ -27,6 +27,14 @@ uses
   PetCore in 'PetCore.pas',
   PetConsts in 'PetConsts.pas';
 
+{$IF UnicodeRTL and not defined(DEBUG)}
+  {$SetPEFlags
+    IMAGE_FILE_RELOCS_STRIPPED or
+    IMAGE_FILE_DEBUG_STRIPPED or
+    IMAGE_FILE_LINE_NUMS_STRIPPED or
+    IMAGE_FILE_LOCAL_SYMS_STRIPPED}
+{$IFEND}
+
 var
   Application: TApplication;
 begin

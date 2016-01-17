@@ -85,7 +85,7 @@ type
     FHandle: THandle;
     FDummy: Pointer; // dummy field to padding object to be larger than register size
   protected          // Delphi's bug workaround :(
-    property Dummy: Pointer read FDummy; // then publish it to prevent compiler's hint
+    property _Dummy: Pointer read FDummy; // then publish it to prevent compiler's hint
     function GetPosition: QuadWord; virtual;
     function GetSize: QuadWord; virtual;
     procedure SetPosition(Value: QuadWord); virtual;

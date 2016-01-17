@@ -284,10 +284,12 @@ const
 
   MB_ERR_INVALID_CHARS = 8;
   WC_NO_BEST_FIT_CHARS = $400;
+{$IFEND}
 
 type
   TCodePageName = array[0..MAX_PATH - 1] of CoreChar;
 
+{$IF not UnicodeRTL}
   TCPInfoEx = packed record
     MaxCharSize: LongWord;
     DefaultChar: array[0..MAX_DEFAULTCHAR - 1] of LegacyChar;
@@ -324,7 +326,7 @@ function SysErrorMessage(ErrorCode: LongWord): TCoreStringRec;
 
 { FreeMem finalization required }
 
-function DecodeUTF16(Source: PWideChar; SurrogatePairs: Boolean; CodePage: Word; 
+function DecodeUTF16(Source: PWideChar; SurrogatePairs: Boolean; CodePage: Word;
   ReplacementChar: LegacyChar = LegacyReplacementChar): TLegacyStringRec; overload;
 function DecodeUTF16(Source: PWideChar; Count: Integer; SurrogatePairs: Boolean;
   CodePage: Word; ReplacementChar: LegacyChar = LegacyReplacementChar): TLegacyStringRec; overload;
