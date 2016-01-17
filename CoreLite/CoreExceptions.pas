@@ -164,7 +164,7 @@ type
 {$IFDEF ForceMMX}
   EMMX = class(Exception)
   private
-    // possible getting module name is unsafe because of use of MMX-powered procedures
+    // getting module name is unsafe because of use of MMX-powered procedures
   public
     constructor Create;
   end;
