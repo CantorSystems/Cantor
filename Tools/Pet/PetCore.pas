@@ -749,7 +749,7 @@ begin
         Console.WriteLn;
     end;
 
-    if FFoundFiles.Count > 1 then
+    if (FFoundFiles.Count > 1) and (TotalBytes <> 0) then
       Output.TotalStats(FFoundFiles.Count, TotalBytes, TotalSaved);
   finally
     Output.Destroy;
