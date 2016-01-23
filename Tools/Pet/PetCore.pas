@@ -640,7 +640,7 @@ begin
             OldSize := Size;
             LoadFile(Load, FFileNames[fkStub].RawData);
             if FLogStyle <> lsTotals then
-              Output.TransferStats(OldSize, Size);
+              Output.StripStats(OldSize, Size);
           end;
 
         if FDropSections.Count <> 0 then
@@ -658,6 +658,7 @@ begin
             end;
             Section := Section.Next;
           end;
+          ImageSize := FImage.Size(False);
         end;
 
         if roStrip in FOptions then
