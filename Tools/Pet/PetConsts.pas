@@ -130,6 +130,7 @@ const
   sChainedDataFound = 'Chained data found, safe stripping stopped';
   sTotals = #10'%u files %d bytes (%hs)';
   sNoFilesFound = 'No files found';
+  sSectionNotFound = 'Section “%s” not found';
 
 implementation
 

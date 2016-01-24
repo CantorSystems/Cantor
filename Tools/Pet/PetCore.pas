@@ -650,11 +650,16 @@ begin
           begin
             with Section^ do
               SectionBytes := FImage.Delete(RawData, Count);
-            if (SectionBytes <> 0) and (FLogStyle <> lsTotals) then
+            if FLogStyle <> lsTotals then
             begin
               TmpFileName.AsString(Section);
-              Output.Action(sDroppingSection, @TmpFileName);
-              Output.StripStats(ImageSize, ImageSize - SectionBytes);
+              if SectionBytes <> 0 then
+              begin
+                Output.Action(sDroppingSection, @TmpFileName);
+                Output.StripStats(ImageSize, ImageSize - SectionBytes);
+              end
+              else
+                Console.WriteLn(sSectionNotFound, 0, [TmpFileName.RawData]);
             end;
             Section := Section.Next;
           end;
