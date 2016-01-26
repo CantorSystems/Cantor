@@ -397,7 +397,7 @@ begin
 {$ENDIF}
 
 {$IFOPT C+}
-  AssertErrorProc := @AssertErrorHandler;
+  AssertErrorProc := Pointer(@AssertErrorHandler);
 {$ENDIF}
 
 {$ENDIF ----------- }
