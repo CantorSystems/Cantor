@@ -6,6 +6,7 @@ for /f "tokens=1,2 delims=:MSP" %%i in ('svnversion -c -n') do (
     set rev=%%j
   )
 )
-echo SVN revision %rev%
-echo const Revision = 'r%rev%'; > revision.inc
-
+if "%rev%" leq "9999999999" (
+  echo SVN revision %rev%
+  echo const Revision = 'r%rev%'; > revision.inc
+)
