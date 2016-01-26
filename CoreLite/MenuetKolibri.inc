@@ -1,5 +1,5 @@
 (*
-    Menuet OS and Kolibri OS executable file headers
+    MenuetOS and KolibriOS executable file headers
 
     Copyright (c) 2013-2015 Vladislav Javadov (Freeman)
 *)
