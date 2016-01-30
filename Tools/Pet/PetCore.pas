@@ -46,24 +46,6 @@ type
     procedure TransferStats(SourceSize, ActualSize: LongWord); virtual;
   end;
 
-{  TVerboseOutput = object(TOutput)
-  private
-    FActionFormat, FStatsFormat: PWideChar;
-    FActionFixedWidth, FStatsFixedWidth: Integer;
-    FPercentage: TLegacyString;
-  public
-    constructor Create(Dest: PStreamConsole; PromptWidth, FileNameWidth, StatBytesWidth: Word);
-    destructor Destroy; virtual;
-    procedure Action(Prompt: PLegacyChar; FileName: PCoreString); virtual;
-    procedure Line(Double: Boolean); 
-    procedure Stats(OldSize, NewSize: LongWord); virtual;
-
-    property PromptFixedWidth: Integer read FActionFixedWidth;
-    property PromptFormat: PWideChar read FActionFormat;
-    property StatsFixedWidth: Integer read FStatsFixedWidth;
-    property StatsFormat: PWideChar read FStatsFormat;
-  end;}
-
   TFileKind = (fkNone, fkSource, fkInto, fkStub, fkExtract, fkBackup{, fkDump});
   TFileNames = array[fkInto..High(TFileKind)] of TFileName;
 
@@ -118,8 +100,6 @@ type
     property FileKind: TFileKind read FFileKind;
   end;
 
-  ECore = class(Exception);
-
 implementation
 
 uses
@@ -127,11 +107,6 @@ uses
 
 const
   FileKeys: array[fkInto..High(TFileKind)] of PCoreChar = (sInto, sStub, sExtract, sBackup{, sDump});
-
-{ EFileKey }
-
-//  inherited Create(sMissingFileName, DefaultSystemCodePage, [FileKeys[MissingFileName]]);
-//
 
 { ECommandLine }
 
@@ -356,7 +331,6 @@ const
   OptionKeys: array[TRunOption] of PCoreChar =
     (sPause, sNoLogo, sVersion, sAuto, sStrip, sTrunc, sTouch, sUnsafe, sDeep,
      {sMiniRes, sCleanVer, sMainIcon, sVerbose,} s3GB);
-  HexBase: array[Boolean] of LegacyChar = 'A0';
 var
   CmdLine, Key: TCoreString;
   Param: TCommandLineParam;
