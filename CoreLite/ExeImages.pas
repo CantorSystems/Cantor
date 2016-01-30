@@ -99,6 +99,7 @@ type
     procedure LargeAddressAware(Value: Boolean = True);
     procedure Load(Source: PReadableStream);
     procedure OSVersion(MajorVersion: Word; MinorVersion: Word = 0);
+    function Rebase(NewBase: LongWord): Boolean; 
     procedure Save(Dest: PWritableStream; TruncLastSection: Boolean = True);
     function SectionAlignBytes(Source: LongWord): LongWord;
     function Size(TruncLastSection: Boolean = True): LongWord;
@@ -107,6 +108,20 @@ type
     property Headers: TImageNewHeaders read FHeaders write FHeaders;
     property Sections: PExeSectionArray read FSections;
     property Stub: TExeStub read FStub;
+  end;
+
+  PMenuetImage = ^TMenuetImage;
+  TMenuetImage = object(TCoreObject)
+  private
+    FHeader: TMenuetHeader;
+    FData: Pointer;
+  public
+    destructor Destroy; virtual;
+    procedure Build;
+    procedure Load(Image: PExeImage);
+    procedure Save(Dest: PWritableStream);
+
+    property Data: Pointer read FData;
   end;
 
 { Exceptions }
@@ -703,6 +718,11 @@ begin
   end;
 end;
 
+function TExeImage.Rebase(NewBase: LongWord): Boolean;
+begin
+  Result := False // TODO
+end;
+
 procedure TExeImage.Save(Dest: PWritableStream; TruncLastSection: Boolean);
 var
   Dummy: array[0..4095] of Byte;
@@ -806,6 +826,47 @@ begin
         end;
       DirectoryEntryCount := 0;
     end;
+end;
+
+{ TMenuetImage }
+
+destructor TMenuetImage.Destroy;
+begin
+  FreeMem(FData);
+  inherited;
+end;
+
+procedure TMenuetImage.Build;
+asm
+        MOV dword [EAX+FHeader.Magic], $554E454D  // 'MENU'
+        CMP dword [EAX.FHeader.TLS], 0
+        SETNZ DL
+        SHL EDX, 24
+        ADD EDX, $31305445                        // 'ET01'
+        MOV dword [EAX+FHeader.Magic+4], EDX
+        SHR EDX, 29 // hack
+        MOV dword [EAX+FHeader.HeaderVersion], EDX
+end;
+{begin
+  with QuadRec(FHeader.Magic) do
+  begin
+    Lo := $554E454D;                                  // 'MENU'
+    Hi := $31305445 + Byte(FHeader.TLS <> 0) shl 24;  // 'ET01'
+  end;
+end;}
+
+procedure TMenuetImage.Load(Image: PExeImage);
+begin
+
+end;
+
+procedure TMenuetImage.Save(Dest: PWritableStream);
+begin
+  with Dest^ do
+  begin
+    WriteBuffer(FHeader, SizeOf(FHeader));
+    WriteBuffer(FData^, FHeader.ImageSize);
+  end;
 end;
 
 end.

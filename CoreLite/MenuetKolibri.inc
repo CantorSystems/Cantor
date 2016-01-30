@@ -13,6 +13,7 @@
     dd     0x1000                  ; esp
     dd     0x0 , 0x0               ; I_Param , I_Icon
 
+; http://board.kolibrios.org/viewtopic.php?p=25563#p25563    
     db     'MENUET02'
     dd     1
     dd     start
@@ -30,7 +31,7 @@ type
     HeaderVersion, EntryPoint, ImageSize, HeapSize, ESP,
     CommandLine: LongWord;
     case Byte of
-      1: (Icon: LongWord); // when MENUET01
-      2: (TLS: LongWord);  // when MENUET02
+      1: (Icon: LongWord);       // when MENUET01
+      2: (Path, TLS: LongWord);  // when MENUET02
   end;
 

@@ -1,7 +1,7 @@
 (*
     Image helper structures for CoreLite
 
-    Copyright (c) 2013 Vladislav Javadov (Freeman)
+    Copyright (c) 2013, 2016 Vladislav Javadov (aka Freeman)
 *)
 
 const // for Delphi 6
@@ -13,7 +13,15 @@ const // for Delphi 6
   IMAGE_RESOURCE_NAME_IS_STRING         = $80000000;
   IMAGE_RESOURCE_DATA_IS_DIRECTORY      = $80000000;
 
-  IMAGE_REL_BASED_HIGHLOW = 3;
+  IMAGE_REL_BASED_ABSOLUTE        = 0;
+  IMAGE_REL_BASED_HIGH            = 1;
+  IMAGE_REL_BASED_LOW             = 2;
+  IMAGE_REL_BASED_HIGHLOW         = 3;  // PE x86 (and x64?)
+  IMAGE_REL_BASED_HIGHADJ         = 4;
+  IMAGE_REL_BASED_MIPS_JMPADDR    = 5;
+  IMAGE_REL_BASED_MIPS_JMPADDR16  = 9;
+  IMAGE_REL_BASED_IA64_IMM64      = 9;
+  IMAGE_REL_BASED_DIR64           = 10;
 
 {
   RT_NEW            = $2000;
