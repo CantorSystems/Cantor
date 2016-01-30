@@ -11,8 +11,8 @@
 FILEOS VOS_NT_WINDOWS32
 FILETYPE VFT_APP
 FILEFLAGSMASK 0x3F
-PRODUCTVERSION 0,4,1,rev
-FILEVERSION 0,4,1,rev
+PRODUCTVERSION 0,5,0,rev
+FILEVERSION 0,5,0,rev
 FILEFLAGS VS_FF_PRERELEASE 
   #ifdef debug | VS_FF_DEBUG #endif
 BEGIN
@@ -23,10 +23,9 @@ BEGIN
       VALUE "CompanyName", "Vladislav Javadov\000"
       VALUE "LegalCopyright", "Copyright � 2013-2016 Vladislav Javadov\000"
       VALUE "ProductName", "PE Tool\000"
-      VALUE "FileDescription", "Portable executable (PE) stripping tool\000"
-      //VALUE "FileDescription", "Portable executable (PE) optimization and dumping tool\000"
+      VALUE "FileDescription", "Portable executable (PE) rebuilding tool\000"
       VALUE "OriginalFilename", "Pet.exe\000"
-      VALUE "ProductVersion", "0.4\000"
+      VALUE "ProductVersion", "0.5\000"
       VALUE "FileVersion", "r" textrev "\000"
     END
   END
