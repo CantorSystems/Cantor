@@ -481,6 +481,7 @@ procedure TApplication.Run(CommandLine: PCoreChar);
 const
   Deep: array[Boolean] of TStripOptions = ([], [soOrphanedSections]);
   Touch: array[Boolean] of TSaveOptions = ([], [soTouch]);
+  Processing: array[Boolean] of PLegacyChar = (sEstimating, sStripping);
 var
   Stub: TExeStub;
   TmpFileName: TFileName;
@@ -554,7 +555,7 @@ begin
           Output.TransferStats(Loaded.FileSize, Loaded.BytesRead);
         end
         else
-          Output.Action(sStripping, FileName);
+          Output.Action(Processing[DestFileName.Count <> 0], FileName);
         Inc(TotalBytes, Loaded.FileSize);
 
         ImageSize := FImage.Size(False);

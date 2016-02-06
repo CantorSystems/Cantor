@@ -86,25 +86,6 @@ const
 
   sCannotRebaseImage = 'Cannot rebase image: %s';
 
-  FileNameWidth = 48;
-  FileNameOffset = 12;
-
-  sProcessing     = '%-16hs %-32@s %8u bytes';
-
-  sRead = 'Read';
-  sActual = 'Actual';
-  sStripped = 'Stripped';
-  sRatio = 'Ratio';
-
-  HeaderFixedWidth = 18 + 12 * 3;
-  DataFixedWidth = 15 + 12 * 3 + 6;
-
-  sHeaderFmt = '%-18s%-12s%-12s%-12s';
-  sDataFmt = #$E2#$80#$A2' %15s%-12d%-12d%-12d%-6s';
-
-  sDoubleLine = #$E2#$95#$90;
-  sSingleLine = #$E2#$94#$80;
-
   sPathEllipsis = '[...]';
 
   sLoading          = 'Loading';
@@ -116,11 +97,13 @@ const
   sSaving           = 'Saving';
   sDroppingSection  = 'Dropping section';
   sStripping        = 'Stripping';
+  sEstimating       = 'Estimating';
   sBackuping        = 'Backuping';
   sTotal            = 'Total';
 
-  DefaultMaxWidth = sChainedData;
-  TotalsMaxWidth  = sStripping;
+  DefaultMaxWidth = sChainedData; // max of {sLoading, sChainedData, sStrippng,
+                                  //         sEstimating, sFixingStub}
+  TotalsMaxWidth  = sEstimating;  // max of {sStripping, sEstimating}
   
   PercentageWidth = 6;
 
