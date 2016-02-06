@@ -49,7 +49,7 @@ type
   TFileKind = (fkNone, fkSource, fkInto, fkStub, fkExtract, fkBackup{, fkDump});
   TFileNames = array[fkInto..High(TFileKind)] of TFileName;
 
-  TLogStyle = (lsTotals, lsActions, lsDetails);
+  TLogStyle = (lsTotals, lsActions{, lsDetails});
 
   TRunOption = (roPause, roNoLogo, roVersion, // ordered
     roAuto, roStrip, roTrunc, roTouch, roUnsafe, roDeep,

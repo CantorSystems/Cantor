@@ -60,9 +60,10 @@ const
                                #9#9#9#9'volume cluster size'#10 +}
             #9'-deep' +          #9#9#9'Strip orphaned sections (unsafe!)'#10 +
             #9'-dropsect <s1,s2,...>'#9'Drop sections <s1>, <s2>, etc.'#10 +
-            #9'-menuet' +        #9#9#9'Save to MENUET01/MENUET02 format'#10 +
+            {#9'-log <totals|actions>'#9'Output log format'#10 +
+            #9'-menuet' +        #9#9#9'Save to MENUET01/MENUET02 format'#10 +}
             #9'-osver <#[.#]>' +   #9#9'Set required OS version to <#> or <#.#>'#10 +
-            #9'-rebase <########>' + #9'Rebase image to hexadecimal address <########>'#10 +
+            //#9'-rebase <########>' + #9'Rebase image to hexadecimal address <########>'#10 +
             #9'-stub [stub]|[.]' +   #9'Replace stub with one from [stub] file or take'#10 +
                                #9#9#9#9'stub from PE Tool itself'#10 +
             #9'-touch' +         #9#9#9'Don''t keep original file timestamp'#10 +
@@ -70,7 +71,7 @@ const
                                #9#9#9#9'immediately after data end'#10 +
             #9'-unsafe' +        #9#9#9'Strip chained certificate and other data'#10#10 +
     'Miscellaneous options'#10 +
-            #9'-listsect' +        #9#9'Display section list'#10 +
+            //#9'-listsect' +        #9#9'Display section list'#10 +
             #9'-nologo' +        #9#9#9'Don''t display PET logo and copyrights'#10 +
             #9'-pause' +         #9#9#9'Wait for ENTER key to exit';
 
