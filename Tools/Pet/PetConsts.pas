@@ -34,7 +34,7 @@ const         // short Unicode strings
 
   sLogo =
           #9'/\_/\'#10 +
-    '     __/ o o \    %s %hs'#10 +
+    '    .__/ o o \    %s %hs'#10 +
     '   /~__ ==t==/    %s'#10 +
     '  (_____)_m_m)';
 
