@@ -76,8 +76,8 @@ type
     OptionalHeaderSize, Characteristics: Word;
   end;
 
-  PImageOptionalHeader = ^TImageOptionalHeader;
-  TImageOptionalHeader = packed record
+  PImageOptionalHeader32 = ^TImageOptionalHeader32;
+  TImageOptionalHeader32 = packed record
     Magic: Word;
     MajorLinkerVersion, MinorLinkerVersion: Byte;
     CodeSize, InitializedDataSize, UninitializedDataSize,
@@ -97,12 +97,57 @@ type
     DataDirectory: array[0..IMAGE_NUMBEROF_DIRECTORY_ENTRIES - 1] of TImageDataDirectory;
   end;
 
-  PImageNewHeaders = ^TImageNewHeaders;
-  TImageNewHeaders = packed record
+  PImageOptionalHeader64 = ^TImageOptionalHeader64;
+  TImageOptionalHeader64 = packed record
+    Magic: Word;
+    MajorLinkerVersion, MinorLinkerVersion: Byte;
+    CodeSize, InitializedDataSize, UninitializedDataSize,
+    EntryPoint, CodeBase, DataBase: LongWord;
+    ImageBase: QuadWord;
+    SectionAlignment, FileAlignment: LongWord;
+    MajorOSVersion, MinorOSVersion,
+    MajorImageVersion, MinorImageVersion,
+    MajorSubsystemVersion, MinorSubsystemVersion: Word;
+    Win32Version,
+    ImageSize, HeadersSize,
+    Checksum: LongWord;
+    Subsystem, DLLCharacteristics: Word;
+    StackReserveSize, StackCommitSize,
+    HeapReserveSize, HeapCommitSize: QuadWord;
+    LoaderFlags: LongWord;
+    DirectoryEntryCount: LongInt;
+    DataDirectory: array[0..IMAGE_NUMBEROF_DIRECTORY_ENTRIES - 1] of TImageDataDirectory;
+  end;
+
+{$IFDEF CPUX64}
+  PImageOptionalHeader = PImageOptionalHeader64;
+  TImageOptionalHeader = TImageOptionalHeader64;
+{$ELSE}
+  PImageOptionalHeader = PImageOptionalHeader32;
+  TImageOptionalHeader = TImageOptionalHeader32;
+{$ENDIF}
+
+  PImageNewHeaders32 = ^TImageNewHeaders32;
+  TImageNewHeaders32 = packed record
     Magic: array[0..3] of LegacyChar;
     FileHeader: TImageFileHeader;
-    OptionalHeader: TImageOptionalHeader;
+    OptionalHeader: TImageOptionalHeader32;
   end;
+
+  PImageNewHeaders64 = ^TImageNewHeaders64;
+  TImageNewHeaders64 = packed record
+    Magic: array[0..3] of LegacyChar;
+    FileHeader: TImageFileHeader;
+    OptionalHeader: TImageOptionalHeader64;
+  end;
+
+{$IFDEF CPUX64}
+  PImageNewHeaders = PImageNewHeaders64;
+  TImageNewHeaders = TImageNewHeaders64;
+{$ELSE}
+  PImageNewHeaders = PImageNewHeaders32;
+  TImageNewHeaders = TImageNewHeaders32;
+{$ENDIF}
 
   PImageSectionHeader = ^TImageSectionHeader;
   TImageSectionHeader = packed record
