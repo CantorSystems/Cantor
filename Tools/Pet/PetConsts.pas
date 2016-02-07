@@ -23,6 +23,7 @@ const         // short Unicode strings
   sCleanVer   = #8'cleanver';
   sDeep       = #4'deep';
   sDropSect   = #8'dropsect';
+  sListSect   = #8'listsect';
   sLog        = #3'log';
   sMenuet     = #7'menuet';
   sNoLogo     = #6'nologo';
@@ -76,7 +77,7 @@ const
                                #9#9#9#9'immediately after data end'#10 +
             #9'-unsafe' +        #9#9#9'Strip chained certificate and other data'#10#10 +
     'Miscellaneous options'#10 +
-            //#9'-listsect' +        #9#9'Display section list'#10 +
+            #9'-listsect' +        #9#9'Display section list and exit'#10 +
             #9'-nologo' +        #9#9#9'Don''t display PET logo and copyrights'#10 +
             #9'-pause' +         #9#9#9'Wait for ENTER key to exit';
 
@@ -109,6 +110,7 @@ const
   sEstimating       = 'Estimating';
   sBackuping        = 'Backuping';
   sTotal            = 'Total';
+  sSectionList      = 'Section list of';
 
   DefaultMaxWidth = sChainedData; // max of {sLoading, sChainedData, sStrippng,
                                   //         sEstimating, sFixingStub}

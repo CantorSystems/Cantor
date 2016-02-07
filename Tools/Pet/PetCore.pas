@@ -51,8 +51,8 @@ type
   TLogStyle = (lsAuto, lsTotals, lsActions);
 
   TRunOption = (roPause, roNoLogo, roVersion, // ordered
-    roAuto, roStrip, roTrunc, roTouch, roUnsafe, roDeep,
-    {roMiniRes, roCleanVer, roMainIcon, roVerbose} ro3GB, roMenuet);
+    {roAuto,} roStrip, roTrunc, roTouch, roUnsafe, roDeep,
+    {roMiniRes, roCleanVer, roMainIcon, roVerbose} ro3GB, roListSections, roMenuet);
   TRunOptions = set of TRunOption;
 
   TApplication = object(TConsoleApplication)
@@ -343,8 +343,8 @@ end;
 procedure TApplication.ParseCommandLine(Source: PCoreChar);
 const
   OptionKeys: array[TRunOption] of PCoreChar =
-    (sPause, sNoLogo, sVersion, sAuto, sStrip, sTrunc, sTouch, sUnsafe, sDeep,
-     {sMiniRes, sCleanVer, sMainIcon, sVerbose,} s3GB, sMenuet);
+    (sPause, sNoLogo, sVersion, sStrip, sTrunc, sTouch, sUnsafe, sDeep,
+     {sMiniRes, sCleanVer, sMainIcon, sVerbose,} s3GB, sListSect, sMenuet);
 var
   CmdLine: TCoreString;
   Key, Param: TCommandLineParam;
@@ -505,6 +505,7 @@ var
   FileName: PFileNameListItem;
   DestFileName, ExtractFileName: PFileName;
   Section: PLegacyTextListItem;
+  I: Integer;
 begin
   ParseCommandLine(CommandLine);
 
@@ -565,6 +566,19 @@ begin
     begin
       try
         Loaded := LoadFile(FImage.Load, FileName.RawData, faRandomRead);
+
+        if roListSections in FOptions then
+        begin
+          Output.Action(sSectionList, FileName);
+          Console.WriteLn;
+          for I := 0 to FImage.Count - 1 do
+            Console.WriteLn('  %hs', 0, [FImage.Sections[I].Header.Name]);
+          FileName := FileName.Next;
+          if FileName <> nil then
+            Console.WriteLn;
+          Continue;
+        end;
+
         if FLogStyle <> lsTotals then
         begin
           Output.Action(sLoading, FileName);
