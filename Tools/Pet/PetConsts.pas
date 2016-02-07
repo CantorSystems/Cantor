@@ -28,6 +28,7 @@ const         // short Unicode strings
   sMenuet     = #7'menuet';
   sNoLogo     = #6'nologo';
   sPause      = #5'pause';
+  sRebase     = #6'rebase';
   sOSVer      = #5'osver';
   sStrip      = #5'strip';
   sTouch      = #5'touch';
@@ -88,13 +89,14 @@ const
   sFileName = '%ws file name'; // CoreChar
   sSource = 'source';
   sOSVersion = 'OS version number';
+  sRebaseAddress = 'rebase address';
   sSectionNames = 'section names';
   sResourceNames = 'resource names';
   sLogStyle = 'log style';
   sLocaleMap = 'locale map';
   sImageBase = 'image base value';
 
-  sCannotRebaseImage = 'Cannot rebase image: %s';
+  sCannotRebaseImage = #10'Cannot rebase image: %s';
 
   sPathEllipsis = '[...]';
 
@@ -111,6 +113,7 @@ const
   sBackuping        = 'Backuping';
   sTotal            = 'Total';
   sSectionList      = 'Section list of';
+  sRebasingTo       = 'Rebasing image to';
 
   DefaultMaxWidth = sChainedData; // max of {sLoading, sChainedData, sStrippng,
                                   //         sEstimating, sFixingStub}

@@ -63,6 +63,7 @@ type
     FDropSections: TSectionNames;
     FMajorVersion, FMinorVersion: Word;
     FLogStyle: TLogStyle;
+    FRebaseAddress: LongWord;
     FFoundFiles: TFileNameList;
     FImage: TExeImage;
     FCurrentPath: TFileName;
@@ -322,6 +323,12 @@ begin
   if FLogStyle <> lsTotals then
   begin
     Result := StrLen(DefaultMaxWidth);
+    if FRebaseAddress and $80000000 <> 0 then
+    begin
+      Width := StrLen(sRebasingTo);
+      if Width > Result then
+        Result := Width;
+    end;
     if FDropSections.Count <> 0 then
     begin
       Width := StrLen(sDroppingSection);
@@ -354,6 +361,8 @@ var
   R: TRunOption;
   SourceFileName: PFileNameListItem;
 begin
+  Dec(FRebaseAddress); // lite code, instead of constructor (TODO: reenterability)
+
   CmdLine.Create;
   CmdLine.AsWideString(Source, WideStrLen(Source), soAttach);
   Param.Create;
@@ -370,7 +379,7 @@ begin
     if Param.IsKey then
     begin
       Key.AsRange(@Param, 1);
-      
+
       for R := Low(OptionKeys) to High(OptionKeys) do
         if Key.Equals(OptionKeys[R]) then
         begin
@@ -399,6 +408,7 @@ begin
           end;
 
       if Param.Count <> 0 then
+      begin
         if Key.Equals(sOSVer) then
         begin
           CmdLine := Param.AsNextParam(@CmdLine);
@@ -419,8 +429,14 @@ begin
               FMajorVersion := AsInteger;
               FMinorVersion := 0;
             end;
-            Clear;
           end;
+        end
+        else if Key.Equals(sRebase) then
+        begin
+          CmdLine := Param.AsNextParam(@CmdLine);
+          if Param.Count = 0 then
+            raise ECommandLine.Create(sRebaseAddress);
+          FRebaseAddress := Param.AsInteger;
         end
         else if Key.Equals(sDropSect) then
         begin
@@ -431,7 +447,6 @@ begin
             FDropSections.Create;
           FACP.Create;
           LoadText(FDropSections.Append, @Param, CoreChar(','), @FACP);
-          Param.Clear;
         end
         else if Key.Equals(sLog) then
         begin
@@ -447,6 +462,8 @@ begin
         end
         else
           raise ECommandLine.CreateInvalid(@Param);
+        Param.Clear;
+      end;
     end;
 
     if Param.Count <> 0 then
@@ -648,6 +665,19 @@ begin
             if FLogStyle <> lsTotals then
               Output.StripStats(OldSize, Size);
           end;
+
+        if FRebaseAddress and $80000000 = 0 then
+        begin
+          if FLogStyle <> lsTotals then
+          begin
+            TmpFileName.AsHexadecimal(FRebaseAddress, 8);
+            Output.Action(sRebasingTo, @TmpFileName);
+          end;
+          if FImage.Rebase(FRebaseAddress) = 0 then
+            Console.WriteLn(sCannotRebaseImage, 0, [FileName.RawData])
+          else
+            Console.WriteLn;
+        end;
 
         if FDropSections.Count <> 0 then
         begin

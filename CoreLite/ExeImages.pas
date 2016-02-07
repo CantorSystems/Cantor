@@ -59,6 +59,7 @@ type
     function DirectoryIndex(const OptionalHeader: TImageOptionalHeader): Integer;
     function IsOrphaned(const OptionalHeader: TImageOptionalHeader): Boolean;
     procedure Load(Source: PReadableStream);
+    function RawData(VirtualAddress: LongWord): Pointer;
     procedure Save(Dest: PWritableStream);
     function Size: LongWord;
     procedure Strip(StripPadding: Boolean = True);
@@ -80,7 +81,7 @@ type
   TExeImage = object(TCollection)
   private
   { hold } FSections: PExeSectionArray;
-    FHeaders: TImageNewHeaders;
+    FHeaders: TImageNewHeaders; // TODO: x64
     FStub: TExeStub;
     function IndexOfAddress(Address: LongWord): Integer;
   protected
@@ -99,7 +100,8 @@ type
     procedure LargeAddressAware(Value: Boolean = True);
     procedure Load(Source: PReadableStream);
     procedure OSVersion(MajorVersion: Word; MinorVersion: Word = 0);
-    function Rebase(NewBase: LongWord): Boolean; 
+    function RawData(VirtualAddress: LongWord): Pointer;
+    function Rebase(NewBase: LongWord): LongWord;
     procedure Save(Dest: PWritableStream; TruncLastSection: Boolean = True);
     function SectionAlignBytes(Source: LongWord): LongWord;
     function Size(TruncLastSection: Boolean = True): LongWord;
@@ -379,6 +381,16 @@ begin
   end;
 ///  if FHandler <> nil then
 //    FHandler.Load(Self);
+end;
+
+function TExeSection.RawData(VirtualAddress: LongWord): Pointer;
+begin
+  if (VirtualAddress >= FHeader.VirtualAddress) and
+    (VirtualAddress < FHeader.VirtualAddress + FHeader.VirtualSize)
+  then
+    Result := PAddress(FData) + VirtualAddress - FHeader.VirtualAddress
+  else
+    Result := nil;
 end;
 
 procedure TExeSection.Save(Dest: PWritableStream);
@@ -718,9 +730,46 @@ begin
   end;
 end;
 
-function TExeImage.Rebase(NewBase: LongWord): Boolean;
+function TExeImage.RawData(VirtualAddress: LongWord): Pointer;
+var
+  I: Integer;
 begin
-  Result := False // TODO
+  for I := 0 to Count - 1 do
+  begin
+    Result := FSections[I].RawData(VirtualAddress);
+    if Result <> nil then
+      Exit;
+  end;
+  Result := nil;
+end;
+
+function TExeImage.Rebase(NewBase: LongWord): LongWord;
+var
+  Relocs: PImageBaseRelocation;
+  Idx, I: Integer;
+  Address: PAddress;
+begin
+  Result := 0;
+  Idx := IndexOf(IMAGE_DIRECTORY_ENTRY_BASERELOC);
+  if Idx >= 0 then
+  begin
+    Relocs := PImageBaseRelocation(FSections[Idx].Data);
+    if Relocs <> nil then
+    begin
+      while Relocs.VirtualAddress <> 0 do
+      begin
+        Address := RawData(Relocs.VirtualAddress);
+        if Address = nil then
+          raise EBadImage.Create; // TODO
+        for I := 0 to (Relocs.BlockSize - SizeOf(TImageBaseRelocation)) div SizeOf(Word) do
+        begin
+          //PLongWord(Address - PWordArray(PAddress(Relocs) + SizeOf(TImageBaseRelocation))[I] + NewBase);
+          Inc(Result);
+        end;
+        Inc(PAddress(Relocs), Relocs.BlockSize);
+      end;
+    end;
+  end;
 end;
 
 procedure TExeImage.Save(Dest: PWritableStream; TruncLastSection: Boolean);
