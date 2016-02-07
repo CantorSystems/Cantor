@@ -76,6 +76,7 @@ type
     procedure ParseCommandLine(Source: PCoreChar);
     function PrepareFileName(Kind: TFileKind; FileName: PFileName): PFileName;
     procedure SaveImage(Dest: PWritableStream);
+    function TotalsMaxPromptWidth: Integer;
   public
     destructor Destroy;
     procedure Run(CommandLine: PCoreChar);
@@ -110,6 +111,7 @@ uses
 
 const
   FileKeys: array[fkInto..High(TFileKind)] of PCoreChar = (sInto, sStub, sExtract, sBackup{, sDump});
+  Processing: array[Boolean] of PLegacyChar = (sEstimating, sStripping);
 
 { ECommandLine }
 
@@ -344,7 +346,7 @@ begin
       end;
   end
   else
-    Result := StrLen(TotalsMaxWidth);
+    Result := TotalsMaxPromptWidth;
 end;
 
 procedure TApplication.ParseCommandLine(Source: PCoreChar);
@@ -511,7 +513,6 @@ procedure TApplication.Run(CommandLine: PCoreChar);
 const
   Deep: array[Boolean] of TStripOptions = ([], [soOrphanedSections]);
   Touch: array[Boolean] of TSaveOptions = ([], [soTouch]);
-  Processing: array[Boolean] of PLegacyChar = (sEstimating, sStripping);
 var
   Stub: TExeStub;
   TmpFileName: TFileName;
@@ -539,7 +540,7 @@ begin
   FFoundFiles.Create;
   FMaxWidth := MaxFileNameWidth(40); // magic
   if FLogStyle = lsTotals then
-    Inc(FMaxWidth, StrLen(DefaultMaxWidth) - StrLen(TotalsMaxWidth));
+    Inc(FMaxWidth, StrLen(DefaultMaxWidth) - TotalsMaxPromptWidth);
 
   FileName := FSourceFileNames.First;
   while FileName <> nil do
@@ -602,7 +603,7 @@ begin
           Output.TransferStats(Loaded.FileSize, Loaded.BytesRead);
         end
         else
-          Output.Action(Processing[DestFileName.Count <> 0], FileName);
+          Output.Action(Processing[TypeOf(DestFileName^) <> nil], FileName);
         Inc(TotalBytes, Loaded.FileSize);
 
         ImageSize := FImage.Size(False);
@@ -730,7 +731,7 @@ begin
 
         BytesSaved := FImage.Size(roTrunc in FOptions);
         try
-          if DestFileName.Count <> 0 then
+          if TypeOf(DestFileName^) <> nil then
           try
             with FImage do
             begin
@@ -802,6 +803,11 @@ end;
 procedure TApplication.SaveImage(Dest: PWritableStream);
 begin
   FImage.Save(Dest, roTrunc in FOptions);
+end;
+
+function TApplication.TotalsMaxPromptWidth: Integer;
+begin
+  Result := StrLen(Processing[TypeOf(FFileNames[fkInto]) <> nil]);
 end;
 
 end.

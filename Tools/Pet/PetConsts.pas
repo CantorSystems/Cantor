@@ -117,8 +117,6 @@ const
 
   DefaultMaxWidth = sChainedData; // max of {sLoading, sChainedData, sStrippng,
                                   //         sEstimating, sFixingStub}
-  TotalsMaxWidth  = sEstimating;  // max of {sStripping, sEstimating}
-  
   PercentageWidth = 6;
 
   sDefaultActionFmt = '%%%dhs  %%hs%%%ds';   // '{*s}  {*s?{s1}}'
