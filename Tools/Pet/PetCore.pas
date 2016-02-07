@@ -323,7 +323,7 @@ begin
   if FLogStyle <> lsTotals then
   begin
     Result := StrLen(DefaultMaxWidth);
-    if FRebaseAddress and $80000000 <> 0 then
+    if FRebaseAddress and $80000000 = 0 then
     begin
       Width := StrLen(sRebasingTo);
       if Width > Result then
@@ -436,7 +436,7 @@ begin
           CmdLine := Param.AsNextParam(@CmdLine);
           if Param.Count = 0 then
             raise ECommandLine.Create(sRebaseAddress);
-          FRebaseAddress := Param.AsInteger;
+          FRebaseAddress := Param.AsHexadecimal;
         end
         else if Key.Equals(sDropSect) then
         begin

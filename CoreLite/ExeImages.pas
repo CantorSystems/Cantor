@@ -101,7 +101,7 @@ type
     procedure Load(Source: PReadableStream);
     procedure OSVersion(MajorVersion: Word; MinorVersion: Word = 0);
     function RawData(VirtualAddress: LongWord): Pointer;
-    function Rebase(NewBase: LongWord): LongWord;
+    function Rebase(NewBaseBy64K: Word): LongWord;
     procedure Save(Dest: PWritableStream; TruncLastSection: Boolean = True);
     function SectionAlignBytes(Source: LongWord): LongWord;
     function Size(TruncLastSection: Boolean = True): LongWord;
@@ -743,13 +743,16 @@ begin
   Result := nil;
 end;
 
-function TExeImage.Rebase(NewBase: LongWord): LongWord;
+function TExeImage.Rebase(NewBaseBy64K: Word): LongWord;
 var
+  NewBase: LongWord;
   Relocs: PImageBaseRelocation;
   Idx, I: Integer;
-  Address: PAddress;
+  Chunk: PAddress;
+  Offset: Word;
 begin
   Result := 0;
+  NewBase := NewBaseBy64K shl 16 - FHeaders.OptionalHeader.ImageBase;
   Idx := IndexOf(IMAGE_DIRECTORY_ENTRY_BASERELOC);
   if Idx >= 0 then
   begin
@@ -758,18 +761,29 @@ begin
     begin
       while Relocs.VirtualAddress <> 0 do
       begin
-        Address := RawData(Relocs.VirtualAddress);
-        if Address = nil then
-          raise EBadImage.Create; // TODO
-        for I := 0 to (Relocs.BlockSize - SizeOf(TImageBaseRelocation)) div SizeOf(Word) do
+        Chunk := RawData(Relocs.VirtualAddress);
+        if Chunk = nil then
+          raise EBadImage.Create; // TODO: invalid address
+        for I := 0 to (Relocs.BlockSize - SizeOf(TImageBaseRelocation)) div SizeOf(Word) - 1 do
         begin
-          //PLongWord(Address - PWordArray(PAddress(Relocs) + SizeOf(TImageBaseRelocation))[I] + NewBase);
-          Inc(Result);
+          Offset := PWordArray(PAddress(Relocs) + SizeOf(TImageBaseRelocation))[I];
+          case Offset shr 12 of
+            0:
+              ;
+            IMAGE_REL_BASED_HIGHLOW:
+              begin
+                Inc(PLongWord(Chunk + Offset and $FFF)^, NewBase);
+                Inc(Result);
+              end;
+          else
+            raise EBadImage.Create('Unsupported relocation format, code %2u', DefaultSystemCodePage, [Offset shr 12]);
+          end;
         end;
         Inc(PAddress(Relocs), Relocs.BlockSize);
       end;
     end;
   end;
+  Inc(FHeaders.OptionalHeader.ImageBase, NewBase);
 end;
 
 procedure TExeImage.Save(Dest: PWritableStream; TruncLastSection: Boolean);
