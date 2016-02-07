@@ -23,6 +23,8 @@ const         // short Unicode strings
   sCleanVer   = #8'cleanver';
   sDeep       = #4'deep';
   sDropSect   = #8'dropsect';
+  sLog        = #3'log';
+  sMenuet     = #7'menuet';
   sNoLogo     = #6'nologo';
   sPause      = #5'pause';
   sOSVer      = #5'osver';
@@ -31,6 +33,9 @@ const         // short Unicode strings
   sTrunc      = #5'trunc';
   sUnsafe     = #6'unsafe';
   sVerbose    = #7'verbose';
+
+  sActions    = #7'actions';
+  sTotals     = #6'totals';
 
   sLogo =
           #9'/\_/\'#10 +
@@ -60,8 +65,8 @@ const
                                #9#9#9#9'volume cluster size'#10 +}
             #9'-deep' +          #9#9#9'Strip orphaned sections (unsafe!)'#10 +
             #9'-dropsect <s1,s2,...>'#9'Drop sections <s1>, <s2>, etc.'#10 +
-            {#9'-log <totals|actions>'#9'Output log format'#10 +
-            #9'-menuet' +        #9#9#9'Save to MENUET01/MENUET02 format'#10 +}
+            #9'-log <actions|totals>'#9'Output log style'#10 +
+            //#9'-menuet' +        #9#9#9'Save to MENUET01/MENUET02 format'#10 +
             #9'-osver <#[.#]>' +   #9#9'Set required OS version to <#> or <#.#>'#10 +
             //#9'-rebase <########>' + #9'Rebase image to hexadecimal address <########>'#10 +
             #9'-stub [stub]|[.]' +   #9'Replace stub with one from [stub] file or take'#10 +
@@ -77,11 +82,14 @@ const
 
   sMissingParam = 'Missing %s';
   sDuplicateParam = 'Duplicate %hs: %s';
+  sInvalidOption = 'Invalid option: %s';
+  sInvalidOptionValue = 'Invalid %hs option value: %s';
   sFileName = '%ws file name'; // CoreChar
   sSource = 'source';
   sOSVersion = 'OS version number';
   sSectionNames = 'section names';
   sResourceNames = 'resource names';
+  sLogStyle = 'log style';
   sLocaleMap = 'locale map';
   sImageBase = 'image base value';
 
@@ -112,7 +120,7 @@ const
   sDefaultStatsFmt = '  %%%di bytes  %%6hs'; // '  {*u?{u'#160'bytes}}  {6p}'
 
   sChainedDataFound = 'Chained data found, safe stripping stopped';
-  sTotals = #10'%u files %d bytes (%hs)';
+  sTotalsMessage = #10'%u files %d bytes (%hs)';
   sNoFilesFound = 'No files found';
   sSectionNotFound = 'Section “%s” not found';
 

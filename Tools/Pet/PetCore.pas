@@ -16,7 +16,6 @@ uses
   CoreApp, ExeImages;
 
 type
-//  TResourceNames = TWideStringArray;
   TSectionNames = TLegacyTextList;
 
   TOutput = object(TCoreObject)
@@ -49,11 +48,11 @@ type
   TFileKind = (fkNone, fkSource, fkInto, fkStub, fkExtract, fkBackup{, fkDump});
   TFileNames = array[fkInto..High(TFileKind)] of TFileName;
 
-  TLogStyle = (lsTotals, lsActions{, lsDetails});
+  TLogStyle = (lsAuto, lsTotals, lsActions);
 
   TRunOption = (roPause, roNoLogo, roVersion, // ordered
     roAuto, roStrip, roTrunc, roTouch, roUnsafe, roDeep,
-    {roMiniRes, roCleanVer, roMainIcon, roVerbose} ro3GB);
+    {roMiniRes, roCleanVer, roMainIcon, roVerbose} ro3GB, roMenuet);
   TRunOptions = set of TRunOption;
 
   TApplication = object(TConsoleApplication)
@@ -87,7 +86,7 @@ type
 
   ECommandLine = class(Exception)
   private
-    FDuplicateParam: PCoreString;
+    FInvalidParam: PCoreString;
     FFileKind: TFileKind;
   public
     constructor Create(MissingKind: TCmdLineFileKind); overload;
@@ -96,7 +95,10 @@ type
     constructor Create(DuplicateKind: TCmdLineFileKind; FileName: PCoreString); overload;
     constructor Create(DuplicateParam: PLegacyChar; ParamValue: PCoreString); overload;
 
-    property DuplicateParam: PCoreString read FDuplicateParam;
+    constructor CreateInvalid(Option: PCoreString); overload;
+    constructor CreateInvalid(Option: PLegacyChar; InvalidValue: PCoreString); overload;
+
+    property InvalidParam: PCoreString read FInvalidParam;
     property FileKind: TFileKind read FFileKind;
   end;
 
@@ -145,13 +147,25 @@ begin
   Kind := FormatFileKind(DuplicateKind);
   inherited Create(sDuplicateParam, DefaultSystemCodePage, [Kind, FileName.Data]);
   FFileKind := DuplicateKind;
-  FDuplicateParam := FileName;
+  FInvalidParam := FileName;
 end;
 
 constructor ECommandLine.Create(DuplicateParam: PLegacyChar; ParamValue: PCoreString);
 begin
   inherited Create(sDuplicateParam, DefaultSystemCodePage, [DuplicateParam, ParamValue.Data]);
-  FDuplicateParam := ParamValue;
+  FInvalidParam := ParamValue;
+end;
+
+constructor ECommandLine.CreateInvalid(Option: PCoreString);
+begin
+  inherited Create(sInvalidOption, DefaultSystemCodePage, [Option.Data]);
+  FInvalidParam := Option;
+end;
+
+constructor ECommandLine.CreateInvalid(Option: PLegacyChar; InvalidValue: PCoreString);
+begin
+  inherited Create(sInvalidOptionValue, DefaultSystemCodePage, [Option, InvalidValue.Data]);
+  FInvalidParam := InvalidValue;
 end;
 
 { TOutput }
@@ -242,7 +256,7 @@ var
 begin
   DiffBytes := BytesSaved - TotalBytes;
   FPercentage.AsPercentage(DiffBytes / TotalBytes);
-  FConsole.WriteLn(sTotals, 0, [FileCount, DiffBytes, FPercentage.RawData]);
+  FConsole.WriteLn(sTotalsMessage, 0, [FileCount, DiffBytes, FPercentage.RawData]);
 end;
 
 { TApplication }
@@ -330,13 +344,12 @@ procedure TApplication.ParseCommandLine(Source: PCoreChar);
 const
   OptionKeys: array[TRunOption] of PCoreChar =
     (sPause, sNoLogo, sVersion, sAuto, sStrip, sTrunc, sTouch, sUnsafe, sDeep,
-     {sMiniRes, sCleanVer, sMainIcon, sVerbose,} s3GB);
+     {sMiniRes, sCleanVer, sMainIcon, sVerbose,} s3GB, sMenuet);
 var
-  CmdLine, Key: TCoreString;
-  Param: TCommandLineParam;
+  CmdLine: TCoreString;
+  Key, Param: TCommandLineParam;
   ParamCount, Dot: Integer;
   FileName: PFileName;
-  W: PCoreChar;
   K: TFileKind;
   R: TRunOption;
   SourceFileName: PFileNameListItem;
@@ -359,21 +372,16 @@ begin
       Key.AsRange(@Param, 1);
       
       for R := Low(OptionKeys) to High(OptionKeys) do
-      begin
-        W := OptionKeys[R];
-        if Key.Compare(W + 1, PWord(W)^, True) = 0 then
+        if Key.Equals(OptionKeys[R]) then
         begin
           Include(FOptions, R);
           Param.Clear;
           Break;
         end;
-      end;
 
       if Param.Count <> 0 then
         for K := Low(FFileNames) to High(FFileNames) do
-        begin
-          W := FileKeys[K];
-          if Key.Compare(W + 1, PWord(W)^, True) = 0 then
+          if Key.Equals(FileKeys[K]) then
           begin
             CmdLine := Param.AsNextParam(@CmdLine);
             if (Param.Count = 0) and not (K in [fkInto, fkStub]) then
@@ -389,12 +397,9 @@ begin
             Param.Clear;
             Break;
           end;
-        end;
 
       if Param.Count <> 0 then
-      begin
-        W := sOSVer;
-        if Key.Compare(W + 1, PWord(W)^, True) = 0 then
+        if Key.Equals(sOSVer) then
         begin
           CmdLine := Param.AsNextParam(@CmdLine);
           if Param.Count = 0 then
@@ -417,22 +422,31 @@ begin
             Clear;
           end;
         end
-        else
+        else if Key.Equals(sDropSect) then
         begin
-          W := sDropSect;
-          if Key.Compare(W + 1, PWord(W)^, True) = 0 then
-          begin
-            CmdLine := Param.AsNextParam(@CmdLine);
-            if Param.Count = 0 then
-              raise ECommandLine.Create(sSectionNames);
-            if TypeOf(FDropSections) = nil then
-              FDropSections.Create;
-            FACP.Create;
-            LoadText(FDropSections.Append, @Param, CoreChar(','), @FACP); 
-            Param.Clear;
-          end
-        end;
-      end;
+          CmdLine := Param.AsNextParam(@CmdLine);
+          if Param.Count = 0 then
+            raise ECommandLine.Create(sSectionNames);
+          if TypeOf(FDropSections) = nil then
+            FDropSections.Create;
+          FACP.Create;
+          LoadText(FDropSections.Append, @Param, CoreChar(','), @FACP);
+          Param.Clear;
+        end
+        else if Key.Equals(sLog) then
+        begin
+          CmdLine := Param.AsNextParam(@CmdLine);
+          if Param.Count = 0 then
+            raise ECommandLine.Create(sLogStyle);
+          if Param.Equals(sActions) then
+            FLogStyle := lsActions
+          else if Param.Equals(sTotals) then
+            FLogStyle := lsTotals
+          else
+            raise ECommandLine.CreateInvalid(sLogStyle, @Param);
+        end
+        else
+          raise ECommandLine.CreateInvalid(@Param);
     end;
 
     if Param.Count <> 0 then
@@ -453,7 +467,6 @@ begin
   begin
     if (FSourceFileNames.Count = 0) and not (roVersion in FOptions) then
       raise ECommandLine.Create(fkSource);
-
     FileName := @FFileNames[fkStub];
     if FileName.IsDotOrNull then
       FileName.AsRange(@ExeName, 0);
@@ -532,8 +545,11 @@ begin
         Exit;
       end;
     1:
-      if FLogStyle = lsTotals then
-        Inc(FLogStyle);
+      if FLogStyle = lsAuto then
+        Inc(FLogStyle, 2);
+  else
+    if FLogStyle = lsAuto then
+      Inc(FLogStyle);
   end;
 
   DestFileName := PrepareFileName(fkInto, @FCurrentPath);
@@ -578,7 +594,8 @@ begin
           if not (roUnsafe in FOptions) then
           begin
             Console.EndOfLine;
-            Console.WriteLn(PLegacyChar(sChainedDataFound), StrLen(sChainedDataFound));
+            Console.WriteLn(PLegacyChar(sChainedDataFound), StrLen(sChainedDataFound),
+              1 + Byte(FileName.Next <> nil));
             Inc(TotalSaved, Loaded.FileSize);
             FileName := FileName.Next;
             Continue;
