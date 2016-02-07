@@ -64,7 +64,9 @@ type
   public
     function AsNextParam(CommandLine: PLegacyString): TLegacyString;
     procedure Clear; virtual;
+    function Equals(Value: PLegacyChar; IgnoreCase: Boolean = True): Boolean;
     function IsKey: Boolean;
+
     property Quoted: Boolean read FQuoted;
   end;
 
@@ -75,7 +77,9 @@ type
   public
     function AsNextParam(CommandLine: PWideString): TWideString;
     procedure Clear; virtual;
+    function Equals(Value: PWideChar; IgnoreCase: Boolean = True): Boolean;
     function IsKey: Boolean;
+
     property Quoted: Boolean read FQuoted;
   end;
 
@@ -344,6 +348,11 @@ begin
   FQuoted := False;
 end;
 
+function TLegacyCommandLineParam.Equals(Value: PLegacyChar; IgnoreCase: Boolean): Boolean;
+begin
+  Result := Compare(Value + 1, PByte(Value)^, IgnoreCase) = 0;
+end;
+
 function TLegacyCommandLineParam.IsKey: Boolean;
 begin
   Result := (Count <> 0) and not FQuoted and (RawData^ = '-');
@@ -388,6 +397,11 @@ procedure TWideCommandLineParam.Clear;
 begin
   inherited;
   FQuoted := False;
+end;
+
+function TWideCommandLineParam.Equals(Value: PWideChar; IgnoreCase: Boolean): Boolean;
+begin
+  Result := Compare(Value + 1, PWord(Value)^, IgnoreCase) = 0;
 end;
 
 function TWideCommandLineParam.IsKey: Boolean;
