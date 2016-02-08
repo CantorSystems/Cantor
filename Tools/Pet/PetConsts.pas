@@ -112,7 +112,7 @@ const
   sEstimating       = 'Estimating';
   sBackuping        = 'Backuping';
   sTotal            = 'Total';
-  sSectionList      = 'Section list of';
+  sSectionList      = 'Section list of %s';
   sRebasingTo       = 'Rebasing image to';
 
   DefaultMaxWidth = sChainedData; // max of {sLoading, sChainedData, sStrippng,

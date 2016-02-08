@@ -587,8 +587,7 @@ begin
 
         if roListSections in FOptions then
         begin
-          Output.Action(sSectionList, FileName);
-          Console.WriteLn;
+          Console.WriteLn(sSectionList, 0, [FileName.RawData]);
           for I := 0 to FImage.Count - 1 do
             Console.WriteLn('  %hs', 0, [FImage.Sections[I].Header.Name]);
           FileName := FileName.Next;
