@@ -369,11 +369,13 @@ begin
   CmdLine.AsWideString(Source, WideStrLen(Source), soAttach);
   Param.Create;
   CmdLine := Param.AsNextParam(@CmdLine); // skip own file name
+  Param.Clear;
 
   ParamCount := 0;
   Key.Create;
   repeat
-    CmdLine := Param.AsNextParam(@CmdLine);
+    if Param.Count = 0 then
+      CmdLine := Param.AsNextParam(@CmdLine);
     if Param.Count = 0 then
       Break;
 
@@ -391,6 +393,7 @@ begin
         end;
 
       if Param.Count <> 0 then
+      begin
         for K := Low(FFileNames) to High(FFileNames) do
           if Key.Equals(FileKeys[K]) then
           begin
@@ -402,12 +405,18 @@ begin
               if Count <> 0 then
                 raise ECommandLine.Create(K, @Param);
               PPointer(@FFileNames[K])^ := TypeOf(TFileName); // Fast core
-              AsRange(@Param, 0);
-              Detach;
+              if not Param.IsKey then
+              begin
+                AsRange(@Param, 0);
+                Detach;
+                Param.Clear;
+              end;
             end;
-            Param.Clear;
             Break;
           end;
+        if Param.IsKey then
+          Continue;
+      end;
 
       if Param.Count <> 0 then
       begin
@@ -438,6 +447,8 @@ begin
           CmdLine := Param.AsNextParam(@CmdLine);
           if Param.Count = 0 then
             raise ECommandLine.Create(sRebaseAddress);
+          if FRebaseAddress and $80000000 = 0 then
+            raise ECommandLine.Create(sRebaseAddress, @Param);
           FRebaseAddress := Param.AsHexadecimal;
         end
         else if Key.Equals(sDropSect) then
@@ -455,6 +466,8 @@ begin
           CmdLine := Param.AsNextParam(@CmdLine);
           if Param.Count = 0 then
             raise ECommandLine.Create(sLogStyle);
+          if FLogStyle <> lsAuto then
+            raise ECommandLine.Create(sLogStyle, @Param);
           if Param.Equals(sActions) then
             FLogStyle := lsActions
           else if Param.Equals(sTotals) then
@@ -479,6 +492,7 @@ begin
         Detach;
       end;
       FSourceFileNames.Append(SourceFileName);
+      Param.Clear;
     end;
   until False;
 
