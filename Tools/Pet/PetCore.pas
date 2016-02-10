@@ -104,6 +104,14 @@ type
     property FileKind: TFileKind read FFileKind;
   end;
 
+  EImageBase = class(Exception)
+  private
+    FValue: CoreWord;
+  public
+    constructor Create(Value: CoreWord);
+    property Value: CoreWord read FValue;
+  end;
+
 implementation
 
 uses
@@ -169,6 +177,14 @@ constructor ECommandLine.CreateInvalid(Option: PLegacyChar; InvalidValue: PCoreS
 begin
   inherited Create(sInvalidOptionValue, DefaultSystemCodePage, [Option, InvalidValue.Data]);
   FInvalidParam := InvalidValue;
+end;
+
+{ EImageBase }
+
+constructor EImageBase.Create(Value: CoreWord);
+begin
+  inherited Create(sImageBaseNotOn64KBoundary, DefaultSystemCodePage, [Value]);
+  FValue := Value;
 end;
 
 { TOutput }
@@ -450,6 +466,8 @@ begin
           if FRebaseAddress and $80000000 = 0 then
             raise ECommandLine.Create(sRebaseAddress, @Param);
           FRebaseAddress := Param.AsHexadecimal;
+          if FRebaseAddress mod $10000 <> 0 then
+            raise EImageBase.Create(FRebaseAddress);
         end
         else if Key.Equals(sDropSect) then
         begin
