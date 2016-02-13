@@ -63,7 +63,7 @@ type
     FDropSections: TSectionNames;
     FMajorVersion, FMinorVersion: Word;
     FLogStyle: TLogStyle;
-    FRebaseAddress: LongWord;
+    FRebaseAddress: CoreWord;
     FFoundFiles: TFileNameList;
     FImage: TExeImage;
     FCurrentPath: TFileName;
@@ -321,7 +321,7 @@ var
   K: TFileKind;
   Width: Integer;
 begin
-  Result := 0;
+  Result := Byte(FRebaseAddress and $80000000 = 0) * 8;
   for K := Low(FFileNames) to High(FFileNames) do
   begin
     Width := FFileNames[K].Width(MaxWidth);
@@ -702,7 +702,7 @@ begin
         begin
           if FLogStyle <> lsTotals then
           begin
-            TmpFileName.AsHexadecimal(FRebaseAddress, 8);
+            TmpFileName.AsHexadecimal(FRebaseAddress, -8, False, CoreChar('0'));
             Output.Action(sRebasingTo, @TmpFileName);
           end;
           if FImage.Rebase(FRebaseAddress) = 0 then
