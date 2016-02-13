@@ -1262,16 +1262,17 @@ begin
   begin
     if MinWidth < 0 then
     begin
-      MinWidth := -MinWidth - Length;
-      System.FillChar(FData[Index], MinWidth, FillChar);
-      Move(Digits^, FData[Index + MinWidth], Length);
+      Result := -MinWidth - Length;
+      System.FillChar(FData[Index], Result, FillChar);
+      Move(Digits^, FData[Index + Result], Length);
+      Inc(Result, Length);
     end
     else
     begin
       Move(Digits^, FData[Index], Length);
       System.FillChar(FData[Index + Length], MinWidth - Length, FillChar);
+      Result := MinWidth;
     end;
-    Result := Abs(MinWidth);
     Exit;
   end
   else
@@ -2193,16 +2194,17 @@ begin
   begin
     if MinWidth < 0 then
     begin
-      MinWidth := -MinWidth - Length;
-      FillWideChar(FData[Index], MinWidth, FillChar);
-      MoveBytesZeroExpand(Digits^, FData[Index + MinWidth], Length);
+      Result := -MinWidth - Length;
+      FillWideChar(FData[Index], Result, FillChar);
+      MoveBytesZeroExpand(Digits^, FData[Index + Result], Length);
+      Inc(Result, Length);
     end
     else
     begin
       MoveBytesZeroExpand(Digits^, FData[Index], Length);
       FillWideChar(FData[Index + Length], MinWidth - Length, FillChar);
+      Result := MinWidth;
     end;
-    Result := Abs(Length);
     Exit;
   end
   else
