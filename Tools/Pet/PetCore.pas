@@ -112,6 +112,11 @@ type
     property Value: CoreWord read FValue;
   end;
 
+  EMenuet = class(Exception)
+  public
+    constructor Create;
+  end;
+
 implementation
 
 uses
@@ -321,7 +326,7 @@ var
   K: TFileKind;
   Width: Integer;
 begin
-  Result := Byte(FRebaseAddress and $80000000 = 0) * 8;
+  Result := Byte((FRebaseAddress <> 0) or (roMenuet in FOptions)) * 8;
   for K := Low(FFileNames) to High(FFileNames) do
   begin
     Width := FFileNames[K].Width(MaxWidth);
@@ -341,7 +346,7 @@ begin
   if FLogStyle <> lsTotals then
   begin
     Result := StrLen(DefaultMaxWidth);
-    if FRebaseAddress and $80000000 = 0 then
+    if (FRebaseAddress <> 0) or (roMenuet in FOptions) then
     begin
       Width := StrLen(sRebasingTo);
       if Width > Result then
@@ -379,8 +384,6 @@ var
   R: TRunOption;
   SourceFileName: PFileNameListItem;
 begin
-  Dec(FRebaseAddress); // lite code, instead of constructor (TODO: reenterability)
-
   CmdLine.Create;
   CmdLine.AsWideString(Source, WideStrLen(Source), soAttach);
   Param.Create;
@@ -403,6 +406,8 @@ begin
       for R := Low(OptionKeys) to High(OptionKeys) do
         if Key.Equals(OptionKeys[R]) then
         begin
+          if (R = roMenuet) and (FRebaseAddress <> 0) then
+            raise EMenuet.Create;
           Include(FOptions, R);
           Param.Clear;
           Break;
@@ -463,8 +468,10 @@ begin
           CmdLine := Param.AsNextParam(@CmdLine);
           if Param.Count = 0 then
             raise ECommandLine.Create(sRebaseAddress);
-          if FRebaseAddress and $80000000 = 0 then
-            raise ECommandLine.Create(sRebaseAddress, @Param);
+          if FRebaseAddress <> 0 then
+            raise ECommandLine.Create(sRebaseAddress, @Param)
+          else if roMenuet in FOptions then
+            raise EMenuet.Create;
           FRebaseAddress := Param.AsHexadecimal;
           if FRebaseAddress mod $10000 <> 0 then
             raise EImageBase.Create(FRebaseAddress);
@@ -542,18 +549,52 @@ begin
 end;
 
 procedure TApplication.Run(CommandLine: PCoreChar);
+
+var
+  TmpFileName: TFileName;
+  DestFileName: PFileName;
+  FileName: PFileNameListItem;
+
+function SaveFile(SwapFileName: PFileName): QuadWord;
 const
-  Deep: array[Boolean] of TStripOptions = ([], [soOrphanedSections]);
+  Backup: array[Boolean] of TSaveOptions = ([], [soBackup]);
   Touch: array[Boolean] of TSaveOptions = ([], [soTouch]);
 var
+  MenuetImage: TMenuetImage;
+begin
+  if roMenuet in FOptions then
+    with MenuetImage do
+    begin
+      Create;
+      try
+        Load(@FImage);
+        Build;
+        Result := CoreWrappers.SaveFile(
+          Save, FileName.RawData, SwapFileName.RawData, DestFileName.RawData,
+          Header.ImageSize, faRandomRewrite,
+          Touch[roTouch in FOptions] + Backup[FFileNames[fkBackup].Count <> 0]
+        );
+      finally
+        Destroy;
+      end;
+    end
+  else
+    Result := CoreWrappers.SaveFile(
+      SaveImage, FileName.RawData, SwapFileName.RawData, DestFileName.RawData,
+      FImage.Size(roTrunc in FOptions), faRandomRewrite,
+      Touch[roTouch in FOptions] + Backup[FFileNames[fkBackup].Count <> 0]
+    );
+end;
+
+const
+  Deep: array[Boolean] of TStripOptions = ([], [soOrphanedSections]);
+var
   Stub: TExeStub;
-  TmpFileName: TFileName;
   Output: TDefaultOutput;
   Loaded: TLoadFileResult;
   BytesSaved, TotalBytes, TotalSaved: QuadWord;
   ImageSize, OldSize, SectionBytes: LongWord;
-  FileName: PFileNameListItem;
-  DestFileName, ExtractFileName: PFileName;
+  ExtractFileName: PFileName;
   Section: PLegacyTextListItem;
   I: Integer;
 begin
@@ -678,7 +719,7 @@ begin
             begin
               Load(@FImage.Stub);
               Strip(roStrip in FOptions);
-              BytesSaved := SaveFile(Save, ExtractFileName.RawData, Size);
+              BytesSaved := CoreWrappers.SaveFile(Save, ExtractFileName.RawData, Size);
             end;
             if FLogStyle <> lsTotals then
               Output.TransferStats(0, BytesSaved);
@@ -698,7 +739,7 @@ begin
               Output.StripStats(OldSize, Size);
           end;
 
-        if FRebaseAddress and $80000000 = 0 then
+        if (FRebaseAddress <> 0) or (roMenuet in FOptions) then
         begin
           if FLogStyle <> lsTotals then
           begin
@@ -780,22 +821,14 @@ begin
                 Console.WriteLn;
                 Output.Action(sSaving, DestFileName);
               end;
-              BytesSaved := SaveFile(
-                SaveImage, FileName.RawData, FFileNames[fkBackup].RawData,
-                DestFileName.RawData, FImage.Size(roTrunc in FOptions),
-                faRandomRewrite, Touch[roTouch in FOptions] + [soBackup]
-              );
+              BytesSaved := SaveFile(@FFileNames[fkBackup]);
             end
             else
             begin
               TmpFileName.AsTempName(DestFileName);
               if FLogStyle <> lsTotals then
                 Output.Action(sSaving, DestFileName);
-              BytesSaved := SaveFile(
-                SaveImage, FileName.RawData, TmpFileName.RawData,
-                DestFileName.RawData, FImage.Size(roTrunc in FOptions),
-                faRandomRewrite, Touch[roTouch in FOptions]
-              );
+              BytesSaved := SaveFile(@TmpFileName);
             end;
 
             if FLogStyle <> lsTotals then
@@ -839,6 +872,13 @@ end;
 function TApplication.TotalsMaxPromptWidth: Integer;
 begin
   Result := StrLen(Processing[TypeOf(FFileNames[fkInto]) <> nil]);
+end;
+
+{ EMenuet }
+
+constructor EMenuet.Create;
+begin
+  inherited Create(sMenuetAt0, StrLen(sMenuetAt0));
 end;
 
 end.

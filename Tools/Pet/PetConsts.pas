@@ -68,7 +68,7 @@ const
             #9'-deep' +          #9#9#9'Strip orphaned sections (unsafe!)'#10 +
             #9'-dropsect <s1,s2,...>'#9'Drop sections <s1>, <s2>, etc.'#10 +
             #9'-log <actions|totals>'#9'Output log style'#10 +
-            //#9'-menuet' +        #9#9#9'Save to MENUET01/MENUET02 format'#10 +
+            #9'-menuet' +        #9#9#9'Save to MENUET01/MENUET02 format'#10 +
             #9'-osver <#[.#]>' +   #9#9'Set required OS version to <#> or <#.#>'#10 +
             #9'-rebase <########>' + #9'Rebase image to hexadecimal address <########>'#10 +
             #9'-stub [stub]|[.]' +   #9'Replace stub with one from [stub] file or take'#10 +
@@ -126,7 +126,8 @@ const
   sTotalsMessage = #10'%u files %d bytes (%hs)';
   sNoFilesFound = 'No files found';
   sSectionNotFound = 'Section “%s” not found';
-  sImageBaseNotOn64KBoundary = 'Image base %08X is not on 64 KB boundary'; 
+  sImageBaseNotOn64KBoundary = 'Image base %08X is not on 64 KB boundary';
+  sMenuetAt0 = 'MENUET01/02 images should start at image base 0';
 
 implementation
 

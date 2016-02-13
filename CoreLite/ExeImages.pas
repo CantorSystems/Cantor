@@ -120,10 +120,12 @@ type
   public
     destructor Destroy; virtual;
     procedure Build;
+    function HeaderSize: LongWord;
     procedure Load(Image: PExeImage);
     procedure Save(Dest: PWritableStream);
 
     property Data: Pointer read FData;
+    property Header: TMenuetHeader read FHeader;
   end;
 
 { Exceptions }
@@ -769,13 +771,13 @@ begin
           Offset := PWordArray(PAddress(Relocs) + SizeOf(TImageBaseRelocation))[I];
           case Offset shr 12 of
             0:
-              ;
+              Break;
             IMAGE_REL_BASED_HIGHLOW:
               begin
                 Inc(PLongWord(Chunk + Offset and $FFF)^, NewBase);
                 Inc(Result);
               end;
-          else
+          else // TODO
             raise EBadImage.Create('Unsupported relocation format, code %2u', DefaultSystemCodePage, [Offset shr 12]);
           end;
         end;
@@ -918,17 +920,51 @@ end;
   end;
 end;}
 
-procedure TMenuetImage.Load(Image: PExeImage);
+function TMenuetImage.HeaderSize: LongWord;
 begin
+  Result := SizeOf(FHeader) - Byte(FHeader.TLS = 0) * SizeOf(FHeader.TLS);
+end;
 
+procedure TMenuetImage.Load(Image: PExeImage);
+var
+  I, L: Integer;
+  Dest: PAddress;
+begin
+  FHeader.ImageSize := 0;
+  for I := 0 to Image.Count - 1 do
+    with FHeader, Image.Sections[I] do
+    begin
+      if DirectoryIndex(Image.FHeaders.OptionalHeader) = IMAGE_DIRECTORY_ENTRY_TLS then
+        TLS := ImageSize;
+      Inc(ImageSize, Size);
+    end;
+  ReallocMem(FData, FHeader.ImageSize);
+  Dest := FData;
+  for I := 0 to Image.Count - 1 do
+    with Image.Sections[I] do
+    begin
+      L := Size;
+      Move(Data^, Dest^, L);
+      Inc(Dest, L);
+    end;
+  with FHeader, Image.Headers do
+  begin
+    Inc(ImageSize, HeaderSize);
+    EntryPoint := OptionalHeader.EntryPoint;
+    HeapSize := OptionalHeader.HeapReserveSize;
+    ESP := ImageSize + OptionalHeader.StackReserveSize;
+  end;
 end;
 
 procedure TMenuetImage.Save(Dest: PWritableStream);
+var
+  L: LongWord;
 begin
   with Dest^ do
   begin
-    WriteBuffer(FHeader, SizeOf(FHeader));
-    WriteBuffer(FData^, FHeader.ImageSize);
+    L := HeaderSize;
+    WriteBuffer(FHeader, L);
+    WriteBuffer(FData^, FHeader.ImageSize - L);
   end;
 end;
 
