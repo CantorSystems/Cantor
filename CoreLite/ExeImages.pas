@@ -69,7 +69,7 @@ type
     property Header: TImageSectionHeader read FHeader;
   end;
 
-  TStripOptions = set of (soStub, soDataDirectory, soDebug, soRelocations, soExports,
+  TStripOptions = set of (soStub, soDataDirectory, soDebug, soRelocations, soExports, soSlashes,
     soCleanVersionInfo, soSectionData, soPadding, soEmptySections, soOrphanedSections);
 
   PExeSectionArray = ^TExeSectionArray;
@@ -874,7 +874,8 @@ begin
         if soSectionData in Options then
           Strip(soPadding in Options);
         if ((soEmptySections in Options) and (Header.RawDataSize = 0)) or
-          ((soOrphanedSections in Options) and IsOrphaned(FHeaders.OptionalHeader))
+          ((soOrphanedSections in Options) and IsOrphaned(FHeaders.OptionalHeader)) or
+          ((soSlashes in Options) and (Header.Name[0] = '/'))
         then
           Cut(I);
       end;
