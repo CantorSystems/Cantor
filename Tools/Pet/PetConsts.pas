@@ -126,7 +126,7 @@ const
   sTotalsMessage = #10'%u files %d bytes (%hs)';
   sNoFilesFound = 'No files found';
   sSectionNotFound = 'Section “%s” not found';
-  sImageBaseNotOn64KBoundary = 'Image base %08X is not on 64 KB boundary';
+  sImageBaseUnaligned = 'Image base %08X is not on 64 KB boundary';
   sMenuetAt0 = 'MENUET01/02 images should start at image base 0';
 
 implementation

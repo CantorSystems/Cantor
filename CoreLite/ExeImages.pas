@@ -101,7 +101,7 @@ type
     procedure Load(Source: PReadableStream);
     procedure OSVersion(MajorVersion: Word; MinorVersion: Word = 0);
     function RawData(VirtualAddress: LongWord): Pointer;
-    function Rebase(NewBaseBy64K: Word): LongWord;
+    function Rebase(Segment: Word; MenuetStyle: Boolean = False): LongWord;
     procedure Save(Dest: PWritableStream; TruncLastSection: Boolean = True);
     function SectionAlignBytes(Source: LongWord): LongWord;
     function Size(TruncLastSection: Boolean = True): LongWord;
@@ -120,7 +120,7 @@ type
   public
     destructor Destroy; virtual;
     procedure Build;
-    function HeaderSize: LongWord;
+    function HeaderSize: Byte;
     procedure Load(Image: PExeImage);
     procedure Save(Dest: PWritableStream);
 
@@ -745,16 +745,27 @@ begin
   Result := nil;
 end;
 
-function TExeImage.Rebase(NewBaseBy64K: Word): LongWord;
+function TExeImage.Rebase(Segment: Word; MenuetStyle: Boolean): LongWord;
 var
-  NewBase: LongWord;
+  DeltaOffset: Integer;
+  MenuetImageBase: Byte;
   Relocs: PImageBaseRelocation;
   Idx, I: Integer;
   Chunk: PAddress;
   Offset: Word;
 begin
   Result := 0;
-  NewBase := NewBaseBy64K shl 16 - FHeaders.OptionalHeader.ImageBase;
+
+  if MenuetStyle then
+  begin
+    MenuetImageBase := SizeOf(TMenuetHeader);
+    Idx := IndexOf(IMAGE_DIRECTORY_ENTRY_TLS);
+    if Idx < 0 then
+      Dec(MenuetImageBase, SizeOf(LongWord));
+  end
+  else
+    MenuetImageBase := 0;
+
   Idx := IndexOf(IMAGE_DIRECTORY_ENTRY_BASERELOC);
   if Idx >= 0 then
   begin
@@ -765,7 +776,23 @@ begin
       begin
         Chunk := RawData(Relocs.VirtualAddress);
         if Chunk = nil then
-          raise EBadImage.Create; // TODO: invalid address
+          raise EBadImage.Create('Invalid address'); // TODO: invalid address
+
+        DeltaOffset := Segment shl 16 + MenuetImageBase;
+        if MenuetStyle then
+          for I := 0 to Count - 1 do
+            with FHeaders.OptionalHeader, FSections[I].FHeader do
+            begin
+              if (VirtualAddress > EntryPoint) and (FSections[I - 1].FHeader.VirtualAddress <= EntryPoint) then
+                Dec(EntryPoint, DeltaOffset);
+              Inc(DeltaOffset, RawDataSize - VirtualAddress);
+              if VirtualAddress = CodeBase then
+                Dec(CodeBase, DeltaOffset);
+              if VirtualAddress = DataBase then
+                Dec(DataBase, DeltaOffset);
+            end;
+        Dec(DeltaOffset, FHeaders.OptionalHeader.ImageBase);
+
         for I := 0 to (Relocs.BlockSize - SizeOf(TImageBaseRelocation)) div SizeOf(Word) - 1 do
         begin
           Offset := PWordArray(PAddress(Relocs) + SizeOf(TImageBaseRelocation))[I];
@@ -774,7 +801,7 @@ begin
               Break;
             IMAGE_REL_BASED_HIGHLOW:
               begin
-                Inc(PLongWord(Chunk + Offset and $FFF)^, NewBase);
+                Inc(PLongWord(Chunk + Offset and $FFF)^, DeltaOffset);
                 Inc(Result);
               end;
           else // TODO
@@ -785,7 +812,8 @@ begin
       end;
     end;
   end;
-  Inc(FHeaders.OptionalHeader.ImageBase, NewBase);
+
+  FHeaders.OptionalHeader.ImageBase := Segment shl 16 + MenuetImageBase;
 end;
 
 procedure TExeImage.Save(Dest: PWritableStream; TruncLastSection: Boolean);
@@ -921,32 +949,31 @@ end;
   end;
 end;}
 
-function TMenuetImage.HeaderSize: LongWord;
+function TMenuetImage.HeaderSize: Byte;
 begin
   Result := SizeOf(FHeader) - Byte(FHeader.TLS = 0) * SizeOf(FHeader.TLS);
 end;
 
 procedure TMenuetImage.Load(Image: PExeImage);
 var
-  I, L: Integer;
+  I: Integer;
   Dest: PAddress;
 begin
   FHeader.ImageSize := 0;
   for I := 0 to Image.Count - 1 do
-    with FHeader, Image.Sections[I] do
+    with FHeader, Image.Sections[I].FHeader do
     begin
-      if DirectoryIndex(Image.FHeaders.OptionalHeader) = IMAGE_DIRECTORY_ENTRY_TLS then
+      if VirtualAddress = Image.FHeaders.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_TLS].VirtualAddress then
         TLS := ImageSize;
-      Inc(ImageSize, Size);
+      Inc(ImageSize, RawDataSize); // TODO: handlers
     end;
   ReallocMem(FData, FHeader.ImageSize);
   Dest := FData;
   for I := 0 to Image.Count - 1 do
-    with Image.Sections[I] do
+    with Image.Sections[I], FHeader do
     begin
-      L := Size;
-      Move(Data^, Dest^, L);
-      Inc(Dest, L);
+      Move(Data^, Dest^, RawDataSize); // TODO: handlers
+      Inc(Dest, RawDataSize);
     end;
   with FHeader, Image.Headers do
   begin

@@ -188,7 +188,7 @@ end;
 
 constructor EImageBase.Create(Value: CoreWord);
 begin
-  inherited Create(sImageBaseNotOn64KBoundary, DefaultSystemCodePage, [Value]);
+  inherited Create(sImageBaseUnaligned, DefaultSystemCodePage, [Value]);
   FValue := Value;
 end;
 
@@ -554,6 +554,7 @@ var
   TmpFileName: TFileName;
   DestFileName: PFileName;
   FileName: PFileNameListItem;
+  Output: TDefaultOutput;
 
 function SaveFile(SwapFileName: PFileName): QuadWord;
 const
@@ -586,11 +587,24 @@ begin
     );
 end;
 
+procedure RebaseImage(MenuetStyle: Boolean);
+begin
+  if FLogStyle <> lsTotals then
+  begin
+    TmpFileName.AsHexadecimal(FRebaseAddress, -8, False, CoreChar('0'));
+    Output.Action(sRebasingTo, @TmpFileName);
+  end;
+  if FImage.Rebase(FRebaseAddress div $10000, MenuetStyle) = 0 then
+    Console.WriteLn(sCannotRebaseImage, 0, [FileName.RawData])
+  else if FLogStyle <> lsTotals then
+    Console.WriteLn;
+end;
+
 const
   Deep: array[Boolean] of TStripOptions = ([], [soOrphanedSections]);
+  Relocations: array[Boolean] of TStripOptions = ([], [soRelocations]);
 var
   Stub: TExeStub;
-  Output: TDefaultOutput;
   Loaded: TLoadFileResult;
   BytesSaved, TotalBytes, TotalSaved: QuadWord;
   ImageSize, OldSize, SectionBytes: LongWord;
@@ -743,18 +757,8 @@ begin
               Output.StripStats(OldSize, Size);
           end;
 
-        if (FRebaseAddress <> 0) or (roMenuet in FOptions) then
-        begin
-          if FLogStyle <> lsTotals then
-          begin
-            TmpFileName.AsHexadecimal(FRebaseAddress, -8, False, CoreChar('0'));
-            Output.Action(sRebasingTo, @TmpFileName);
-          end;
-          if FImage.Rebase(FRebaseAddress) = 0 then
-            Console.WriteLn(sCannotRebaseImage, 0, [FileName.RawData])
-          else
-            Console.WriteLn;
-        end;
+        if (FRebaseAddress <> 0) and not (roMenuet in FOptions) then
+          RebaseImage(False);
 
         if FDropSections.Count <> 0 then
         begin
@@ -783,11 +787,11 @@ begin
         begin
           if FLogStyle <> lsTotals then
             Output.Action(sStripping, nil);
-          FImage.Strip([soStub..soEmptySections] + Deep[roDeep in FOptions]);
+          FImage.Strip([soStub..soEmptySections] - Relocations[roMenuet in FOptions] + Deep[roDeep in FOptions]);
           if FLogStyle <> lsTotals then
             Output.StripStats(ImageSize, FImage.Size(roTrunc in FOptions));
         end
-        else
+        else if not (roMenuet in FOptions) then
           with FImage.Stub do
           begin
             if FLogStyle <> lsTotals then
@@ -798,7 +802,13 @@ begin
               Output.StripStats(OldSize, Size);
           end;
 
-        FImage.Build(Byte(roStrip in FOptions) * 512);
+        if roMenuet in FOptions then
+        begin
+          RebaseImage(True);
+          FImage.Strip([soRelocations]);
+        end
+        else
+          FImage.Build(Byte(roStrip in FOptions) * 512);
 
         if DestFileName.IsDotOrNull then
           DestFileName := FileName
@@ -882,7 +892,7 @@ end;
 
 constructor EMenuet.Create;
 begin
-  inherited Create(sMenuetAt0, StrLen(sMenuetAt0));
+  inherited Create(sMenuetAt0);
 end;
 
 end.

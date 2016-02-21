@@ -779,7 +779,7 @@ begin
   begin
     Last := LastForward;
     Index := 0;
-    Instance := PCollectionCast(@Self).Items + Index * CollectionInfo.ItemSize;
+    Instance := PCollectionCast(@Self).Items;
     Result := Index >= 0;
   end;
 end;
