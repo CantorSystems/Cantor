@@ -662,7 +662,11 @@ begin
         begin
           Console.WriteLn(sSectionList, 0, [FileName.RawData]);
           for I := 0 to FImage.Count - 1 do
-            Console.WriteLn('  %hs', 0, [FImage.Sections[I].Header.Name]);
+            with FImage.Sections[I] do
+            begin
+              Console.WriteLn('  %8hs', 0, [Header.Name], 0);
+              Output.TransferStats(Loaded.FileSize, Size);
+            end;
           FileName := FileName.Next;
           if FileName <> nil then
             Console.WriteLn;
