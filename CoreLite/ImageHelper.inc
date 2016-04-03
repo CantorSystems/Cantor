@@ -1,5 +1,5 @@
 (*
-    Image helper structures for CoreLite
+    Image helper constansts and structures for CoreLite
 
     Copyright (c) 2013, 2016 Vladislav Javadov (aka Freeman)
 *)
