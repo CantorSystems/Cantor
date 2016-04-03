@@ -51,7 +51,7 @@ const
 
   sMMX = 'This program requires MMX';
 
-  sPlatformError  = '%s: “%s”';
+  sPlatformError  = '%s: %s';
   sPlatformError2 = '%s: %hs %d';
 
   sStreamRead = 'read';
