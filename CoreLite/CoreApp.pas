@@ -235,9 +235,12 @@ begin
 end;
 
 destructor TConsoleApplication.Destroy;
+var
+  CP: Word;
 begin
   FAppName.Finalize;
   FExeName.Finalize;
+  CP := FConsole.CodePage;
   FConsole.Destroy;
 
   if caPause in PConsoleAppCast(@Self).Options then
@@ -245,6 +248,7 @@ begin
     begin
       Create(True);
       try
+        CodePage := CP;
         WriteLn(Byte(NeedEOL) + 1);
         ReadLn(sPressEnterToExit, StrLen(sPressEnterToExit));
       finally
