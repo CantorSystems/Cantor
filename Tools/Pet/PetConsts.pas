@@ -1,5 +1,5 @@
 (*
-    PE Tool's strings and messages
+    PE Tool strings and messages
 
     Copyright (c) 2012-2016 Vladislav Javadov (aka Freeman)
 *)
@@ -132,4 +132,3 @@ const
 implementation
 
 end.
-
