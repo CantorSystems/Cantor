@@ -76,6 +76,7 @@ type
   TExeSectionArray = array[0..MaxInt div SizeOf(TExeSection) - 1] of TExeSection;
 
   TExeHeaderSection = (hsCode, hsData);
+  TSectionRawData = (rdRaw, rdAlign, rdTruncLast);
 
   PExeImage = ^TExeImage;
   TExeImage = object(TCollection)
@@ -90,7 +91,8 @@ type
   public
     constructor Create;
     destructor Destroy; virtual;
-    procedure Build(FileAlignment: LongWord = 512; RawDataSize: Boolean = False);
+    procedure Build(FileAlignment: LongWord = 512;
+      SectionRawData: TSectionRawData = rdTruncLast);
     function Delete(Name: PLegacyChar; Length: Integer): Integer; overload;
     function FileAlignBytes(Source: LongWord): LongWord;
     function HeadersSize: LongWord;
@@ -493,7 +495,7 @@ begin
   inherited;
 end;
 
-procedure TExeImage.Build(FileAlignment: LongWord; RawDataSize: Boolean);
+procedure TExeImage.Build(FileAlignment: LongWord; SectionRawData: TSectionRawData);
 const
   FixedOptHeaderSize = SizeOf(TImageOptionalHeader) -
     IMAGE_NUMBEROF_DIRECTORY_ENTRIES * SizeOf(TImageDataDirectory);
@@ -534,12 +536,12 @@ begin
         else if DataBase = FHeader.RawDataOffset then
           DataBase := Offset;
         FHeader.RawDataOffset := Offset;
-        if RawDataSize then
+        if SectionRawData = rdRaw then
         begin
           Inc(Offset, FHeader.RawDataSize);
           Inc(Offset, FileAlignBytes(Offset));
         end
-        else
+        else if (SectionRawData = rdAlign) or (I < Count - 1) then
         begin
           Inc(FHeader.RawDataSize, FileAlignBytes(FHeader.RawDataSize));
           Inc(Offset, FHeader.RawDataSize);

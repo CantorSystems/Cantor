@@ -612,6 +612,7 @@ var
   ExtractFileName: PFileName;
   Section: PLegacyTextListItem;
   I: Integer;
+  RawData: TSectionRawData;
 begin
   ParseCommandLine(CommandLine);
 
@@ -810,7 +811,13 @@ begin
           FImage.Strip([soRelocations]);
         end
         else
-          FImage.Build(Byte(roStrip in FOptions) * 512, roRaw in FOptions);
+        begin
+          if roRaw in FOptions then
+            RawData := rdRaw
+          else
+            RawData := TSectionRawData(Byte(roTrunc in FOptions) + 1);
+          FImage.Build(Byte(roStrip in FOptions) * 512, RawData);
+        end;
 
         if DestFileName.IsDotOrNull then
           DestFileName := FileName
