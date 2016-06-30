@@ -69,8 +69,8 @@ type
     property Header: TImageSectionHeader read FHeader;
   end;
 
-  TStripOptions = set of (soStub, soDataDirectory, soDebug, soRelocations, soExports, soSlashes,
-    soCleanVersionInfo, soSectionData, soPadding, soEmptySections, soOrphanedSections);
+  TStripOptions = set of (soStub, soDebug, soRelocations, soExports, soSlashes, soVersionInfo,
+    soSectionData, soPadding, soEmptySections, soOrphanedSections, soDataDirectory);
 
   PExeSectionArray = ^TExeSectionArray;
   TExeSectionArray = array[0..MaxInt div SizeOf(TExeSection) - 1] of TExeSection;
@@ -79,7 +79,7 @@ type
 
   PExeImage = ^TExeImage;
   TExeImage = object(TCollection)
-  private
+  private     
   { hold } FSections: PExeSectionArray;
     FHeaders: TImageNewHeaders; // TODO: x64
     FStub: TExeStub;
@@ -90,7 +90,7 @@ type
   public
     constructor Create;
     destructor Destroy; virtual;
-    procedure Build(FileAlignment: LongWord = 512);
+    procedure Build(FileAlignment: LongWord = 512; RawDataSize: Boolean = False);
     function Delete(Name: PLegacyChar; Length: Integer): Integer; overload;
     function FileAlignBytes(Source: LongWord): LongWord;
     function HeadersSize: LongWord;
@@ -451,7 +451,6 @@ begin
       end;
 
       P := nil;
-
       while PLegacyChar(Padding) > PLegacyChar(FData) do
         if (Padding[0] = $44444150) and (Padding[1] = $58474E49) and // 'PADDINGXXPADDING'
           (Padding[2] = $44415058) and (Padding[3] = $474E4944) then
@@ -494,7 +493,10 @@ begin
   inherited;
 end;
 
-procedure TExeImage.Build(FileAlignment: LongWord);
+procedure TExeImage.Build(FileAlignment: LongWord; RawDataSize: Boolean);
+const
+  FixedOptHeaderSize = SizeOf(TImageOptionalHeader) -
+    IMAGE_NUMBEROF_DIRECTORY_ENTRIES * SizeOf(TImageDataDirectory);
 var
   Offset: LongWord;
   I: Integer;
@@ -532,12 +534,25 @@ begin
         else if DataBase = FHeader.RawDataOffset then
           DataBase := Offset;
         FHeader.RawDataOffset := Offset;
-        Inc(Offset, FHeader.RawDataSize);
-        Inc(Offset, FileAlignBytes(Offset));
+        if RawDataSize then
+        begin
+          Inc(Offset, FHeader.RawDataSize);
+          Inc(Offset, FileAlignBytes(Offset));
+        end
+        else
+        begin
+          Inc(FHeader.RawDataSize, FileAlignBytes(FHeader.RawDataSize));
+          Inc(Offset, FHeader.RawDataSize);
+        end;
       end;
     Checksum := 0;
   end;
   FHeaders.FileHeader.SectionCount := Count;
+{
+  // not valid Win32 image
+  FHeaders.FileHeader.OptionalHeaderSize := FixedOptHeaderSize + Count * SizeOf(TImageDataDirectory);
+  Dec(FHeaders.OptionalHeader.HeadersSize, SizeOf(TImageOptionalHeader) - OptionalHeaderSize);
+}
 end;
 
 class function TExeImage.CollectionInfo: TCollectionInfo;
@@ -634,7 +649,7 @@ end;
 function TExeImage.HeadersSize: LongWord;
 begin
   if LongWord(FHeaders.Magic) = IMAGE_NT_SIGNATURE then
-    Result := SizeOf(TImageNewHeaders) - SizeOf(FHeaders.OptionalHeader) +
+    Result := SizeOf(TImageNewHeaders) - SizeOf(TImageOptionalHeader) +
       FHeaders.FileHeader.OptionalHeaderSize
   else
     Result := 0;
@@ -877,7 +892,7 @@ end;
 
 procedure TExeImage.Strip(Options: TStripOptions);
 var
-  I: Integer;
+  Cnt, I: Integer;
 begin
   if soStub in Options then
     FStub.Strip;
@@ -909,17 +924,23 @@ begin
       end;
   end;
 
-  if soDataDirectory in Options then
-    with FHeaders.OptionalHeader do
+  with FHeaders.OptionalHeader do
+  begin
+    Cnt := 0;
+    for I := DirectoryEntryCount - 1 downto 0 do
+      if QuadWord(DataDirectory[I]) <> 0 then // Fast core
+      begin
+        Cnt := I + 1;
+        Break;
+      end;
+    if soDataDirectory in Options then
+      DirectoryEntryCount := Cnt
+    else if DirectoryEntryCount < IMAGE_NUMBEROF_DIRECTORY_ENTRIES then
     begin
-      for I := DirectoryEntryCount - 1 downto 0 do
-        if QuadWord(DataDirectory[I]) <> 0 then // Fast core
-        begin
-          DirectoryEntryCount := I + 1;
-          Exit;
-        end;
-      DirectoryEntryCount := 0;
+      FillChar(DataDirectory[Cnt], (IMAGE_NUMBEROF_DIRECTORY_ENTRIES - Cnt) * SizeOf(TImageDataDirectory), 0);
+      DirectoryEntryCount := IMAGE_NUMBEROF_DIRECTORY_ENTRIES;
     end;
+  end;
 end;
 
 { TMenuetImage }
@@ -956,25 +977,35 @@ end;
 
 procedure TMenuetImage.Load(Image: PExeImage);
 var
-  I: Integer;
+  I, Delta: Integer;
   Dest: PAddress;
 begin
-  FHeader.ImageSize := 0;
+  FHeader.ImageSize := Image.FHeaders.OptionalHeader.ImageBase;
   for I := 0 to Image.Count - 1 do
     with FHeader, Image.Sections[I].FHeader do
     begin
       if VirtualAddress = Image.FHeaders.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_TLS].VirtualAddress then
         TLS := ImageSize;
-      Inc(ImageSize, RawDataSize); // TODO: handlers
+      Inc(ImageSize, VirtualSize); // TODO: handlers
     end;
+
   ReallocMem(FData, FHeader.ImageSize);
   Dest := FData;
+  with Image.FHeaders.OptionalHeader do
+  begin
+    FillChar(Dest^, ImageBase, 0);
+    Inc(Dest, ImageBase);
+  end;
   for I := 0 to Image.Count - 1 do
     with Image.Sections[I], FHeader do
     begin
       Move(Data^, Dest^, RawDataSize); // TODO: handlers
       Inc(Dest, RawDataSize);
+      Delta := RawDataSize - VirtualSize;
+      FillChar(Dest^, Delta, 0);
+      Inc(Dest, Delta);
     end;
+
   with FHeader, Image.Headers do
   begin
     Inc(ImageSize, HeaderSize);

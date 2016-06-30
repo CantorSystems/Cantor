@@ -20,14 +20,15 @@ const         // short Unicode strings
 
   s3GB        = #3'3GB';
   sAuto       = #4'auto';
-  sCleanVer   = #8'cleanver';
+  sDir        = #3'dir';
   sDeep       = #4'deep';
   sDropSect   = #8'dropsect';
-  sListSect   = #8'listsect';
+  sListSect   = #2'ls';
   sLog        = #3'log';
   sMenuet     = #7'menuet';
   sNoLogo     = #6'nologo';
   sPause      = #5'pause';
+  sRaw        = #3'raw';
   sRebase     = #6'rebase';
   sOSVer      = #5'osver';
   sStrip      = #5'strip';
@@ -35,6 +36,7 @@ const         // short Unicode strings
   sTrunc      = #5'trunc';
   sUnsafe     = #6'unsafe';
   sVerbose    = #7'verbose';
+  sVerInfo    = #8'verinfo';
 
   sActions    = #7'actions';
   sTotals     = #6'totals';
@@ -66,10 +68,12 @@ const
                                #9#9#9#9'greater given number of bytes, percent or'#10 +
                                #9#9#9#9'volume cluster size'#10 +}
             #9'-deep' +          #9#9#9'Strip orphaned sections (unsafe!)'#10 +
+            #9'-dir' +           #9#9#9'Strip data directory (lesser compatibility)'#10 +
             #9'-dropsect <s1,s2,...>'#9'Drop sections <s1>, <s2>, etc.'#10 +
             #9'-log <actions|totals>'#9'Output log style'#10 +
             #9'-menuet' +        #9#9#9'Save to MENUET01/MENUET02 format'#10 +
             #9'-osver <#[.#]>' +   #9#9'Set required OS version to <#> or <#.#>'#10 +
+            #9'-raw' +           #9#9#9'Don''t align raw data size of sections'#10 +
             #9'-rebase <########>' + #9'Rebase image to hexadecimal address <########>'#10 +
             #9'-stub [stub]|[.]' +   #9'Replace stub with one from [stub] file or take'#10 +
                                #9#9#9#9'stub from PE Tool itself'#10 +
@@ -78,7 +82,7 @@ const
                                #9#9#9#9'immediately after data end'#10 +
             #9'-unsafe' +        #9#9#9'Strip chained certificate and other data'#10#10 +
     'Miscellaneous options'#10 +
-            #9'-listsect' +        #9#9'Display section list and exit'#10 +
+            #9'-ls' +            #9#9#9'Display section list and exit'#10 +
             #9'-nologo' +        #9#9#9'Don''t display PET logo and copyrights'#10 +
             #9'-pause' +         #9#9#9'Wait for ENTER key to exit';
 

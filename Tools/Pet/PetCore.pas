@@ -51,8 +51,8 @@ type
   TLogStyle = (lsAuto, lsTotals, lsActions);
 
   TRunOption = (roPause, roNoLogo, roVersion, // ordered
-    {roAuto,} roStrip, roTrunc, roTouch, roUnsafe, roDeep,
-    {roMiniRes, roCleanVer, roMainIcon, roVerbose} ro3GB, roListSections, roMenuet);
+    {roAuto,} roStrip, roTrunc, roTouch, roUnsafe, roDeep, roDir, roRaw,
+    {roMiniRes, roVerInfo, roMainIcon, roVerbose} ro3GB, roListSections, roMenuet);
   TRunOptions = set of TRunOption;
 
   TApplication = object(TConsoleApplication)
@@ -373,8 +373,8 @@ end;
 procedure TApplication.ParseCommandLine(Source: PCoreChar);
 const
   OptionKeys: array[TRunOption] of PCoreChar =
-    (sPause, sNoLogo, sVersion, sStrip, sTrunc, sTouch, sUnsafe, sDeep,
-     {sMiniRes, sCleanVer, sMainIcon, sVerbose,} s3GB, sListSect, sMenuet);
+    (sPause, sNoLogo, sVersion, sStrip, sTrunc, sTouch, sUnsafe, sDeep, sDir, sRaw,
+     {sMiniRes, sVerInfo, sMainIcon, sVerbose,} s3GB, sListSect, sMenuet);
 var
   CmdLine: TCoreString;
   Key, Param: TCommandLineParam;
@@ -601,6 +601,7 @@ begin
 end;
 
 const
+  DataDirectory: array[Boolean] of TStripOptions = ([], [soDataDirectory]);
   Deep: array[Boolean] of TStripOptions = ([], [soOrphanedSections]);
   Relocations: array[Boolean] of TStripOptions = ([], [soRelocations]);
 var
@@ -787,7 +788,8 @@ begin
         begin
           if FLogStyle <> lsTotals then
             Output.Action(sStripping, nil);
-          FImage.Strip([soStub..soEmptySections] - Relocations[roMenuet in FOptions] + Deep[roDeep in FOptions]);
+          FImage.Strip([soStub..soEmptySections] - Relocations[roMenuet in FOptions] +
+            DataDirectory[roDir in FOptions] + Deep[roDeep in FOptions]);
           if FLogStyle <> lsTotals then
             Output.StripStats(ImageSize, FImage.Size(roTrunc in FOptions));
         end
@@ -808,7 +810,7 @@ begin
           FImage.Strip([soRelocations]);
         end
         else
-          FImage.Build(Byte(roStrip in FOptions) * 512);
+          FImage.Build(Byte(roStrip in FOptions) * 512, roRaw in FOptions);
 
         if DestFileName.IsDotOrNull then
           DestFileName := FileName
