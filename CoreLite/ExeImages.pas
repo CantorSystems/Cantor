@@ -718,7 +718,7 @@ begin
     Source.ReadBuffer(FHeaders.OptionalHeader, FHeaders.FileHeader.OptionalHeaderSize);
     with FHeaders.OptionalHeader do
     begin
-      if (DirectoryEntryCount >= IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR) and
+      if (DirectoryEntryCount > IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR) and
         (QuadWord(DataDirectory[IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR]) <> 0) // Fast core
       then
         raise EBadImage.Create(sDotNETAssembly);
@@ -894,7 +894,7 @@ end;
 
 procedure TExeImage.Strip(Options: TStripOptions);
 var
-  Cnt, I: Integer;
+  I: Integer;
 begin
   if soStub in Options then
     FStub.Strip;
@@ -927,22 +927,18 @@ begin
   end;
 
   with FHeaders.OptionalHeader do
-  begin
-    Cnt := 0;
-    for I := DirectoryEntryCount - 1 downto 0 do
-      if QuadWord(DataDirectory[I]) <> 0 then // Fast core
-      begin
-        Cnt := I + 1;
-        Break;
-      end;
     if soDataDirectory in Options then
-      DirectoryEntryCount := Cnt
-    else if DirectoryEntryCount < IMAGE_NUMBEROF_DIRECTORY_ENTRIES then
     begin
-      FillChar(DataDirectory[Cnt], (IMAGE_NUMBEROF_DIRECTORY_ENTRIES - Cnt) * SizeOf(TImageDataDirectory), 0);
+      for I := DirectoryEntryCount - 1 downto 0 do
+        if QuadWord(DataDirectory[I]) <> 0 then // Fast core
+        begin
+          DirectoryEntryCount := I + 1;
+          Exit; // immediate exit, not just break the loop
+        end;
+      DirectoryEntryCount := 0;
+    end
+    else
       DirectoryEntryCount := IMAGE_NUMBEROF_DIRECTORY_ENTRIES;
-    end;
-  end;
 end;
 
 { TMenuetImage }
