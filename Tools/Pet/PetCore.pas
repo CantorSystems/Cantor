@@ -614,7 +614,12 @@ var
   I: Integer;
   RawData: TSectionRawData;
 begin
-  ParseCommandLine(CommandLine);
+  try
+    ParseCommandLine(CommandLine);
+  except
+    Logo(sLogo);
+    raise;
+  end;
 
   if Logo(sLogo) then
     Exit;
