@@ -75,12 +75,14 @@ type
   PExeSectionArray = ^TExeSectionArray;
   TExeSectionArray = array[0..MaxInt div SizeOf(TExeSection) - 1] of TExeSection;
 
-  TExeHeaderSection = (hsCode, hsData);
-  TSectionRawData = (rdRaw, rdAlign, rdTruncLast);
+  TExeSectionType = (stCode, stData, stExports, stImports, stResources, stException,
+    stSecurity, stRelocations, stDebug, stCopyright, stGlobalPtr, stTLS, stConfig,
+    stBoundImports, stIAT, stDelayImports, stCOM);
+  TExeSectionRawData = (rdRaw, rdAlign, rdTruncLast);
 
   PExeImage = ^TExeImage;
   TExeImage = object(TCollection)
-  private     
+  private
   { hold } FSections: PExeSectionArray;
     FHeaders: TImageNewHeaders; // TODO: x64
     FStub: TExeStub;
@@ -91,14 +93,18 @@ type
   public
     constructor Create;
     destructor Destroy; virtual;
+    function ASLRAware(Value: Boolean = True): Boolean;
     procedure Build(FileAlignment: LongWord = 512;
-      SectionRawData: TSectionRawData = rdTruncLast);
+      SectionRawData: TExeSectionRawData = rdTruncLast);
+    procedure DEPAware(Value: Boolean = True);
     function Delete(Name: PLegacyChar; Length: Integer): Integer; overload;
     function FileAlignBytes(Source: LongWord): LongWord;
     function HeadersSize: LongWord;
-    function IndexOf(HeaderSection: TExeHeaderSection): Integer; overload;
     function IndexOf(DirectoryIndex: Byte): Integer; overload;
     function IndexOf(Name: PLegacyChar; Length: Integer): Integer; overload;
+    function IsASLRAware: Boolean;
+    function IsDEPAware: Boolean;
+    function IsLargeAddressAware: Boolean;
     procedure LargeAddressAware(Value: Boolean = True);
     procedure Load(Source: PReadableStream);
     procedure OSVersion(MajorVersion: Word; MinorVersion: Word = 0);
@@ -106,6 +112,7 @@ type
     function Rebase(Segment: Word; MenuetStyle: Boolean = False): LongWord;
     procedure Save(Dest: PWritableStream; TruncLastSection: Boolean = True);
     function SectionAlignBytes(Source: LongWord): LongWord;
+    function SectionOf(SectionType: TExeSectionType): PExeSection;
     function Size(TruncLastSection: Boolean = True): LongWord;
     procedure Strip(Options: TStripOptions = [soStub..soEmptySections]);
 
@@ -495,7 +502,14 @@ begin
   inherited;
 end;
 
-procedure TExeImage.Build(FileAlignment: LongWord; SectionRawData: TSectionRawData);
+function TExeImage.ASLRAware(Value: Boolean): Boolean;
+begin
+  Result := not Value or (IndexOf(IMAGE_DIRECTORY_ENTRY_BASERELOC) >= 0);
+  with FHeaders.OptionalHeader do
+    DLLCharacteristics := DLLCharacteristics or Byte(Value and Result) * IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE;
+end;
+
+procedure TExeImage.Build(FileAlignment: LongWord; SectionRawData: TExeSectionRawData);
 const
   FixedOptHeaderSize = SizeOf(TImageOptionalHeader) -
     IMAGE_NUMBEROF_DIRECTORY_ENTRIES * SizeOf(TImageDataDirectory);
@@ -637,6 +651,12 @@ begin
     Result := 0;
 end;
 
+procedure TExeImage.DEPAware(Value: Boolean);
+begin
+  with FHeaders.OptionalHeader do
+    DLLCharacteristics := DLLCharacteristics or Byte(Value) * IMAGE_DLLCHARACTERISTICS_NX_COMPAT;
+end;
+
 function TExeImage.FileAlignBytes(Source: LongWord): LongWord;
 begin
   Result := FHeaders.OptionalHeader.FileAlignment;
@@ -666,15 +686,6 @@ begin
   Result := -1;
 end;
 
-function TExeImage.IndexOf(HeaderSection: TExeHeaderSection): Integer;
-begin
-  with FHeaders.OptionalHeader do
-    if HeaderSection = hsCode then
-      Result := IndexOfAddress(CodeBase)
-    else
-      Result := IndexOfAddress(DataBase);
-end;
-
 function TExeImage.IndexOf(DirectoryIndex: Byte): Integer;
 begin
   Result := IndexOfAddress(FHeaders.OptionalHeader.DataDirectory[DirectoryIndex].VirtualAddress);
@@ -689,10 +700,25 @@ begin
   Result := -1;
 end;
 
+function TExeImage.IsASLRAware: Boolean;
+begin
+  Result := FHeaders.OptionalHeader.DLLCharacteristics and IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE <> 0;
+end;
+
+function TExeImage.IsDEPAware: Boolean;
+begin
+  Result := FHeaders.OptionalHeader.DLLCharacteristics and IMAGE_DLLCHARACTERISTICS_NX_COMPAT <> 0;
+end;
+
+function TExeImage.IsLargeAddressAware: Boolean;
+begin
+  Result := FHeaders.FileHeader.Characteristics and IMAGE_FILE_LARGE_ADDRESS_AWARE <> 0;
+end;
+
 procedure TExeImage.LargeAddressAware(Value: Boolean);
 begin
   with FHeaders.FileHeader do
-    Characteristics := Characteristics or (IMAGE_FILE_LARGE_ADDRESS_AWARE and (LongWord(not Value) - 1));
+    Characteristics := Characteristics or Byte(Value) * IMAGE_FILE_LARGE_ADDRESS_AWARE;
 end;
 
 procedure TExeImage.Load(Source: PReadableStream);
@@ -875,6 +901,24 @@ begin
   end;
 end;
 
+function TExeImage.SectionOf(SectionType: TExeSectionType): PExeSection;
+var
+  Idx: Integer;
+begin
+  case SectionType of
+    stCode:
+      Idx := IndexOfAddress(FHeaders.OptionalHeader.CodeBase);
+    stData:
+      Idx := IndexOfAddress(FHeaders.OptionalHeader.DataBase);
+  else
+    Idx := IndexOf(Byte(SectionType) - Byte(stExports));
+  end;
+  if Idx >= 0 then
+    Result := @FSections[Idx]
+  else
+    Result := nil;
+end;
+
 function TExeImage.Size(TruncLastSection: Boolean): LongWord;
 var
   I: Integer;
@@ -906,7 +950,11 @@ begin
     (FHeaders.OptionalHeader.Subsystem in [IMAGE_SUBSYSTEM_WINDOWS_GUI, IMAGE_SUBSYSTEM_WINDOWS_CUI]) then
   begin
     if (soRelocations in Options) and (FHeaders.OptionalHeader.DirectoryEntryCount >= IMAGE_DIRECTORY_ENTRY_BASERELOC) then
+    begin
       DeleteExisting(IndexOf(IMAGE_DIRECTORY_ENTRY_BASERELOC));
+      with FHeaders.OptionalHeader do
+        DLLCharacteristics := DLLCharacteristics and not IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE;
+    end;
     if soExports in Options then
       DeleteExisting(IndexOf(IMAGE_DIRECTORY_ENTRY_EXPORT));
   end;

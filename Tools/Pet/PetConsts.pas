@@ -19,14 +19,16 @@ const         // short Unicode strings
   sVersion    = #7'version';
 
   s3GB        = #3'3GB';
+  sASLR       = #4'ASLR';
   sAuto       = #4'auto';
   sDir        = #3'dir';
   sDeep       = #4'deep';
   sDropSect   = #8'dropsect';
-  sListSect   = #2'ls';
+  sLS         = #2'ls';
   sLog        = #3'log';
   sMenuet     = #7'menuet';
   sNoLogo     = #6'nologo';
+  sNX         = #2'NX';
   sPause      = #5'pause';
   sRaw        = #3'raw';
   sRebase     = #6'rebase';
@@ -62,7 +64,8 @@ const
             #9'-strip' +         #9#9#9'Strip headers, exports, debug information,'#10 +
                                #9#9#9#9'relocations and empty sections when possible'#10#10 +
     'Options for -into command'#10 +
-            #9'-3GB' +           #9#9#9'Set large address aware application flag'#10 +
+            #9'-3GB' +           #9#9#9'Set large address aware flag'#10 +
+            #9'-ASLR' +          #9#9#9'Set dynamic image base flag'#10 +
             {#9'-auto [#[%]]|[.]'    +#9'Using '#$E2#$80#$9C'-keep -strip -trunc -stub'#$E2#$80#$9D' mode, replace'#10 +
                                #9#9#9#9'original file when stripped size is equal or'#10 +
                                #9#9#9#9'greater given number of bytes, percent or'#10 +
@@ -72,6 +75,7 @@ const
             #9'-dropsect <s1,s2,...>'#9'Drop sections <s1>, <s2>, etc.'#10 +
             #9'-log <actions|totals>'#9'Output log style'#10 +
             #9'-menuet' +        #9#9#9'Save to MENUET01/MENUET02 format (alpha stage!)'#10 +
+            #9'-NX' +            #9#9#9'Set DEP compatibility flag'#10 +
             #9'-osver <#[.#]>' +   #9#9'Set required OS version to <#> or <#.#>'#10 +
             #9'-raw' +           #9#9#9'Don''t align raw data size values at section'#10 +
                                #9#9#9#9'headers (to avoid antivirus false positives)'#10 +
@@ -105,20 +109,21 @@ const
 
   sPathEllipsis = '[...]';
 
-  sLoading          = 'Loading';
-  sChainedData      = 'Chained data';
-  sImageData        = 'Image data';
-  sExtractingStub   = 'Extracting stub';
-  sFixingStub       = 'Fixing stub';
-  sReplacingStub    = 'Replacing stub';
-  sSaving           = 'Saving';
-  sDroppingSection  = 'Dropping section';
-  sStripping        = 'Stripping';
-  sEstimating       = 'Estimating';
-  sBackuping        = 'Backuping';
-  sTotal            = 'Total';
-  sSectionList      = 'Section list of %s';
-  sRebasingTo       = 'Rebasing image to';
+  sLoading            = 'Loading';
+  sChainedData        = 'Chained data';
+  sImageData          = 'Image data';
+  sExtractingStub     = 'Extracting stub';
+  sFixingStub         = 'Fixing stub';
+  sReplacingStub      = 'Replacing stub';
+  sSaving             = 'Saving';
+  sDroppingSection    = 'Dropping section';
+  sKeepingRelocations = 'Keeping relocations';
+  sStripping          = 'Stripping';
+  sEstimating         = 'Estimating';
+  sBackuping          = 'Backuping';
+  sTotal              = 'Total';
+  sSectionList        = 'Section list of %s';
+  sRebasingTo         = 'Rebasing image to';
 
   DefaultMaxWidth = sChainedData; // max of {sLoading, sChainedData, sStrippng,
                                   //         sEstimating, sFixingStub}
@@ -133,6 +138,8 @@ const
   sSectionNotFound = 'Section “%s” not found';
   sImageBaseUnaligned = 'Image base %08X is not on 64 KB boundary';
   sMenuetAt0 = 'MENUET01/02 images should start at image base 0';
+  sNoRelocationsForASLR = 'Dynamic image base feature (ASLR) is not available because relocations were'#10 +
+    'stripped from this file';
 
 implementation
 

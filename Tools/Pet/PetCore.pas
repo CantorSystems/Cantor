@@ -51,8 +51,8 @@ type
   TLogStyle = (lsAuto, lsTotals, lsActions);
 
   TRunOption = (roPause, roNoLogo, roVersion, // ordered
-    {roAuto,} roStrip, roTrunc, roTouch, roUnsafe, roDeep, roDir, roRaw,
-    {roMiniRes, roVerInfo, roMainIcon, roVerbose} ro3GB, roListSections, roMenuet);
+    {roAuto,} roASLR, roStrip, roTrunc, roTouch, roUnsafe, roDeep, roDir, roRaw,
+    {roMiniRes, roVerInfo, roMainIcon, roVerbose} ro3GB, roNX, roListSections, roMenuet);
   TRunOptions = set of TRunOption;
 
   TApplication = object(TConsoleApplication)
@@ -346,6 +346,12 @@ begin
   if FLogStyle <> lsTotals then
   begin
     Result := StrLen(DefaultMaxWidth);
+    if roASLR in FOptions then
+    begin
+      Width := StrLen(sKeepingRelocations);
+      if Width > Result then
+        Result := Width;
+    end;
     if (FRebaseAddress <> 0) or (roMenuet in FOptions) then
     begin
       Width := StrLen(sRebasingTo);
@@ -373,8 +379,8 @@ end;
 procedure TApplication.ParseCommandLine(Source: PCoreChar);
 const
   OptionKeys: array[TRunOption] of PCoreChar =
-    (sPause, sNoLogo, sVersion, sStrip, sTrunc, sTouch, sUnsafe, sDeep, sDir, sRaw,
-     {sMiniRes, sVerInfo, sMainIcon, sVerbose,} s3GB, sListSect, sMenuet);
+    (sPause, sNoLogo, sVersion, sASLR, sStrip, sTrunc, sTouch, sUnsafe, sDeep, sDir, sRaw,
+     {sMiniRes, sVerInfo, sMainIcon, sVerbose,} s3GB, sNX, sLS, sMenuet);
 var
   CmdLine: TCoreString;
   Key, Param: TCommandLineParam;
@@ -612,7 +618,8 @@ var
   ExtractFileName: PFileName;
   Section: PLegacyTextListItem;
   I: Integer;
-  RawData: TSectionRawData;
+  RawData: TExeSectionRawData;
+  Relocs: PExeSection;
 begin
   try
     ParseCommandLine(CommandLine);
@@ -794,10 +801,21 @@ begin
         begin
           if FLogStyle <> lsTotals then
             Output.Action(sStripping, nil);
-          FImage.Strip([soStub..soEmptySections] - Relocations[roMenuet in FOptions] +
+          FImage.Strip([soStub..soEmptySections] - Relocations[[roASLR, roMenuet] * FOptions <> []] +
             DataDirectory[roDir in FOptions] + Deep[roDeep in FOptions]);
           if FLogStyle <> lsTotals then
+          begin
             Output.StripStats(ImageSize, FImage.Size(roTrunc in FOptions));
+            if roASLR in FOptions then
+            begin
+              Relocs := FImage.SectionOf(stRelocations);
+              if Relocs <> nil then
+              begin
+                Output.Action(sKeepingRelocations, nil);
+                Output.TransferStats(ImageSize, Relocs.Size + SizeOf(TImageSectionHeader));
+              end;
+            end;
+          end;
         end
         else if not (roMenuet in FOptions) then
           with FImage.Stub do
@@ -810,6 +828,9 @@ begin
               Output.StripStats(OldSize, Size);
           end;
 
+        if (roASLR in FOptions) and not FImage.ASLRAware then
+          raise EBadImage.Create(sNoRelocationsForASLR);
+
         if roMenuet in FOptions then
         begin
           RebaseImage(True);
@@ -820,7 +841,7 @@ begin
           if roRaw in FOptions then
             RawData := rdRaw
           else
-            RawData := TSectionRawData(Byte(roTrunc in FOptions) + 1);
+            RawData := TExeSectionRawData(Byte(roTrunc in FOptions) + 1);
           FImage.Build(Byte(roStrip in FOptions) * 512, RawData);
         end;
 
@@ -839,6 +860,8 @@ begin
                 OSVersion(FMajorVersion, FMinorVersion);
               if ro3GB in FOptions then
                 LargeAddressAware;
+              if roNX in FOptions then
+                DEPAware;
             end;
 
             if FFileNames[fkBackup].Count <> 0 then
