@@ -74,7 +74,7 @@ const
             #9'-menuet' +        #9#9#9'Save to MENUET01/MENUET02 format (alpha stage!)'#10 +
             #9'-osver <#[.#]>' +   #9#9'Set required OS version to <#> or <#.#>'#10 +
             #9'-raw' +           #9#9#9'Don''t align raw data size values at section'#10 +
-                               #9#9#9#9'headers'#10 +
+                               #9#9#9#9'headers (to avoid antivirus false positives)'#10 +
             #9'-rebase <########>' + #9'Rebase image to hexadecimal address <########>'#10 +
             #9'-stub [stub]|[.]' +   #9'Replace stub with one from [stub] file or take'#10 +
                                #9#9#9#9'stub from PE Tool itself'#10 +
