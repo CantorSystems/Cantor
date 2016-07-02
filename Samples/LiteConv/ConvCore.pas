@@ -113,7 +113,7 @@ end;
 procedure TApplication.ParseCommandLine(Source: PCoreChar);
 const
   Commands: array[cmInto..cmInto] of PWideChar = (sInto);
-  RunOptions: array[roPause..roRename] of PWideChar = (sPause, sNoLogo, sVersion, sRename);
+  RunOptions: array[roPause..roRename] of PWideChar = (sPause, sNoLogo, sVersion, sRen);
 var
   CmdLine, Key: TWideString;
   Param: TCommandLineParam;

@@ -14,7 +14,7 @@ const         // short Unicode strings
   sInto     = #4'into';
   sNoLogo   = #6'nologo';
   sPause    = #5'pause';
-  sRename   = #6'rename';
+  sRen      = #6'ren';
   sVersion  = #7'version';
 
   sBE       = #2'BE';
@@ -36,7 +36,7 @@ const
     'Usage:'#10 +
             #9'%ws source-file [<in-charset>] [-into <dest-file> [<out-charset>]]'#10 +
             #9#9'[-pause]'#10#10 +
-            #9'%ws -rename source-file [-pause]';
+            #9'%ws -ren source-file [-pause]';
   sHelp =
     'Common options'#10 +
             #9'-into'#9#9#9'Replace source file with result'#10 +
