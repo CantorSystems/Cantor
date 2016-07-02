@@ -152,9 +152,9 @@ uses
   CoreConsts;
 
 const
-  LegacyPageBytes       = 512; // DOS page
-  LegacyParagraphBytes  = 16;  // DOS paragraph
-  MinParagraphs         = SizeOf(TImageLegacyHeader) div LegacyParagraphBytes;
+  LegacyPageLength      = 512; // DOS page
+  LegacyParagraphLength = 16;  // DOS paragraph
+  MinParagraphs         = SizeOf(TImageLegacyHeader) div LegacyParagraphLength;
 
 { Service functions }
 
@@ -216,7 +216,7 @@ end;
 
 function TExeStub.HeaderSize: LongWord;
 begin
-  Result := FHeader.HeaderParagraphs * LegacyParagraphBytes;
+  Result := FHeader.HeaderParagraphs * LegacyParagraphLength;
   if Result > SizeOf(FHeader) then
     Result := SizeOf(FHeader);
 end;
@@ -280,8 +280,8 @@ begin
   Inc(Value, HeaderSize);
   with FHeader do
   begin
-    FilePages := Value div LegacyPageBytes + 1;
-    LastPageBytes := Value mod LegacyPageBytes;
+    FilePages := Value div LegacyPageLength + 1;
+    LastPageBytes := Value mod LegacyPageLength;
   end;
 end;
 
@@ -289,9 +289,9 @@ function TExeStub.Size: LongWord;
 begin
   with FHeader do
     if LastPageBytes <> 0 then
-      Result := (FilePages - 1) * LegacyPageBytes + LastPageBytes
+      Result := (FilePages - 1) * LegacyPageLength + LastPageBytes
     else
-      Result := FilePages * LegacyPageBytes;
+      Result := FilePages * LegacyPageLength;
 end;
 
 procedure TExeStub.Strip(Heuristics: Boolean);
@@ -311,7 +311,7 @@ begin
         if Heuristics then
         begin
           Limit := PLegacyChar(FData) + L;
-          P := PLegacyChar(FData) + FHeader.HeaderParagraphs * LegacyParagraphBytes - SizeOf(FHeader);
+          P := PLegacyChar(FData) + FHeader.HeaderParagraphs * LegacyParagraphLength - SizeOf(FHeader);
           P := StrScan(P, Limit - P, #$4C);               // MOV AX, 4C01h
           if (P <> nil) and (PWord(P + 1)^ = $21CD) then  // INT 21h
           begin
