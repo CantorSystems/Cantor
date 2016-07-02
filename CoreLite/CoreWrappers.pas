@@ -197,7 +197,8 @@ type
   {$ENDIF}
     procedure EndOfLine;
 
-    procedure ReadLn(Prompt: PLegacyChar; Count: Integer; LineBreaks: Integer = 1);
+    procedure ReadLn(Prompt: PLegacyChar; Count: Integer; LineBreaks: Integer = 1;
+      OnlyWhenNotRedirected: Boolean = True);
 
     procedure WriteLn(LineBreaks: Integer = 1); overload;
     procedure WriteLn(Text: PLegacyChar; Count: Integer; LineBreaks: Integer = 1); overload;
@@ -991,16 +992,20 @@ begin
     WriteLn;
 end;
 
-procedure TStreamConsole.ReadLn(Prompt: PLegacyChar; Count, LineBreaks: Integer);
+procedure TStreamConsole.ReadLn(Prompt: PLegacyChar; Count, LineBreaks: Integer;
+  OnlyWhenNotRedirected: Boolean);
 var
   Dummy: array[0..$FF] of LegacyChar; // preventing flood
   BytesRead: LongWord;
 begin
-  WriteLn(Prompt, Count, 0);
-  WriteLn(PLegacyChar(@Ellipsis), SizeOf(Ellipsis), 0);
-{$IFDEF Tricks} System. {$ENDIF}
-  ReadFile(FInput, Dummy, SizeOf(Dummy), BytesRead, nil);
-  WriteLn(LineBreaks - 1);
+  if ((FOutput or FInput) <= $F) or not OnlyWhenNotRedirected then
+  begin
+    WriteLn(Prompt, Count, 0);
+    WriteLn(PLegacyChar(@Ellipsis), SizeOf(Ellipsis), 0);
+  {$IFDEF Tricks} System. {$ENDIF}
+    ReadFile(FInput, Dummy, SizeOf(Dummy), BytesRead, nil);
+    WriteLn(LineBreaks - 1);
+  end;
 end;
 
 procedure TStreamConsole.WriteLn(LineBreaks: Integer);
