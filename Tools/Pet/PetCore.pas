@@ -306,19 +306,22 @@ var
   Width: Integer;
   FileSize: QuadWord;
 begin
-  New(Item, Create);
-  Item.AsRange(@FCurrentPath, 0);
-  with Data do
+  if Data.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY = 0 then
   begin
-    Item.ChangeFileName(cFileName, WideStrLen(cFileName, Length(cFileName)));
-    FileSize := nFileSizeHigh shr 32 or nFileSizeLow;
-    if FileSize > FMaxSize then
-      FMaxSize := FileSize;
+    New(Item, Create);
+    Item.AsRange(@FCurrentPath, 0);
+    with Data do
+    begin
+      Item.ChangeFileName(cFileName, WideStrLen(cFileName, Length(cFileName)));
+      FileSize := nFileSizeHigh shr 32 or nFileSizeLow;
+      if FileSize > FMaxSize then
+        FMaxSize := FileSize;
+    end;
+    Width := Item.Width(FMaxWidth);
+    if Width > FMaxWidth then
+      FMaxWidth := Width;
+    FFoundFiles.Append(Item);
   end;
-  Width := Item.Width(FMaxWidth);
-  if Width > FMaxWidth then
-    FMaxWidth := Width;
-  FFoundFiles.Append(Item);
 end;
 
 function TApplication.MaxFileNameWidth(MaxWidth: Integer): Integer;
