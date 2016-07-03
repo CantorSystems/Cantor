@@ -30,7 +30,7 @@ const
             #9'-into <dest>'#9'Save result to <dest> file'#10#10 +
     'Options'#10 +
             #9'-oem' +    #9#9'Set fallback code page to current OEM code page'#10 +
-            #9'-pause' +  #9#9'Wait for ENTER key when no console redirection';
+            #9'-pause' +  #9#9'Wait for ENTER key to exit';
 
   sMissing = 'Missing %s';
   sDuplicate = 'Duplicate %hs: “%s”';

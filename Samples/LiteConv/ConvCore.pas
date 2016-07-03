@@ -194,7 +194,10 @@ begin
   until False;
 
   if ParamCount = 0 then
-    Include(FOptions, roPause)
+  begin
+    if Console.Redirection = [] then
+      Include(FOptions, roPause);
+  end
   else if (FSourceFileName.Count = 0) and not (roVersion in FOptions) then
     raise ECommandParam.Create(cmNone);
 end;
