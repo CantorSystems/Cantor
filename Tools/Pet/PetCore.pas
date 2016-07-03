@@ -530,7 +530,22 @@ begin
   if ParamCount <> 0 then
   begin
     if (FSourceFileNames.Count = 0) and not (roVersion in FOptions) then
-      raise ECommandLine.Create(fkSource);
+    begin
+      FileName := @FFileNames[fkInto];
+      if FileName.IsDotOrNull then
+        raise ECommandLine.Create(fkSource);
+      New(SourceFileName, Create);
+      with SourceFileName^ do
+      begin
+        AsRange(FileName, 0);
+        Detach;
+      end;
+      with FSourceFileNames do
+      begin
+        Create;
+        Append(SourceFileName);
+      end;
+    end;
     FileName := @FFileNames[fkStub];
     if FileName.IsDotOrNull then
       FileName.AsRange(@ExeName, 0);
