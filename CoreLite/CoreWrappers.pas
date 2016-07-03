@@ -174,6 +174,8 @@ type
     property Stream: TFileStream read FStream;
   end;
 
+  TConsoleRedirection = set of (crInput, crOutput);
+
   PConsole = ^TConsole;
   TConsole = object
   private
@@ -183,6 +185,7 @@ type
   public
     constructor Create(ErrorOutput: Boolean = False);
     destructor Destroy;
+    function Redirection: TConsoleRedirection;
 
     property CodePage: Word read FCodePage write SetCodePage;
     property Input: THandle read FInput;
@@ -197,8 +200,7 @@ type
   {$ENDIF}
     procedure EndOfLine;
 
-    procedure ReadLn(Prompt: PLegacyChar; Count: Integer; LineBreaks: Integer = 1;
-      OnlyWhenNotRedirected: Boolean = True);
+    procedure ReadLn(Prompt: PLegacyChar; Count: Integer; LineBreaks: Integer = 1);
 
     procedure WriteLn(LineBreaks: Integer = 1); overload;
     procedure WriteLn(Text: PLegacyChar; Count: Integer; LineBreaks: Integer = 1); overload;
@@ -965,6 +967,15 @@ begin
     SetConsoleOutputCP(FOutputCP);
 end;
 
+function TConsole.Redirection: TConsoleRedirection;
+begin
+  Result := [];
+  if FInput > $F then
+    Include(Result, crInput);
+  if FOutput > $F then
+    Include(Result, crOutput);
+end;
+
 procedure TConsole.SetCodePage(Value: Word);
 begin
   if FInputCP = 0 then
@@ -992,20 +1003,16 @@ begin
     WriteLn;
 end;
 
-procedure TStreamConsole.ReadLn(Prompt: PLegacyChar; Count, LineBreaks: Integer;
-  OnlyWhenNotRedirected: Boolean);
+procedure TStreamConsole.ReadLn(Prompt: PLegacyChar; Count, LineBreaks: Integer);
 var
   Dummy: array[0..$FF] of LegacyChar; // preventing flood
   BytesRead: LongWord;
 begin
-  if ((FOutput or FInput) <= $F) or not OnlyWhenNotRedirected then
-  begin
-    WriteLn(Prompt, Count, 0);
-    WriteLn(PLegacyChar(@Ellipsis), SizeOf(Ellipsis), 0);
-  {$IFDEF Tricks} System. {$ENDIF}
-    ReadFile(FInput, Dummy, SizeOf(Dummy), BytesRead, nil);
-    WriteLn(LineBreaks - 1);
-  end;
+  WriteLn(Prompt, Count, 0);
+  WriteLn(PLegacyChar(@Ellipsis), SizeOf(Ellipsis), 0);
+{$IFDEF Tricks} System. {$ENDIF}
+  ReadFile(FInput, Dummy, SizeOf(Dummy), BytesRead, nil);
+  WriteLn(LineBreaks - 1);
 end;
 
 procedure TStreamConsole.WriteLn(LineBreaks: Integer);

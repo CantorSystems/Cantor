@@ -89,7 +89,7 @@ const
     'Miscellaneous options'#10 +
             #9'-ls' +            #9#9#9'Display section list and exit'#10 +
             #9'-nologo' +        #9#9#9'Don''t display PET logo and copyrights'#10 +
-            #9'-pause' +         #9#9#9'Wait for ENTER key when no console redirection';
+            #9'-pause' +         #9#9#9'Wait for ENTER key to exit';
 
   sMissingParam = 'Missing %s';
   sDuplicateParam = 'Duplicate %hs: %s';

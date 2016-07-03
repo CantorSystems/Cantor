@@ -553,7 +553,7 @@ begin
     if FileName.IsDotOrNull then
       FileName.AsRange(@ExeName, 0);
   end
-  else
+  else if Console.Redirection = [] then
     Include(FOptions, roPause)
 end;
 
