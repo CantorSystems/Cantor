@@ -37,7 +37,8 @@ type
     FActionBuf, FStatsBuf: PWideChar;
     FFileNameWidth: Integer;
   public
-    constructor Create(Dest: PStreamConsole; PromptWidth, FileNameWidth, StatBytesWidth: Integer);
+    constructor Create(Dest: PStreamConsole; PromptWidth, FileNameWidth: Integer;
+      FileSizeLimit: QuadWord);
     destructor Destroy; virtual;
     procedure Action(Prompt: PLegacyChar; FileName: PFileName); virtual;
     procedure StripStats(SourceSize, StrippedSize: LongWord); virtual;
@@ -68,7 +69,7 @@ type
     FImage: TExeImage;
     FCurrentPath: TFileName;
     FMaxWidth: Integer;
-    FMaxSize: QuadWord;
+    FMaxFileSize: QuadWord;
     FACP: TCodePage;
     procedure AddFile(const Data: TWin32FindDataW; var Found: Boolean);
     function MaxFileNameWidth(MaxWidth: Integer): Integer;
@@ -205,7 +206,9 @@ end;
 { TDefaultOutput }
 
 constructor TDefaultOutput.Create(Dest: PStreamConsole;
-  PromptWidth, FileNameWidth, StatBytesWidth: Integer);
+  PromptWidth, FileNameWidth: Integer; FileSizeLimit: QuadWord);
+var
+  StatBytesWidth: Integer;
 begin
   inherited Create(Dest);
 
@@ -217,6 +220,10 @@ begin
   GetMem(FActionBuf, (PromptWidth + FileNameWidth + Length(sPathEllipsis) +
     Length(sDefaultActionFmt)) * SizeOf(WideChar));
 
+  if FileSizeLimit = 0 then
+    StatBytesWidth := 1
+  else                                           // ,-- sign
+    StatBytesWidth := Ceil(Log10(FileSizeLimit)) +  1;
   FStatsFormat := Format(sDefaultStatsFmt, DefaultSystemCodePage, 0, [StatBytesWidth]).Value;
   GetMem(FStatsBuf, (StatBytesWidth + PercentageWidth + Length(sDefaultStatsFmt)) * SizeOf(WideChar));
 end;
@@ -314,8 +321,8 @@ begin
     begin
       Item.ChangeFileName(cFileName, WideStrLen(cFileName, Length(cFileName)));
       FileSize := nFileSizeHigh shr 32 or nFileSizeLow;
-      if FileSize > FMaxSize then
-        FMaxSize := FileSize;
+      if FileSize > FMaxFileSize then
+        FMaxFileSize := FileSize;
     end;
     Width := Item.Width(FMaxWidth);
     if Width > FMaxWidth then
@@ -384,6 +391,17 @@ const
   OptionKeys: array[TRunOption] of PCoreChar =
     (sPause, sNoLogo, sVersion, sASLR, sStrip, sTrunc, sTouch, sUnsafe, sDeep, sDir, sRaw,
      {sMiniRes, sVerInfo, sMainIcon, sVerbose,} s3GB, sNX, sLS, sMenuet);
+
+procedure AppendFileName(Source: PCoreString);
+var
+  FileName: PFileNameListItem;
+begin
+  New(FileName, Create);
+  FileName.AsRange(Source, 0);
+  FileName.Detach;
+  FSourceFileNames.Append(FileName);
+end;
+
 var
   CmdLine: TCoreString;
   Key, Param: TCommandLineParam;
@@ -391,7 +409,6 @@ var
   FileName: PFileName;
   K: TFileKind;
   R: TRunOption;
-  SourceFileName: PFileNameListItem;
 begin
   CmdLine.Create;
   CmdLine.AsWideString(Source, WideStrLen(Source), soAttach);
@@ -517,37 +534,22 @@ begin
 
     if Param.Count <> 0 then
     begin
-      if FSourceFileNames.Count = 0 then
+      if TypeOf(FSourceFileNames) = nil then
         FSourceFileNames.Create;
-      New(SourceFileName, Create);
-      with SourceFileName^ do
-      begin
-        AsRange(@Param, 0);
-        Detach;
-      end;
-      FSourceFileNames.Append(SourceFileName);
+      AppendFileName(@Param);
       Param.Clear;
     end;
   until False;
 
   if ParamCount <> 0 then
   begin
-    if (FSourceFileNames.Count = 0) and not (roVersion in FOptions) then
+    if (TypeOf(FSourceFileNames) = nil) and not (roVersion in FOptions) then
     begin
       FileName := @FFileNames[fkInto];
       if FileName.IsDotOrNull then
         raise ECommandLine.Create(fkSource);
-      New(SourceFileName, Create);
-      with SourceFileName^ do
-      begin
-        AsRange(FileName, 0);
-        Detach;
-      end;
-      with FSourceFileNames do
-      begin
-        Create;
-        Append(SourceFileName);
-      end;
+      FSourceFileNames.Create;
+      AppendFileName(FileName);
     end;
     FileName := @FFileNames[fkStub];
     if FileName.IsDotOrNull then
@@ -693,8 +695,8 @@ begin
   DestFileName := PrepareFileName(fkInto, @FCurrentPath);
   FImage.Create;
 
-  TmpFileName.Create;                                                      // ,-- sign
-  Output.Create(@Console, MaxPromptWidth, FMaxWidth, Ceil(Log10(FMaxSize)) +  1);
+  TmpFileName.Create;
+  Output.Create(@Console, MaxPromptWidth, FMaxWidth, FMaxFileSize);
   try
     TotalBytes := 0;
     TotalSaved := 0;
