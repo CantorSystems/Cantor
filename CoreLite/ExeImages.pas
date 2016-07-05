@@ -632,6 +632,8 @@ begin
       QuadWord(FHeaders.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC]) := 0; // Fast core
       with FHeaders.FileHeader do
         Characteristics := Characteristics or IMAGE_FILE_RELOCS_STRIPPED;
+      with FHeaders.OptionalHeader do
+        DLLCharacteristics := DLLCharacteristics and not IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE;
     end;
   end;
 end;
@@ -950,11 +952,7 @@ begin
     (FHeaders.OptionalHeader.Subsystem in [IMAGE_SUBSYSTEM_WINDOWS_GUI, IMAGE_SUBSYSTEM_WINDOWS_CUI]) then
   begin
     if (soRelocations in Options) and (FHeaders.OptionalHeader.DirectoryEntryCount >= IMAGE_DIRECTORY_ENTRY_BASERELOC) then
-    begin
       DeleteExisting(IndexOf(IMAGE_DIRECTORY_ENTRY_BASERELOC));
-      with FHeaders.OptionalHeader do
-        DLLCharacteristics := DLLCharacteristics and not IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE;
-    end;
     if soExports in Options then
       DeleteExisting(IndexOf(IMAGE_DIRECTORY_ENTRY_EXPORT));
   end;
