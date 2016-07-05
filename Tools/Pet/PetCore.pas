@@ -817,6 +817,9 @@ begin
           ImageSize := FImage.Size(False);
         end;
 
+        if (roASLR in FOptions) and not FImage.ASLRAware then
+          raise EBadImage.Create(sNoRelocationsForASLR);
+
         if roStrip in FOptions then
         begin
           if FLogStyle <> lsTotals then
@@ -847,9 +850,6 @@ begin
             if FLogStyle <> lsTotals then
               Output.StripStats(OldSize, Size);
           end;
-
-        if (roASLR in FOptions) and not FImage.ASLRAware then
-          raise EBadImage.Create(sNoRelocationsForASLR);
 
         if roMenuet in FOptions then
         begin
