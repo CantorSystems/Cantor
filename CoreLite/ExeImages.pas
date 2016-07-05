@@ -243,11 +243,12 @@ end;
 procedure TExeStub.Load(Source: PReadableStream);
 const
   MinHeaderBytes = SizeOf(TImageLegacyHeader) - SizeOf(TImageLegacyHeaderExt);
+  MZ = $5A4D;
 var
   L: LongWord;
 begin
   Source.ReadBuffer(FHeader, MinHeaderBytes);
-  if FHeader.Magic <> 'MZ' then
+  if Word(FHeader.Magic) <> MZ then
     raise EBadImage.Create(sNotExecutableImage);
   L := Size;
   if L > 0 then
