@@ -78,7 +78,7 @@ type
   TExeSectionType = (stCode, stData, stExports, stImports, stResources, stException,
     stSecurity, stRelocations, stDebug, stCopyright, stGlobalPtr, stTLS, stConfig,
     stBoundImports, stIAT, stDelayImports, stCOM);
-  TExeSectionRawData = (rdRaw, rdAlign, rdTruncLast);
+  TExeSectionData = (sdRaw, sdAlign, sdTruncLast);
 
   PExeImage = ^TExeImage;
   TExeImage = object(TCollection)
@@ -95,7 +95,7 @@ type
     destructor Destroy; virtual;
     function ASLRAware(Value: Boolean = True): Boolean;
     procedure Build(FileAlignment: LongWord = 512;
-      SectionRawData: TExeSectionRawData = rdTruncLast);
+      SectionRawData: TExeSectionData = sdTruncLast);
     procedure DEPAware(Value: Boolean = True);
     function Delete(Name: PLegacyChar; Length: Integer): Integer; overload;
     function FileAlignBytes(Source: LongWord): LongWord;
@@ -510,7 +510,7 @@ begin
     DLLCharacteristics := DLLCharacteristics or Byte(Value and Result) * IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE;
 end;
 
-procedure TExeImage.Build(FileAlignment: LongWord; SectionRawData: TExeSectionRawData);
+procedure TExeImage.Build(FileAlignment: LongWord; SectionRawData: TExeSectionData);
 const
   FixedOptHeaderSize = SizeOf(TImageOptionalHeader) -
     IMAGE_NUMBEROF_DIRECTORY_ENTRIES * SizeOf(TImageDataDirectory);
@@ -551,12 +551,12 @@ begin
         else if DataBase = FHeader.RawDataOffset then
           DataBase := Offset;
         FHeader.RawDataOffset := Offset;
-        if SectionRawData = rdRaw then
+        if SectionRawData = sdRaw then
         begin
           Inc(Offset, FHeader.RawDataSize);
           Inc(Offset, FileAlignBytes(Offset));
         end
-        else if (SectionRawData = rdAlign) or (I < Count - 1) then
+        else if (SectionRawData = sdAlign) or (I < Count - 1) then
         begin
           Inc(FHeader.RawDataSize, FileAlignBytes(FHeader.RawDataSize));
           Inc(Offset, FHeader.RawDataSize);

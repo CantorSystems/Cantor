@@ -638,7 +638,7 @@ var
   ExtractFileName: PFileName;
   Section: PLegacyTextListItem;
   I: Integer;
-  RawData: TExeSectionRawData;
+  RawData: TExeSectionData;
   Relocs: PExeSection;
 begin
   try
@@ -859,9 +859,9 @@ begin
         else
         begin
           if roRaw in FOptions then
-            RawData := rdRaw
+            RawData := sdRaw
           else
-            RawData := TExeSectionRawData(Byte(roTrunc in FOptions) + 1);
+            RawData := TExeSectionData(Byte(roTrunc in FOptions) + 1);
           FImage.Build(Byte(roStrip in FOptions) * 512, RawData);
         end;
 
