@@ -582,7 +582,7 @@ var
   FileName: PFileNameListItem;
   Output: TDefaultOutput;
 
-function SaveFile(SwapFileName: PFileName): QuadWord;
+function SaveFile(SwapFileName: PCoreChar): QuadWord;
 const
   Backup: array[Boolean] of TSaveOptions = ([], [soBackup]);
   Touch: array[Boolean] of TSaveOptions = ([], [soTouch]);
@@ -597,7 +597,7 @@ begin
         Load(@FImage);
         Build;
         Result := CoreWrappers.SaveFile(
-          Save, FileName.RawData, SwapFileName.RawData, DestFileName.RawData,
+          Save, FileName.RawData, SwapFileName, DestFileName.RawData,
           Header.ImageSize, faRandomRewrite,
           Touch[roTouch in FOptions] + Backup[FFileNames[fkBackup].Count <> 0]
         );
@@ -607,7 +607,7 @@ begin
     end
   else
     Result := CoreWrappers.SaveFile(
-      SaveImage, FileName.RawData, SwapFileName.RawData, DestFileName.RawData,
+      SaveImage, FileName.RawData, SwapFileName, DestFileName.RawData,
       FImage.Size(roTrunc in FOptions), faRandomRewrite,
       Touch[roTouch in FOptions] + Backup[FFileNames[fkBackup].Count <> 0]
     );
@@ -892,14 +892,13 @@ begin
                 Console.WriteLn;
                 Output.Action(sSaving, DestFileName);
               end;
-              BytesSaved := SaveFile(@FFileNames[fkBackup]);
+              BytesSaved := SaveFile(FFileNames[fkBackup].RawData);
             end
             else
             begin
-              TmpFileName.AsTempName(DestFileName);
               if FLogStyle <> lsTotals then
                 Output.Action(sSaving, DestFileName);
-              BytesSaved := SaveFile(@TmpFileName);
+              BytesSaved := SaveFile(nil);
             end;
 
             if FLogStyle <> lsTotals then
