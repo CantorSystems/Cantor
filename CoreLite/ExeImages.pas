@@ -96,6 +96,7 @@ type
     function ASLRAware(Value: Boolean = True): Boolean;
     procedure Build(FileAlignment: LongWord = 512;
       SectionRawData: TExeSectionData = sdTruncLast);
+    function CanStripRelocations: Boolean;
     procedure DEPAware(Value: Boolean = True);
     function Delete(Name: PLegacyChar; Length: Integer): Integer; overload;
     function FileAlignBytes(Source: LongWord): LongWord;
@@ -593,6 +594,12 @@ begin
 }
 end;
 
+function TExeImage.CanStripRelocations: Boolean;
+begin
+  Result := (FHeaders.FileHeader.Characteristics and IMAGE_FILE_DLL = 0) and
+    (FHeaders.OptionalHeader.Subsystem in [IMAGE_SUBSYSTEM_WINDOWS_GUI, IMAGE_SUBSYSTEM_WINDOWS_CUI]);
+end;
+
 class function TExeImage.CollectionInfo: TCollectionInfo;
 begin
   with Result do
@@ -970,8 +977,7 @@ begin
   if soDebug in Options then
     DeleteExisting(IndexOf(IMAGE_DIRECTORY_ENTRY_DEBUG));
 
-  if (FHeaders.FileHeader.Characteristics and IMAGE_FILE_DLL = 0) and
-    (FHeaders.OptionalHeader.Subsystem in [IMAGE_SUBSYSTEM_WINDOWS_GUI, IMAGE_SUBSYSTEM_WINDOWS_CUI]) then
+  if CanStripRelocations then
   begin
     if (soRelocations in Options) and (FHeaders.OptionalHeader.DirectoryEntryCount >= IMAGE_DIRECTORY_ENTRY_BASERELOC) then
       DeleteExisting(IndexOf(IMAGE_DIRECTORY_ENTRY_BASERELOC));

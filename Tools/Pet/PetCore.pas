@@ -829,7 +829,7 @@ begin
           if FLogStyle <> lsTotals then
           begin
             Output.StripStats(ImageSize, FImage.Size(roTrunc in FOptions));
-            if roASLR in FOptions then
+            if (roASLR in FOptions) and FImage.CanStripRelocations then
             begin
               Relocs := FImage.SectionOf(stRelocations);
               if Relocs <> nil then
