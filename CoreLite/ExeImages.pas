@@ -442,6 +442,7 @@ const
 var
   Padding: PPadding;
   P, Limit: PLegacyChar;
+  NewSize: LongWord;
 begin
   if {(FHandler = nil) and} (FData <> nil) then
   begin
@@ -450,14 +451,27 @@ begin
 
     if StripPadding then
     begin
-      P := PLegacyChar(FData) + FHeader.RawDataSize;
+{      P := PLegacyChar(FData) + FHeader.RawDataSize;
       Limit := P - SizeOf(PADDINGXXPADDING);
-      Padding := Pointer(Limit);
+      Padding := nil;
       while (P > PLegacyChar(FData)) and (P > Limit) do
       begin
         Dec(P);
         if CompareMem(P, @PADDINGXXPADDING, Limit + SizeOf(PADDINGXXPADDING) - P) then
           Padding := Pointer(P - SizeOf(PADDINGXXPADDING));
+      end;}
+      Limit := PLegacyChar(FData) + FHeader.RawDataSize;
+      P := Limit - SizeOf(PADDINGXXPADDING);
+      Padding := nil;
+      while (P > PLegacyChar(FData)) and (P < Limit) do
+      begin
+        if CompareMem(P, @PADDINGXXPADDING, Limit - P) then
+        begin
+          Padding := Pointer(P);
+          Dec(Padding);
+          Break;
+        end;
+        Inc(P);
       end;
 
       P := nil;
@@ -466,26 +480,33 @@ begin
           (Padding[2] = $44415058) and (Padding[3] = $474E4944) then
         begin
           Dec(Padding);
-          P := PLegacyChar(Padding);
+          P := Pointer(Padding);
         end
         else
         begin
           if P <> nil then
           begin
             Limit := P;
-            Inc(P, SizeOf(PADDINGXXPADDING));
-            Padding := nil;
+            Inc(Padding);
+            P := Pointer(Padding);
             while (P > PLegacyChar(FData)) and (P > Limit) do
             begin
               Dec(P);
               if CompareMem(P, @PADDINGXXPADDING, Limit + SizeOf(PADDINGXXPADDING) - P) then
                 Padding := Pointer(P);
             end;
-            if Padding <> nil then
-              FHeader.RawDataSize := PLegacyChar(Padding) - PLegacyChar(FData);
-          end;
+          end
+          else
+            Padding := nil;
           Break;
         end;
+
+      if Padding <> nil then
+      begin
+        NewSize := PLegacyChar(Padding) - PLegacyChar(FData);
+        FillChar(PLegacyChar(FData)[NewSize], FHeader.RawDataSize - NewSize, 0);
+        FHeader.RawDataSize := NewSize;
+      end;
     end;
   end;
 end;
