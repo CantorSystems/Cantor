@@ -916,7 +916,11 @@ begin
         end;
       except
         on E: EBadImage do
-          Console.WriteLn('%hs: %s', 0, [E.Message.AsString, FileName.RawData]);
+          with Console do
+          begin
+            EndOfLine;
+            WriteLn('%hs: %s', 0, [E.Message.AsString, FileName.RawData]);
+          end;
         on E: EPlatform do
           ShowException(E);
       end;
