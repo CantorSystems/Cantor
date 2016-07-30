@@ -1,9 +1,29 @@
 /*
     Cantor programming language core
 
-    Copyright © 2014 Vladislav Javadov (aka Freeman)
+    Copyright © 2014, 2016 Vladislav Javadov (aka Freeman)
 */
 
+operators of
+  declare then;
+  do then;
+
+  elsif else;
+
+  repeat from;
+  until where;
+  while from;
+
+  cdecl external 'cdecl';
+  fastcall external 'fastcall';
+  mcall external 'mcall';
+  optlink external 'optlink';
+  pascal external 'pascal';
+  register external 'register';
+  safecall external 'safecall';
+  stdcall external 'stdcall';
+  syscall external 'syscall';
+  thiscall external 'thiscall';
 public class [Word scaleBits] with inner of
 
 //  class Boolean = [False, True]; // non-final, allowing platform-specific align by bits
