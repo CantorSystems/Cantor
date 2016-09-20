@@ -75,7 +75,7 @@ const
             #9'-dropsect <s1,s2,...>'#9'Drop sections <s1>, <s2>, etc.'#10 +
             #9'-log <actions|totals>'#9'Output log style'#10 +
             #9'-menuet' +        #9#9#9'Save to MENUET01/MENUET02 format (alpha stage!)'#10 +
-            #9'-nx' +            #9#9#9'Set DEP compatibility flag (NX)'#10 +
+            #9'-nx' +            #9#9#9'Set DEP compatibility flag (NX bit)'#10 +
             #9'-osver <#[.#]>' +   #9#9'Set required OS version to <#> or <#.#>'#10 +
             #9'-raw' +           #9#9#9'Don''t align raw data size values at section'#10 +
                                #9#9#9#9'headers to avoid antivirus false positives'#10 +
