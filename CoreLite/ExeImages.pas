@@ -12,7 +12,6 @@ uses
   Windows, CoreUtils, CoreExceptions, CoreWrappers, CoreClasses;
                                        
 {$I ImageHelper.inc}
-{$I MenuetKolibri.inc}
 
 type
   PExeStub = ^TExeStub;
@@ -110,7 +109,7 @@ type
     procedure Load(Source: PReadableStream);
     procedure OSVersion(MajorVersion: Word; MinorVersion: Word = 0);
     function RawData(VirtualAddress: LongWord): Pointer;
-    function Rebase(Segment: Word; MenuetStyle: Boolean = False): LongWord;
+    function Rebase(Segment: Word): LongWord;
     procedure Save(Dest: PWritableStream; TruncLastSection: Boolean = True);
     function SectionAlignBytes(Source: LongWord): LongWord;
     function SectionOf(SectionType: TExeSectionType): PExeSection;
@@ -120,22 +119,6 @@ type
     property Headers: TImageNewHeaders read FHeaders write FHeaders;
     property Sections: PExeSectionArray read FSections;
     property Stub: TExeStub read FStub;
-  end;
-
-  PMenuetImage = ^TMenuetImage;
-  TMenuetImage = object(TCoreObject)
-  private
-    FHeader: TMenuetHeader;
-    FData: Pointer;
-  public
-    destructor Destroy; virtual;
-    procedure Build;
-    function HeaderSize: Byte;
-    procedure Load(Image: PExeImage);
-    procedure Save(Dest: PWritableStream);
-
-    property Data: Pointer read FData;
-    property Header: TMenuetHeader read FHeader;
   end;
 
 { Exceptions }
@@ -452,15 +435,6 @@ begin
 
     if StripPadding then
     begin
-{      P := PLegacyChar(FData) + FHeader.RawDataSize;
-      Limit := P - SizeOf(PADDINGXXPADDING);
-      Padding := nil;
-      while (P > PLegacyChar(FData)) and (P > Limit) do
-      begin
-        Dec(P);
-        if CompareMem(P, @PADDINGXXPADDING, Limit + SizeOf(PADDINGXXPADDING) - P) then
-          Padding := Pointer(P - SizeOf(PADDINGXXPADDING));
-      end;}
       Limit := PLegacyChar(FData) + FHeader.RawDataSize;
       P := Limit - SizeOf(PADDINGXXPADDING);
       Padding := nil;
@@ -645,12 +619,12 @@ begin
   begin
     if VirtualAddress = CodeBase then
     begin
-      CodeBase := SectionAlignment;
+      CodeBase := SectionAlignment; // TODO
       CodeSize := 0;
     end;
     if VirtualAddress = DataBase then
     begin
-
+      // TODO
     end;
 
     if SectionAlignment < CodeBase then
@@ -845,26 +819,15 @@ begin
   Result := nil;
 end;
 
-function TExeImage.Rebase(Segment: Word; MenuetStyle: Boolean): LongWord;
+function TExeImage.Rebase(Segment: Word): LongWord;
 var
   DeltaOffset: Integer;
-  MenuetImageBase: Byte;
   Relocs: PImageBaseRelocation;
   Idx, I: Integer;
   Chunk: PAddress;
   Offset: Word;
 begin
   Result := 0;
-
-  if MenuetStyle then
-  begin
-    MenuetImageBase := SizeOf(TMenuetHeader);
-    Idx := IndexOf(IMAGE_DIRECTORY_ENTRY_TLS);
-    if Idx < 0 then
-      Dec(MenuetImageBase, SizeOf(LongWord));
-  end
-  else
-    MenuetImageBase := 0;
 
   Idx := IndexOf(IMAGE_DIRECTORY_ENTRY_BASERELOC);
   if Idx >= 0 then
@@ -876,21 +839,9 @@ begin
       begin
         Chunk := RawData(Relocs.VirtualAddress);
         if Chunk = nil then
-          raise EBadImage.Create('Invalid address'); // TODO: invalid address
+          raise EBadImage.Create(sInvalidRVA, [Relocs.VirtualAddress]);
 
-        DeltaOffset := Segment shl 16 + MenuetImageBase;
-        if MenuetStyle then
-          for I := 0 to Count - 1 do
-            with FHeaders.OptionalHeader, FSections[I].FHeader do
-            begin
-              if (VirtualAddress > EntryPoint) and (FSections[I - 1].FHeader.VirtualAddress <= EntryPoint) then
-                Dec(EntryPoint, DeltaOffset);
-              Inc(DeltaOffset, RawDataSize - VirtualAddress);
-              if VirtualAddress = CodeBase then
-                Dec(CodeBase, DeltaOffset);
-              if VirtualAddress = DataBase then
-                Dec(DataBase, DeltaOffset);
-            end;
+        DeltaOffset := Segment shl 16;
         Dec(DeltaOffset, FHeaders.OptionalHeader.ImageBase);
 
         for I := 0 to (Relocs.BlockSize - SizeOf(TImageBaseRelocation)) div SizeOf(Word) - 1 do
@@ -904,8 +855,8 @@ begin
                 Inc(PLongWord(Chunk + Offset and $FFF)^, DeltaOffset);
                 Inc(Result);
               end;
-          else // TODO
-            raise EBadImage.Create('Unsupported relocation format, code %2u', DefaultSystemCodePage, [Offset shr 12]);
+          else 
+            raise EBadImage.Create(sUnsupportedRelocationFormat, [Offset shr 12]);
           end;
         end;
         Inc(PAddress(Relocs), Relocs.BlockSize);
@@ -913,7 +864,7 @@ begin
     end;
   end;
 
-  FHeaders.OptionalHeader.ImageBase := Segment shl 16 + MenuetImageBase;
+  FHeaders.OptionalHeader.ImageBase := Segment shl 16;
 end;
 
 procedure TExeImage.Save(Dest: PWritableStream; TruncLastSection: Boolean);
@@ -1039,90 +990,6 @@ begin
     end
     else
       DirectoryEntryCount := IMAGE_NUMBEROF_DIRECTORY_ENTRIES;
-end;
-
-{ TMenuetImage }
-
-destructor TMenuetImage.Destroy;
-begin
-  FreeMem(FData);
-  inherited;
-end;
-
-procedure TMenuetImage.Build;
-asm
-        MOV dword [EAX+FHeader.Magic], $554E454D  // 'MENU'
-        CMP dword [EAX.FHeader.TLS], 0
-        SETNZ DL
-        SHL EDX, 24
-        ADD EDX, $31305445                        // 'ET01'
-        MOV dword [EAX+FHeader.Magic+4], EDX
-        SHR EDX, 29 // hack
-        MOV dword [EAX+FHeader.HeaderVersion], EDX
-end;
-{begin
-  with QuadRec(FHeader.Magic) do
-  begin
-    Lo := $554E454D;                                  // 'MENU'
-    Hi := $31305445 + Byte(FHeader.TLS <> 0) shl 24;  // 'ET01'
-  end;
-end;}
-
-function TMenuetImage.HeaderSize: Byte;
-begin
-  Result := SizeOf(FHeader) - Byte(FHeader.TLS = 0) * SizeOf(FHeader.TLS);
-end;
-
-procedure TMenuetImage.Load(Image: PExeImage);
-var
-  I, Delta: Integer;
-  Dest: PAddress;
-begin
-  FHeader.ImageSize := Image.FHeaders.OptionalHeader.ImageBase;
-  for I := 0 to Image.Count - 1 do
-    with FHeader, Image.Sections[I].FHeader do
-    begin
-      if VirtualAddress = Image.FHeaders.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_TLS].VirtualAddress then
-        TLS := ImageSize;
-      Inc(ImageSize, VirtualSize); // TODO: handlers
-    end;
-
-  ReallocMem(FData, FHeader.ImageSize);
-  Dest := FData;
-  with Image.FHeaders.OptionalHeader do
-  begin
-    FillChar(Dest^, ImageBase, 0);
-    Inc(Dest, ImageBase);
-  end;
-  for I := 0 to Image.Count - 1 do
-    with Image.Sections[I], FHeader do
-    begin
-      Move(Data^, Dest^, RawDataSize); // TODO: handlers
-      Inc(Dest, RawDataSize);
-      Delta := RawDataSize - VirtualSize;
-      FillChar(Dest^, Delta, 0);
-      Inc(Dest, Delta);
-    end;
-
-  with FHeader, Image.Headers do
-  begin
-    Inc(ImageSize, HeaderSize);
-    EntryPoint := OptionalHeader.EntryPoint;
-    HeapSize := OptionalHeader.HeapReserveSize;
-    ESP := ImageSize + OptionalHeader.StackReserveSize;
-  end;
-end;
-
-procedure TMenuetImage.Save(Dest: PWritableStream);
-var
-  L: LongWord;
-begin
-  with Dest^ do
-  begin
-    L := HeaderSize;
-    WriteBuffer(FHeader, L);
-    WriteBuffer(FData^, FHeader.ImageSize - L);
-  end;
 end;
 
 end.

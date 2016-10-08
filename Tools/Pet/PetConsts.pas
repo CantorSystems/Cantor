@@ -26,7 +26,6 @@ const         // short Unicode strings
   sDropSect   = #8'dropsect';
   sLS         = #2'ls';
   sLog        = #3'log';
-  sMenuet     = #7'menuet';
   sNoLogo     = #6'nologo';
   sNX         = #2'nx';
   sPause      = #5'pause';
@@ -74,7 +73,6 @@ const
             #9'-dir' +           #9#9#9'Strip data directory (lesser compatibility)'#10 +
             #9'-dropsect <s1,s2,...>'#9'Drop sections <s1>, <s2>, etc.'#10 +
             #9'-log <actions|totals>'#9'Output log style'#10 +
-            #9'-menuet' +        #9#9#9'Save to MENUET01/MENUET02 format (alpha stage!)'#10 +
             #9'-nx' +            #9#9#9'Set DEP compatibility flag (NX bit)'#10 +
             #9'-osver <#[.#]>' +   #9#9'Set required OS version to <#> or <#.#>'#10 +
             #9'-raw' +           #9#9#9'Don''t align raw data size values at section'#10 +
@@ -137,7 +135,6 @@ const
   sNoFilesFound = 'No files found';
   sSectionNotFound = 'Section “%s” not found';
   sImageBaseUnaligned = 'Image base %08X is not on 64 KB boundary';
-  sMenuetAt0 = 'MENUET01/02 images should start at image base 0';
   sNoRelocationsForASLR = 'Dynamic image base feature (ASLR) is not available because relocations were'#10 +
     'stripped from this file';
 

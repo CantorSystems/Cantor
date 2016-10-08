@@ -138,6 +138,8 @@ const
   sDotNETAssembly = '.NET assemblies cannot be handled';
   sUnknownExeImage = 'Unknown image signature: %c%c';
   sBadExeImage = 'Bad image: %s';
+  sInvalidRVA = 'Invalid RVA: %08X';
+  sUnsupportedRelocationFormat = 'Unsupported relocation format, code %2u';
 
   sAvoidCharCorruption = 'This program uses UTF-8 console. To avoid on-screen Unicode characters'#10 +
     'corruption, please set a TrueType/OpenType font for console window.';
