@@ -101,7 +101,7 @@ type
     function Delete(Name: PLegacyChar; Length: Integer): Integer; overload;
     function FileAlignBytes(Source: LongWord): LongWord;
     function HeadersSize: LongWord;
-    function IndexOf(DirectoryIndex: Byte): Integer; overload;
+    function IndexOf(Entry: Byte): Integer; overload;
     function IndexOf(Name: PLegacyChar; Length: Integer): Integer; overload;
     function IsASLRAware: Boolean;
     function IsDEPAware: Boolean;
@@ -622,15 +622,41 @@ var
   I, Idx: Integer;
   Entries: TDirectoryEntries;
 begin
-  if Index <> 0 then
+  if FSections[Index].FHeader.VirtualAddress = FHeaders.OptionalHeader.CodeBase then
   begin
-    Increment := 0;
-    for I := Index to Index + ItemCount - 1 do
-      with FSections[I].FHeader do
-        if VirtualSize <> 0 then
-          Inc(Increment, VirtualSize + SectionAlignBytes(VirtualSize));
-    with FSections[Index - 1].FHeader do
-      Inc(VirtualSize, SectionAlignBytes(VirtualSize) + Increment);
+    if Index + 1 < Count then
+      FHeaders.OptionalHeader.CodeBase := FSections[Index + 1].FHeader.VirtualAddress
+    else
+      FHeaders.OptionalHeader.CodeBase := 0;
+    FHeaders.OptionalHeader.CodeSize := 0;
+  end;
+
+  if FSections[Index].FHeader.VirtualAddress = FHeaders.OptionalHeader.DataBase then
+  begin
+    if Index + 1 < Count then
+      FHeaders.OptionalHeader.DataBase := FSections[Index + 1].FHeader.VirtualAddress
+    else
+      FHeaders.OptionalHeader.DataBase := 0;
+    FHeaders.OptionalHeader.InitializedDataSize := 0;
+    FHeaders.OptionalHeader.UninitializedDataSize := 0;
+  end;
+
+  with FSections[Index].FHeader, FHeaders.OptionalHeader do
+  begin
+    if VirtualAddress = CodeBase then
+    begin
+      CodeBase := SectionAlignment;
+      CodeSize := 0;
+    end;
+    if VirtualAddress = DataBase then
+    begin
+
+    end;
+
+    if SectionAlignment < CodeBase then
+      SectionAlignment := CodeBase;
+    if SectionAlignment = 0 then
+      SectionAlignment := DataBase;
   end;
 
   Entries := [];
@@ -717,9 +743,9 @@ begin
   Result := -1;
 end;
 
-function TExeImage.IndexOf(DirectoryIndex: Byte): Integer;
+function TExeImage.IndexOf(Entry: Byte): Integer;
 begin
-  Result := IndexOfAddress(FHeaders.OptionalHeader.DataDirectory[DirectoryIndex].VirtualAddress);
+  Result := IndexOfAddress(FHeaders.OptionalHeader.DataDirectory[Entry].VirtualAddress);
 end;
 
 function TExeImage.IndexOf(Name: PLegacyChar; Length: Integer): Integer;
