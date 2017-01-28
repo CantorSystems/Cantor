@@ -43,7 +43,7 @@ const         // short Unicode strings
   sTotals     = #6'totals';
 
   sLogo =
-          #9'/\_/\'#10 +
+    '        /\_/\'#10 +
     '    .__/ o o \    %s %hs'#10 +
     '   /~__;==t==/    %s'#10 +
     '  (_____)_m_m)';
