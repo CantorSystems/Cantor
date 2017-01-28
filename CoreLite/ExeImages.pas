@@ -1,7 +1,7 @@
 (*
     Executable images object model
 
-    Copyright (c) 2013 Vladislav Javadov (Freeman)
+    Copyright (c) 2013-2017 Vladislav Javadov (Freeman)
 *)
 
 unit ExeImages;
@@ -187,12 +187,12 @@ begin
       SetDataSize(AlignToLongWord(L));
       Move(FData^, PLegacyChar(FData)[ExtBytes], L);
       Move(FHeader.Ext, FData^, ExtBytes);
-      FillChar(FHeader.Ext, ExtBytes, 0); // goodbye, ð*ùRich<ð*ù
+      FillChar(FHeader.Ext, ExtBytes, 0); // goodbye, ï¿½*ï¿½Rich<ï¿½*ï¿½
     end
     else
     begin
       SetDataSize(SizeOf(FHeader.Ext));
-      FillChar(PLegacyChar(@FHeader)[L], SizeOf(FHeader) - L, 0); // also ð*ùRich<ð*ù
+      FillChar(PLegacyChar(@FHeader)[L], SizeOf(FHeader) - L, 0); // also ï¿½*ï¿½Rich<ï¿½*ï¿½
     end;
   end
   else

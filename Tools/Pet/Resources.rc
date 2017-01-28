@@ -21,7 +21,7 @@ BEGIN
     BLOCK "040904E4"
     BEGIN
       VALUE "CompanyName", "Vladislav Javadov\000"
-      VALUE "LegalCopyright", "Copyright � 2013-2016 Vladislav Javadov\000"
+      VALUE "LegalCopyright", "Copyright � 2013-2017 Vladislav Javadov\000"
       VALUE "ProductName", "PE Tool\000"
       VALUE "FileDescription", "Portable executable (PE) rebuilding tool\000"
       VALUE "OriginalFilename", "Pet.exe\000"
