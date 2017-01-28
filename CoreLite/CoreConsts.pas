@@ -3,7 +3,7 @@
 
     Core library string messages
 
-    Copyright (c) 2008-2016 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2008-2017 Vladislav Javadov (aka Freeman)
 *)
 
 unit CoreConsts;
@@ -11,7 +11,7 @@ unit CoreConsts;
 interface
 
 const
-  CP_LOCALIZATION = 1252; // we're using “”, but only in exception messages
+  CP_LOCALIZATION = 1252; // we're using ï¿½ï¿½, but only in exception messages
 
   sDivByZero          = 'Division by zero';
   sRangeError         = 'Range check error';
@@ -36,7 +36,7 @@ const
   sWriteAccess        = 'write';
 
   sAccessViolation = 'Access violation at address %p:%hc%s of address %p';
-  sModuleAccessViolation = 'Access violation at address %p in module “%s”:%hc%hs of address %p';
+  sModuleAccessViolation = 'Access violation at address %p in module ï¿½%sï¿½:%hc%hs of address %p';
 
   sAbstractInstance = '%s instance abstract method call';
   sAbstractClass    = '%s abstract class method call';
@@ -100,14 +100,14 @@ const
 
   sInteger = 'integer';
   sHexadecimal = 'hexadecimal';
-  sInvalidInteger = '“%s” is not a valid %hs value';
+  sInvalidInteger = 'ï¿½%sï¿½ is not a valid %hs value';
   sNullInteger = 'Null string is not a valid %s value';
 
   sNotNativeUTF16BE = 'UTF-16 Big-Endian is not native for Windows API';
   sUTF32notSupported = 'UTF-32 not supported';
 
-  sSystemCPtoUTF16 = 'System error “%s” while converting code page %u (%s) to UTF-16';
-  sSystemUTF16toCP = 'System error “%s” while converting UTF-16 to code page %u (%s)';
+  sSystemCPtoUTF16 = 'System error ï¿½%sï¿½ while converting code page %u (%s) to UTF-16';
+  sSystemUTF16toCP = 'System error ï¿½%sï¿½ while converting UTF-16 to code page %u (%s)';
   sUnicodeToCP = 'Cannot convert %hs string to code page %u (%s)';
   sCPtoCP = 'Cannot convert string between code page %u (%s) and code page %u (%s)';
 
@@ -136,9 +136,8 @@ const
   sNotExecutableImage = 'Not an executable image';
   sNotValidWin32Image = 'Not valid Win32 image';
   sDotNETAssembly = '.NET assemblies cannot be handled';
-  sUnknownExeImage = 'Unknown image signature: %c%c';
-  sBadExeImage = 'Bad image: %s';
-  sInvalidRVA = 'Invalid RVA: %08X';
+  sUnknownExeImage = 'Unknown image signature ï¿½%c%cï¿½';
+  sInvalidRVA = 'Invalid RVA %08X';
   sUnsupportedRelocationFormat = 'Unsupported relocation format, code %2u';
 
   sAvoidCharCorruption = 'This program uses UTF-8 console. To avoid on-screen Unicode characters'#10 +
