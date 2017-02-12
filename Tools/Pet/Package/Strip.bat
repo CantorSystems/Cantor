@@ -1,0 +1,1 @@
+@"%~dp0Pet" -stub -strip -trunc %*
