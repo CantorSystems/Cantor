@@ -596,7 +596,7 @@ var
   I, Idx: Integer;
   Entries: TDirectoryEntries;
 begin
-  if FSections[Index].FHeader.VirtualAddress = FHeaders.OptionalHeader.CodeBase then
+{  if FSections[Index].FHeader.VirtualAddress = FHeaders.OptionalHeader.CodeBase then
   begin
     if Index + 1 < Count then
       FHeaders.OptionalHeader.CodeBase := FSections[Index + 1].FHeader.VirtualAddress
@@ -630,7 +630,16 @@ begin
     if SectionAlignment < CodeBase then
       SectionAlignment := CodeBase;
     if SectionAlignment = 0 then
-      SectionAlignment := DataBase;
+      SectionAlignment := DataBase;}
+  if Index <> 0 then
+  begin
+    Increment := 0;
+    for I := Index to Index + ItemCount - 1 do
+      with FSections[I].FHeader do
+        if VirtualSize <> 0 then
+          Inc(Increment, VirtualSize + SectionAlignBytes(VirtualSize));
+    with FSections[Index - 1].FHeader do
+      Inc(VirtualSize, SectionAlignBytes(VirtualSize) + Increment);
   end;
 
   Entries := [];
