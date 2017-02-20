@@ -25,6 +25,6 @@ dcc32 %~dp0Pet.dpr -d"Tricks;ForceMMX;Lite;%1" -e.. %Options% -u"%Units%"
 if errorlevel 1 goto exit
 
 call StripRes %~dp0%Exe%
-pet -nologo -strip -trunc %Exe% -into %Exe% -osver 5 -stub -NX %ASLR%
+pet -nologo -strip -trunc %Exe% -into %Exe% -osver 5 -stub -DEP %ASLR%
 
 :exit

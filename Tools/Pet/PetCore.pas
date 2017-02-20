@@ -1,10 +1,10 @@
 (*
     PE Tool core
 
-    Copyright (c) 2013-2016 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2013-2017 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
-      * Lite -- avoid redundant bloatness of code, without functionality loss 
+      * Lite -- avoid redundant bloatness of code, without functionality loss
 *)
 
 unit PetCore;
@@ -51,9 +51,9 @@ type
 
   TLogStyle = (lsAuto, lsTotals, lsActions);
 
-  TRunOption = (roPause, roNoLogo, roVersion, // ordered
-    {roAuto,} roASLR, roStrip, roTrunc, roTouch, roUnsafe, roDeep, roDir, roRaw,
-    {roMiniRes, roVerInfo, roMainIcon, roVerbose} ro3GB, roNX, roListSections);
+  TRunOption = (roPause, roNoLogo, roVersion, ro3GB, roASLR, roDEP, // ordered
+    {roAuto,} roStrip, roTrunc, roTouch, roUnsafe, roDeep, roDir, roRaw,
+    {roMiniRes, roVerInfo, roMainIcon, roVerbose} roListSections);
   TRunOptions = set of TRunOption;
 
   TApplication = object(TConsoleApplication)
@@ -197,6 +197,7 @@ begin
   FPercentage.Create;
   FPercentage.ExternalBuffer(@FPercentageBuf, Length(FPercentageBuf));
 end;
+
 
 { TDefaultOutput }
 
@@ -382,10 +383,13 @@ begin
 end;
 
 procedure TApplication.ParseCommandLine(Source: PCoreChar);
+
 const
-  OptionKeys: array[TRunOption] of PCoreChar =
-    (sPause, sNoLogo, sVersion, sASLR, sStrip, sTrunc, sTouch, sUnsafe, sDeep, sDir, sRaw,
-     {sMiniRes, sVerInfo, sMainIcon, sVerbose,} s3GB, sNX, sLS);
+  OptionKeys: array[TRunOption] of PCoreChar = (
+    sPause, sNoLogo, sVersion, s3GB, sASLR, sDEP,
+    sStrip, sTrunc, sTouch, sUnsafe, sDeep, sDir, sRaw,
+    {sMiniRes, sVerInfo, sMainIcon, sVerbose,} sLS
+  );
 
 procedure AppendFileName(Source: PCoreString);
 var
@@ -786,9 +790,6 @@ begin
           ImageSize := FImage.Size(False);
         end;
 
-        if (roASLR in FOptions) and not FImage.ASLRAware then
-          raise EBadImage.Create(sNoRelocationsForASLR);
-
         if roStrip in FOptions then
         begin
           if FLogStyle <> lsTotals then
@@ -841,7 +842,9 @@ begin
                 OSVersion(FMajorVersion, FMinorVersion);
               if ro3GB in FOptions then
                 LargeAddressAware;
-              if roNX in FOptions then
+              if (roASLR in FOptions) and not FImage.ASLRAware then
+                raise EBadImage.Create(sNoRelocationsForASLR);
+              if roDEP in FOptions then
                 DEPAware;
             end;
 
