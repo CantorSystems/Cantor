@@ -134,7 +134,8 @@ const
 
   sExeImage = 'executable image';
   sNotExecutableImage = 'Not an executable image';
-  sNotValidWin32Image = 'Not valid Win32 image';
+  sInvalidImageStub = 'Invalid image stub – %u bytes on last page (max 512 allowed)';
+  sInvalidWin32Image = 'Invalid Win32 image';
   sDotNETAssembly = '.NET assemblies cannot be handled';
   sUnknownExeImage = 'Unknown image signature ï¿½%c%cï¿½';
   sInvalidRVA = 'Invalid RVA %08X';

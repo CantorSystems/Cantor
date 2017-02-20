@@ -243,7 +243,9 @@ begin
       Source.ReadBuffer(FHeader.Ext, SizeOf(FHeader.Ext));
       Dec(L, SizeOf(FHeader.Ext));
       ReallocMem(FData, L);
-      Source.ReadBuffer(FData^, L);
+      FHeader.LastPageBytes := L - Source.Read(FData^, L);
+      if FHeader.LastPageBytes > LegacyPageLength then
+        raise EBadImage.Create(sInvalidImageStub, CP_LOCALIZATION, [FHeader.LastPageBytes]);
       Exit;
     end
     else
@@ -780,7 +782,7 @@ begin
     if LongWord(FHeaders.Magic) <> IMAGE_NT_SIGNATURE then
       raise EUnknownImage.Create(FHeaders);
     if FHeaders.FileHeader.OptionalHeaderSize <> SizeOf(FHeaders.OptionalHeader) then
-      raise EBadImage.Create(sNotValidWin32Image);
+      raise EBadImage.Create(sInvalidWin32Image);
     Source.ReadBuffer(FHeaders.OptionalHeader, FHeaders.FileHeader.OptionalHeaderSize);
     with FHeaders.OptionalHeader do
     begin
