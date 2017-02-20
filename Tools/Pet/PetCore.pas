@@ -92,11 +92,11 @@ type
     FInvalidParam: PCoreString;
     FFileKind: TFileKind;
   public
-    constructor Create(MissingKind: TCmdLineFileKind); overload;
-    constructor Create(MissingParam: PLegacyChar); overload;
+    constructor CreateMissing(MissingKind: TCmdLineFileKind); overload;
+    constructor CreateMissing(MissingParam: PLegacyChar); overload;
 
-    constructor Create(DuplicateKind: TCmdLineFileKind; FileName: PCoreString); overload;
-    constructor Create(DuplicateParam: PLegacyChar; ParamValue: PCoreString); overload;
+    constructor CreateDuplicate(DuplicateKind: TCmdLineFileKind; FileName: PCoreString); overload;
+    constructor CreateDuplicate(DuplicateParam: PLegacyChar; ParamValue: PCoreString); overload;
 
     constructor CreateInvalid(Option: PCoreString); overload;
     constructor CreateInvalid(Option: PLegacyChar; InvalidValue: PCoreString); overload;
@@ -138,7 +138,7 @@ begin
   FormatBuf(sFileName, [KindName], Result);
 end;
 
-constructor ECommandLine.Create(MissingKind: TCmdLineFileKind);
+constructor ECommandLine.CreateMissing(MissingKind: TCmdLineFileKind);
 var
   Kind: TFileKindBuf;
 begin
@@ -147,12 +147,12 @@ begin
   FFileKind := MissingKind;
 end;
 
-constructor ECommandLine.Create(MissingParam: PLegacyChar);
+constructor ECommandLine.CreateMissing(MissingParam: PLegacyChar);
 begin
   inherited Create(sMissingParam, [MissingParam]);
 end;
 
-constructor ECommandLine.Create(DuplicateKind: TCmdLineFileKind; FileName: PCoreString);
+constructor ECommandLine.CreateDuplicate(DuplicateKind: TCmdLineFileKind; FileName: PCoreString);
 var
   Kind: TFileKindBuf;
 begin
@@ -162,7 +162,7 @@ begin
   FInvalidParam := FileName;
 end;
 
-constructor ECommandLine.Create(DuplicateParam: PLegacyChar; ParamValue: PCoreString);
+constructor ECommandLine.CreateDuplicate(DuplicateParam: PLegacyChar; ParamValue: PCoreString);
 begin
   inherited Create(sDuplicateParam, DefaultSystemCodePage, [DuplicateParam, ParamValue.Data]);
   FInvalidParam := ParamValue;
@@ -443,11 +443,11 @@ begin
           begin
             CmdLine := Param.AsNextParam(@CmdLine);
             if (Param.Count = 0) and not (K in [fkInto, fkStub]) then
-              raise ECommandLine.Create(K);
+              raise ECommandLine.CreateMissing(K);
             with FFileNames[K] do
             begin
               if Count <> 0 then
-                raise ECommandLine.Create(K, @Param);
+                raise ECommandLine.CreateDuplicate(K, @Param);
               PPointer(@FFileNames[K])^ := TypeOf(TFileName); // Fast core
               if not Param.IsKey then
               begin
@@ -468,9 +468,9 @@ begin
         begin
           CmdLine := Param.AsNextParam(@CmdLine);
           if Param.Count = 0 then
-            raise ECommandLine.Create(sOSVersion);
+            raise ECommandLine.CreateMissing(sOSVersion);
           if FMajorVersion <> 0 then
-            raise ECommandLine.Create(sOSVersion, @Param);
+            raise ECommandLine.CreateDuplicate(sOSVersion, @Param);
           with Param do
           begin
             Dot := RawNextIndex(WideChar('.'));
@@ -492,7 +492,7 @@ begin
           if Param.Count = 0 then
             raise ECommandLine.Create(sRebaseAddress);
           if FRebaseAddress <> 0 then
-            raise ECommandLine.Create(sRebaseAddress, @Param);
+            raise ECommandLine.CreateDuplicate(sRebaseAddress, @Param);
           FRebaseAddress := Param.AsHexadecimal;
           if FRebaseAddress mod $10000 <> 0 then
             raise EImageBase.Create(FRebaseAddress);
@@ -511,9 +511,9 @@ begin
         begin
           CmdLine := Param.AsNextParam(@CmdLine);
           if Param.Count = 0 then
-            raise ECommandLine.Create(sLogStyle);
+            raise ECommandLine.CreateMissing(sLogStyle);
           if FLogStyle <> lsAuto then
-            raise ECommandLine.Create(sLogStyle, @Param);
+            raise ECommandLine.CreateDuplicate(sLogStyle, @Param);
           if Param.Equals(sActions) then
             FLogStyle := lsActions
           else if Param.Equals(sTotals) then
@@ -542,9 +542,12 @@ begin
     begin
       FileName := @FFileNames[fkInto];
       if FileName.IsDotOrNull then
-        raise ECommandLine.Create(fkSource);
-      FSourceFileNames.Create;
-      AppendFileName(FileName);
+      begin
+        FSourceFileNames.Create;
+        AppendFileName(@ExeName);
+      end
+      else
+        raise ECommandLine.CreateMissing(fkSource);
     end;
     FileName := @FFileNames[fkStub];
     if FileName.IsDotOrNull then
