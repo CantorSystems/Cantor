@@ -159,7 +159,10 @@ end;
 constructor EUnknownImage.Create(const Headers: TImageNewHeaders);
 begin
   with Headers do
-    inherited Create(sUnknownExeImage, [Magic[0], Magic[1]]);
+    if (Magic[0] < #32) or (Magic[1] < #32) then
+      inherited Create(sLegacyExeImage)
+    else
+      inherited Create(sUnknownExeImage, [Magic[0], Magic[1]]);
   FHeaders := Headers;
 end;
 

@@ -134,10 +134,11 @@ const
 
   sExeImage = 'executable image';
   sNotExecutableImage = 'Not an executable image';
-  sInvalidImageStub = 'Invalid image stub – %u bytes on last page (max 512 allowed)';
+  sInvalidImageStub = 'Invalid image stub ï¿½ %u bytes on last page (max 512 allowed)';
   sInvalidWin32Image = 'Invalid Win32 image';
   sDotNETAssembly = '.NET assemblies cannot be handled';
   sUnknownExeImage = 'Unknown image signature ï¿½%c%cï¿½';
+  sLegacyExeImage = 'Image extension not found, DOS/DPMI image';
   sInvalidRVA = 'Invalid RVA %08X';
   sUnsupportedRelocationFormat = 'Unsupported relocation format, code %2u';
 
