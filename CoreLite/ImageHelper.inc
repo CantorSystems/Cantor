@@ -1,7 +1,7 @@
 (*
     Image helper constansts and structures for CoreLite
 
-    Copyright (c) 2013, 2016 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2013, 2016-2017 Vladislav Javadov (aka Freeman)
 *)
 
 const // for Delphi 6
