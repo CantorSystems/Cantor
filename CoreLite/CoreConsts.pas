@@ -138,7 +138,7 @@ const
   sInvalidWin32Image = 'Invalid Win32 image';
   sDotNETAssembly = '.NET assemblies cannot be handled';
   sUnknownExeImage = 'Unknown image signature �%c%c�';
-  sLegacyExeImage = 'Image extension not found, DOS/DPMI image';
+  sLegacyExeImage = 'Extended header not found, DOS/DPMI image';
   sInvalidRVA = 'Invalid RVA %08X';
   sUnsupportedRelocationFormat = 'Unsupported relocation format, code %2u';
 

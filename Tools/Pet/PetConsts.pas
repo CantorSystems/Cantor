@@ -131,7 +131,7 @@ const
   sDefaultStatsFmt = '  %%%di bytes  %%6hs'; // '  {*u?{u'#160'bytes}}  {6p}'
 
   sChainedDataFound = 'Chained data found, safe stripping stopped';
-  sTotalsMessage = #10'%u files %d bytes (%hs)';
+  sTotalsMessage = #10'%u files, %d bytes (%hs)';
   sNoFilesFound = 'No files found';
   sSectionNotFound = 'Section �%s� not found';
   sImageBaseUnaligned = 'Image base %08X is not on 64 KB boundary';
