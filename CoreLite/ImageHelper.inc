@@ -143,7 +143,7 @@ type
     Magic: Word;
     MajorLinkerVersion, MinorLinkerVersion: Byte;
     CodeSize, InitializedDataSize, UninitializedDataSize,
-    EntryPoint, CodeBase, DataBase: LongWord;
+    EntryPoint, CodeBase: LongWord;
     ImageBase: QuadWord;
     SectionAlignment, FileAlignment: LongWord;
     MajorOSVersion, MinorOSVersion,

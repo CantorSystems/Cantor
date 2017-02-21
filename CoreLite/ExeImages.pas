@@ -159,10 +159,10 @@ end;
 constructor EUnknownImage.Create(const Headers: TImageNewHeaders);
 begin
   with Headers do
-    if (Magic[0] < #32) or (Magic[1] < #32) then
-      inherited Create(sLegacyExeImage)
+    if (PWord(@Magic)^ = IMAGE_OS2_SIGNATURE) or (PWord(@Magic)^ = IMAGE_VXD_SIGNATURE) then
+      inherited Create(sUnsupportedExeImage, [Magic[0], Magic[1]])
     else
-      inherited Create(sUnknownExeImage, [Magic[0], Magic[1]]);
+      inherited Create(sLegacyExeImage);
   FHeaders := Headers;
 end;
 
@@ -782,10 +782,19 @@ begin
       Position := FStub.Header.Ext.NewHeaderOffset;
       ReadBuffer(FHeaders, SizeOf(FHeaders) - SizeOf(FHeaders.OptionalHeader));
     end;
+
     if LongWord(FHeaders.Magic) <> IMAGE_NT_SIGNATURE then
       raise EUnknownImage.Create(FHeaders);
-    if FHeaders.FileHeader.OptionalHeaderSize <> SizeOf(FHeaders.OptionalHeader) then
+
+    case FHeaders.FileHeader.OptionalHeaderSize of
+      SizeOf(TImageOptionalHeader32):
+        ;
+      SizeOf(TImageOptionalHeader64):
+        raise EBadImage.Create(s64bitImage);
+    else
       raise EBadImage.Create(sInvalidWin32Image);
+    end;
+
     Source.ReadBuffer(FHeaders.OptionalHeader, FHeaders.FileHeader.OptionalHeaderSize);
     with FHeaders.OptionalHeader do
     begin
@@ -796,6 +805,7 @@ begin
       FillChar(DataDirectory[DirectoryEntryCount], SizeOf(DataDirectory) -
         DirectoryEntryCount * SizeOf(TImageDataDirectory), 0);
     end;
+
     Capacity := FHeaders.FileHeader.SectionCount;
     for I := 0 to Capacity - 1 do
       with FSections[Append] do

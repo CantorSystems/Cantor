@@ -893,6 +893,12 @@ begin
             EndOfLine;
             WriteLn('%hs: %s', 0, [E.Message.AsString, FileName.RawData]);
           end;
+        on E: EStream do
+          with Console do
+          begin
+            EndOfLine;
+            WriteLn(sUnexpectedEndOfStream, 0, [E.Message.AsString, FileName.RawData]);
+          end;
         on E: EPlatform do
           ShowException(E);
       end;

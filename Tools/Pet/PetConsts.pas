@@ -130,6 +130,7 @@ const
   sDefaultActionFmt = '%%%dhs  %%hs%%%ds';   // '{*s}  {*s?{s1}}'
   sDefaultStatsFmt = '  %%%di bytes  %%6hs'; // '  {*u?{u'#160'bytes}}  {6p}'
 
+  sUnexpectedEndOfStream = '%hs from %s'; // Unexpected end of stream: read xx bytes instead of yy from <file>
   sChainedDataFound = 'Chained data found, safe stripping stopped';
   sTotalsMessage = #10'%u files, %d bytes (%hs)';
   sNoFilesFound = 'No files found';
