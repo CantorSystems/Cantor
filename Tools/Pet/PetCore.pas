@@ -541,7 +541,12 @@ begin
     if (TypeOf(FSourceFileNames) = nil) and not (roVersion in FOptions) then
     begin
       FileName := @FFileNames[fkInto];
-      if FileName.IsDotOrNull then
+      if FileName.Count <> 0 then
+      begin
+        FSourceFileNames.Create;
+        AppendFileName(FileName);
+      end
+      else if FileName.IsDotOrNull then
       begin
         FSourceFileNames.Create;
         AppendFileName(@ExeName);
