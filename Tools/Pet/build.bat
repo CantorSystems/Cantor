@@ -12,9 +12,9 @@ if /i "%2"=="debug" (
   set Debug=debug
 )
 
-if /i "%2"=="ASLR" (
+if /i "%2"=="release" (
   set ASLR=-ASLR
-) else if /i "%1"=="ASLR" (
+) else if /i "%1"=="release" (
   set ASLR=-ASLR
 )
 
