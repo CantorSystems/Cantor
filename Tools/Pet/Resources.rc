@@ -2,9 +2,6 @@
     PE Tool's resource script
 */
 
-// ,---- CAT :-)
-0xCA7 ICON "Purr-32x32.ico"
-
 #include "revision.inc"
 
 1 VERSIONINFO
