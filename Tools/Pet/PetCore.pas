@@ -608,9 +608,10 @@ var
   ImageSize, OldSize, SectionBytes: LongWord;
   ExtractFileName: PFileName;
   Section: PLegacyTextListItem;
-  I: Integer;
+  I, L: Integer;
   RawData: TExeSectionData;
   Relocs: PExeSection;
+  TempSectionName: array[0..IMAGE_SIZEOF_SHORT_NAME] of LegacyChar;
 begin
   try
     ParseCommandLine(CommandLine);
@@ -683,7 +684,10 @@ begin
           for I := 0 to FImage.Count - 1 do
             with FImage.Sections[I] do
             begin
-              Console.WriteLn('  %8hs', 0, [Header.Name], 0);
+              L := StrLen(Header.Name, IMAGE_SIZEOF_SHORT_NAME);
+              Move(Header.Name[0], TempSectionName, L);
+              TempSectionName[L] := #0;
+              Console.WriteLn('  %8hs', 0, [@TempSectionName], 0);
               Output.TransferStats(Loaded.FileSize, Size);
             end;
           FileName := FileName.Next;
