@@ -1,3 +1,4 @@
+CustomStubs     DOS programs to display particular Windows version requirement is DOS mode
 Pet.exe         Portable executable (PE) rebuilding tool (PE Tool)
 Strip.bat       Sample strip tool using PE Tool
 strip-Pet.bat   Disable ASLR and remove relocations from PE Tool itself
