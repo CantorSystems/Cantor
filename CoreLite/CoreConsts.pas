@@ -137,7 +137,7 @@ const
   sInvalidImageStub = 'Invalid image stub � %u bytes on last page (max 512 allowed)';
   sInvalidWin32Image = 'Invalid Win32 image';
   s64bitImage = '64-bit images are not supported';
-  sDotNETAssembly = '.NET assemblies cannot be handled';
+  sDotNETAssembly = '.NET assemblies cannot be processed';
   sUnsupportedExeImage = 'Unsupported image extension �%c%c�';
   sLegacyExeImage = 'Extended header not found, unsupported DOS/DPMI image';
   sInvalidRVA = 'Invalid RVA %08X';
