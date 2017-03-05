@@ -770,11 +770,11 @@ var
   I: Integer;
 begin
   Clear;
- 
+
   FStub.Load(Source);
 
-  if (FStub.Size >= SizeOf(TImageLegacyHeader)) and
-    (FStub.Header.Ext.NewHeaderOffset <> 0) then
+  if (FStub.Size >= SizeOf(TImageLegacyHeader)) and (FStub.Header.Ext.NewHeaderOffset <> 0) and
+    (FStub.Header.Ext.NewHeaderOffset < Source.Size) then
   begin
     with Source^ do
     begin
