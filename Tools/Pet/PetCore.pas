@@ -427,39 +427,41 @@ begin
     if Param.IsKey then
     begin
       Key.AsRange(@Param, 1);
-
-      for R := Low(OptionKeys) to High(OptionKeys) do
-        if Key.Equals(OptionKeys[R]) then
-        begin
-          Include(FOptions, R);
-          Param.Clear;
-          Break;
-        end;
-
-      if Param.Count <> 0 then
+      if Key.Count <> 0 then
       begin
-        for K := Low(FFileNames) to High(FFileNames) do
-          if Key.Equals(FileKeys[K]) then
+        for R := Low(OptionKeys) to High(OptionKeys) do
+          if Key.Equals(OptionKeys[R]) then
           begin
-            CmdLine := Param.AsNextParam(@CmdLine);
-            if (Param.Count = 0) and not (K in [fkInto, fkStub]) then
-              raise ECommandLine.CreateMissing(K);
-            with FFileNames[K] do
-            begin
-              if Count <> 0 then
-                raise ECommandLine.CreateDuplicate(K, @Param);
-              PPointer(@FFileNames[K])^ := TypeOf(TFileName); // Fast core
-              if not Param.IsKey then
-              begin
-                AsRange(@Param, 0);
-                Detach;
-                Param.Clear;
-              end;
-            end;
+            Include(FOptions, R);
+            Param.Clear;
             Break;
           end;
-        if Param.IsKey then
-          Continue;
+
+        if Param.Count <> 0 then
+        begin
+          for K := Low(FFileNames) to High(FFileNames) do
+            if Key.Equals(FileKeys[K]) then
+            begin
+              CmdLine := Param.AsNextParam(@CmdLine);
+              if (Param.Count = 0) and not (K in [fkInto, fkStub]) then
+                raise ECommandLine.CreateMissing(K);
+              with FFileNames[K] do
+              begin
+                if Count <> 0 then
+                  raise ECommandLine.CreateDuplicate(K, @Param);
+                PPointer(@FFileNames[K])^ := TypeOf(TFileName); // Fast core
+                if not Param.IsKey then
+                begin
+                  AsRange(@Param, 0);
+                  Detach;
+                  Param.Clear;
+                end;
+              end;
+              Break;
+            end;
+          if Param.RawData > Key.RawData then
+            Continue;
+        end;
       end;
 
       if Param.Count <> 0 then
@@ -726,7 +728,7 @@ begin
           begin
             Console.EndOfLine;
             Console.WriteLn(PLegacyChar(sChainedDataFound), StrLen(sChainedDataFound),
-              1 + Byte(FileName.Next <> nil));
+              1 + Byte((FileName.Next <> nil) and (FLogStyle <> lsTotals)));
             Inc(TotalSaved, Loaded.FileSize);
             FileName := FileName.Next;
             Continue;
