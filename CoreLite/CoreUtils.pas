@@ -375,21 +375,21 @@ type
 function IsNan(const Value: Double): Boolean;
 function IsInfinite(const Value: Double): Boolean;
 
-function Ceil32(const X: Single): Integer; overload;
-function Ceil32(const X: Double): Integer; overload;
-function Ceil32(const X: Extended): Integer; overload;
-
 function Ceil(const X: Single): Int64; overload;
 function Ceil(const X: Double): Int64; overload;
 function Ceil(const X: Extended): Int64; overload;
 
-function Floor32(const X: Single): Integer; overload;
-function Floor32(const X: Double): Integer; overload;
-function Floor32(const X: Extended): Integer; overload;
+function Ceil32(const X: Single): Integer; overload;
+function Ceil32(const X: Double): Integer; overload;
+function Ceil32(const X: Extended): Integer; overload;
 
 function Floor(const X: Single): Int64; overload;
 function Floor(const X: Double): Int64; overload;
 function Floor(const X: Extended): Int64; overload;
+
+function Floor32(const X: Single): Integer; overload;
+function Floor32(const X: Double): Integer; overload;
+function Floor32(const X: Extended): Integer; overload;
 
 function Round32(const X: Extended): Integer; overload;
 {$IFNDEF Lite}
@@ -403,7 +403,7 @@ function Trunc(const X: Extended): Int64; overload;
 function Trunc(const X: Double): Int64; overload;
 function Trunc(const X: Single): Int64; overload;
 
-function Pow10(val: Extended; Power: Integer): Extended;
+function Pow10(X: Extended; Power: Integer): Extended;
 
 function Log10(const X: Extended): Extended;
 function Log2(const X: Extended): Extended;
@@ -1624,11 +1624,11 @@ begin
     ((PInt64(@Value)^ and $000FFFFFFFFFFFFF) = $0000000000000000);
 end;
 
-{$I FastCode\Ceil32.inc}
 {$I FastCode\Ceil.inc}
+{$I FastCode\Ceil32.inc}
 
-{$I FastCode\Floor32.inc}
 {$I FastCode\Floor.inc}
+{$I FastCode\Floor32.inc}
 
 {$I FastCode\Round32.inc}
 {$I FastCode\RoundTo.inc}
@@ -1643,7 +1643,7 @@ end;
 {$I FastCode\Min64.inc}
 {$I FastCode\MinFP.inc}
 
-function Pow10(val: Extended; Power: Integer): Extended;
+function Pow10(X: Extended; Power: Integer): Extended;
 asm
         JMP System.@Pow10
 end;
