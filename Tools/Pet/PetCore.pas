@@ -218,8 +218,8 @@ begin
 
   if FileSizeLimit = 0 then
     StatBytesWidth := 1
-  else                                           // ,-- sign
-    StatBytesWidth := Ceil(Log10(FileSizeLimit)) +  1;
+  else                                             // ,-- sign
+    StatBytesWidth := Ceil32(Log10(FileSizeLimit)) +  1;
   FStatsFormat := Format(sDefaultStatsFmt, DefaultSystemCodePage, 0, [StatBytesWidth]).Value;
   GetMem(FStatsBuf, (StatBytesWidth + PercentageWidth + Length(sDefaultStatsFmt)) * SizeOf(WideChar));
 end;

@@ -3,7 +3,7 @@
 
     Platform-independent general purpose classes
 
-    Copyright (c) 2015-2016 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2015-2017 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
       * Lite -- TCoreObject.InitInstance with built-in SizeOf(Pointer)
@@ -307,7 +307,7 @@ function AverageCount(const Iterator: TIterator): Integer;
 begin
   Result := PCollection(TMethod(Iterator).Data).Count;
   if Result <> 0 then
-    Result := Round(TotalCount(Iterator) / Result);
+    Result := Round32(TotalCount(Iterator) / Result);
 end;
 
 function TotalCount(const Iterator: TIterator): Integer;

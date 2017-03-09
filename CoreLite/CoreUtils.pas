@@ -3,7 +3,7 @@
 
     Typecast and platform-based non-OOP utilites
 
-    Copyright (c) 2007-2016 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2007-2017 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
       * CoreLiteVCL -- the same as Debug, but also partial use of SysUtils
@@ -369,15 +369,57 @@ const   // Ranges of the IEEE floating point types
   Infinity    =  1.0 / 0.0;
   NegInfinity = -1.0 / 0.0;
 
+type
+  TRoundToRange = -20..20;
+
 function IsNan(const Value: Double): Boolean;
 function IsInfinite(const Value: Double): Boolean;
 
-function Ceil(const X: Extended): CoreInt;
-function Floor(const X: Extended): CoreInt;
+function Ceil32(const X: Single): Integer; overload;
+function Ceil32(const X: Double): Integer; overload;
+function Ceil32(const X: Extended): Integer; overload;
+
+function Ceil(const X: Single): Int64; overload;
+function Ceil(const X: Double): Int64; overload;
+function Ceil(const X: Extended): Int64; overload;
+
+function Floor32(const X: Single): Integer; overload;
+function Floor32(const X: Double): Integer; overload;
+function Floor32(const X: Extended): Integer; overload;
+
+function Floor(const X: Single): Int64; overload;
+function Floor(const X: Double): Int64; overload;
+function Floor(const X: Extended): Int64; overload;
+
+function Round32(const X: Extended): Integer; overload;
+{$IFNDEF Lite}
+function Round32(const X: Double): Integer; overload;
+{$ENDIF}
+function Round32(const X: Single): Integer; overload;
+
+function RoundTo(const Value: Extended; Digit: TRoundToRange): Extended;
+
+function Trunc(const X: Extended): Int64; overload;
+function Trunc(const X: Double): Int64; overload;
+function Trunc(const X: Single): Int64; overload;
 
 function Log10(const X: Extended): Extended;
 function Log2(const X: Extended): Extended;
 function LogN(const Base, X: Extended): Extended;
+
+function Max(const A, B: Integer): Integer; overload;
+function Max(const A, B: Int64): Int64; overload;
+
+function Max(const A, B: Single): Single; overload;
+function Max(const A, B: Double): Double; overload;
+function Max(const A, B: Extended): Extended; overload;
+
+function Min(const A, B: Integer): Integer; overload;
+function Min(const A, B: Int64): Int64; overload;
+
+function Min(const A, B: Single): Single; overload;
+function Min(const A, B: Double): Double; overload;
+function Min(const A, B: Extended): Extended; overload;
 
 implementation
 
@@ -1570,29 +1612,34 @@ function IsNan(const Value: Double): Boolean;
 begin
   Result :=
     ((PInt64(@Value)^ and $7FF0000000000000) =  $7FF0000000000000) and
-    ((PInt64(@Value)^ and $000FFFFFFFFFFFFF) <> $0000000000000000)
+    ((PInt64(@Value)^ and $000FFFFFFFFFFFFF) <> $0000000000000000);
 end;
 
 function IsInfinite(const Value: Double): Boolean;
 begin
   Result :=
     ((PInt64(@Value)^ and $7FF0000000000000) = $7FF0000000000000) and
-    ((PInt64(@Value)^ and $000FFFFFFFFFFFFF) = $0000000000000000)
+    ((PInt64(@Value)^ and $000FFFFFFFFFFFFF) = $0000000000000000);
 end;
 
-function Ceil(const X: Extended): CoreInt;
-begin
-  Result := Trunc(X);
-  if Frac(X) > 0 then
-    Inc(Result);
-end;
+{$I FastCode\Ceil32.inc}
+{$I FastCode\Ceil.inc}
 
-function Floor(const X: Extended): CoreInt;
-begin
-  Result := Trunc(X);
-  if Frac(X) < 0 then
-    Dec(Result);
-end;
+{$I FastCode\Floor32.inc}
+{$I FastCode\Floor.inc}
+
+{$I FastCode\Round32.inc}
+{$I FastCode\RoundTo.inc}
+
+{$I FastCode\Trunc.inc}
+
+{$I FastCode\Max.inc}
+{$I FastCode\Max64.inc}
+{$I FastCode\MaxFP.inc}
+
+{$I FastCode\Min.inc}
+{$I FastCode\Min64.inc}
+{$I FastCode\MinFP.inc}
 
 function Log10(const X: Extended): Extended;
 // Log.10(X) := Log.2(X) * Log.10(2)
