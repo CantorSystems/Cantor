@@ -353,6 +353,125 @@ type
 function FriendlyClassName(var Dest: TClassName; Source: TClass): Byte; overload;
 function FriendlyClassName(var Dest: TClassName; Source: TObject): Byte; overload;
 
+{ Date and time functions }
+
+type
+{  PDay = ^TDay;
+  PDayOfWeek = ^TDayOfWeek;
+  PMonth = ^TMonth;
+  PYear = ^TYear;}
+
+  TYear = type SmallInt;
+
+  TMonthRef = (NullMonth, January, February, March, April, May, June, July,
+    August, September, October, November, December);
+  TMonth = January..December;
+
+  TDayRef = 0..31;
+  TDay = 1..31;
+
+  TDayOfWeekRef = (NullDay, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday);
+  TDayOfWeek = Monday..Sunday; // ISO 8601
+
+  TTimestampOption = (tsLeapYear, tsHasDaylightTime, tsNowDaylightTime);
+  TTimestampOptions = set of TTimestampOption;
+
+  TDateOption = tsLeapYear..tsLeapYear;
+  TDateOptions = set of TDateOption;
+
+  TTimeOption = tsHasDaylightTime..tsNowDaylightTime;
+  TTimeOptions = set of TTimeOption;
+
+  TDate = packed record
+    Year: TYear;
+    case Byte of
+      0: (Month: TMonth;
+          Day: TDay;
+          DayOfWeek: TDayOfWeek;
+          Options: TDateOptions);
+      1: (MonthRef: TMonthRef;
+          DayRef: TDayRef;
+          DayOfWeekRef: TDayOfWeekRef);
+  end;
+
+  THour = 0..23;
+  TMinute = 0..59;
+  TLeapSecond = 0..60;
+  TSecond = 0..59;
+  TMilliseconds = 0..999;
+  TTimeZone = type Single;
+
+  TLocalTime = packed record
+    Hour: THour;
+    Minute: TMinute;
+    case Byte of
+      0: (Second: TSecond;
+          Milliseconds: TMilliseconds);
+      1: (LeapSecond: TLeapSecond);
+  end;
+
+  TTime = packed record
+    Options: TTimeOptions;
+    case Byte of
+      0: (Local: TLocalTime;
+          TimeZone: TTimeZone);
+      1: (Hour: THour;
+          Minute: TMinute;
+          Second: TSecond;
+          Milliseconds: TMilliseconds);
+  end;
+
+  TLocalTimestamp = packed record
+    case Byte of
+      0: (Date: TDate;
+          Time: TLocalTime);
+      1: (Year: TYear;
+          Month: TMonth;
+          Day: TDay;
+          DayOfWeek: TDayOfWeek;
+          Options: TTimestampOptions;
+          Hour: THour;
+          Minute: TMinute;
+          Second: TSecond;
+          Milliseconds: TMilliseconds);
+  end;
+
+  TTimestamp = packed record
+    case Byte of
+      0: (Local: TLocalTimestamp;
+          TimeZone: TTimeZone);
+      1: (Date: TDate;
+          Hour: THour;
+          Minute: TMinute;
+          Second: TSecond;
+          Milliseconds: TMilliseconds);
+      2: (Year: TYear;
+          Month: TMonth;
+          Day: TDay;
+          DayOfWeek: TDayOfWeek;
+          Options: TTimestampOptions);
+      3: (Reserved: array[1..5] of Byte;
+          Time: TTime);
+  end;
+
+  TDateTimeOptions = set of (dtDate, dtTime);
+  TTimeType = (ttLocal, ttUTC);
+
+{function DecodeDate(Source: TDateTime; DayOfWeek: Boolean = False): TDate;
+function DecodeTime(Source: TDateTime): TLocalTime; overload;
+function DecodeTime(Source: TDateTime; TimeZone: TTimeZone): TTime; overload;
+function DecodeTime(Source: TDateTime): TTime; overload;
+
+function EncodeDate(Year: TYear; Month: TMonth, Day: TDay): TDateTime;
+function EncodeTime(Hour: THour; Minute: TMinute; Second: TSecond; Millisecond: TMillisecond): TDateTime;}
+
+function LocalTimestamp: TLocalTimestamp;
+function Timestamp: TTimestamp;
+function UTC: TTimestamp;
+
+//function Time(TimeType: TTimeType = ttLocal): TLocalTime;
+
+
 { Math functions }
 
 const   // Ranges of the IEEE floating point types
@@ -1606,6 +1725,55 @@ begin
     Dest[SizeOf(LongWord)] := #0;
     Result := SizeOf(LongWord);
   end;
+end;
+
+{ Date and time functions }
+
+function TimestampFrom(const Source: TSystemTime): TLocalTimestamp;
+begin
+  with Source, Result do
+  begin
+    Year := TYear(wYear);
+    Month := TMonth(wMonth);
+    Day := TDay(wDay);
+    DayOfWeek := TDayOfWeek(wDayOfWeek + Ord(Sunday) * Ord(wDayOfWeek = 0));
+    Hour := THour(wHour);
+    Minute := TMinute(wMinute);
+    Second := TSecond(wSecond);
+    Milliseconds := TMilliseconds(wMilliseconds);
+    Boolean(Options) := (Year mod 4 = 0) and (Year mod 400 <> 0); // Fast core
+  end;
+end;
+
+function LocalTimestamp: TLocalTimestamp;
+var
+  T: TSystemTime;
+begin
+  GetLocalTime(T);
+  Result := TimestampFrom(T);
+end;
+
+function Timestamp: TTimestamp;
+var
+  TZ: TTimeZoneInformation;
+begin
+  Result.Local := LocalTimestamp;
+  case GetTimeZoneInformation(TZ) of
+    TIME_ZONE_ID_STANDARD:
+      Include(Result.Options, tsHasDaylightTime);
+    TIME_ZONE_ID_DAYLIGHT:
+      Result.Options := Result.Options + [tsHasDaylightTime, tsNowDaylightTime];
+  end;
+  Result.TimeZone := -TZ.Bias / 60;
+end;
+
+function UTC: TTimestamp;
+var
+  T: TSystemTime;
+begin
+  GetSystemTime(T);
+  Result.Local := TimestampFrom(T);
+  Result.TimeZone := 0;
 end;
 
 { Math functions }
