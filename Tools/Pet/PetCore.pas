@@ -661,10 +661,10 @@ begin
       end;
     1:
       if FLogStyle = lsAuto then
-        Inc(FLogStyle, 2);
+        Inc(FLogStyle, 2 - Byte(roListSections in FOptions));
   else
     if FLogStyle = lsAuto then
-      Inc(FLogStyle, 1 + Byte(roListSections in FOptions));
+      Inc(FLogStyle);
   end;
 
   DestFileName := PrepareFileName(fkInto, @FCurrentPath);
@@ -878,6 +878,8 @@ begin
 
         if roListSections in FOptions then
         begin
+          if FLogStyle <> lsTotals then
+            Console.WriteLn;
           Console.WriteLn(sSectionList, 0, [FileName.RawData]);
           for I := 0 to FImage.Count - 1 do
             with FImage.Sections[I] do
@@ -888,6 +890,8 @@ begin
               Console.WriteLn('  %8hs', 0, [@TempSectionName], 0);
               Output.TransferStats(Loaded.FileSize, Size);
             end;
+          if FileName.Next <> nil then
+            Console.WriteLn;
         end;
       except
         on E: EBadImage do

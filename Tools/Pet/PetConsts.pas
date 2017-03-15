@@ -131,7 +131,7 @@ const
 
   sUnexpectedEndOfStream = '%hs from %s'; // Unexpected end of stream: read xx bytes instead of yy from <file>
   sChainedDataFound = 'Chained data found, safe stripping stopped';
-  sSectionList = #10'Section list of %s';
+  sSectionList = 'Section list of %s';
   sTotalsMessage = #10'%u files, %d bytes (%hs)';
   sNoFilesFound = 'No files found';
   sSectionNotFound = 'Section �%s� not found';
