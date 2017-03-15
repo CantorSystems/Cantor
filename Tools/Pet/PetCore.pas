@@ -614,7 +614,6 @@ var
   RawData: TExeSectionData;
   Relocs: PExeSection;
   TempSectionName: array[0..IMAGE_SIZEOF_SHORT_NAME] of LegacyChar;
-  T: TTimestamp;
 begin
   try
     ParseCommandLine(CommandLine);
@@ -878,8 +877,6 @@ begin
 
         if roListSections in FOptions then
         begin
-          if FLogStyle <> lsTotals then
-            Console.WriteLn;
           Console.WriteLn(sSectionList, 0, [FileName.RawData]);
           for I := 0 to FImage.Count - 1 do
             with FImage.Sections[I] do
@@ -890,8 +887,6 @@ begin
               Console.WriteLn('  %8hs', 0, [@TempSectionName], 0);
               Output.TransferStats(Loaded.FileSize, Size);
             end;
-          if FileName.Next <> nil then
-            Console.WriteLn;
         end;
       except
         on E: EBadImage do
@@ -911,7 +906,7 @@ begin
       end;
 
       FileName := FileName.Next;
-      if (FileName <> nil) and (FLogStyle <> lsTotals) then
+      if (FileName <> nil) and ((FLogStyle <> lsTotals) or (roListSections in FOptions)) then
         Console.WriteLn;
     end;
 
