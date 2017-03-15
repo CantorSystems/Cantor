@@ -3,7 +3,7 @@
 
     Core strings and character sets implementation
 
-    Copyright (c) 2015-2016 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2015-2017 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
       * CoreLiteVCL -- TCoreString and UnicodeString types for VCL applications
@@ -364,7 +364,7 @@ type
   TBinaryScale = (bsBytes, bsKilobytes, bsMegabytes, bsGigabytes, bsTerabytes, bsPetabytes,
     bsExabytes, bsZettabytes, bsYottabytes);
 
-  TDecimalFormat = packed object
+  TDecimalFormat = object
     ZeroSign, ThousandSeparator, DecimalSeparator, PercentSign, BinaryScaleSeparator: LiteChar;
     BinaryScale: array[TBinaryScale] of LiteChar; // K, M, G, T, P, E, Z, Y
   protected
@@ -1111,7 +1111,6 @@ begin
 {$ENDIF}
   Result := 0; // TODO
 end;
-
 
 procedure TString.AsArray(Formatter: PStringFormatter; const Args: array of const);
 var
