@@ -7,6 +7,7 @@
       * Debug -- Delphi IDE friendly exceptions
       * ForceMMX -- allow MMX with FastCode
       * Lite -- lite CoreWrappers.THandleStream and lite PetCore
+      * NoASLR -- build without ALSR feature (Delphi 2007+)
       * Tricks -- when using tricky lite System unit
 
     Search path:  ..\..\CoreLite
@@ -27,13 +28,24 @@ uses
   PetCore in 'PetCore.pas',
   PetConsts in 'PetConsts.pas';
 
-{$IF UnicodeRTL and not defined(DEBUG)}
-  {$SetPEFlags
-    IMAGE_FILE_RELOCS_STRIPPED or
-    IMAGE_FILE_DEBUG_STRIPPED or
-    IMAGE_FILE_LINE_NUMS_STRIPPED or
-    IMAGE_FILE_LOCAL_SYMS_STRIPPED}
-{$IFEND}
+{$I ..\..\CoreLite\ImageHelper.inc}
+{$SetPEOptFlags IMAGE_DLLCHARACTERISTICS_NX_COMPAT}
+
+{$IFDEF NoASLR}
+  {$IF CompilerVersion >= 16}
+    {$SetPEFlags
+      IMAGE_FILE_RELOCS_STRIPPED or
+      IMAGE_FILE_DEBUG_STRIPPED or
+      IMAGE_FILE_LINE_NUMS_STRIPPED or
+      IMAGE_FILE_LOCAL_SYMS_STRIPPED}
+  {$IFEND}
+{$ELSE}
+  {$IF CompilerVersion >= 18}
+    {$DYNAMICBASE ON}
+  {$ELSE}
+    {$SetPEOptFlags IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE}
+  {$IFEND}
+{$ENDIF}
 
 var
   Application: TApplication;
