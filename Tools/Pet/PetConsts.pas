@@ -74,6 +74,7 @@ const
             #9'-dir' +           #9#9#9'Strip data directory (lesser compatibility)'#10 +
             #9'-dropsect <s1,s2,...>'#9'Drop sections <s1>, <s2>, etc.'#10 +
             #9'-log <actions|totals>'#9'Output log style'#10 +
+            #9'-ls' +            #9#9#9'Display section list'#10 +
             #9'-osver <#[.#]>' +   #9#9'Set required OS version to <#> or <#.#>'#10 +
             #9'-raw' +           #9#9#9'Don''t align raw data size values at section'#10 +
                                #9#9#9#9'headers to avoid antivirus false positives'#10 +
@@ -85,7 +86,6 @@ const
                                #9#9#9#9'immediately after data end'#10 +
             #9'-unsafe' +        #9#9#9'Strip chained certificate and other data'#10#10 +
     'Miscellaneous options'#10 +
-            #9'-ls' +            #9#9#9'Display section list and exit'#10 +
             #9'-nologo' +        #9#9#9'Don''t display PET logo and copyrights'#10 +
             #9'-pause' +         #9#9#9'Wait for ENTER key to exit';
 
@@ -120,7 +120,6 @@ const
   sEstimating         = 'Estimating';
   sBackuping          = 'Backuping';
   sTotal              = 'Total';
-  sSectionList        = 'Section list of %s';
   sRebasingTo         = 'Rebasing image to';
 
   DefaultMaxWidth = sChainedData; // max of {sLoading, sChainedData, sStrippng,
@@ -132,6 +131,7 @@ const
 
   sUnexpectedEndOfStream = '%hs from %s'; // Unexpected end of stream: read xx bytes instead of yy from <file>
   sChainedDataFound = 'Chained data found, safe stripping stopped';
+  sSectionList = #10'Section list of %s';
   sTotalsMessage = #10'%u files, %d bytes (%hs)';
   sNoFilesFound = 'No files found';
   sSectionNotFound = 'Section �%s� not found';

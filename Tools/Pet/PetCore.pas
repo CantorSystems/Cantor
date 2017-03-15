@@ -614,6 +614,7 @@ var
   RawData: TExeSectionData;
   Relocs: PExeSection;
   TempSectionName: array[0..IMAGE_SIZEOF_SHORT_NAME] of LegacyChar;
+  T: TTimestamp;
 begin
   try
     ParseCommandLine(CommandLine);
@@ -663,7 +664,7 @@ begin
         Inc(FLogStyle, 2);
   else
     if FLogStyle = lsAuto then
-      Inc(FLogStyle);
+      Inc(FLogStyle, 1 + Byte(roListSections in FOptions));
   end;
 
   DestFileName := PrepareFileName(fkInto, @FCurrentPath);
@@ -679,24 +680,6 @@ begin
     begin
       try
         Loaded := LoadFile(FImage.Load, FileName.RawData, faRandomRead);
-
-        if roListSections in FOptions then
-        begin
-          Console.WriteLn(sSectionList, 0, [FileName.RawData]);
-          for I := 0 to FImage.Count - 1 do
-            with FImage.Sections[I] do
-            begin
-              L := StrLen(Header.Name, IMAGE_SIZEOF_SHORT_NAME);
-              Move(Header.Name[0], TempSectionName, L);
-              TempSectionName[L] := #0;
-              Console.WriteLn('  %8hs', 0, [@TempSectionName], 0);
-              Output.TransferStats(Loaded.FileSize, Size);
-            end;
-          FileName := FileName.Next;
-          if FileName <> nil then
-            Console.WriteLn;
-          Continue;
-        end;
 
         if FLogStyle <> lsTotals then
         begin
@@ -891,6 +874,20 @@ begin
           Output.StripStats(Loaded.FileSize, BytesSaved);
         finally
           Inc(TotalSaved, BytesSaved);
+        end;
+
+        if roListSections in FOptions then
+        begin
+          Console.WriteLn(sSectionList, 0, [FileName.RawData]);
+          for I := 0 to FImage.Count - 1 do
+            with FImage.Sections[I] do
+            begin
+              L := StrLen(Header.Name, IMAGE_SIZEOF_SHORT_NAME);
+              Move(Header.Name[0], TempSectionName, L);
+              TempSectionName[L] := #0;
+              Console.WriteLn('  %8hs', 0, [@TempSectionName], 0);
+              Output.TransferStats(Loaded.FileSize, Size);
+            end;
         end;
       except
         on E: EBadImage do
