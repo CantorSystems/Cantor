@@ -109,7 +109,8 @@ type
     procedure Load(Source: PReadableStream);
     procedure OSVersion(MajorVersion: Word; MinorVersion: Word = 0);
     function RawData(VirtualAddress: LongWord): Pointer;
-    function Rebase(Segment: Word): LongWord;
+    function Rebase(VirtualAddress: LongWord; DeltaOffset: Integer): LongWord; overload;
+    function Rebase(Segment: Word): LongWord; overload;
     procedure Save(Dest: PWritableStream; TruncLastSection: Boolean = True);
     function SectionAlignBytes(Source: LongWord): LongWord;
     function SectionOf(SectionType: TExeSectionType): PExeSection;
@@ -842,9 +843,8 @@ begin
   Result := nil;
 end;
 
-function TExeImage.Rebase(Segment: Word): LongWord;
+function TExeImage.Rebase(VirtualAddress: LongWord; DeltaOffset: Integer): LongWord;
 var
-  DeltaOffset: Integer;
   Relocs: PImageBaseRelocation;
   Idx, I: Integer;
   Chunk: PAddress;
@@ -858,14 +858,14 @@ begin
     Relocs := PImageBaseRelocation(FSections[Idx].Data);
     if Relocs <> nil then
     begin
+      while Relocs.VirtualAddress < VirtualAddress do
+        Inc(PAddress(Relocs), Relocs.BlockSize);
+
       while Relocs.VirtualAddress <> 0 do
       begin
         Chunk := RawData(Relocs.VirtualAddress);
         if Chunk = nil then
           raise EBadImage.Create(sInvalidRVA, [Relocs.VirtualAddress]);
-
-        DeltaOffset := Segment shl 16;
-        Dec(DeltaOffset, FHeaders.OptionalHeader.ImageBase);
 
         for I := 0 to (Relocs.BlockSize - SizeOf(TImageBaseRelocation)) div SizeOf(Word) - 1 do
         begin
@@ -878,15 +878,20 @@ begin
                 Inc(PLongWord(Chunk + Offset and $FFF)^, DeltaOffset);
                 Inc(Result);
               end;
-          else 
+          else
             raise EBadImage.Create(sUnsupportedRelocationFormat, [Offset shr 12]);
           end;
         end;
+
         Inc(PAddress(Relocs), Relocs.BlockSize);
       end;
     end;
   end;
+end;
 
+function TExeImage.Rebase(Segment: Word): LongWord;
+begin
+  Result := Rebase(0, Segment shl 16 - FHeaders.OptionalHeader.ImageBase);
   FHeaders.OptionalHeader.ImageBase := Segment shl 16;
 end;
 
