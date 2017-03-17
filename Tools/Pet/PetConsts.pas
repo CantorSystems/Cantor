@@ -103,7 +103,7 @@ const
   sLocaleMap = 'locale map';
   sImageBase = 'image base value';
 
-  sCannotRebaseImage = #10'Cannot rebase image: %s';
+  sCannotRebaseImage = 'Cannot rebase image without relocations';
 
   sPathEllipsis = '[...]';
 

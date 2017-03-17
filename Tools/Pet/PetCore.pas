@@ -758,7 +758,7 @@ begin
             Output.Action(sRebasingTo, @TmpFileName);
           end;
           if FImage.Rebase(FRebaseAddress div $10000) = 0 then
-            Console.WriteLn(sCannotRebaseImage, 0, [FileName.RawData])
+            raise EBadImage.Create(sCannotRebaseImage)
           else if FLogStyle <> lsTotals then
             Console.WriteLn;
         end;
