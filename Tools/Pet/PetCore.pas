@@ -583,7 +583,7 @@ procedure TApplication.Run(CommandLine: PCoreChar);
 
 var
   TmpFileName: TFileName;
-  DestFileName: PFileName;
+  SrcFileName, DestFileName: PFileName;
   FileName: PFileNameListItem;
   Output: TDefaultOutput;
 
@@ -877,7 +877,11 @@ begin
 
         if roListSections in FOptions then
         begin
-          Console.WriteLn(sSectionList, 0, [FileName.RawData]);
+          if TypeOf(DestFileName^) <> nil then
+            SrcFileName := DestFileName
+          else
+            SrcFileName := FileName;
+          Console.WriteLn(sSectionList, 0, [SrcFileName.RawData]);
           for I := 0 to FImage.Count - 1 do
             with FImage.Sections[I] do
             begin
