@@ -3,7 +3,7 @@
 
     OOP-style platform-dependent wrappers
 
-    Copyright (c) 2007-2016 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2007-2016, 2018 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
       * Debug -- force ANSI code page for TStreamConsole
@@ -1017,15 +1017,16 @@ end;
 
 procedure TStreamConsole.WriteLn(LineBreaks: Integer);
 const
-  LFx4: LongWord = $0A0A0A0A;
+  LnBrks: array[0..Length(sLineBreak) * 4 - 1] of LegacyChar =
+    sLineBreak + sLineBreak + sLineBreak + sLineBreak;
 var
   I: Integer;
   BytesWritten: LongWord;
 begin // Fast core
   for I := 0 to LineBreaks div 4 - 1 do {$IFDEF Tricks} System. {$ENDIF}
-    WriteFile(FOutput, LFx4, 4, BytesWritten, nil);
+    WriteFile(FOutput, LnBrks, Length(LnBrks), BytesWritten, nil);
   if LineBreaks mod 4 <> 0 then {$IFDEF Tricks} System. {$ENDIF}
-    WriteFile(FOutput, LFx4, LineBreaks mod 4, BytesWritten, nil);
+    WriteFile(FOutput, LnBrks, LineBreaks mod 4 * Length(sLineBreak), BytesWritten, nil);
   NeedEOL := LineBreaks = 0; 
 end;
 
@@ -1116,15 +1117,22 @@ end;
 
 procedure TScreenConsole.WriteLn(LineBreaks: Integer);
 const
-  WideLFx4: QuadWord = $000A000A000A000A;
+{$IFDEF MSWINDOWS}
+  LnBrks: array[0..7] of WideChar =
+    (WideChar(13), WideChar(10), WideChar(13), WideChar(10),
+     WideChar(13), WideChar(10), WideChar(13), WideChar(10));
+{$ELSE}
+  LnBrks: array[0..3] of WideChar =
+    (WideChar(10), WideChar(10), WideChar(10), WideChar(10));
+{$ENDIF}
 var
   I: Integer;
   Written: LongWord;
 begin // Fast core
   for I := 0 to LineBreaks div 4 - 1 do
-    WriteConsoleW(FOutput, @WideLFx4, 4, Written, nil);
+    WriteConsoleW(FOutput, @LnBrks, Length(sLineBreak) * 4, Written, nil);
   if LineBreaks mod 4 <> 0 then
-    WriteConsoleW(FOutput, @WideLFx4, LineBreaks mod 4, Written, nil);
+    WriteConsoleW(FOutput, @LnBrks, LineBreaks mod 4 * Length(sLineBreak), Written, nil);
   NeedEOL := LineBreaks = 0;
 end;
 
