@@ -24,16 +24,7 @@ const
   UnicodeRTL = RTLVersion >= 20.0;
 
 type
-{$IFDEF CPUX64}
-  CoreInt   = NativeInt;
-  PCoreInt  = PNativeInt;
-
-  CoreWord  = NativeUInt;
-  PCoreWord = PNativeUInt;
-
-  QuadWord  = NativeUInt;
-  PQuadWord = PNativeUInt;
-{$ELSE}
+{$IF CompilerVersion < 23}
   CoreInt   = LongInt;
   PCoreInt  = PLongInt;
 
@@ -42,7 +33,16 @@ type
 
   QuadWord  = {$IF CompilerVersion < 15} {type} Int64 {$ELSE} UInt64 {$IFEND};
   PQuadWord = {$IF CompilerVersion < 15} {type} PInt64 {$ELSE} ^UInt64 {$IFEND};
-{$ENDIF}
+{$ELSE} // 64-bit aware compiler
+  CoreInt   = NativeInt;
+  PCoreInt  = PNativeInt;
+
+  CoreWord  = NativeUInt;
+  PCoreWord = PNativeUInt;
+
+  QuadWord  = NativeUInt;
+  PQuadWord = PNativeUInt;
+{$IFEND}
 
   QuadInt   = Int64;
   PQuadInt  = PInt64;
