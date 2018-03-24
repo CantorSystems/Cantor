@@ -3,7 +3,7 @@
 
     Platform-independent general purpose classes
 
-    Copyright (c) 2015-2017 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2015-2018 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
       * Lite -- TCoreObject.InitInstance with built-in SizeOf(Pointer)
@@ -197,8 +197,173 @@ type
     property Table: TCRC32Table read FTable;
   end;
 
+{ Date and time }
+
+type
+  PDay = ^TDay;
+  PDayOfWeek = ^TDayOfWeek;
+  PMonth = ^TMonth;
+  PYear = ^TYear;
+
+  TYear = type SmallInt;
+
+  TMonthRef = (NullMonth, January, February, March, April, May, June, July,
+    August, September, October, November, December);
+  TMonth = January..December;
+
+  TDayRef = 0..31;
+  TDay = 1..31;
+
+  TDayOfWeekRef = (NullDay, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday);
+  TDayOfWeek = Monday..Sunday; // ISO 8601
+
+  TTimestampOption = (tsLeapYear, tsHasDaylightTime, tsNowDaylightTime);
+  TTimestampOptions = set of TTimestampOption;
+
+  TDateOption = tsLeapYear..tsLeapYear;
+  TDateOptions = set of TDateOption;
+
+  TTimeOption = tsHasDaylightTime..tsNowDaylightTime;
+  TTimeOptions = set of TTimeOption;
+
+  TDate = packed record
+    Year: TYear;
+    case Byte of
+      0: (Month: TMonth;
+          Day: TDay;
+          DayOfWeek: TDayOfWeek;
+          Options: TDateOptions);
+      1: (MonthRef: TMonthRef;
+          DayRef: TDayRef;
+          DayOfWeekRef: TDayOfWeekRef);
+  end;
+
+  THour = 0..23;
+  TMinute = 0..59;
+  TLeapSecond = 0..60;
+  TSecond = 0..59;
+  TMilliseconds = 0..999;
+  TTimeZone = type Single;
+
+  TLocalTime = packed record
+    Hour: THour;
+    Minute: TMinute;
+    case Byte of
+      0: (Second: TSecond;
+          Milliseconds: TMilliseconds);
+      1: (LeapSecond: TLeapSecond);
+  end;
+
+  TTime = packed record
+    Options: TTimeOptions;
+    case Byte of
+      0: (Local: TLocalTime;
+          TimeZone: TTimeZone);
+      1: (Hour: THour;
+          Minute: TMinute;
+          Second: TSecond;
+          Milliseconds: TMilliseconds);
+  end;
+
+  TLocalTimestamp = packed record
+    case Byte of
+      0: (Date: TDate;
+          Time: TLocalTime);
+      1: (Year: TYear;
+          Month: TMonth;
+          Day: TDay;
+          DayOfWeek: TDayOfWeek;
+          Options: TTimestampOptions;
+          Hour: THour;
+          Minute: TMinute;
+          Second: TSecond;
+          Milliseconds: TMilliseconds);
+  end;
+
+  TTimestamp = packed record
+    case Byte of
+      0: (Local: TLocalTimestamp;
+          TimeZone: TTimeZone);
+      1: (Date: TDate;
+          Hour: THour;
+          Minute: TMinute;
+          Second: TSecond;
+          Milliseconds: TMilliseconds);
+      2: (Year: TYear;
+          Month: TMonth;
+          Day: TDay;
+          DayOfWeek: TDayOfWeek;
+          Options: TTimestampOptions);
+      3: (Reserved: array[1..5] of Byte;
+          Time: TTime);
+  end;
+
+{  TDateTimeOptions = set of (dtDate, dtTime);
+  TTimeType = (ttLocal, ttUTC);}
+
+function LocalTimestamp: TLocalTimestamp;
+function Timestamp: TTimestamp;
+function UTC: TTimestamp;
+
+{ Calendar and epoch }
+
+const
+  AutomationEpoch = 693594;
+  UnixEpoch       = 719163;
+{  ProlepticEpoch = 0; // TODO
+  JulianEpoch = 0;
+  JulianDayEpoch = 0;}
+
+type
+  PCalendar = ^TCalendar;
+  TCalendar = object
+  private
+    FEpoch: TDateTime;
+  public
+    function From(Source: PCalendar; Value: TDateTime): TDateTime;
+    property Epoch: TDateTime read FEpoch;
+  end;
+
+  PMonthDays = ^TMonthDays;
+  TMonthDays = array[Boolean, TMonth] of TDay;
+
+  PRomanCalendar = ^TRomanCalendar;
+  TRomanCalendar = object(TCalendar)
+  private
+    FMonthDays: PMonthDays;
+  public
+    constructor Create(EpochDelta: TDateTime = AutomationEpoch);
+    function DecodeDate(Source: TDateTime; DayOfWeek: Boolean = False): TDate;
+    function DecodeTime(Source: TDateTime): TLocalTime; overload;
+    function DecodeTime(Source: TDateTime; TimeZone: TTimeZone): TTime; overload;
+    function EncodeDate(Year: TYear; Month: TMonth; Day: TDay): TDateTime;
+    function EncodeTime(Hour: THour; Minute: TMinute; Second: TSecond; Milliseconds: TMilliseconds): TDateTime;
+    function IsLeapYear(Value: TYear): Boolean; virtual; abstract;
+
+    property MonthDays: PMonthDays read FMonthDays;
+  end;
+
+  PGregorianCalendar = ^TGregorianCalendar;
+  TGregorianCalendar = object(TRomanCalendar)
+  public
+    function IsLeapYear(Value: TYear): Boolean; virtual;
+  end;
+
+  PJulianCalendar = ^TJulianCalendar;
+  TJulianCalendar = object(TRomanCalendar)
+  public
+    function IsLeapYear(Value: TYear): Boolean; virtual;
+  end;
+
+  PSystemCalendar = PGregorianCalendar;
+  TSystemCalendar = TGregorianCalendar;
+
+const
+  SystemCalendar: TRomanCalendar = (FEpoch: AutomationEpoch);
+
 { Exceptions }
 
+type
   EContainer = class(Exception);
 
   EIndexed = EContainer; // future class of (EContainer)
@@ -1163,6 +1328,132 @@ begin
   for I := 0 to Count - 1 do
     Result := FTable[(Result xor TByteArray(Buf)[I]) and $FF] xor (Result shr 8);
   Result := not Result;
+end;
+
+{ Date and time }
+
+function TimestampFrom(const Source: TSystemTime): TLocalTimestamp;
+begin
+  with Source, Result do
+  begin
+    Year := TYear(wYear);
+    Month := TMonth(wMonth);
+    Day := TDay(wDay);
+    DayOfWeek := TDayOfWeek(wDayOfWeek + Ord(Sunday) * Ord(wDayOfWeek = 0));
+    Hour := THour(wHour);
+    Minute := TMinute(wMinute);
+    Second := TSecond(wSecond);
+    Milliseconds := TMilliseconds(wMilliseconds);
+    Boolean(Options) := (Year mod 4 = 0) and (Year mod 400 <> 0); // Fast core
+  end;
+end;
+
+function LocalTimestamp: TLocalTimestamp;
+var
+  T: TSystemTime;
+begin
+  GetLocalTime(T);
+  Result := TimestampFrom(T);
+end;
+
+function Timestamp: TTimestamp;
+var
+  TZ: TTimeZoneInformation;
+begin
+  Result.Local := LocalTimestamp;
+  case GetTimeZoneInformation(TZ) of
+    TIME_ZONE_ID_STANDARD:
+      Include(Result.Options, tsHasDaylightTime);
+    TIME_ZONE_ID_DAYLIGHT:
+      Result.Options := Result.Options + [tsHasDaylightTime, tsNowDaylightTime];
+  end;
+  Result.TimeZone := -TZ.Bias / 60;
+end;
+
+function UTC: TTimestamp;
+var
+  T: TSystemTime;
+begin
+  GetSystemTime(T);
+  Result.Local := TimestampFrom(T);
+  Result.TimeZone := 0;
+end;
+
+{ TCalendar }
+
+function TCalendar.From(Source: PCalendar; Value: TDateTime): TDateTime;
+begin
+  Result := Value + Source.Epoch - FEpoch;
+end;
+
+{ TRomanCalendar }
+
+constructor TRomanCalendar.Create(EpochDelta: TDateTime);
+const
+  MD: TMonthDays = (
+    (31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31),
+    (31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
+  );
+begin
+  FEpoch := EpochDelta;
+  FMonthDays := @MD;
+end;
+
+function TRomanCalendar.DecodeDate(Source: TDateTime; DayOfWeek: Boolean): TDate;
+begin
+
+end;
+
+function TRomanCalendar.DecodeTime(Source: TDateTime; TimeZone: TTimeZone): TTime;
+begin
+
+end;
+
+function TRomanCalendar.DecodeTime(Source: TDateTime): TLocalTime;
+begin
+
+end;
+
+function TRomanCalendar.EncodeDate(Year: TYear; Month: TMonth; Day: TDay): TDateTime;
+var
+  M: TMonth;
+  IsLeap: Boolean;
+  Days: Integer;
+begin
+  IsLeap := IsLeapYear(Year);
+  Days := Integer(Day);
+  for M := Low(M) to Month do
+    Inc(Days, FMonthDays[IsLeap, M]);
+  if Year >= 0 then
+  begin
+    Dec(Year);
+    Result := Year * 365 + Year div 4 - Year div 100 + Year div 400 + Days - FEpoch;
+  end
+  else
+  begin
+    Inc(Year);
+    Result := Year * 365 + Year div 4 - Year div 100 + Year div 400 - Days - FEpoch;
+  end;
+end;
+
+function TRomanCalendar.EncodeTime(Hour: THour; Minute: TMinute; Second: TSecond;
+  Milliseconds: TMilliseconds): TDateTime;
+begin
+  Result := (Hour * 3600000 + Minute * 60000 + Second * 1000 + Milliseconds) / (24 * 60 * 60 * 1000);
+end;
+
+{ TGregorianCalendar }
+
+function TGregorianCalendar.IsLeapYear(Value: TYear): Boolean;
+begin
+  Result := (Value mod 4 = 0) and ((Value mod 100 <> 0) or (Value mod 400 = 0));
+end;
+
+{ TJulianCalendar }
+
+function TJulianCalendar.IsLeapYear(Value: TYear): Boolean;
+begin
+  Result := Value mod 4 = 0;
 end;
 
 end.
