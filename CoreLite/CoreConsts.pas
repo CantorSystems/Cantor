@@ -155,6 +155,7 @@ const
   sComment = 'comment';
   sNotUnderstandable = '%hs �%s� is not understandable for international community';
   sNotLocalizable = 'string �%s� is not localizable';
+  sDependsOnLocale = '�%s� file content depends on locale character set';
 
 implementation
 

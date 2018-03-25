@@ -3,7 +3,7 @@
 
     Core strings and character sets implementation
 
-    Copyright (c) 2015-2017 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2015-2018 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
       * CoreLiteVCL -- TCoreString and UnicodeString types for VCL applications
@@ -109,6 +109,7 @@ type
   TCodePage = object
   private
     FNumber: Word;
+    FLocaleDependent: Boolean;
     FMaxCharBytes: Byte;
     FReplacementChar, FSysReplacementChar: LegacyChar;
     FLeadBytes: TLeadBytes;
@@ -121,6 +122,7 @@ type
       EncodeOptions: TEncodeUTF16): Integer;
 
     property LeadBytes: TLeadBytes read FLeadBytes;
+    property LocaleDependent: Boolean read FLocaleDependent;
     property MaxCharBytes: Byte read FMaxCharBytes;
     property Name: TCodePageName read FName;
     property Number: Word read FNumber;
@@ -1017,6 +1019,7 @@ begin
     RaiseLastPlatformError(sCodePage, CodePage);
 
   FNumber := Info.CodePage;
+  FLocaleDependent := FNumber <> CodePage;
   FMaxCharBytes := Info.MaxCharSize;
   FSysReplacementChar := LegacyChar(Info.DefaultChar[0]);
 
