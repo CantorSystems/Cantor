@@ -86,7 +86,7 @@ const
                                #9#9#9#9'immediately after data end' + sLineBreak +
             #9'-unsafe' +        #9#9#9'Strip chained certificate and other data' + sLineBreak + sLineBreak +
     'Miscellaneous options' + sLineBreak +
-            #9'-nologo' +        #9#9#9'Don''t display PET logo and copyrights' + sLineBreak +
+            #9'-nologo' +        #9#9#9'Don''t display logo and copyright' + sLineBreak +
             #9'-pause' +         #9#9#9'Wait for ENTER key to exit';
 
   sMissingParam = 'Missing %s';
