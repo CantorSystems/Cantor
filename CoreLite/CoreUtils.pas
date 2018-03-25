@@ -142,7 +142,9 @@ const
   PathDelimiter = '\'; // platform;
   LegacyReplacementChar = #127;
 
+{$IFNDEF Tricks}
   CRLF: array[0..1] of LegacyChar = #13#10;
+{$ENDIF}
   WideCRLF: array[0..1] of WideChar = (WideChar(13), WideChar(10));
 
   LF: array[0..1] of LegacyChar = #10#0;
