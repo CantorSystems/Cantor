@@ -358,9 +358,6 @@ type
   PSystemCalendar = PGregorianCalendar;
   TSystemCalendar = TGregorianCalendar;
 
-const
-  SystemCalendar: TRomanCalendar = (FEpoch: AutomationEpoch);
-
 { Exceptions }
 
 type
