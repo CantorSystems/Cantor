@@ -1,7 +1,7 @@
 (*
     PE Tool strings and messages
 
-    Copyright (c) 2012-2017 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2012-2018 Vladislav Javadov (aka Freeman)
 *)
 
 unit PetConsts;
@@ -43,9 +43,9 @@ const         // short Unicode strings
   sTotals     = #6'totals';
 
   sLogo =
-    '        /\_/\'#10 +
-    '    .__/ o o \    %s %hs'#10 +
-    '   /~__;==t==/    %s'#10 +
+    '        /\_/\' + sLineBreak +
+    '    .__/ o o \    %s %hs' + sLineBreak +
+    '   /~__;==t==/    %s' + sLineBreak +
     '  (_____)_m_m)';
 
 { Localize }
@@ -54,39 +54,39 @@ const
   sUsage =
     'Usage:'#9'%s <source> [[<source>...] [commands [options]]]';
   sHelp =
-    'Commands'#10 +
-            #9'-backup <bak>' +    #9#9'Backup <source> file to <bak> file'#10 +
-            #9'-extract <stub>' +  #9#9'Extract <source> stub to <stub> file'#10 +
-            #9'-into [dest]|[.]' +   #9'Save result to [dest] file or replace source'#10 +
-            #9'-version' +         #9#9'Show version and exit'#10#10 +
-    'Option for -extract and -into commands'#10 +
-            #9'-strip' +         #9#9#9'Strip headers, exports, debug information,'#10 +
-                               #9#9#9#9'relocations and empty sections when possible'#10#10 +
-    'Options for estimation and -into command'#10 +
-            #9'-3gb' +           #9#9#9'Enable large address'#10 +
-            #9'-aslr' +          #9#9#9'Enable dynamic image base (ASLR)'#10 +
-            {#9'-auto [#[%]]|[.]'    +#9'Using '#$E2#$80#$9C'-keep -strip -trunc -stub'#$E2#$80#$9D' mode, replace'#10 +
-                               #9#9#9#9'original file when stripped size is equal or'#10 +
-                               #9#9#9#9'greater given number of bytes, percent or'#10 +
-                               #9#9#9#9'volume cluster size'#10 +}
-            #9'-deep' +          #9#9#9'Strip orphaned sections (unsafe!)'#10 +
-            #9'-dep' +           #9#9#9'Enable data execution prevention (DEP)'#10 +
-            #9'-dir' +           #9#9#9'Strip data directory (lesser compatibility)'#10 +
-            #9'-dropsect <s1,s2,...>'#9'Drop sections <s1>, <s2>, etc.'#10 +
-            #9'-log <actions|totals>'#9'Output log style'#10 +
-            #9'-ls' +            #9#9#9'Display section list'#10 +
-            #9'-osver <#[.#]>' +   #9#9'Set required OS version to <#> or <#.#>'#10 +
-            #9'-raw' +           #9#9#9'Don''t align raw data size values at section'#10 +
-                               #9#9#9#9'headers to avoid antivirus false positives'#10 +
-            #9'-rebase <########>' + #9'Rebase image to hexadecimal address <########>'#10 +
-            #9'-stub [stub]|[.]' +   #9'Replace stub with one from [stub] file or take'#10 +
-                               #9#9#9#9'stub from PE Tool itself'#10 +
-            #9'-touch' +         #9#9#9'Don''t keep original file timestamp'#10 +
-            #9'-trunc' +         #9#9#9'Don''t align last section, truncate file'#10 +
-                               #9#9#9#9'immediately after data end'#10 +
-            #9'-unsafe' +        #9#9#9'Strip chained certificate and other data'#10#10 +
-    'Miscellaneous options'#10 +
-            #9'-nologo' +        #9#9#9'Don''t display PET logo and copyrights'#10 +
+    'Commands' + sLineBreak +
+            #9'-backup <bak>' +    #9#9'Backup <source> file to <bak> file' + sLineBreak +
+            #9'-extract <stub>' +  #9#9'Extract <source> stub to <stub> file' + sLineBreak +
+            #9'-into [dest]|[.]' +   #9'Save result to [dest] file or replace source' + sLineBreak +
+            #9'-version' +         #9#9'Show version and exit' + sLineBreak + sLineBreak +
+    'Option for -extract and -into commands' + sLineBreak +
+            #9'-strip' +         #9#9#9'Strip headers, exports, debug information,' + sLineBreak +
+                               #9#9#9#9'relocations and empty sections when possible' + sLineBreak + sLineBreak +
+    'Options for estimation and -into command' + sLineBreak +
+            #9'-3gb' +           #9#9#9'Enable large address' + sLineBreak +
+            #9'-aslr' +          #9#9#9'Enable dynamic image base (ASLR)' + sLineBreak +
+            {#9'-auto [#[%]]|[.]'    +#9'Using '#$E2#$80#$9C'-keep -strip -trunc -stub'#$E2#$80#$9D' mode, replace' + sLineBreak +
+                               #9#9#9#9'original file when stripped size is equal or' + sLineBreak +
+                               #9#9#9#9'greater given number of bytes, percent or' + sLineBreak +
+                               #9#9#9#9'volume cluster size' + sLineBreak +}
+            #9'-deep' +          #9#9#9'Strip orphaned sections (unsafe!)' + sLineBreak +
+            #9'-dep' +           #9#9#9'Enable data execution prevention (DEP)' + sLineBreak +
+            #9'-dir' +           #9#9#9'Strip data directory (lesser compatibility)' + sLineBreak +
+            #9'-dropsect <s1,s2,...>'#9'Drop sections <s1>, <s2>, etc.' + sLineBreak +
+            #9'-log <actions|totals>'#9'Output log style' + sLineBreak +
+            #9'-ls' +            #9#9#9'Display section list' + sLineBreak +
+            #9'-osver <#[.#]>' +   #9#9'Set required OS version to <#> or <#.#>' + sLineBreak +
+            #9'-raw' +           #9#9#9'Don''t align raw data size values at section' + sLineBreak +
+                               #9#9#9#9'headers to avoid antivirus false positives' + sLineBreak +
+            #9'-rebase <########>' + #9'Rebase image to hexadecimal address <########>' + sLineBreak +
+            #9'-stub [stub]|[.]' +   #9'Replace stub with one from [stub] file or take' + sLineBreak +
+                               #9#9#9#9'stub from PE Tool itself' + sLineBreak +
+            #9'-touch' +         #9#9#9'Don''t keep original file timestamp' + sLineBreak +
+            #9'-trunc' +         #9#9#9'Don''t align last section, truncate file' + sLineBreak +
+                               #9#9#9#9'immediately after data end' + sLineBreak +
+            #9'-unsafe' +        #9#9#9'Strip chained certificate and other data' + sLineBreak + sLineBreak +
+    'Miscellaneous options' + sLineBreak +
+            #9'-nologo' +        #9#9#9'Don''t display PET logo and copyrights' + sLineBreak +
             #9'-pause' +         #9#9#9'Wait for ENTER key to exit';
 
   sMissingParam = 'Missing %s';
@@ -132,11 +132,11 @@ const
   sUnexpectedEndOfStream = '%hs from %s'; // Unexpected end of stream: read xx bytes instead of yy from <file>
   sChainedDataFound = 'Chained data found, safe stripping stopped';
   sSectionList = 'Section list of %s';
-  sTotalsMessage = #10'%u files, %d bytes (%hs)';
+  sTotalsMessage = sLineBreak + '%u files, %d bytes (%hs)';
   sNoFilesFound = 'No files found';
   sSectionNotFound = 'Section �%s� not found';
   sImageBaseUnaligned = 'Image base %08X is not on 64 KB boundary';
-  sNoRelocationsForASLR = 'Dynamic image base feature (ASLR) is not available because relocations were'#10 +
+  sNoRelocationsForASLR = 'Dynamic image base feature (ASLR) is not available because relocations were' + sLineBreak +
     'stripped from this file';
 
 implementation
