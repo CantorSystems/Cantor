@@ -148,8 +148,10 @@ const
   WideCRLF: array[0..1] of WideChar = (WideChar(13), WideChar(10));
 
   LF: array[0..1] of LegacyChar = #10#0;
-  WideLF: array[0..1] of WideChar = (#10, #0);
+  WideLF: array[0..1] of WideChar = (WideChar(10), WideChar(0));
+
   WhitespaceOrLineBreak: array[Boolean, 0..2] of LegacyChar = (#32#0#0, #13#10#0); // platform;
+
 {$IFNDEF Tricks}
   HexDigits: array [$0..$F] of LegacyChar = '0123456789ABCDEF';
 var
