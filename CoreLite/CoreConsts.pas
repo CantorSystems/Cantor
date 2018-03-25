@@ -143,7 +143,7 @@ const
   sInvalidRVA = 'Invalid RVA %08X';
   sUnsupportedRelocationFormat = 'Unsupported relocation format, code %2u';
 
-  sAvoidCharCorruption = 'This program uses UTF-8 console. To avoid on-screen Unicode characters' + sLineBreak +
+  sAvoidCharCorruption = 'This program uses UTF-8 console. To avoid on-screen Unicode character' + sLineBreak +
     'corruption, please set a TrueType/OpenType font for console window.';
   sPressEnterToExit = 'Press ENTER to exit';
   sModuleFileName = 'module file name, length';
