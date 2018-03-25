@@ -19,17 +19,17 @@ const       // short Unicode strings
 { Localize }
 
 const
-  sTitle = #10'Textest ' + Revision;
+  sTitle =  sLineBreak + 'Textest ' + Revision;
 
   sUsage =
     'Usage:'#9'%s <source> [commands [options]]';
 
   sHelp =
-    'Commands'#10 +
-            #9'-cp <####>'+ #9'Set fallback code page to <####>'#10 +
-            #9'-into <dest>'#9'Save result to <dest> file'#10#10 +
-    'Options'#10 +
-            #9'-oem' +    #9#9'Set fallback code page to current OEM code page'#10 +
+    'Commands' + sLineBreak +
+            #9'-cp <####>'+ #9'Set fallback code page to <####>' + sLineBreak +
+            #9'-into <dest>'#9'Save result to <dest> file' + sLineBreak + sLineBreak +
+    'Options' + sLineBreak +
+            #9'-oem' +    #9#9'Set fallback code page to current OEM code page' + sLineBreak +
             #9'-pause' +  #9#9'Wait for ENTER key to exit';
 
   sMissing = 'Missing %s';

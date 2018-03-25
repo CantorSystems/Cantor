@@ -147,7 +147,7 @@ const
 
   LF: array[0..1] of LegacyChar = #10#0;
   WideLF: array[0..1] of WideChar = (#10, #0);
-  WhitespaceOrLineBreak: array[Boolean] of LegacyChar = (#32, #10);
+  WhitespaceOrLineBreak: array[Boolean, 0..2] of LegacyChar = (#32#0#0, #13#10#0); // platform;
 {$IFNDEF Tricks}
   HexDigits: array [$0..$F] of LegacyChar = '0123456789ABCDEF';
 var

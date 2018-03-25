@@ -3,7 +3,7 @@
 
     Core library string messages
 
-    Copyright (c) 2008-2017 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2008-2018 Vladislav Javadov (aka Freeman)
 *)
 
 unit CoreConsts;
@@ -35,8 +35,8 @@ const
   sReadAccess         = 'read';
   sWriteAccess        = 'write';
 
-  sAccessViolation = 'Access violation at address %p:%hc%s of address %p';
-  sModuleAccessViolation = 'Access violation at address %p in module �%s�:%hc%hs of address %p';
+  sAccessViolation = 'Access violation at address %p:%hs%s of address %p';
+  sModuleAccessViolation = 'Access violation at address %p in module �%s�:%hs%hs of address %p';
 
   sAbstractInstance = '%s instance abstract method call';
   sAbstractClass    = '%s abstract class method call';
@@ -104,7 +104,7 @@ const
   sNullInteger = 'Null string is not a valid %s value';
 
   sNotNativeUTF16BE = 'UTF-16 Big-Endian is not native for Windows API';
-  sUTF32notSupported = 'UTF-32 not supported';
+  sUTF32notSupported = 'UTF-32 is not supported';
 
   sSystemCPtoUTF16 = 'System error �%s� while converting code page %u (%s) to UTF-16';
   sSystemUTF16toCP = 'System error �%s� while converting UTF-16 to code page %u (%s)';
@@ -121,13 +121,13 @@ const
   sInvalidChar = 'invalid character (U+%04X)';
   sNonLatin1 = 'a character outside of Latin-1 range (U+%04X)';
   sNonUnicode = 'a character outside of Unicode range (U+%04X)';
-  sNonBMP = 'a character outside of Basic Multilingual Plane (U+%04X),%hcbut surrogate pairs are not allowed here';
+  sNonBMP = 'a character outside of Basic Multilingual Plane (U+%04X),%hsbut surrogate pairs are not allowed here';
 
-  sBadUTF8 = 'Bad UTF-8 sequence starting with byte $%02X';
-  sBrokenUTF8 = 'Broken %u-byte UTF-8 sequence or unexpected end of string';
+  sBadUTF8 = 'Malformed UTF-8 character starting with byte $%02X';
+  sBrokenUTF8 = 'Malformed %u-byte UTF-8 character or unexpected end of string';
 
-  sBadSurrogatePair = 'Bad %s surrogate pair starting with a low surrogate (U+%04X)'; // UTF-16 or CESU-8
-  sBrokenSurrogatePair = 'Broken %s surrogate pair or unexpected end of string:'#10 + // UTF-16 or CESU-8
+  sBadSurrogatePair = 'Malformed %s surrogate pair, starting with a low surrogate (U+%04X)'; // UTF-16 or CESU-8
+  sBrokenSurrogatePair = 'Malformed %s surrogate pair or unexpected end of string:' + sLineBreak + // UTF-16 or CESU-8
     'high surrogate (U+%04X) is not complemented by a low surrogate';
 
   sFileNameList = 'file name list';
@@ -143,10 +143,18 @@ const
   sInvalidRVA = 'Invalid RVA %08X';
   sUnsupportedRelocationFormat = 'Unsupported relocation format, code %2u';
 
-  sAvoidCharCorruption = 'This program uses UTF-8 console. To avoid on-screen Unicode characters'#10 +
+  sAvoidCharCorruption = 'This program uses UTF-8 console. To avoid on-screen Unicode characters' + sLineBreak +
     'corruption, please set a TrueType/OpenType font for console window.';
   sPressEnterToExit = 'Press ENTER to exit';
   sModuleFileName = 'module file name, length';
+
+  sWarning = 'Warning';
+  sError = 'Error';
+
+  sIdentifier = 'identifier';
+  sComment = 'comment';
+  sNotUnderstandable = '%hs �%s� is not understandable for international community';
+  sNotLocalizable = 'string �%s� is not localizable';
 
 implementation
 

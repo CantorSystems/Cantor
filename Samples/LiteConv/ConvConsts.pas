@@ -33,27 +33,27 @@ const
   sTitle = 'LiteConv ' + Revision;
 
   sUsage  =
-    'Usage:'#10 +
-            #9'%ws source-file [<in-charset>] [-into <dest-file> [<out-charset>]]'#10 +
-            #9#9'[-pause]'#10#10 +
+    'Usage:' + sLineBreak +
+            #9'%ws source-file [<in-charset>] [-into <dest-file> [<out-charset>]]' + sLineBreak +
+            #9#9'[-pause]' + sLineBreak + sLineBreak +
             #9'%ws -ren source-file [-pause]';
   sHelp =
-    'Common options'#10 +
-            #9'-into'#9#9#9'Replace source file with result'#10 +
-            #9'-into <dest-file>'#9'Write result to <dest-file>'#10 +
-            #9'-pause'#9#9#9'Wait for ENTER key for exit'#10 +
-            #9'-version'#9#9'Show version and exit'{#10#10 +
-    'Options for both <in-charset> and <out-charset>'#10 +
-            #9'-cp N'#9'Use code page N to decode/encode file'#10 +
-            #9'-oem'#9'Use current OEM code page to decode file'#10#10 +
-    'Options for <out-charset> only'#10 +
-            #9'-8'#9'Encode to CESU-8'#10 +
-            #9'-16'#9'Encode to UTF-16'#10 +
-            #9'-32'#9'Encode to UTF-32'#10 +
+    'Common options' + sLineBreak +
+            #9'-into'#9#9#9'Replace source file with result' + sLineBreak +
+            #9'-into <dest-file>'#9'Write result to <dest-file>' + sLineBreak +
+            #9'-pause'#9#9#9'Wait for ENTER key for exit' + sLineBreak +
+            #9'-version'#9#9'Show version and exit'{ + sLineBreak + sLineBreak +
+    'Options for both <in-charset> and <out-charset>' + sLineBreak +
+            #9'-cp N'#9'Use code page N to decode/encode file' + sLineBreak +
+            #9'-oem'#9'Use current OEM code page to decode file' + sLineBreak + sLineBreak +
+    'Options for <out-charset> only' + sLineBreak +
+            #9'-8'#9'Encode to CESU-8' + sLineBreak +
+            #9'-16'#9'Encode to UTF-16' + sLineBreak +
+            #9'-32'#9'Encode to UTF-32' + sLineBreak +
             #9'-BE'#9'Encode UTF-16 or UTF-32 as big-endian'};
   sEnvironment =
-    'Current environment'#10 +
-            #9'ANSI code page (ACP)'#9'%u (%s)'#10+
+    'Current environment' + sLineBreak +
+            #9'ANSI code page (ACP)'#9'%u (%s)' + sLineBreak +
             #9'OEM code page (OEMCP)'#9'%u (%s)';
 
   sMissing = 'Missing %s';
