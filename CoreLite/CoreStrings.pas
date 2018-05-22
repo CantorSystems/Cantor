@@ -2325,7 +2325,6 @@ end;
 var
   Dest, Limit: PWideChar;
   CodePoint, Paired: QuadChar;
-  W: Word;
   B: Byte;
 begin
 {$IFDEF Debug}
@@ -2371,10 +2370,6 @@ begin
             end;
           end;
 
-        Low(TLowSurrogates)..High(TLowSurrogates), $FFFE, $FFFF,
-        Low(TNonUnicode)..High(TNonUnicode):
-          ;
-
         Low(TUnicodeSMP)..High(TUnicodeSPUA):
           if coSurrogatePairs in EncodeOptions then
           begin
@@ -2383,24 +2378,27 @@ begin
               Dec(Result.SourceCount, 4);
               Break;
             end;
-            W := CodePoint - Low(TUnicodeSMP);
             if coBigEndian in EncodeOptions then // Fast core
               PLongWord(Dest)^ :=
-                Word(Swap(Low(THighSurrogates) or W shr 10)) or
-                Word(Swap((Low(TLowSurrogates) or W and $3FF) shl 16))
+                Swap(Low(THighSurrogates) or Word(CodePoint shr 10)) or
+                Swap(Low(TLowSurrogates) or Word(CodePoint) and $3FF) shl 16
             else
               PLongWord(Dest)^ :=
-                Word(Low(THighSurrogates) or W shr 10) or
-                Word((Low(TLowSurrogates) or W and $3FF) shl 16);
+                (Low(THighSurrogates) or Word(CodePoint shr 10)) or
+                (Low(TLowSurrogates) or Word(CodePoint) and $3FF) shl 16;
             Inc(Dest, 2);
             Inc(Result.SurrogatePairs);
             Continue;
           end;
+
+        Low(TLowSurrogates)..High(TLowSurrogates), $FFFE, $FFFF,
+        Low(TNonUnicode)..High(TNonUnicode):
+          ;
       else
-        W := CodePoint;
         if coBigEndian in EncodeOptions then
-          W := Swap(W);
-        Dest^ := WideChar(W);
+          PWord(Dest)^ := Swap(CodePoint)
+        else
+          PWord(Dest)^ := CodePoint;
         Inc(Dest);
         Continue;
       end;
@@ -2408,10 +2406,10 @@ begin
       if (coReplaceInvalid in EncodeOptions) and
         ((Source.FCodePage = nil) or not (soLatin1 in Source.FOptions)) then
       begin
-        W := $FFFD;
         if coBigEndian in EncodeOptions then
-          W := Swap(W);
-        Dest^ := WideChar(W);
+          PWord(Dest)^ := Swap($FFFD)
+        else
+          PWord(Dest)^ := $FFFD;
         Inc(Dest);
       end
       else
