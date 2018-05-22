@@ -14,7 +14,7 @@ const         // short Unicode strings
   sInto     = #4'into';
   sNoLogo   = #6'nologo';
   sPause    = #5'pause';
-  sRen      = #6'ren';
+  sRen      = #3'ren';
   sVersion  = #7'version';
 
   sBE       = #2'BE';
@@ -36,12 +36,13 @@ const
     'Usage:' + sLineBreak +
             #9'%ws source-file [<in-charset>] [-into <dest-file> [<out-charset>]]' + sLineBreak +
             #9#9'[-pause]' + sLineBreak + sLineBreak +
-            #9'%ws -ren source-file [-pause]';
+            #9'%ws -ren source-file [-oem [-pause]]';
   sHelp =
     'Common options' + sLineBreak +
             #9'-into'#9#9#9'Replace source file with result' + sLineBreak +
             #9'-into <dest-file>'#9'Write result to <dest-file>' + sLineBreak +
             #9'-pause'#9#9#9'Wait for ENTER key for exit' + sLineBreak +
+            #9'-oem'#9#9#9'Use current OEM code page' + sLineBreak +
             #9'-version'#9#9'Show version and exit'{ + sLineBreak + sLineBreak +
     'Options for both <in-charset> and <out-charset>' + sLineBreak +
             #9'-cp N'#9'Use code page N to decode/encode file' + sLineBreak +

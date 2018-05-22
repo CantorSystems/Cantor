@@ -112,7 +112,7 @@ end;
 
 procedure TApplication.ParseCommandLine(Source: PCoreChar);
 const
-  Commands: array[cmInto..cmInto] of PWideChar = (sInto);
+  Commands: array[cmInto..cmInto] of PWideChar = (sInto); // requires file name after
   RunOptions: array[roPause..roRename] of PWideChar = (sPause, sNoLogo, sVersion, sRen);
 var
   CmdLine, Key: TWideString;
@@ -136,6 +136,7 @@ begin
     Inc(ParamCount);
     Key.Create;
     Key.AsRange(@Param, 1);
+
     if Param.IsKey then
     begin
       W := sOEM;
