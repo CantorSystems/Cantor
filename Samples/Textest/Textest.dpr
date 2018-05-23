@@ -48,8 +48,7 @@ begin
   except
     on E: TObject do // TObject is for CoreLiteVCL
     begin
-      ShowException(E);
-      Application.Pause;
+      Application.ShowException(E);
       ExitCode := 1;
     end;
   end;

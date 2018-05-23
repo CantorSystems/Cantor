@@ -264,7 +264,7 @@ begin
     on E: TObject do
     begin
       Console.WriteLn(sCoreLiteTestFailed, 0, [AverageStringLength]);
-      ShowException(E);
+      CoreExceptions.ShowException(E);
     end;
   end;
 end;
@@ -293,7 +293,7 @@ begin
     on E: TObject do
     begin
       Console.WriteLn(PLegacyChar(sDelphiTestFailed), StrLen(sDelphiTestFailed));
-      ShowException(E);
+      CoreExceptions.ShowException(E);
     end;
   end;
 end;

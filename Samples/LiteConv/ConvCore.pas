@@ -26,6 +26,7 @@ type
   public
     destructor Destroy;
     procedure Run(CommandLine: PCoreChar);
+    property Options: TRunOptions read FOptions;
   end;
 
   ECommandLine = class(Exception);

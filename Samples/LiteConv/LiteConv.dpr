@@ -36,8 +36,7 @@ begin
   except
     on E: Exception do
     begin
-      ShowException(E);
-      Application.Pause;
+      Application.ShowException(E);
       ExitCode := 1;
     end;
   end;
