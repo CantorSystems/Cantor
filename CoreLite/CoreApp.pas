@@ -3,7 +3,7 @@
 
     Console application abstraction layer
 
-    Copyright (c) 2015-2016 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2015-2018 Vladislav Javadov (aka Freeman)
 *)
 
 unit CoreApp;
@@ -51,6 +51,7 @@ type
     constructor Create(ConsoleCP: Word = CP_UTF8);
     destructor Destroy;
     procedure Pause;
+    procedure ShowException(E: TObject);
 
     property AppName: TCoreString read FAppName;
     property Console: TStreamConsole read FConsole;
@@ -290,6 +291,13 @@ begin
       end;
     end;
   end;
+end;
+
+procedure TConsoleApplication.ShowException(E: TObject);
+begin
+  CoreExceptions.ShowException(E);
+  if not (caNoLogo in PConsoleAppCast(@Self).Options) and (FConsole.Redirection = []) then
+    Pause;
 end;
 
 function TConsoleApplication.Title(Text: PLegacyChar): Boolean;
