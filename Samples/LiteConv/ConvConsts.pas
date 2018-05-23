@@ -34,24 +34,28 @@ const
 
   sUsage  =
     'Usage:' + sLineBreak +
-            #9'%ws source-file [<in-charset>] [-into <dest-file> [<out-charset>]]' + sLineBreak +
+            {#9'%ws source-file [<in-charset>] [-into <dest-file> [<out-charset>]]' + sLineBreak +
             #9#9'[-pause]' + sLineBreak + sLineBreak +
-            #9'%ws -ren source-file [-oem [-pause]]';
+            #9'%ws -ren source-file [-oem [-pause]]'}
+            #9'%s [commands [options]]';
   sHelp =
-    'Common options' + sLineBreak +
-            #9'-into'#9#9#9'Replace source file with result' + sLineBreak +
-            #9'-into <dest-file>'#9'Write result to <dest-file>' + sLineBreak +
-            #9'-pause'#9#9#9'Wait for ENTER key for exit' + sLineBreak +
-            #9'-oem'#9#9#9'Use current OEM code page' + sLineBreak +
-            #9'-version'#9#9'Show version and exit'{ + sLineBreak + sLineBreak +
-    'Options for both <in-charset> and <out-charset>' + sLineBreak +
+    'Commands' + sLineBreak +
+            #9'-ren <file>'#9#9'Auto detect broken UTF-8 and rename <file> when' + sLineBreak +
+            #9#9#9#9'needed' + sLineBreak +
+            #9'-version'#9#9'Show version and exit' + sLineBreak + sLineBreak +
+    'Options' + sLineBreak +
+            #9'-nologo'#9#9#9'Don''t display program title' + sLineBreak +
+            #9'-oem'#9#9#9'Use current OEM code page' + sLineBreak + 
+            #9'-pause'#9#9#9'Wait for ENTER key to exit';
+    {'Options for both <in-charset> and <out-charset>' + sLineBreak +
             #9'-cp N'#9'Use code page N to decode/encode file' + sLineBreak +
             #9'-oem'#9'Use current OEM code page to decode file' + sLineBreak + sLineBreak +
     'Options for <out-charset> only' + sLineBreak +
             #9'-8'#9'Encode to CESU-8' + sLineBreak +
             #9'-16'#9'Encode to UTF-16' + sLineBreak +
             #9'-32'#9'Encode to UTF-32' + sLineBreak +
-            #9'-BE'#9'Encode UTF-16 or UTF-32 as big-endian'};
+            #9'-BE'#9'Encode UTF-16 or UTF-32 as big-endian'}
+
   sEnvironment =
     'Current environment' + sLineBreak +
             #9'ANSI code page (ACP)'#9'%u (%s)' + sLineBreak +

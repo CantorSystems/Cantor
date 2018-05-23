@@ -19,8 +19,8 @@ type
   private
   { hold } FOptions: TRunOptions;
     FSourceFileName: TCoreString;
-    FCommandParams: array[TCommand] of TCoreString;
-    FSourceFileCP: Word;
+    {FCommandParams: array[TCommand] of TCoreString;}
+    FSourceCP: Word;
     procedure ParseCommandLine(Source: PCoreChar);
     procedure Help;
   public
@@ -84,11 +84,11 @@ end;
 { TApplication }
 
 destructor TApplication.Destroy;
-var
-  Cmd: TCommand;
+{var
+  Cmd: TCommand;}
 begin
-  for Cmd := Low(FCommandParams) to High(FCommandParams) do
-    FCommandParams[Cmd].Finalize;
+  {for Cmd := Low(FCommandParams) to High(FCommandParams) do
+    FCommandParams[Cmd].Finalize;}
   FSourceFileName.Finalize;
   inherited;
 end;
@@ -118,7 +118,7 @@ var
   CmdLine, Key: TWideString;
   Param: TCommandLineParam;
   ParamCount: Integer;
-  Cmd: TCommand;
+  {Cmd: TCommand;}
   Opt: TRunOption;
   W: PWideChar;
 begin
@@ -142,7 +142,7 @@ begin
       W := sOEM;
       if Key.Compare(W + 1, PCharCode(W)^, True) = 0 then
       begin
-        FSourceFileCP := CP_OEMCP;
+        FSourceCP := CP_OEMCP;
         Param.Clear;
       end
       else
@@ -155,20 +155,20 @@ begin
           end;
     end;
 
-    if Param.IsKey then
+    {if Param.IsKey then
     begin
-      {W := sCP;
+      W := sCP;
       if Key.Compare(W + 1, PCharCode(W)^, True) = 0 then
       begin
         CmdLine := Param.AsNextParam(@CmdLine);
-        if (Param.Count = 0) or (FSourceFileCP <> 0) then
+        if (Param.Count = 0) or (FSourceCP <> 0) then
           raise ECommandParam.Create(cmCP, @Param);
-        FSourceFileCP := Param.AsInteger;
-        if FSourceFileCP - CP_UTF7 in [0..1] then
-          raise ECodePageParam.Create(FSourceFileCP = CP_UTF8);
+        FSourceCP := Param.AsInteger;
+        if FSourceCP - CP_UTF7 in [0..1] then
+          raise ECodePageParam.Create(FSourceCP = CP_UTF8);
         Param.Clear;
       end
-      else}
+      else
         for Cmd := Low(Commands) to High(Commands) do
           if Key.Compare(Commands[Cmd] + 1, PCharCode(Commands[Cmd])^, True) = 0 then
           begin
@@ -183,7 +183,7 @@ begin
             Param.Clear;
             Break;
           end;
-    end;
+    end;}
 
     if Param.Count <> 0 then
     begin
@@ -217,7 +217,7 @@ begin
   begin
     if roRename in FOptions then
     begin
-      CP.Create(FSourceFileCP);
+      CP.Create(FSourceCP);
       if not (roNoLogo in FOptions) then
         Console.WriteLn(sRenameUsingCP, 0, [CP.Number, CP.Name]);
 
