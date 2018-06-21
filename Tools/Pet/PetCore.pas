@@ -1,7 +1,7 @@
 (*
     PE Tool core
 
-    Copyright (c) 2013-2017 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2013-2018 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
       * Lite -- avoid redundant bloatness of code, without functionality loss
@@ -832,42 +832,48 @@ begin
         BytesSaved := FImage.Size(roTrunc in FOptions);
         try
           if TypeOf(DestFileName^) <> nil then
-          try
-            with FImage do
-            begin
-              if FMajorVersion <> 0 then
-                OSVersion(FMajorVersion, FMinorVersion);
-              if ro3GB in FOptions then
-                LargeAddressAware;
-              if (roASLR in FOptions) and not FImage.ASLRAware then
-                raise EBadImage.Create(sNoRelocationsForASLR);
-              if roDEP in FOptions then
-                DEPAware;
-            end;
-
-            if FFileNames[fkBackup].Count <> 0 then
-            begin
-              if FLogStyle <> lsTotals then
+            try
+              with FImage do
               begin
-                Output.Action(sBackuping, @FFileNames[fkBackup]);
-                Console.WriteLn;
-                Output.Action(sSaving, DestFileName);
+                if FMajorVersion <> 0 then
+                  OSVersion(FMajorVersion, FMinorVersion);
+                if ro3GB in FOptions then
+                  LargeAddressAware;
+                if (roASLR in FOptions) and not FImage.ASLRAware then
+                  raise EBadImage.Create(sNoRelocationsForASLR);
+                if roDEP in FOptions then
+                  DEPAware;
               end;
-              BytesSaved := SaveFile(FFileNames[fkBackup].RawData);
-            end
-            else
-            begin
-              if FLogStyle <> lsTotals then
-                Output.Action(sSaving, DestFileName);
-              BytesSaved := SaveFile(nil);
-            end;
 
+              if FFileNames[fkBackup].Count <> 0 then
+              begin
+                if FLogStyle <> lsTotals then
+                begin
+                  Output.Action(sBackuping, @FFileNames[fkBackup]);
+                  Console.WriteLn;
+                  Output.Action(sSaving, DestFileName);
+                end;
+                BytesSaved := SaveFile(FFileNames[fkBackup].RawData);
+              end
+              else
+              begin
+                if FLogStyle <> lsTotals then
+                  Output.Action(sSaving, DestFileName);
+                BytesSaved := SaveFile(nil);
+              end;
+
+              if FLogStyle <> lsTotals then
+                Output.TransferStats(Loaded.FileSize, BytesSaved);
+            finally
+              if DestFileName = FileName then
+                DestFileName := @FFileNames[fkInto];
+            end
+          else
             if FLogStyle <> lsTotals then
+            begin
+              Output.Action(sEstimated, FileName);
               Output.TransferStats(Loaded.FileSize, BytesSaved);
-          finally
-            if DestFileName = FileName then
-              DestFileName := @FFileNames[fkInto];
-          end;
+            end;
 
           if FLogStyle <> lsTotals then
             Output.Action(sTotal, nil);

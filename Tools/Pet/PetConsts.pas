@@ -118,6 +118,7 @@ const
   sKeepingRelocations = 'Keeping relocations';
   sStripping          = 'Stripping';
   sEstimating         = 'Estimating';
+  sEstimated          = 'Estimated';
   sBackuping          = 'Backuping';
   sTotal              = 'Total';
   sRebasingTo         = 'Rebasing image to';
