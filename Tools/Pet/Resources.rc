@@ -15,19 +15,19 @@ FILEFLAGS VS_FF_PRERELEASE
 BEGIN
   BLOCK "StringFileInfo"
   BEGIN
-    BLOCK "040904E4"
+    BLOCK "040904B0"
     BEGIN
-      VALUE "CompanyName", "Vladislav Javadov\000"
-      VALUE "LegalCopyright", "Copyright � 2013-2017 Vladislav Javadov\000"
-      VALUE "ProductName", "PE Tool\000"
-      VALUE "FileDescription", "Portable executable (PE) rebuilding tool\000"
-      VALUE "OriginalFilename", "Pet.exe\000"
-      VALUE "ProductVersion", "0.6\000"
-      VALUE "FileVersion", "r" textrev "\000"
+      VALUE "CompanyName", "Vladislav Javadov\0"
+      VALUE "LegalCopyright", "Copyright � 2013-2018 Vladislav Javadov\0"
+      VALUE "ProductName", "PE Tool\0"
+      VALUE "FileDescription", "Portable executable (PE) rebuilding tool\0"
+      VALUE "OriginalFilename", "Pet.exe\0"
+      VALUE "ProductVersion", "0.6\0"
+      VALUE "FileVersion", "r" textrev "\0"
     END
   END
   BLOCK "VarFileInfo"
   BEGIN
-    VALUE "Translation", 0x409 1252
+    VALUE "Translation", 0x409 1200
   END
 END
