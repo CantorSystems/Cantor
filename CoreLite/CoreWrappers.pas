@@ -30,12 +30,15 @@ type
 
 const
   faRead = [faShareRead];
-  faRewrite = [faWrite, faOverwrite, faShareRead];
+  faWriteBack = [faWrite, faShareRead];
+  faRewrite = faWriteBack + [faOverwrite];
 
   faSequentialRead = faRead + [faSequential];
+  faSequentialWrite = faWriteBack + [faSequential];
   faSequentialRewrite = faRewrite + [faSequential];
 
   faRandomRead = faRead + [faRandom];
+  faRandomWrite = faWriteBack + [faRandom];
   faRandomRewrite = faRewrite + [faRandom];
 
 type
@@ -114,8 +117,9 @@ type
 
   PFileInformation = ^TFileInformation;
   TFileInformation = packed record
-    CreationTime, LastAccessTime, LastWriteTime: TFileTime;
     Attributes: LongWord;
+    Size: QuadWord;
+    CreationTime, LastAccessTime, LastWriteTime: TFileTime;
   end;
 
   PFileStream = PHandleStream;
@@ -346,17 +350,21 @@ type
     BytesRead: CoreWord;
   end;
 
+  TSaveFileResult = record
+    FileSize, BytesWritten: QuadWord;
+  end;
+
   TSaveOptions = set of (soBackup, soTouch);
 
 function LoadFile(const LoadProc: TLoadProc; FileName: PCoreChar;
   Access: TFileAccess = faSequentialRead): TLoadFileResult;
 
 function SaveFile(const SaveProc: TSaveProc; FileName: PCoreChar; FileSize: QuadWord;
-  Access: TFileAccess = faSequentialRewrite): QuadWord; overload;
+  Access: TFileAccess = faSequentialWrite): TSaveFileResult; overload;
 function SaveFile(const SaveProc: TSaveProc; FileName: PCoreChar; FileSize: QuadWord;
-  const FileInfo: TFileInformation; Access: TFileAccess = faSequentialRewrite): QuadWord; overload;
+  const FileInfo: TFileInformation; Access: TFileAccess = faSequentialWrite): TSaveFileResult; overload;
 function SaveFile(const SaveProc: TSaveProc; SourceFileName, SwapFileName, DestFileName: PCoreChar;
-  FileSize: QuadWord; Access: TFileAccess = faSequentialRewrite; Options: TSaveOptions = []): QuadWord; overload;
+  FileSize: QuadWord; Access: TFileAccess = faSequentialWrite; Options: TSaveOptions = []): TSaveFileResult; overload;
 
 { Import Windows functions for Delphi 6/7 }
 
@@ -450,34 +458,36 @@ begin
 end;
 
 function SaveFile(const SaveProc: TSaveProc; FileName: PCoreChar; FileSize: QuadWord;
-  Access: TFileAccess): QuadWord;
+  Access: TFileAccess): TSaveFileResult;
 var
   F: TFileStream;
 begin
   F.Create(FileName, Access);
   try
+    Result.FileSize := F.Size;
     F.SetSize(FileSize);
     SaveProc(@F);
-    Result := F.Position;
-    F.SetSize(Result);
+    Result.BytesWritten := F.Position;
+    F.SetSize(Result.BytesWritten);
   finally
     F.Destroy;
   end;
 end;
 
 function SaveFile(const SaveProc: TSaveProc; FileName: PCoreChar; FileSize: QuadWord;
-  const FileInfo: TFileInformation; Access: TFileAccess): QuadWord;
+  const FileInfo: TFileInformation; Access: TFileAccess): TSaveFileResult;
 var
   F: TFileStream;
 begin
   F.Create(FileName, Access);
   try
+    Result.FileSize := F.Size;
     if (FileInfo.Attributes <> 0) and not SetFileAttributesW(FileName, FileInfo.Attributes) then
       RaiseLastPlatformError(FileName);
     F.SetSize(FileSize);
     SaveProc(@F);
-    Result := F.Position;
-    F.SetSize(Result);
+    Result.BytesWritten := F.Position;
+    F.SetSize(Result.BytesWritten);
     F.SetTime(FileInfo);
   finally
     F.Destroy;
@@ -485,7 +495,7 @@ begin
 end;
 
 function SaveFile(const SaveProc: TSaveProc; SourceFileName, SwapFileName, DestFileName: PCoreChar;
-  FileSize: QuadWord; Access: TFileAccess; Options: TSaveOptions): QuadWord;
+  FileSize: QuadWord; Access: TFileAccess; Options: TSaveOptions): TSaveFileResult;
 var
   OldInfo: TWin32FileAttributeData;
   NewInfo: TFileInformation;
@@ -493,6 +503,11 @@ begin
   FillChar(NewInfo, SizeOf(NewInfo), 0);
   if (SourceFileName <> nil) and GetFileAttributesExW(SourceFileName, GetFileExInfoStandard, @OldInfo) then
   begin
+    with QuadRec(Result.FileSize), OldInfo do
+    begin
+      Lo := nFileSizeLow;
+      Hi := nFileSizeHigh;
+    end;
     NewInfo.Attributes := OldInfo.dwFileAttributes;
     Move(OldInfo.ftCreationTime, NewInfo.CreationTime, SizeOf(TFileTime) * (3 - Byte(soTouch in Options)));
   end;
