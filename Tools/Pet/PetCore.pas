@@ -714,7 +714,7 @@ begin
             else
               Output.TransferStats(Loaded.FileSize, Loaded.FileSize - Loaded.BytesRead);
           end;
-          if not (roUnsafe in FOptions) then
+          if (TypeOf(DestFileName^) <> nil) and not (roUnsafe in FOptions) then
           begin
             Console.EndOfLine;
             Console.WriteLn(PLegacyChar(sChainedDataFound), StrLen(sChainedDataFound),
@@ -841,17 +841,14 @@ begin
         try
           if TypeOf(DestFileName^) <> nil then
             try
-              with FImage do
-              begin
-                if FMajorVersion <> 0 then
-                  OSVersion(FMajorVersion, FMinorVersion);
-                if ro3GB in FOptions then
-                  LargeAddressAware;
-                if (roASLR in FOptions) and not FImage.ASLRAware then
-                  raise EBadImage.Create(sNoRelocationsForASLR);
-                if roDEP in FOptions then
-                  DEPAware;
-              end;
+              if FMajorVersion <> 0 then
+                FImage.OSVersion(FMajorVersion, FMinorVersion);
+              if ro3GB in FOptions then
+                FImage.LargeAddressAware;
+              if (roASLR in FOptions) and not FImage.ASLRAware then
+                raise EBadImage.Create(sNoRelocationsForASLR);
+              if roDEP in FOptions then
+                FImage.DEPAware;
 
               if FFileNames[fkBackup].Count <> 0 then
               begin
