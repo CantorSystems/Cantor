@@ -584,7 +584,7 @@ procedure TApplication.Run(CommandLine: PCoreChar);
 
 var
   TmpFileName: TFileName;
-  SrcFileName, DestFileName: PFileName;
+  SrcFileName, DestFileName, ImageFileName: PFileName;
   FileName: PFileNameListItem;
   Output: TDefaultOutput;
 
@@ -597,7 +597,13 @@ begin
     SaveImage, FileName.RawData, SwapFileName, DestFileName.RawData,
     FImage.Size(roTrunc in FOptions), faRandomRewrite,
     Touch[roTouch in FOptions] + Backup[FFileNames[fkBackup].Count <> 0]
-  );
+  ).BytesWritten; // TODO
+end;
+
+procedure ShowImageException(Prompt: PLegacyChar; E: Exception);
+begin
+  Console.EndOfLine;
+  Console.WriteLn(Prompt, 0, [E.Message.AsString, ImageFileName.RawData]);
 end;
 
 const
@@ -679,6 +685,7 @@ begin
     while FileName <> nil do
     begin
       try
+        ImageFileName := FileName;
         Loaded := LoadFile(FImage.Load, FileName.RawData, faRandomRead);
 
         if FLogStyle <> lsTotals then
@@ -731,7 +738,7 @@ begin
             begin
               Load(@FImage.Stub);
               Strip(roStrip in FOptions);
-              BytesSaved := CoreWrappers.SaveFile(Save, ExtractFileName.RawData, Size);
+              BytesSaved := CoreWrappers.SaveFile(Save, ExtractFileName.RawData, Size).BytesWritten; // TODO
             end;
             if FLogStyle <> lsTotals then
               Output.TransferStats(0, BytesSaved);
@@ -746,7 +753,8 @@ begin
             if FLogStyle <> lsTotals then
               Output.Action(sReplacingStub, @FFileNames[fkStub]);
             OldSize := Size;
-            LoadFile(Load, FFileNames[fkStub].RawData);
+            ImageFileName := @FFileNames[fkStub];
+            LoadFile(Load, ImageFileName.RawData);
             if FLogStyle <> lsTotals then
               Output.StripStats(OldSize, Size);
           end;
@@ -901,17 +909,9 @@ begin
         end;
       except
         on E: EBadImage do
-          with Console do
-          begin
-            EndOfLine;
-            WriteLn('%hs: %s', 0, [E.Message.AsString, FileName.RawData]);
-          end;
+          ShowImageException('%hs: %s', E);
         on E: EStream do
-          with Console do
-          begin
-            EndOfLine;
-            WriteLn(sUnexpectedEndOfStream, 0, [E.Message.AsString, FileName.RawData]);
-          end;
+          ShowImageException(sUnexpectedEndOfStream, E);
         on E: EPlatform do
           ShowException(E);
       end;
