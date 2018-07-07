@@ -904,7 +904,7 @@ begin
 
           Console.WriteLn(sSection, 0, [PLegacyChar(sHeadersSection)], 0);
           Output.TransferStats(Loaded.FileSize, FImage.HeadersSize +
-            FImage.Count * SizeOf(TImageSectionHeader));
+            Cardinal(FImage.Count * SizeOf(TImageSectionHeader)));
 
           for I := 0 to FImage.Count - 1 do
             with FImage.Sections[I] do
