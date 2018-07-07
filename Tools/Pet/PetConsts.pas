@@ -120,6 +120,7 @@ const
   sEstimating         = 'Estimating';
   sEstimated          = 'Estimated';
   sBackuping          = 'Backuping';
+  sDestFile           = 'Destination file';
   sTotal              = 'Total';
   sRebasingTo         = 'Rebasing image to';
 
@@ -127,8 +128,8 @@ const
                                   //         sEstimating, sFixingStub}
   PercentageWidth = 6;
 
-  sDefaultActionFmt = '%%%dhs  %%hs%%%ds';   // '{*s}  {*s?{s1}}'
-  sDefaultStatsFmt = '  %%%di bytes  %%6hs'; // '  {*u?{u'#160'bytes}}  {6p}'
+  sActionFmt = '%%%dhs  %%hs%%%ds';
+  sStatsFmt = '  %%%di bytes  %%6hs';
 
   sUnexpectedEndOfStream = '%hs from %s'; // Unexpected end of stream: read xx bytes instead of yy from <file>
   sChainedDataFound = 'Chained data found, safe stripping stopped';

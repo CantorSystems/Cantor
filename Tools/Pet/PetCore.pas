@@ -21,29 +21,19 @@ type
   TOutput = object(TCoreObject)
   private
     FConsole: PStreamConsole;
+    FActionFormat, FActionEllipsisFormat, FActionBuf,
+    FStatsFormat, FStatsBuf: PWideChar;
     FPercentage: TLegacyString;
     FPercentageBuf: array[0..$F] of LegacyChar;
-  public
-    constructor Create(Dest: PStreamConsole);
-    procedure Action(Prompt: PLegacyChar; FileName: PFileName); virtual; abstract;
-    procedure StripStats(SourceSize, StrippedSize: LongWord); virtual; abstract;
-    procedure TotalStats(FileCount, TotalBytes, BytesSaved: LongWord); virtual; abstract;
-    procedure TransferStats(SourceSize, ActualSize: LongWord); virtual; abstract;
-  end;
-
-  TDefaultOutput = object(TOutput)
-  private
-    FActionFormat, FActionEllipsisFormat, FStatsFormat,
-    FActionBuf, FStatsBuf: PWideChar;
     FFileNameWidth: Integer;
   public
     constructor Create(Dest: PStreamConsole; PromptWidth, FileNameWidth: Integer;
       FileSizeLimit: QuadWord);
     destructor Destroy; virtual;
-    procedure Action(Prompt: PLegacyChar; FileName: PFileName); virtual;
-    procedure StripStats(SourceSize, StrippedSize: LongWord); virtual;
-    procedure TotalStats(FileCount, TotalBytes, BytesSaved: LongWord); virtual;
-    procedure TransferStats(SourceSize, ActualSize: LongWord); virtual;
+    procedure Action(Prompt: PLegacyChar; FileName: PFileName);
+    procedure StripStats(SourceSize, StrippedSize: LongWord);
+    procedure TotalStats(FileCount, TotalBytes, TotalWritten: LongWord);
+    procedure TransferStats(SourceSize, ActualSize: LongWord);
   end;
 
   TFileKind = (fkNone, fkSource, fkInto, fkStub, fkExtract, fkBackup{, fkDump});
@@ -120,6 +110,8 @@ uses
   CoreConsts, PetConsts;
 
 const
+  IgnoreFileNameCase = True; // platform
+
   FileKeys: array[fkInto..High(TFileKind)] of PCoreChar = (sInto, sStub, sExtract, sBackup{, sDump});
   Processing: array[Boolean] of PLegacyChar = (sEstimating, sStripping);
 
@@ -191,53 +183,45 @@ end;
 
 { TOutput }
 
-constructor TOutput.Create(Dest: PStreamConsole);
+constructor TOutput.Create(Dest: PStreamConsole;
+  PromptWidth, FileNameWidth: Integer; FileSizeLimit: QuadWord);
+var
+  StatBytesWidth: Integer;
 begin
   InitInstance;
   FConsole := Dest;
   FPercentage.Create;
   FPercentage.ExternalBuffer(@FPercentageBuf, Length(FPercentageBuf));
-end;
 
-
-{ TDefaultOutput }
-
-constructor TDefaultOutput.Create(Dest: PStreamConsole;
-  PromptWidth, FileNameWidth: Integer; FileSizeLimit: QuadWord);
-var
-  StatBytesWidth: Integer;
-begin
-  inherited Create(Dest);
-
-  FActionFormat := Format(sDefaultActionFmt, DefaultSystemCodePage, 0,
+  FActionFormat := Format(sActionFmt, DefaultSystemCodePage, 0,
     [PromptWidth, -FileNameWidth - Length(sPathEllipsis)]).Value;
-  FActionEllipsisFormat := Format(sDefaultActionFmt, DefaultSystemCodePage, 0,
+  FActionEllipsisFormat := Format(sActionFmt, DefaultSystemCodePage, 0,
     [PromptWidth, -FileNameWidth]).Value;
   FFileNameWidth := FileNameWidth;
   GetMem(FActionBuf, (PromptWidth + FileNameWidth + Length(sPathEllipsis) +
-    Length(sDefaultActionFmt)) * SizeOf(WideChar));
+    Length(sActionFmt)) * SizeOf(WideChar));
 
   if FileSizeLimit = 0 then
     StatBytesWidth := 1
   else                                             // ,-- sign
     StatBytesWidth := Ceil32(Log10(FileSizeLimit)) +  1;
-  FStatsFormat := Format(sDefaultStatsFmt, DefaultSystemCodePage, 0, [StatBytesWidth]).Value;
-  GetMem(FStatsBuf, (StatBytesWidth + PercentageWidth + Length(sDefaultStatsFmt)) * SizeOf(WideChar));
+  FStatsFormat := Format(sStatsFmt, DefaultSystemCodePage, 0, [StatBytesWidth]).Value;
+  GetMem(FStatsBuf, (StatBytesWidth + PercentageWidth + Length(sStatsFmt)) * SizeOf(WideChar));
 end;
 
-destructor TDefaultOutput.Destroy;
+destructor TOutput.Destroy;
 begin
   FreeMem(FStatsBuf);
-  FreeMem(FActionBuf);
-
   FreeMem(FStatsFormat);
+
+  FreeMem(FActionBuf);
   FreeMem(FActionEllipsisFormat);
   FreeMem(FActionFormat);
 
   inherited;
 end;
 
-procedure TDefaultOutput.Action(Prompt: PLegacyChar; FileName: PFileName);
+procedure TOutput.Action(Prompt: PLegacyChar; FileName: PFileName);
 var
   W: PWideChar;
 begin
@@ -255,7 +239,7 @@ begin
   FConsole.WriteLn(FActionBuf, WideFormatBuf(FActionFormat, [Prompt, nil, W], FActionBuf), 0);
 end;
 
-procedure TDefaultOutput.TransferStats(SourceSize, ActualSize: LongWord);
+procedure TOutput.TransferStats(SourceSize, ActualSize: LongWord);
 var
   P: PLegacyChar;
 begin
@@ -266,24 +250,24 @@ begin
   end
   else
     P := nil;
-  FConsole.WriteLn(FStatsBuf, WideFormatBuf(FStatsFormat, [ActualSize, P], FStatsBuf));
+    FConsole.WriteLn(FStatsBuf, WideFormatBuf(FStatsFormat, [ActualSize, P], FStatsBuf));
 end;
 
-procedure TDefaultOutput.StripStats(SourceSize, StrippedSize: LongWord);
+procedure TOutput.StripStats(SourceSize, StrippedSize: LongWord);
 var
   DiffBytes: LongInt;
 begin
   DiffBytes := StrippedSize - SourceSize;
-  FPercentage.AsPercentage(DiffBytes / SourceSize);
+  FPercentage.AsPercentage(DiffBytes / SourceSize{, 1, True});
   FConsole.WriteLn(FStatsBuf, WideFormatBuf(FStatsFormat, [DiffBytes, FPercentage.RawData], FStatsBuf));
 end;
 
-procedure TDefaultOutput.TotalStats(FileCount, TotalBytes, BytesSaved: LongWord);
+procedure TOutput.TotalStats(FileCount, TotalBytes, TotalWritten: LongWord);
 var
   DiffBytes: LongInt;
 begin
-  DiffBytes := BytesSaved - TotalBytes;
-  FPercentage.AsPercentage(DiffBytes / TotalBytes);
+  DiffBytes := TotalWritten - TotalBytes;
+  FPercentage.AsPercentage(DiffBytes / TotalBytes{, 1, True});
   FConsole.WriteLn(sTotalsMessage, 0, [FileCount, DiffBytes, FPercentage.RawData]);
 end;
 
@@ -378,6 +362,18 @@ begin
         if Width > Result then
           Result := Width;
       end;
+    if TypeOf(FFileNames[fkInto]) <> nil then
+    begin
+      Width := StrLen(sDestFile);
+      if Width > Result then
+        Result := Width;
+    end
+    else
+    begin
+      Width := StrLen(sEstimated);
+      if Width > Result then
+        Result := Width;
+    end;
   end
   else
     Result := TotalsMaxPromptWidth;
@@ -586,18 +582,18 @@ var
   TmpFileName: TFileName;
   SrcFileName, DestFileName, ImageFileName: PFileName;
   FileName: PFileNameListItem;
-  Output: TDefaultOutput;
+  Output: TOutput;
 
-function SaveFile(SwapFileName: PCoreChar): QuadWord;
+function SaveFile(SwapFileName: PCoreChar): TSaveFileResult;
 const
   Backup: array[Boolean] of TSaveOptions = ([], [soBackup]);
   Touch: array[Boolean] of TSaveOptions = ([], [soTouch]);
 begin
   Result := CoreWrappers.SaveFile(
     SaveImage, FileName.RawData, SwapFileName, DestFileName.RawData,
-    FImage.Size(roTrunc in FOptions), faRandomRewrite,
+    FImage.Size(roTrunc in FOptions), faRandomWrite,
     Touch[roTouch in FOptions] + Backup[FFileNames[fkBackup].Count <> 0]
-  ).BytesWritten; // TODO
+  );
 end;
 
 procedure ShowImageException(Prompt: PLegacyChar; E: Exception);
@@ -613,7 +609,8 @@ const
 var
   Stub: TExeStub;
   Loaded: TLoadFileResult;
-  BytesSaved, TotalBytes, TotalSaved: QuadWord;
+  Saved: TSaveFileResult;
+  TotalBytes, TotalWritten: QuadWord;
   ImageSize, OldSize, SectionBytes: LongWord;
   ExtractFileName: PFileName;
   Section: PLegacyTextListItem;
@@ -621,6 +618,8 @@ var
   RawData: TExeSectionData;
   Relocs: PExeSection;
   TempSectionName: array[0..IMAGE_SIZEOF_SHORT_NAME] of LegacyChar;
+
+
 begin
   try
     ParseCommandLine(CommandLine);
@@ -680,7 +679,7 @@ begin
   Output.Create(@Console, MaxPromptWidth, FMaxWidth, FMaxFileSize);
   try
     TotalBytes := 0;
-    TotalSaved := 0;
+    TotalWritten := 0;
     FileName := FFoundFiles.First;
     while FileName <> nil do
     begin
@@ -695,7 +694,6 @@ begin
         end
         else
           Output.Action(Processing[TypeOf(DestFileName^) <> nil], FileName);
-        Inc(TotalBytes, Loaded.FileSize);
 
         ImageSize := FImage.Size(False);
         if FLogStyle <> lsTotals then
@@ -719,7 +717,7 @@ begin
             Console.EndOfLine;
             Console.WriteLn(PLegacyChar(sChainedDataFound), StrLen(sChainedDataFound),
               1 + Byte((FileName.Next <> nil) and (FLogStyle <> lsTotals)));
-            Inc(TotalSaved, Loaded.FileSize);
+            Inc(TotalWritten, Loaded.FileSize);
             FileName := FileName.Next;
             Continue;
           end;
@@ -738,10 +736,10 @@ begin
             begin
               Load(@FImage.Stub);
               Strip(roStrip in FOptions);
-              BytesSaved := CoreWrappers.SaveFile(Save, ExtractFileName.RawData, Size).BytesWritten; // TODO
+              Saved := CoreWrappers.SaveFile(Save, ExtractFileName.RawData, Size);
             end;
             if FLogStyle <> lsTotals then
-              Output.TransferStats(0, BytesSaved);
+              Output.TransferStats(0, Saved.BytesWritten);
           finally
             Stub.Destroy;
           end;
@@ -837,7 +835,8 @@ begin
         else if DestFileName = @FCurrentPath then
           FCurrentPath.ChangeFileName(FileName);
 
-        BytesSaved := FImage.Size(roTrunc in FOptions);
+        Saved.FileSize := Loaded.FileSize;
+        Saved.BytesWritten := FImage.Size(roTrunc in FOptions);
         try
           if TypeOf(DestFileName^) <> nil then
             try
@@ -856,35 +855,40 @@ begin
                 begin
                   Output.Action(sBackuping, @FFileNames[fkBackup]);
                   Console.WriteLn;
-                  Output.Action(sSaving, DestFileName);
                 end;
-                BytesSaved := SaveFile(FFileNames[fkBackup].RawData);
+                Saved := SaveFile(FFileNames[fkBackup].RawData);
               end
               else
-              begin
-                if FLogStyle <> lsTotals then
-                  Output.Action(sSaving, DestFileName);
-                BytesSaved := SaveFile(nil);
-              end;
+                Saved := SaveFile(nil);
 
               if FLogStyle <> lsTotals then
-                Output.TransferStats(Loaded.FileSize, BytesSaved);
+              begin
+                if Saved.FileSize <> 0 then
+                begin
+                  Output.Action(sDestFile, DestFileName);
+                  Output.TransferStats(Loaded.FileSize, Saved.FileSize);
+                end;
+                Output.Action(sSaving, DestFileName);
+              end;
             finally
+              if Saved.FileSize = 0 then
+                Saved.FileSize := Loaded.FileSize;
               if DestFileName = FileName then
                 DestFileName := @FFileNames[fkInto];
             end
           else
             if FLogStyle <> lsTotals then
-            begin
               Output.Action(sEstimated, FileName);
-              Output.TransferStats(Loaded.FileSize, BytesSaved);
-            end;
+          Inc(TotalBytes, Saved.FileSize);
 
           if FLogStyle <> lsTotals then
+          begin
+            Output.TransferStats(Saved.FileSize, Saved.BytesWritten);
             Output.Action(sTotal, nil);
-          Output.StripStats(Loaded.FileSize, BytesSaved);
+          end;
+          Output.StripStats(Saved.FileSize, Saved.BytesWritten);
         finally
-          Inc(TotalSaved, BytesSaved);
+          Inc(TotalWritten, Saved.BytesWritten);
         end;
 
         if roListSections in FOptions then
@@ -919,7 +923,7 @@ begin
     end;
 
     if (FFoundFiles.Count > 1) and (TotalBytes <> 0) then
-      Output.TotalStats(FFoundFiles.Count, TotalBytes, TotalSaved);
+      Output.TotalStats(FFoundFiles.Count, TotalBytes, TotalWritten);
   finally
     Output.Destroy;
     TmpFileName.Destroy;
