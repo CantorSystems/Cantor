@@ -107,6 +107,10 @@ const
 
   sPathEllipsis = '[...]';
 
+  sSection = '  %9hs';
+  sStubSection    = '{stub}';
+  sHeadersSection = '{headers}';
+
   sLoading            = 'Loading';
   sChainedData        = 'Chained data';
   sImageData          = 'Image data';

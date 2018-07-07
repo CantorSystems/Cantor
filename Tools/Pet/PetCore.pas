@@ -898,13 +898,21 @@ begin
           else
             SrcFileName := FileName;
           Console.WriteLn(sSectionList, 0, [SrcFileName.RawData]);
+
+          Console.WriteLn(sSection, 0, [PLegacyChar(sStubSection)], 0);
+          Output.TransferStats(Loaded.FileSize, FImage.Stub.Size);
+
+          Console.WriteLn(sSection, 0, [PLegacyChar(sHeadersSection)], 0);
+          Output.TransferStats(Loaded.FileSize, FImage.HeadersSize +
+            FImage.Count * SizeOf(TImageSectionHeader));
+
           for I := 0 to FImage.Count - 1 do
             with FImage.Sections[I] do
             begin
               L := StrLen(Header.Name, IMAGE_SIZEOF_SHORT_NAME);
               Move(Header.Name[0], TempSectionName, L);
               TempSectionName[L] := #0;
-              Console.WriteLn('  %8hs', 0, [@TempSectionName], 0);
+              Console.WriteLn(sSection, 0, [@TempSectionName], 0);
               Output.TransferStats(Loaded.FileSize, Size);
             end;
         end;
