@@ -4,7 +4,7 @@
     Copyright (c) 2013-2018 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
-      * Lite -- avoid redundant bloatness of code, without functionality loss
+      * Locale -- additional locale-dependent translations for console output
 *)
 
 unit PetCore;
@@ -661,7 +661,8 @@ begin
   case FFoundFiles.Count of
     0:
       begin
-        Console.WriteLn(PLegacyChar(sNoFilesFound), StrLen(sNoFilesFound));
+        Console.WriteLn({$IFDEF Locale} CP_LOCALIZATION, {$ENDIF}
+          PLegacyChar(sNoFilesFound), StrLen(sNoFilesFound));
         Exit;
       end;
     1:
@@ -715,8 +716,10 @@ begin
           if (TypeOf(DestFileName^) <> nil) and not (roUnsafe in FOptions) then
           begin
             Console.EndOfLine;
-            Console.WriteLn(PLegacyChar(sChainedDataFound), StrLen(sChainedDataFound),
-              1 + Byte((FileName.Next <> nil) and (FLogStyle <> lsTotals)));
+            Console.WriteLn({$IFDEF Locale} CP_LOCALIZATION, {$ENDIF}
+              PLegacyChar(sChainedDataFound), StrLen(sChainedDataFound),
+              1 + Byte((FileName.Next <> nil) and (FLogStyle <> lsTotals))
+            );
             Inc(TotalWritten, Loaded.FileSize);
             FileName := FileName.Next;
             Continue;

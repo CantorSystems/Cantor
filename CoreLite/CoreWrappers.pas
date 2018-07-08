@@ -8,6 +8,7 @@
     Conditional defines:
       * Debug -- force ANSI code page for TStreamConsole
       * Lite -- THandleStream and TFileMapping without virtual methods
+      * Locale -- additional locale-dependent translations for console output
 *)
 
 unit CoreWrappers;
@@ -198,16 +199,20 @@ type
 
   PStreamConsole = ^TStreamConsole;
   TStreamConsole = object(TConsole)
+  protected
+    procedure ReadLn(LineBreaks: Integer = 1); overload;
   public
   {$IFDEF Debug}
     constructor Create(ErrorOutput: Boolean = False);
   {$ENDIF}
     procedure EndOfLine;
 
-    procedure ReadLn(Prompt: PLegacyChar; Count: Integer; LineBreaks: Integer = 1);
+    procedure ReadLn(Prompt: PLegacyChar; Count: Integer; LineBreaks: Integer = 1); overload;
+    procedure ReadLn(CP: Word; Prompt: PLegacyChar; Count: Integer; LineBreaks: Integer = 1); overload;
 
     procedure WriteLn(LineBreaks: Integer = 1); overload;
     procedure WriteLn(Text: PLegacyChar; Count: Integer; LineBreaks: Integer = 1); overload;
+    procedure WriteLn(CP: Word; Text: PLegacyChar; Count: Integer; LineBreaks: Integer = 1); overload;
     procedure WriteLn(Fmt: PLegacyChar; FixedWidth: Integer;
       const Args: array of const; LineBreaks: Integer = 1); overload;
     procedure WriteLn(Text: PWideChar; Count: Integer; LineBreaks: Integer = 1); overload;
@@ -221,10 +226,12 @@ type
     procedure EndOfLine;
 
     procedure ReadLn(Prompt: PLegacyChar; Count: Integer; LineBreaks: Integer = 1); overload;
+    procedure ReadLn(CP: Word; Prompt: PLegacyChar; Count: Integer; LineBreaks: Integer = 1); overload;
     procedure ReadLn(Prompt: PWideChar; Count: Integer; LineBreaks: Integer = 1); overload;
 
     procedure WriteLn(LineBreaks: Integer = 1); overload;
     procedure WriteLn(Text: PLegacyChar; Count: Integer; LineBreaks: Integer = 1); overload;
+    procedure WriteLn(CP: Word; Text: PLegacyChar; Count: Integer; LineBreaks: Integer = 1); overload;
     procedure WriteLn(Text: PWideChar; Count: Integer; LineBreaks: Integer = 1); overload;
 
     property TextAttribute: Word write SetTextAttribute;
@@ -1018,16 +1025,27 @@ begin
     WriteLn;
 end;
 
-procedure TStreamConsole.ReadLn(Prompt: PLegacyChar; Count, LineBreaks: Integer);
+procedure TStreamConsole.ReadLn(LineBreaks: Integer);
 var
   Dummy: array[0..$FF] of LegacyChar; // preventing flood
   BytesRead: LongWord;
 begin
-  WriteLn(Prompt, Count, 0);
   WriteLn(PLegacyChar(@Ellipsis), SizeOf(Ellipsis), 0);
 {$IFDEF Tricks} System. {$ENDIF}
   ReadFile(FInput, Dummy, SizeOf(Dummy), BytesRead, nil);
   WriteLn(LineBreaks - 1);
+end;
+
+procedure TStreamConsole.ReadLn(Prompt: PLegacyChar; Count, LineBreaks: Integer);
+begin
+  WriteLn(Prompt, Count, 0);
+  ReadLn(LineBreaks);
+end;
+
+procedure TStreamConsole.ReadLn(CP: Word; Prompt: PLegacyChar; Count, LineBreaks: Integer);
+begin
+  WriteLn(CP, Prompt, Count, 0);
+  ReadLn(LineBreaks);
 end;
 
 procedure TStreamConsole.WriteLn(LineBreaks: Integer);
@@ -1042,7 +1060,22 @@ begin // Fast core
     WriteFile(FOutput, LnBrks, Length(LnBrks), BytesWritten, nil);
   if LineBreaks mod 4 <> 0 then {$IFDEF Tricks} System. {$ENDIF}
     WriteFile(FOutput, LnBrks, LineBreaks mod 4 * Length(sLineBreak), BytesWritten, nil);
-  NeedEOL := LineBreaks = 0; 
+  NeedEOL := LineBreaks = 0;
+end;
+
+procedure TStreamConsole.WriteLn(CP: Word; Text: PLegacyChar; Count, LineBreaks: Integer);
+var
+  W: TWideStringRec;
+begin
+  if CP <> FCodePage then
+  begin
+    W := EncodeUTF16(Text, Count, CP);
+    try
+      WriteLn(W.Value, W.Length, LineBreaks);
+    finally
+      FreeMem(W.Value);
+    end;
+  end;
 end;
 
 procedure TStreamConsole.WriteLn(Text: PLegacyChar; Count, LineBreaks: Integer);
@@ -1097,6 +1130,12 @@ end;
 
 { TScreenConsole }
 
+procedure TScreenConsole.EndOfLine;
+begin
+  if NeedEOL then
+    WriteLn;
+end;
+
 procedure TScreenConsole.ReadLn(Prompt: PLegacyChar; Count, LineBreaks: Integer);
 var
   Dummy: array[0..$FF] of LegacyChar; // preventing flood
@@ -1108,10 +1147,19 @@ begin
   WriteLn(LineBreaks - 1);
 end;
 
-procedure TScreenConsole.EndOfLine;
+procedure TScreenConsole.ReadLn(CP: Word; Prompt: PLegacyChar; Count, LineBreaks: Integer);
+var
+  W: TWideStringRec;
 begin
-  if NeedEOL then
-    WriteLn;
+  if CP <> FCodePage then
+  begin
+    W := EncodeUTF16(Prompt, Count, CP);
+    try
+      ReadLn(W.Value, W.Length, LineBreaks);
+    finally
+      FreeMem(W.Value);
+    end;
+  end;
 end;
 
 procedure TScreenConsole.ReadLn(Prompt: PWideChar; Count, LineBreaks: Integer);
@@ -1160,6 +1208,21 @@ begin
     WriteLn(LineBreaks)
   else
     NeedEOL := True;
+end;
+
+procedure TScreenConsole.WriteLn(CP: Word; Text: PLegacyChar; Count, LineBreaks: Integer);
+var
+  W: TWideStringRec;
+begin
+  if CP <> FCodePage then
+  begin
+    W := EncodeUTF16(Text, Count, CP);
+    try
+      WriteLn(W.Value, W.Length, LineBreaks);
+    finally
+      FreeMem(W.Value);
+    end;
+  end;
 end;
 
 procedure TScreenConsole.WriteLn(Text: PWideChar; Count, LineBreaks: Integer);

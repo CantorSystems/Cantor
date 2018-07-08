@@ -6,7 +6,8 @@
     Conditional defines:
       * Debug -- Delphi IDE friendly exceptions
       * ForceMMX -- allow MMX with FastCode
-      * Lite -- lite CoreWrappers.THandleStream and lite PetCore
+      * Lite -- lite CoreWrappers and CoreApp
+      * Locale -- additional locale-dependent translations for console output
       * NoASLR -- build without ALSR feature (Delphi 2007+)
       * Tricks -- when using tricky lite System unit
 

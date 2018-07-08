@@ -4,6 +4,10 @@
     Console application abstraction layer
 
     Copyright (c) 2015-2018 Vladislav Javadov (aka Freeman)
+
+    Conditional defines:
+      * Lite -- avoid useless doubts in code
+      * Locale -- use additional locale-dependent translations for console output
 *)
 
 unit CoreApp;
@@ -243,7 +247,8 @@ begin
   if caPause in PConsoleAppCast(@Self).Options then
   begin
     FConsole.WriteLn(Byte(NeedEOL) + 1);
-    FConsole.ReadLn(sPressEnterToExit, StrLen(sPressEnterToExit));
+    FConsole.ReadLn({$IFDEF Locale} CP_LOCALIZATION, {$ENDIF}
+      sPressEnterToExit, StrLen(sPressEnterToExit));
   end;
 
   FConsole.Destroy;
@@ -258,9 +263,10 @@ begin
       WriteLn;
   {$ENDIF}
     WriteLn(UsageFmt, 0, [FAppName.Data], 2);
-    WriteLn(HelpMsg, StrLen(HelpMsg), 2);
+    WriteLn({$IFDEF Locale} CP_LOCALIZATION, {$ENDIF} HelpMsg, StrLen(HelpMsg), 2);
     if CodePage = CP_UTF8 then
-      WriteLn(PLegacyChar(sAvoidCharCorruption), StrLen(sAvoidCharCorruption));
+      WriteLn({$IFDEF Locale} CP_LOCALIZATION, {$ENDIF}
+        PLegacyChar(sAvoidCharCorruption), StrLen(sAvoidCharCorruption));
   end;
 end;
 
@@ -307,7 +313,8 @@ begin
     with FConsole do
     begin
       WriteLn;
-      WriteLn(Text, StrLen(Text), 1 + Byte(not Result));
+      WriteLn({$IFDEF Locale} CP_LOCALIZATION, {$ENDIF}
+        Text, StrLen(Text), 1 + Byte(not Result));
     end;
 end;
 
