@@ -602,6 +602,33 @@ begin
   Console.WriteLn(Prompt, 0, [E.Message.AsString, ImageFileName.RawData]);
 end;
 
+procedure ShowImageOptions;
+var
+  Opt: array[0..2] of PCoreChar;
+  P: PPCoreChar;
+begin
+  FillChar(Opt, SizeOf(Opt), 0);
+  P := @Opt[0];
+  if FImage.IsLargeAddressAware then
+  begin
+    P^ := s3GB;
+    Inc(P^);
+    Inc(P);
+  end;
+  if FImage.IsASLRAware then
+  begin
+    P^ := sASLR;
+    Inc(P^);
+    Inc(P);
+  end;
+  if FImage.IsDEPAware then
+  begin
+    P^ := sDEP;
+    Inc(P^);
+  end;
+  Console.WriteLn(sImageOptionsFmt, 0, [sImageOptions, Opt[0], Opt[1], Opt[2]]);
+end;
+
 const
   DataDirectory: array[Boolean] of TStripOptions = ([], [soDataDirectory]);
   Deep: array[Boolean] of TStripOptions = ([], [soOrphanedSections]);
@@ -896,16 +923,17 @@ begin
 
         if roListSections in FOptions then
         begin
-          if TypeOf(DestFileName^) <> nil then
-            SrcFileName := DestFileName
-          else
-            SrcFileName := FileName;
-          Console.WriteLn(sSectionList, 0, [SrcFileName.RawData]);
+          if FLogStyle <> lsTotals then
+          begin
+            Console.WriteLn;
+            Console.WriteLn({$IFDEF Locale} CP_LOCALIZATION, {$ENDIF}
+              PLegacyChar(sSectionList), StrLen(sSectionList));
+          end;
 
-          Console.WriteLn(sSection, 0, [PLegacyChar(sStubSection)], 0);
+          Console.WriteLn(sSectionFmt, 0, [PLegacyChar(sStubSection)], 0);
           Output.TransferStats(Loaded.FileSize, FImage.Stub.Size);
 
-          Console.WriteLn(sSection, 0, [PLegacyChar(sHeadersSection)], 0);
+          Console.WriteLn(sSectionFmt, 0, [PLegacyChar(sHeadersSection)], 0);
           Output.TransferStats(Loaded.FileSize, FImage.HeadersSize +
             Cardinal(FImage.Count * SizeOf(TImageSectionHeader)));
 
@@ -915,9 +943,18 @@ begin
               L := StrLen(Header.Name, IMAGE_SIZEOF_SHORT_NAME);
               Move(Header.Name[0], TempSectionName, L);
               TempSectionName[L] := #0;
-              Console.WriteLn(sSection, 0, [@TempSectionName], 0);
+              Console.WriteLn(sSectionFmt, 0, [@TempSectionName], 0);
               Output.TransferStats(Loaded.FileSize, Size);
             end;
+
+          if FLogStyle <> lsTotals then
+            Console.WriteLn;
+          with FImage.Headers.OptionalHeader do
+            Console.WriteLn(sOSVersionFmt, 0, [PLegacyChar(sRequiredOSVersion),
+              MajorOSVersion, MinorOSVersion, MajorSubsystemVersion, MinorSubsystemVersion]);
+          ShowImageOptions;
+          if (FLogStyle <> lsTotals) and (FileName.Prev <> nil) then
+            Console.WriteLn;
         end;
       except
         on E: EBadImage do
@@ -934,7 +971,10 @@ begin
     end;
 
     if (FFoundFiles.Count > 1) and (TotalBytes <> 0) then
+    begin
+      Console.WriteLn;
       Output.TotalStats(FFoundFiles.Count, TotalBytes, TotalWritten);
+    end;
   finally
     Output.Destroy;
     TmpFileName.Destroy;

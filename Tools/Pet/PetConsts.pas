@@ -107,9 +107,16 @@ const
 
   sPathEllipsis = '[...]';
 
-  sSection = '  %9hs';
-  sStubSection    = '{stub}';
-  sHeadersSection = '{headers}';
+  sOSVersionFmt    = '%13hs  %d.%d/%d.%d';
+  sImageOptionsFmt = '%13hs  %s %s %s';
+
+  sRequiredOSVersion  = 'OS Version';
+  sImageOptions       = 'Image options';
+
+  sSectionFmt = '  %9hs';
+
+  sStubSection        = '{stub}';
+  sHeadersSection     = '{headers}';
 
   sLoading            = 'Loading';
   sChainedData        = 'Chained data';
@@ -137,8 +144,8 @@ const
 
   sUnexpectedEndOfStream = '%hs from %s'; // Unexpected end of stream: read xx bytes instead of yy from <file>
   sChainedDataFound = 'Chained data found, safe stripping stopped';
-  sSectionList = 'Section list of %s';
-  sTotalsMessage = sLineBreak + '%u files, %d bytes (%hs)';
+  sSectionList = 'Headers and sections';
+  sTotalsMessage = '%u files, %d bytes (%hs)';
   sNoFilesFound = 'No files found';
   sSectionNotFound = 'Section �%s� not found';
   sImageBaseUnaligned = 'Image base %08X is not on 64 KB boundary';
