@@ -2,6 +2,9 @@
     PE Tool strings and messages
 
     Copyright (c) 2012-2018 Vladislav Javadov (aka Freeman)
+
+    Conditional defines:
+      * Locale -- use &times; sign in locale-dependent encoding or raw UTF-8
 *)
 
 unit PetConsts;
@@ -51,8 +54,11 @@ const         // short Unicode strings
 { Localize }
 
 const
+  TimesSign = {$IFDEF Locale} #215 {$ELSE} #$C3#$97 {$ENDIF};
+
   sUsage =
     'Usage:'#9'%s <source> [[<source>...] [commands [options]]]';
+
   sHelp =
     'Commands' + sLineBreak +
             #9'-backup <bak>' +    #9#9'Backup <source> file to <bak> file' + sLineBreak +
@@ -78,7 +84,8 @@ const
             #9'-osver <#[.#]>' +   #9#9'Set required OS version to <#> or <#.#>' + sLineBreak +
             #9'-raw' +           #9#9#9'Don''t align raw data size values at section' + sLineBreak +
                                #9#9#9#9'headers to avoid antivirus false positives' + sLineBreak +
-            #9'-rebase <########>' + #9'Rebase image to hexadecimal address <########>' + sLineBreak +
+            #9'-rebase <[$]######[h]>'#9'Rebase image to <####>'+ TimesSign + '64K bound or to' + sLineBreak +
+                               #9#9#9#9'hexadecimal address <$########> or <########h>' + sLineBreak +
             #9'-stub [stub]|[.]' +   #9'Replace stub with one from [stub] file or take' + sLineBreak +
                                #9#9#9#9'stub from PE Tool itself' + sLineBreak +
             #9'-touch' +         #9#9#9'Don''t keep original file timestamp' + sLineBreak +
@@ -111,6 +118,7 @@ const
   sImageOptionsFmt = '%13hs  %s %s %s';
 
   sRequiredOSVersion  = 'OS Version';
+  sImageBaseTitle     = 'Image base';
   sImageOptions       = 'Image options';
 
   sSectionFmt = '  %9hs';

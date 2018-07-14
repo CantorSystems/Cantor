@@ -492,8 +492,21 @@ begin
             raise ECommandLine.Create(sRebaseAddress);
           if FRebaseAddress <> 0 then
             raise ECommandLine.CreateDuplicate(sRebaseAddress, @Param);
-          FRebaseAddress := Param.AsHexadecimal;
-          if FRebaseAddress mod $10000 <> 0 then
+          if Param.RawData[0] = '$' then
+          begin
+            Param.Skip;
+            FRebaseAddress := Param.AsHexadecimal;
+          end
+          else if Word(Param.RawData[Param.Count - 1]) or $20 = Word('h') then
+          begin
+            Param.Truncate(1);
+            FRebaseAddress := Param.AsHexadecimal;
+          end
+          else
+            FRebaseAddress := Param.AsInteger;
+          if FRebaseAddress < $10000 then
+            FRebaseAddress := FRebaseAddress * $10000
+          else if FRebaseAddress mod $10000 <> 0 then
             raise EImageBase.Create(FRebaseAddress);
         end
         else if Key.Equals(sDropSect) then
@@ -950,8 +963,13 @@ begin
           if FLogStyle <> lsBrief then
             Console.WriteLn;
           with FImage.Headers.OptionalHeader do
+          begin
             Console.WriteLn(sOSVersionFmt, 0, [PLegacyChar(sRequiredOSVersion),
               MajorOSVersion, MinorOSVersion, MajorSubsystemVersion, MinorSubsystemVersion]);
+            TmpFileName.AsHexadecimal(ImageBase, -8, False, CoreChar('0'));
+            Console.WriteLn(sImageOptionsFmt, 0, [PLegacyChar(sImageBaseTitle),
+              TmpFileName.RawData, nil, nil]);
+          end;
           ShowImageOptions;
           if (FLogStyle <> lsBrief) and (FileName.Prev <> nil) then
             Console.WriteLn;
