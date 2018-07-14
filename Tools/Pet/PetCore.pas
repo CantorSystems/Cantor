@@ -39,7 +39,7 @@ type
   TFileKind = (fkNone, fkSource, fkInto, fkStub, fkExtract, fkBackup{, fkDump});
   TFileNames = array[fkInto..High(TFileKind)] of TFileName;
 
-  TLogStyle = (lsAuto, lsTotals, lsActions);
+  TLogStyle = (lsAuto, lsBrief, lsDetail);
 
   TRunOption = (roPause, roNoLogo, roVersion, ro3GB, roASLR, roDEP, // ordered
     {roAuto,} roStrip, roTrunc, roTouch, roUnsafe, roDeep, roDir, roRaw,
@@ -334,7 +334,7 @@ var
   K: TFileKind;
   Width: Integer;
 begin
-  if FLogStyle <> lsTotals then
+  if FLogStyle <> lsBrief then
   begin
     Result := StrLen(DefaultMaxWidth);
     if roASLR in FOptions then
@@ -513,10 +513,10 @@ begin
             raise ECommandLine.CreateMissing(sLogStyle);
           if FLogStyle <> lsAuto then
             raise ECommandLine.CreateDuplicate(sLogStyle, @Param);
-          if Param.Equals(sActions) then
-            FLogStyle := lsActions
-          else if Param.Equals(sTotals) then
-            FLogStyle := lsTotals
+          if Param.Equals(sDetail) then
+            FLogStyle := lsDetail
+          else if Param.Equals(sBrief) then
+            FLogStyle := lsBrief
           else
             raise ECommandLine.CreateInvalid(sLogStyle, @Param);
         end
@@ -667,7 +667,7 @@ begin
   PPointer(@FCurrentPath)^ := TypeOf(TFileName); // Fast core
   FFoundFiles.Create;
   FMaxWidth := MaxFileNameWidth(40); // magic
-  if FLogStyle = lsTotals then
+  if FLogStyle = lsBrief then
     Inc(FMaxWidth, StrLen(DefaultMaxWidth) - TotalsMaxPromptWidth);
 
   FileName := FSourceFileNames.First;
@@ -715,7 +715,7 @@ begin
         ImageFileName := FileName;
         Loaded := LoadFile(FImage.Load, FileName.RawData, faRandomRead);
 
-        if FLogStyle <> lsTotals then
+        if FLogStyle <> lsBrief then
         begin
           Output.Action(sLoading, FileName);
           Output.TransferStats(Loaded.FileSize, Loaded.BytesRead);
@@ -724,7 +724,7 @@ begin
           Output.Action(Processing[TypeOf(DestFileName^) <> nil], FileName);
 
         ImageSize := FImage.Size(False);
-        if FLogStyle <> lsTotals then
+        if FLogStyle <> lsBrief then
         begin
           Output.Action(sImageData, nil);
           Output.TransferStats(Loaded.BytesRead, ImageSize);
@@ -732,7 +732,7 @@ begin
 
         if Loaded.FileSize <> Loaded.BytesRead then // chained data found
         begin
-          if FLogStyle <> lsTotals then
+          if FLogStyle <> lsBrief then
           begin
             Output.Action(sChainedData, nil);
             if roUnsafe in FOptions then
@@ -745,7 +745,7 @@ begin
             Console.EndOfLine;
             Console.WriteLn({$IFDEF Locale} CP_LOCALIZATION, {$ENDIF}
               PLegacyChar(sChainedDataFound), StrLen(sChainedDataFound),
-              1 + Byte((FileName.Next <> nil) and (FLogStyle <> lsTotals))
+              1 + Byte((FileName.Next <> nil) and (FLogStyle <> lsBrief))
             );
             Inc(TotalWritten, Loaded.FileSize);
             FileName := FileName.Next;
@@ -760,7 +760,7 @@ begin
             ExtractFileName := PrepareFileName(fkExtract, @TmpFileName);
             if ExtractFileName = @TmpFileName then
               TmpFileName.ChangeFileName(FileName);
-            if FLogStyle <> lsTotals then
+            if FLogStyle <> lsBrief then
               Output.Action(sExtractingStub, ExtractFileName);
             with Stub do
             begin
@@ -768,7 +768,7 @@ begin
               Strip(roStrip in FOptions);
               Saved := CoreWrappers.SaveFile(Save, ExtractFileName.RawData, Size);
             end;
-            if FLogStyle <> lsTotals then
+            if FLogStyle <> lsBrief then
               Output.TransferStats(0, Saved.BytesWritten);
           finally
             Stub.Destroy;
@@ -778,25 +778,25 @@ begin
         if FFileNames[fkStub].Count <> 0 then
           with FImage.Stub do
           begin
-            if FLogStyle <> lsTotals then
+            if FLogStyle <> lsBrief then
               Output.Action(sReplacingStub, @FFileNames[fkStub]);
             OldSize := Size;
             ImageFileName := @FFileNames[fkStub];
             LoadFile(Load, ImageFileName.RawData);
-            if FLogStyle <> lsTotals then
+            if FLogStyle <> lsBrief then
               Output.StripStats(OldSize, Size);
           end;
 
         if FRebaseAddress <> 0 then
         begin
-          if FLogStyle <> lsTotals then
+          if FLogStyle <> lsBrief then
           begin
             TmpFileName.AsHexadecimal(FRebaseAddress, -8, False, CoreChar('0'));
             Output.Action(sRebasingTo, @TmpFileName);
           end;
           if FImage.Rebase(FRebaseAddress div $10000) = 0 then
             raise EBadImage.Create(sCannotRebaseImage)
-          else if FLogStyle <> lsTotals then
+          else if FLogStyle <> lsBrief then
             Console.WriteLn;
         end;
 
@@ -807,7 +807,7 @@ begin
           begin
             with Section^ do
               SectionBytes := FImage.Delete(RawData, Count);
-            if FLogStyle <> lsTotals then
+            if FLogStyle <> lsBrief then
             begin
               TmpFileName.AsString(Section);
               if SectionBytes <> 0 then
@@ -825,11 +825,11 @@ begin
 
         if roStrip in FOptions then
         begin
-          if FLogStyle <> lsTotals then
+          if FLogStyle <> lsBrief then
             Output.Action(sStripping, nil);
           FImage.Strip([soStub..soEmptySections] - Relocations[roASLR in FOptions] +
             DataDirectory[roDir in FOptions] + Deep[roDeep in FOptions]);
-          if FLogStyle <> lsTotals then
+          if FLogStyle <> lsBrief then
           begin
             Output.StripStats(ImageSize, FImage.Size(roTrunc in FOptions));
             if (roASLR in FOptions) and FImage.CanStripRelocations then
@@ -846,11 +846,11 @@ begin
         else
           with FImage.Stub do
           begin
-            if FLogStyle <> lsTotals then
+            if FLogStyle <> lsBrief then
               Output.Action(sFixingStub, nil);
             OldSize := Size;
             Strip(False);
-            if FLogStyle <> lsTotals then
+            if FLogStyle <> lsBrief then
               Output.StripStats(OldSize, Size);
           end;
 
@@ -881,7 +881,7 @@ begin
 
               if FFileNames[fkBackup].Count <> 0 then
               begin
-                if FLogStyle <> lsTotals then
+                if FLogStyle <> lsBrief then
                 begin
                   Output.Action(sBackuping, @FFileNames[fkBackup]);
                   Console.WriteLn;
@@ -891,7 +891,7 @@ begin
               else
                 Saved := SaveFile(nil);
 
-              if FLogStyle <> lsTotals then
+              if FLogStyle <> lsBrief then
               begin
                 if Saved.FileSize <> 0 then
                 begin
@@ -907,11 +907,11 @@ begin
                 DestFileName := @FFileNames[fkInto];
             end
           else
-            if FLogStyle <> lsTotals then
+            if FLogStyle <> lsBrief then
               Output.Action(sEstimated, FileName);
           Inc(TotalBytes, Saved.FileSize);
 
-          if FLogStyle <> lsTotals then
+          if FLogStyle <> lsBrief then
           begin
             Output.TransferStats(Saved.FileSize, Saved.BytesWritten);
             Output.Action(sTotal, nil);
@@ -923,7 +923,7 @@ begin
 
         if roListSections in FOptions then
         begin
-          if FLogStyle <> lsTotals then
+          if FLogStyle <> lsBrief then
           begin
             Console.WriteLn;
             Console.WriteLn({$IFDEF Locale} CP_LOCALIZATION, {$ENDIF}
@@ -947,13 +947,13 @@ begin
               Output.TransferStats(Loaded.FileSize, Size);
             end;
 
-          if FLogStyle <> lsTotals then
+          if FLogStyle <> lsBrief then
             Console.WriteLn;
           with FImage.Headers.OptionalHeader do
             Console.WriteLn(sOSVersionFmt, 0, [PLegacyChar(sRequiredOSVersion),
               MajorOSVersion, MinorOSVersion, MajorSubsystemVersion, MinorSubsystemVersion]);
           ShowImageOptions;
-          if (FLogStyle <> lsTotals) and (FileName.Prev <> nil) then
+          if (FLogStyle <> lsBrief) and (FileName.Prev <> nil) then
             Console.WriteLn;
         end;
       except
@@ -966,7 +966,7 @@ begin
       end;
 
       FileName := FileName.Next;
-      if (FileName <> nil) and ((FLogStyle <> lsTotals) or (roListSections in FOptions)) then
+      if (FileName <> nil) and ((FLogStyle <> lsBrief) or (roListSections in FOptions)) then
         Console.WriteLn;
     end;
 

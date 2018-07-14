@@ -39,8 +39,8 @@ const         // short Unicode strings
   sVerbose    = #7'verbose';
   sVerInfo    = #8'verinfo';
 
-  sActions    = #7'actions';
-  sTotals     = #6'totals';
+  sBrief      = #5'brief';
+  sDetail     = #6'detail';
 
   sLogo =
     '        /\_/\' + sLineBreak +
@@ -73,7 +73,7 @@ const
             #9'-dep' +           #9#9#9'Enable data execution prevention (DEP)' + sLineBreak +
             #9'-dir' +           #9#9#9'Strip data directory (lesser compatibility)' + sLineBreak +
             #9'-dropsect <s1,s2,...>'#9'Drop sections <s1>, <s2>, etc.' + sLineBreak +
-            #9'-log <actions|totals>'#9'Output log style' + sLineBreak +
+            #9'-log <brief|detail>' +#9'Output log style' + sLineBreak +
             #9'-ls' +            #9#9#9'Display section list' + sLineBreak +
             #9'-osver <#[.#]>' +   #9#9'Set required OS version to <#> or <#.#>' + sLineBreak +
             #9'-raw' +           #9#9#9'Don''t align raw data size values at section' + sLineBreak +
