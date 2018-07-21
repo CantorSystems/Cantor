@@ -708,7 +708,7 @@ begin
       end;
     1:
       if FLogStyle = lsAuto then
-        Inc(FLogStyle, 2 - Byte(roListSections in FOptions));
+        Inc(FLogStyle, 2);
   else
     if FLogStyle = lsAuto then
       Inc(FLogStyle);
