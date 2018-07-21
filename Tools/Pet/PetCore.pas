@@ -639,7 +639,8 @@ begin
     P^ := sDEP;
     Inc(P^);
   end;
-  Console.WriteLn(sImageOptionsFmt, 0, [sImageOptions, Opt[0], Opt[1], Opt[2]]);
+  if Opt[0] <> nil then
+    Console.WriteLn(sImageOptionsFmt, 0, [sImageOptions, Opt[0], Opt[1], Opt[2]]);
 end;
 
 const
@@ -856,7 +857,7 @@ begin
             end;
           end;
         end
-        else
+        else 
           with FImage.Stub do
           begin
             if FLogStyle <> lsBrief then
