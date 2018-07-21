@@ -595,6 +595,7 @@ var
   TmpFileName: TFileName;
   SrcFileName, DestFileName, ImageFileName: PFileName;
   FileName: PFileNameListItem;
+  Loaded: TLoadFileResult;
   Output: TOutput;
 
 function SaveFile(SwapFileName: PCoreChar): TSaveFileResult;
@@ -615,11 +616,50 @@ begin
   Console.WriteLn(Prompt, 0, [E.Message.AsString, ImageFileName.RawData]);
 end;
 
-procedure ShowImageOptions;
+procedure ShowSections;
 var
   Opt: array[0..2] of PCoreChar;
   P: PPCoreChar;
+  I, L: Integer;
+  TempSectionName: array[0..IMAGE_SIZEOF_SHORT_NAME] of LegacyChar;
 begin
+  if FLogStyle <> lsBrief then
+  begin
+    Console.WriteLn;
+    Console.WriteLn({$IFDEF Locale} CP_LOCALIZATION, {$ENDIF}
+      PLegacyChar(sSectionList), StrLen(sSectionList));
+  end;
+
+  Console.WriteLn(sSectionFmt, 0, [PLegacyChar(sStubSection)], 0);
+  Output.TransferStats(Loaded.FileSize, FImage.Stub.Size);
+
+  Console.WriteLn(sSectionFmt, 0, [PLegacyChar(sHeadersSection)], 0);
+  Output.TransferStats(Loaded.FileSize, FImage.HeadersSize +
+    Cardinal(FImage.Count * SizeOf(TImageSectionHeader)));
+
+  for I := 0 to FImage.Count - 1 do
+    with FImage.Sections[I] do
+    begin
+      L := StrLen(Header.Name, IMAGE_SIZEOF_SHORT_NAME);
+      Move(Header.Name[0], TempSectionName, L);
+      TempSectionName[L] := #0;
+      Console.WriteLn(sSectionFmt, 0, [@TempSectionName], 0);
+      Output.TransferStats(Loaded.FileSize, Size);
+    end;
+
+  if FLogStyle <> lsBrief then
+    Console.WriteLn;
+  with FImage.Headers.OptionalHeader do
+  begin
+    Console.WriteLn(sOSVersionFmt, 0, [PLegacyChar(sRequiredOSVersion),
+      MajorOSVersion, MinorOSVersion, MajorSubsystemVersion, MinorSubsystemVersion]);
+    TmpFileName.AsHexadecimal(ImageBase, -8, False, CoreChar('0'));
+    Console.WriteLn(sSectionAlignmentFmt, 0, [PLegacyChar(sSectionAlignment),
+      SectionAlignment, FileAlignment]);
+    Console.WriteLn(sImageOptionsFmt, 0, [PLegacyChar(sImageBaseTitle),
+      TmpFileName.RawData, nil, nil]);
+  end;
+
   FillChar(Opt, SizeOf(Opt), 0);
   P := @Opt[0];
   if FImage.IsLargeAddressAware then
@@ -649,18 +689,13 @@ const
   Relocations: array[Boolean] of TStripOptions = ([], [soRelocations]);
 var
   Stub: TExeStub;
-  Loaded: TLoadFileResult;
   Saved: TSaveFileResult;
   TotalBytes, TotalWritten: QuadWord;
   ImageSize, OldSize, SectionBytes: LongWord;
   ExtractFileName: PFileName;
   Section: PLegacyTextListItem;
-  I, L: Integer;
   RawData: TExeSectionData;
   Relocs: PExeSection;
-  TempSectionName: array[0..IMAGE_SIZEOF_SHORT_NAME] of LegacyChar;
-
-
 begin
   try
     ParseCommandLine(CommandLine);
@@ -754,13 +789,20 @@ begin
             else
               Output.TransferStats(Loaded.FileSize, Loaded.FileSize - Loaded.BytesRead);
           end;
-          if (TypeOf(DestFileName^) <> nil) and not (roUnsafe in FOptions) then
+          if not (roUnsafe in FOptions) then
           begin
             Console.EndOfLine;
             Console.WriteLn({$IFDEF Locale} CP_LOCALIZATION, {$ENDIF}
-              PLegacyChar(sChainedDataFound), StrLen(sChainedDataFound),
-              1 + Byte((FileName.Next <> nil) and (FLogStyle <> lsBrief))
+              PLegacyChar(sChainedDataFound), StrLen(sChainedDataFound)
             );
+            if roListSections in FOptions then
+            begin
+              ShowSections;
+              if FileName.Next <> nil then
+                Console.WriteLn;
+            end;
+            if (FLogStyle <> lsBrief) and (FileName.Next <> nil) then
+              Console.WriteLn;
             Inc(TotalWritten, Loaded.FileSize);
             FileName := FileName.Next;
             Continue;
@@ -937,41 +979,7 @@ begin
 
         if roListSections in FOptions then
         begin
-          if FLogStyle <> lsBrief then
-          begin
-            Console.WriteLn;
-            Console.WriteLn({$IFDEF Locale} CP_LOCALIZATION, {$ENDIF}
-              PLegacyChar(sSectionList), StrLen(sSectionList));
-          end;
-
-          Console.WriteLn(sSectionFmt, 0, [PLegacyChar(sStubSection)], 0);
-          Output.TransferStats(Loaded.FileSize, FImage.Stub.Size);
-
-          Console.WriteLn(sSectionFmt, 0, [PLegacyChar(sHeadersSection)], 0);
-          Output.TransferStats(Loaded.FileSize, FImage.HeadersSize +
-            Cardinal(FImage.Count * SizeOf(TImageSectionHeader)));
-
-          for I := 0 to FImage.Count - 1 do
-            with FImage.Sections[I] do
-            begin
-              L := StrLen(Header.Name, IMAGE_SIZEOF_SHORT_NAME);
-              Move(Header.Name[0], TempSectionName, L);
-              TempSectionName[L] := #0;
-              Console.WriteLn(sSectionFmt, 0, [@TempSectionName], 0);
-              Output.TransferStats(Loaded.FileSize, Size);
-            end;
-
-          if FLogStyle <> lsBrief then
-            Console.WriteLn;
-          with FImage.Headers.OptionalHeader do
-          begin
-            Console.WriteLn(sOSVersionFmt, 0, [PLegacyChar(sRequiredOSVersion),
-              MajorOSVersion, MinorOSVersion, MajorSubsystemVersion, MinorSubsystemVersion]);
-            TmpFileName.AsHexadecimal(ImageBase, -8, False, CoreChar('0'));
-            Console.WriteLn(sImageOptionsFmt, 0, [PLegacyChar(sImageBaseTitle),
-              TmpFileName.RawData, nil, nil]);
-          end;
-          ShowImageOptions;
+          ShowSections;
           if (FLogStyle <> lsBrief) and (FileName.Prev <> nil) then
             Console.WriteLn;
         end;
