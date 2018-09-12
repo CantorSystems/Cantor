@@ -222,7 +222,7 @@ function FormatInteger(Value: QuadInt; MinWidth: Integer): TIntegerString;
 
 function EstimateArgs(const Args: array of const): Integer;
 procedure FillWideChar(var Buf; Count: Integer; Value: WideChar);
-procedure MoveBytesZeroExpand(const Source; var Dest; Count: Integer);
+procedure MoveBytesExpand(const Source; var Dest; Count: Integer; Value: Integer = 0);
 
 {$IFNDEF CoreLiteVCL}
 function StrAlloc(Length: Integer): PLegacyChar;
@@ -695,7 +695,7 @@ begin
   end;
 end;
 
-procedure MoveBytesZeroExpand(const Source; var Dest; Count: Integer);
+procedure MoveBytesExpand(const Source; var Dest; Count, Value: Integer);
 var
   S: PByte;
   D: PWord;
@@ -704,7 +704,7 @@ begin
   D := @Dest;
   while Count <> 0 do
   begin
-    D^ := S^;
+    D^ := S^ + Value;
     Inc(S);
     Inc(D);
     Dec(Count);

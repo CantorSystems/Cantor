@@ -2198,19 +2198,19 @@ begin
     begin
       Result := -MinWidth - Length;
       FillWideChar(FData[Index], Result, FillChar);
-      MoveBytesZeroExpand(Digits^, FData[Index + Result], Length);
+      MoveBytesExpand(Digits^, FData[Index + Result], Length);
       Inc(Result, Length);
     end
     else
     begin
-      MoveBytesZeroExpand(Digits^, FData[Index], Length);
+      MoveBytesExpand(Digits^, FData[Index], Length);
       FillWideChar(FData[Index + Length], MinWidth - Length, FillChar);
       Result := MinWidth;
     end;
     Exit;
   end
   else
-    MoveBytesZeroExpand(Digits^, FData[Index], Length);
+    MoveBytesExpand(Digits^, FData[Index], Length);
   Result := Length;
 end;
 
