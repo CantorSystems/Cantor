@@ -46,7 +46,7 @@ const
 
 asm
    sub     esp,$40
-{   cmp     al,-20      // Freeman: not needed, let FPU raises own exception
+{   cmp     al,-20      // Freeman: not needed, let FPU raise own exception
    jl      @Exception
    cmp     al,20
    jle     @Continue
