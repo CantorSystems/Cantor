@@ -2222,8 +2222,7 @@ var
   B: Byte;
   Dest: PLongWord;
 begin
-  LowerCaseMask := Byte(LowerCase) * $20;
-  Inc(LowerCaseMask, LowerCaseMask shl 16);
+  LowerCaseMask := Byte(LowerCase) * $2020; // Fast core
 
   Dest := PLongWord(FData + Index);
   for I := 0 to Length - 1 do

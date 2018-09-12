@@ -217,7 +217,7 @@ type
     Digits: PLegacyChar;
   end;
 
-function FormatHexadecimal(Value: QuadInt; MinWidth: Integer; UpperCase: Boolean): TIntegerString;
+function FormatHexadecimal(Value: QuadInt; MinWidth: Integer; LowerCase: Boolean): TIntegerString;
 function FormatInteger(Value: QuadInt; MinWidth: Integer): TIntegerString;
 
 function EstimateArgs(const Args: array of const): Integer;
@@ -596,12 +596,11 @@ end;
 
 { String service }
 
-function FormatHexadecimal(Value: QuadInt; MinWidth: Integer; UpperCase: Boolean): TIntegerString;
+function FormatHexadecimal(Value: QuadInt; MinWidth: Integer; LowerCase: Boolean): TIntegerString;
 var
   LowerCaseMask: Word;
 begin
-  LowerCaseMask := Byte(not UpperCase) * $20;
-  Inc(LowerCaseMask, LowerCaseMask shl 8);
+  LowerCaseMask := Byte(LowerCase) * $2020; // Fast core
 
   with Result do
     Digits := @Data[Length(Data) - SizeOf(Word)];
