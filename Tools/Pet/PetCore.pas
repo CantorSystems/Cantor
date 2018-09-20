@@ -593,7 +593,7 @@ procedure TApplication.Run(CommandLine: PCoreChar);
 
 var
   TmpFileName: TFileName;
-  SrcFileName, DestFileName, ImageFileName: PFileName;
+  DestFileName, ImageFileName: PFileName;
   FileName: PFileNameListItem;
   Loaded: TLoadFileResult;
   Output: TOutput;
@@ -618,7 +618,7 @@ end;
 
 procedure ShowSections;
 var
-  Opt: array[0..2] of PCoreChar;
+  Opt: array[0..3] of PCoreChar;
   P: PPCoreChar;
   I, L: Integer;
   TempSectionName: array[0..IMAGE_SIZEOF_SHORT_NAME] of LegacyChar;
@@ -657,7 +657,7 @@ begin
     Console.WriteLn(sSectionAlignmentFmt, 0, [PLegacyChar(sSectionAlignment),
       SectionAlignment, FileAlignment]);
     Console.WriteLn(sImageOptionsFmt, 0, [PLegacyChar(sImageBaseTitle),
-      TmpFileName.RawData, nil, nil]);
+      TmpFileName.RawData, nil, nil, nil]);
   end;
 
   FillChar(Opt, SizeOf(Opt), 0);
@@ -679,8 +679,13 @@ begin
     P^ := sDEP;
     Inc(P^);
   end;
+  if FImage.IsDotNETAware then
+  begin
+    P^ := sDotNET;
+    Inc(P^);
+  end;
   if Opt[0] <> nil then
-    Console.WriteLn(sImageOptionsFmt, 0, [sImageOptions, Opt[0], Opt[1], Opt[2]]);
+    Console.WriteLn(sImageOptionsFmt, 0, [sImageOptions, Opt[0], Opt[1], Opt[2], Opt[3]]);
 end;
 
 const

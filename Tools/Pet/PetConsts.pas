@@ -27,6 +27,7 @@ const         // short Unicode strings
   sDir        = #3'dir';
   sDeep       = #4'deep';
   sDEP        = #3'DEP';
+  sDotNet     = #4'.NET';
   sDropSect   = #8'dropsect';
   sLS         = #2'ls';
   sLog        = #3'log';
@@ -89,8 +90,8 @@ const
             #9'-stub [stub]|[.]' +   #9'Replace stub with one from [stub] file or take' + sLineBreak +
                                #9#9#9#9'stub from PE Tool itself' + sLineBreak +
             #9'-touch' +         #9#9#9'Don''t keep original file timestamp' + sLineBreak +
-            #9'-trunc' +         #9#9#9'Don''t align last section, truncate file' + sLineBreak +
-                               #9#9#9#9'immediately after data end' + sLineBreak +
+            #9'-trunc' +         #9#9#9'When possible, don''t align last section,' + sLineBreak +
+                               #9#9#9#9'truncate file immediately after data end' + sLineBreak +
             #9'-unsafe' +        #9#9#9'Strip chained certificate and other data' + sLineBreak + sLineBreak +
     'Miscellaneous options' + sLineBreak +
             #9'-nologo' +        #9#9#9'Don''t display logo and copyright' + sLineBreak +
@@ -114,10 +115,12 @@ const
 
   sPathEllipsis = '[...]';
 
-  sOSVersionFmt    = '%13hs  %d.%d/%d.%d';
-  sImageOptionsFmt = '%13hs  %s %s %s';
+  sOSVersionFmt         = '%17hs  %d.%d/%d.%d';
+  sImageOptionsFmt      = '%17hs  %s %s %s %s';
+  sSectionAlignmentFmt  = '%17hs  %X/%X';
 
   sRequiredOSVersion  = 'OS Version';
+  sSectionAlignment   = 'Section alignment';
   sImageBaseTitle     = 'Image base';
   sImageOptions       = 'Image options';
 

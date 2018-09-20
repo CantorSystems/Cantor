@@ -104,6 +104,7 @@ type
     function IndexOf(Name: PLegacyChar; Length: Integer): Integer; overload;
     function IsASLRAware: Boolean;
     function IsDEPAware: Boolean;
+    function IsDotNETAware: Boolean;
     function IsLargeAddressAware: Boolean;
     procedure LargeAddressAware(Value: Boolean = True);
     procedure Load(Source: PReadableStream);
@@ -557,7 +558,7 @@ begin
           Inc(Offset, FHeader.RawDataSize);
           Inc(Offset, FileAlignBytes(Offset));
         end
-        else if (SectionRawData = sdAlign) or (I < Count - 1) then
+        else if (SectionRawData = sdAlign) or (I < Count - 1) or IsDotNETAware then
         begin
           Inc(FHeader.RawDataSize, FileAlignBytes(FHeader.RawDataSize));
           Inc(Offset, FHeader.RawDataSize);
@@ -755,6 +756,13 @@ begin
   Result := FHeaders.OptionalHeader.DLLCharacteristics and IMAGE_DLLCHARACTERISTICS_NX_COMPAT <> 0;
 end;
 
+function TExeImage.IsDotNETAware: Boolean;
+begin
+  with FHeaders.OptionalHeader do
+    Result := (DirectoryEntryCount > IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR) and
+      (QuadWord(DataDirectory[IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR]) <> 0) // Fast core
+end;
+
 function TExeImage.IsLargeAddressAware: Boolean;
 begin
   Result := FHeaders.FileHeader.Characteristics and IMAGE_FILE_LARGE_ADDRESS_AWARE <> 0;
@@ -797,14 +805,8 @@ begin
 
     Source.ReadBuffer(FHeaders.OptionalHeader, FHeaders.FileHeader.OptionalHeaderSize);
     with FHeaders.OptionalHeader do
-    begin
-      if (DirectoryEntryCount > IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR) and
-        (QuadWord(DataDirectory[IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR]) <> 0) // Fast core
-      then
-        raise EBadImage.Create(sDotNETAssembly);
       FillChar(DataDirectory[DirectoryEntryCount], SizeOf(DataDirectory) -
         DirectoryEntryCount * SizeOf(TImageDataDirectory), 0);
-    end;
 
     Capacity := FHeaders.FileHeader.SectionCount;
     for I := 0 to Capacity - 1 do
@@ -921,7 +923,7 @@ begin
   for I := 0 to Count - 1 do
   begin
     FSections[I].Save(Dest);
-    if (I < Count - 1) or not TruncLastSection then
+    if (I < Count - 1) or not TruncLastSection or IsDotNETAware then
       Dest.WriteBuffer(Dummy, FileAlignBytes(Sections[I].FHeader.RawDataSize));
   end;
 end;
@@ -968,7 +970,7 @@ begin
     Inc(Result, FSections[I].Size);;
     Inc(Result, FileAlignBytes(Result));
   end;
-  if TruncLastSection and (Count <> 0) then
+  if TruncLastSection and (Count <> 0) and not IsDotNETAware then
     Dec(Result, FileAlignBytes(FSections[Count - 1].Size));
 end;
 
