@@ -15,7 +15,7 @@ public class [:Core:Word bits; :Core:Boolean isUnicode] of
 
   public class CoreString = CoreChar[:Core:Word];
 
-  public class Kernel32 with stdcall of // static linking -- without handle by
+  public this class Kernel32 with stdcall of // static linking -- without handle by
     static of
       out BOOL FreeLibrary;
       out DWORD GetLastError;
@@ -26,4 +26,6 @@ public class [:Core:Word bits; :Core:Boolean isUnicode] of
       out BOOL SetConsoleOutputCP[UINT codePage];
     end;
   end;
+
+  public this class User32 with stdcall; // this class -- merge (helper) class
 end;
