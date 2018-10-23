@@ -93,7 +93,7 @@ type
     constructor Create;
     destructor Destroy; virtual;
     function ASLRAware(Value: Boolean = True): Boolean;
-    procedure Build(FileAlignment: LongWord = 512;
+    procedure Build(Alignment: LongWord = 512;
       SectionRawData: TExeSectionData = sdTruncLast);
     function CanStripRelocations: Boolean;
     procedure DEPAware(Value: Boolean = True);
@@ -512,7 +512,7 @@ begin
     DLLCharacteristics := DLLCharacteristics or Byte(Value and Result) * IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE;
 end;
 
-procedure TExeImage.Build(FileAlignment: LongWord; SectionRawData: TExeSectionData);
+procedure TExeImage.Build(Alignment: LongWord; SectionRawData: TExeSectionData);
 const
   FixedOptHeaderSize = SizeOf(TImageOptionalHeader) -
     IMAGE_NUMBEROF_DIRECTORY_ENTRIES * SizeOf(TImageDataDirectory);
@@ -520,8 +520,12 @@ var
   Offset: LongWord;
   I: Integer;
 begin
-  if FileAlignment <> 0 then
-    FHeaders.OptionalHeader.FileAlignment := FileAlignment;
+  if Alignment <> 0 then
+    with FHeaders.OptionalHeader do
+      if Alignment <= SectionAlignment then // don't expand native images
+        FHeaders.OptionalHeader.FileAlignment := Alignment
+      else if SectionAlignment < FileAlignment then
+        FileAlignment := SectionAlignment;
 
   if FHeaders.OptionalHeader.MajorOSVersion >= 5 then
     with FHeaders.FileHeader do
