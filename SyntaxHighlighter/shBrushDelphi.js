@@ -18,12 +18,12 @@
 			'absolute abstract and array as asm assembler at automated begin case cdecl class const ' +
 			'constructor contains default deprecated destructor dispid dispinterface div do downto dynamic ' +
 			'else end except export exports external experimental far file final finalization finally for ' +
-			'forward function goto helper if implementation implements in index inherited initialization ' +
-			'inline is label library local message mod name near nil nodefault not of on operator or out ' +
+			'forward function generic goto helper if implementation implements in index inherited initialization ' +
+			'inline interface is label library local message mod name near nil nodefault not of on operator or out ' +
 			'overload override package packed pascal platform private procedure program property protected ' +
 			'public published raise read readonly record reference register reintroduce remove repeat requires ' +
-			'resident resourcestring safecall set shl shr static stdcall stored strict string then threadvar ' +
-			'to try type uint64 unit unsafe until uses var varargs virtual while with write writeonly xor';
+			'resident resourcestring safecall set shl shr specialize static stdcall stored strict string then ' +
+			'threadvar to try type uint64 unit unsafe until uses var varargs virtual while with write writeonly xor';
 
 		this.regexList = [
 			{ regex: /\(\*[\s\S]*?\*\)/gm,                              css: 'comments' },  // multiline comments (* *)
