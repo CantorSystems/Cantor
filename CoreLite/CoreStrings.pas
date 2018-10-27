@@ -138,9 +138,9 @@ type
   PStringFormatter = ^TStringFormatter;
 
   PString = ^TString;
-  TString = object(TCollection)
+  TString{<A, F>} = object(TCollection{<A>})
   private
-  { placeholder } // FOptions: TStringOptions;
+  // FOptions: generic <F> as TStringOptions;
   protected
     procedure Assign(Source: Pointer; Length: Integer; Options: TStringSource); overload;
     function AssignArray(Index: Integer; Formatter: PStringFormatter;
@@ -165,10 +165,10 @@ type
     function TryInteger(var Value: QuadInt): Boolean; overload;
   end;
 
-  TLegacyString = object(TString)
+  TLegacyString = object(TString{<PLegacyChar, TRawByteOptions>})
   private
-  { hold } FData: PLegacyChar;
-  { hold } FOptions: TRawByteOptions;
+    FData: PLegacyChar;        // specialize <A>
+    FOptions: TRawByteOptions; // specialize <F>
     FCodePage: PCodePage;
     function AssignDigits(Index: Integer; Digits: PLegacyChar;
       Length, MinWidth: Integer; FillChar: LegacyChar): Integer;
@@ -262,20 +262,20 @@ type
   TByteOrder = (boFromBOM, boConvertToNative, boLittleEndian, boBigEndian);
 
   PEndianString = PString;
-  TEndianString = TString;
+  TEndianString{<L, F>} = TString{<L, F>};
 
-{  PEndianString = ^TEndianString;
-  TEndianString = object(TString)
+(*  PEndianString = ^TEndianString;
+  TEndianString{<L, F>} = object(TString{<L, F>})
   protected
   //  procedure SwapByteOrder(Index, Length: Integer); overload; virtual; abstract;
   public
   //  procedure SwapByteOrder; overload;
-  end;}
+  end;*)
 
-  TWideString = object(TEndianString)
+  TWideString = object(TEndianString{<PWideChar, TEndianOptions>})
   private
-  { hold } FData: PWideChar;
-  { hold } FOptions: TEndianOptions;
+    FData: PWideChar;         // specialize <A>
+    FOptions: TEndianOptions; // specialize <F>
     FDataSource: PLegacyString;
     function AssignDigits(Index: Integer; Digits: PLegacyChar;
       Length, MinWidth: Integer; FillChar: WideChar): Integer;
@@ -376,9 +376,9 @@ type
   PDecimalFormatArray = ^TDecimalFormatArray;
   TDecimalFormatArray = array[0..MaxInt div SizeOf(TDecimalFormat) - 1] of TDecimalFormat;
 
-  TDecimalFormats = object(TCollection)
+  TDecimalFormats = object(TCollection{<PDecimalFormatArray>})
   private
-  { hold } FItems: PDecimalFormatArray;
+    FItems: PDecimalFormatArray; // specialize <A>
   protected
     class function CollectionInfo: TCollectionInfo; virtual;
   public
@@ -395,9 +395,9 @@ type
   PHexadecimalFormatArray = ^THexadecimalFormatArray;
   THexadecimalFormatArray = array[0..MaxInt div SizeOf(THexadecimalFormat) - 1] of THexadecimalFormat;
 
-  THexadecimalFormats = object(TCollection)
+  THexadecimalFormats = object(TCollection{<PHexadecimalFormatArray>})
   private
-  { hold } FItems: PHexadecimalFormatArray;
+    FItems: PHexadecimalFormatArray; // specialize <A>
   protected
     class function CollectionInfo: TCollectionInfo; virtual;
   public
@@ -437,21 +437,21 @@ type
   end;
 
   PStrings = PCollections;
-  TStrings = TCollections;
+  TStrings{<A>} = TCollections{<A>};
 
   PLegacyStrings = PStrings;
-  TLegacyStrings = TStrings;
+  TLegacyStrings{<A>} = TStrings{<A>};
 
   PWideStrings = PStrings;
-  TWideStrings = TStrings;
+  TWideStrings{<A>} = TStrings{<A>};
 
   PLegacyStringArray = ^TLegacyStringArray;
   TLegacyStringArray = array[0..MaxInt div SizeOf(TLegacyString) - 1] of TLegacyString;
 
   PLegacyText = ^TLegacyText;
-  TLegacyText = object(TLegacyStrings)
+  TLegacyText = object(TLegacyStrings{<PLegacyStringArray>})
   private
-  { hold } FItems: PLegacyStringArray;
+    FItems: PLegacyStringArray; // specialize <A>
   protected
     class function CollectionInfo: TCollectionInfo; virtual;
   public
@@ -463,9 +463,9 @@ type
   TWideStringArray = array[0..MaxInt div SizeOf(TWideString) - 1] of TWideString;
 
   PWideText = ^TWideText;
-  TWideText = object(TWideStrings)
+  TWideText = object(TWideStrings{<PWideStringArray>})
   private
-  { hold } FItems: PWideStringArray;
+    FItems: PWideStringArray; // specialize <A>
   protected
     class function CollectionInfo: TCollectionInfo; virtual;
   public
@@ -477,27 +477,27 @@ type
   TCoreText = TWideText;
 
   PStringList = PCollectionList;
-  TStringList = TCollectionList;
+  TStringList{<I>} = TCollectionList{<I>};
 
   PLegacyStringList = PStringList;
-  TLegacyStringList = TStringList;
+  TLegacyStringList{<I>} = TStringList{<I>};
 
   PLegacyTextList = ^TLegacyTextList;
 
   PLegacyTextListItem = ^TLegacyTextListItem;
-  TLegacyTextListItem = object(TLegacyString)
+  TLegacyTextListItem = object(TLegacyString{, TListItem<PLegacyTextList, PLegacyTextListItem>})
   private
-  { hold } FOwner: PLegacyTextList;
-  { hold } FPrev, FNext: PLegacyTextListItem;
+    FOwner: PLegacyTextList;           // specialize <L>
+    FPrev, FNext: PLegacyTextListItem; // specialize <I>
   public
     property Next: PLegacyTextListItem read FNext;
     property Owner: PLegacyTextList read FOwner;
     property Prev: PLegacyTextListItem read FPrev;
   end;
 
-  TLegacyTextList = object(TLegacyStringList)
+  TLegacyTextList = object(TLegacyStringList{<PLegacyTextListItem>})
   private
-  { hold } FFirst, FLast: PLegacyTextListItem;
+    FFirst, FLast: PLegacyTextListItem; // specialize <I>
   protected
     class function ListInfo: TListInfo; virtual;
   public
@@ -508,24 +508,24 @@ type
   end;
 
   PWideStringList = PStringList;
-  TWideStringList = TStringList;
+  TWideStringList{<I>} = TStringList{<I>};
 
   PWideTextList = ^TWideTextList;
 
   PWideTextListItem = ^TWideTextListItem;
-  TWideTextListItem = object(TWideString)
+  TWideTextListItem = object(TWideString{, TListItem<PWideTextList, PWideTextListItem>})
   private
-  { hold } FOwner: PWideTextList;
-  { hold } FPrev, FNext: PWideTextListItem;
+    FOwner: PWideTextList;           // specialize <L>
+    FPrev, FNext: PWideTextListItem; // specialize <I>
   public
     property Next: PWideTextListItem read FNext;
     property Owner: PWideTextList read FOwner;
     property Prev: PWideTextListItem read FPrev;
   end;
 
-  TWideTextList = object(TWideStringList)
+  TWideTextList = object(TWideStringList{<PWideTextListItem>})
   private
-  { hold } FFirst, FLast: PWideTextListItem;
+    FFirst, FLast: PWideTextListItem; // specialize <I>
   protected
     class function ListInfo: TListInfo; virtual;
   public

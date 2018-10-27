@@ -80,10 +80,10 @@ type
   TExeSectionData = (sdRaw, sdAlign, sdTruncLast);
 
   PExeImage = ^TExeImage;
-  TExeImage = object(TCollection)
+  TExeImage = object(TCollection{<PExeSectionArray>})
   private
-  { hold } FSections: PExeSectionArray;
-    FHeaders: TImageNewHeaders; // TODO: x64
+    FSections: PExeSectionArray; // specialize <A>
+    FHeaders: TImageNewHeaders;  // TODO: x64
     FStub: TExeStub;
     function IndexOfAddress(Address: LongWord): Integer;
   protected

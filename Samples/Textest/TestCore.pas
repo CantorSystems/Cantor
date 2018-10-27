@@ -16,9 +16,9 @@ type
 
   TCommand = (cmNone, cmInto, cmCP);
 
-  TApplication = object(TConsoleApplication)
+  TApplication = object(TConsoleApplication{<TRunOptions>})
   private
-  { hold } FOptions: TRunOptions;
+    FOptions: TRunOptions; // specialize <F>
     FFallbackCP, FDummy: Word;
     FCounter: TPerformanceCounter;
     FSourceFileName, FIntoFileName: TCoreString;

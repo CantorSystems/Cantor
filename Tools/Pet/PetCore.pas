@@ -46,9 +46,9 @@ type
     {roMiniRes, roVerInfo, roMainIcon, roVerbose} roListSections);
   TRunOptions = set of TRunOption;
 
-  TApplication = object(TConsoleApplication)
+  TApplication = object(TConsoleApplication{<TRunOptions>})
   private
-  { hold } FOptions: TRunOptions;
+    FOptions: TRunOptions; // specialize <F>
     FSourceFileNames: TFileNameList;
     FFileNames: TFileNames;
     FDropSections: TSectionNames;

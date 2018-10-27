@@ -41,12 +41,12 @@ type
   TConsoleAppOptions = set of (caPause, caNoLogo, caVersion);
 
   PConsoleApplication = ^TConsoleApplication;
-  TConsoleApplication = object
+  TConsoleApplication{<F>} = object
   private
     FConsole: TStreamConsole;
     FAppName: TCoreString;
     FExeName: TFileName;
-  // { placeholder } FOptions: TConsoleAppOptions;
+  // FOptions: generic <F> as TConsoleAppOptions;
   protected
     procedure Help(UsageFmt, HelpMsg: PLegacyChar);
     function Logo(LogoFmt: PLegacyChar): Boolean;
@@ -94,19 +94,19 @@ type
   PFileNameList = ^TFileNameList;
 
   PFileNameListItem = ^TFileNameListItem;
-  TFileNameListItem = object(TFileName)
+  TFileNameListItem = object(TFileName{, TListItem<PFileNameList, PFileNameListItem>})
   private
-  { hold } FOwner: PFileNameList;
-  { hold } FPrev, FNext: PFileNameListItem;
+    FOwner: PFileNameList;           // specialize <L>
+    FPrev, FNext: PFileNameListItem; // specialize <I>
   public
     property Owner: PFileNameList read FOwner;
     property Prev: PFileNameListItem read FPrev;
     property Next: PFileNameListItem read FNext;
   end;
 
-  TFileNameList = object(TList)
+  TFileNameList = object(TList{<PFileNameListItem>})
   private
-  { hold } FFirst, FLast: PFileNameListItem;
+    FFirst, FLast: PFileNameListItem; // specialize <I>
   protected
     class function ListInfo: TListInfo; virtual;
   public
@@ -121,8 +121,8 @@ uses
 
 type
   PConsoleAppCast = ^TConsoleAppCast;
-  TConsoleAppCast = object(TConsoleApplication)
-    Options: TConsoleAppOptions;
+  TConsoleAppCast = object(TConsoleApplication{<TConsoleAppOptions>})
+    Options: TConsoleAppOptions; // specialize <F>
   end;
 
 { TFileName }

@@ -17,7 +17,7 @@ uses
   Windows, CoreUtils, CoreExceptions;
 
 const
-  InstanceSizeIndex = -8; // for Delphi 6, 7
+  InstanceSizeIndex = -8; // only for Delphi 6-2007 or always?
 
 type
   PCoreObject = ^TCoreObject;
@@ -76,23 +76,22 @@ type
 
   TIterator = function(var Iteration: TIteration): Boolean of object;
 
-  TCollectionInfo = record
-  { hold } ClassName: PLegacyChar;
-    ItemSize: Integer;
+  TCollectionInfo{<PLegacyChar,Integer>} = record {<C, I>}
+    ClassName: PLegacyChar; // specialize <C>
+    ItemSize: Integer;      // specialize <I>
   end;
 
   TItemMode = (imInline, imFreeMem, imFinalize, imFree);
   TSharingMode = (smCopy, smAttach, smCapture);
   TBufferKind = (bkAttached, bkExternal, bkAllocated);
-  TBufferMode = bkAttached..bkExternal; // TODO
 
   PCollection = ^TCollection;
-  TCollection = object(TIndexed)
+  TCollection{<A>} = object(TIndexed)
   private
     FCapacity, FDelta: Integer;
     FItemMode: TItemMode;
     FBufferKind: TBufferKind;
-  { placeholder } // FItems: Pointer;
+  // FItems: generic <A> as Pointer;
     procedure Copy(Index: Integer; Collection: PCollection; Capture: Boolean);
     procedure Expand(Index, ItemCount: Integer);
     procedure FreeItems(Index, ItemCount: Integer);
@@ -148,18 +147,24 @@ type
   end;
 
   PCollections = PCollection;
-  TCollections = TCollection;
+  TCollections{<A>} = TCollection{<A>};
 
-  TListInfo = record
-  { hold } ClassName: PLegacyChar;
-    ItemOffset: Integer;
+  TListInfo{<PLegacyChar,Integer>} = record {<C, I>}
+    ClassName: PLegacyChar; // specialize <C>
+    ItemOffset: Integer;    // specialize <I>
+  end;
+
+  PListItem = ^TListItem;
+  TListItem{<L, I>} = object
+  // Owner: generic <L> as PList
+  // Prev, Next: generic <I> as PListItem
   end;
 
   PList = ^TList;
-  TList = object(TEnumerable)
+  TList{<I>} = object(TEnumerable)
   private
     FItemMode: TItemMode;
-  { placeholder } // FFirst, FLast: PListItem;
+  // FFirst, FLast: generic <I> as PListItem;
   protected
   { ordered } class function ListInfo: TListInfo; virtual; abstract;
   public
@@ -184,7 +189,7 @@ type
   end;
 
   PCollectionList = PList;
-  TCollectionList = TList;
+  TCollectionList{<I>} = TList{<I>};
 
   TCRC32Table = array[0..$FF] of LongWord;
 
@@ -365,35 +370,35 @@ type
 
   EIndexed = EContainer; // future class of (EContainer)
 
-  EIndex = class(EIndexed)
+  EIndex{<C>} = class(EIndexed)
   private
     FIndex: Integer;
-  { placeholder } // FContainer: PIndexed;
+  // FContainer: generic <C> as PIndexed;
   public
     constructor Create(Container: PIndexed; Index: Integer);
     property Index: Integer read FIndex;
   end;
 
-  ERange = class(EIndexed)
+  ERange{<C>} = class(EIndexed)
   private
     FLowBound, FHighBound: Integer;
-  { placeholder } // FContainer: PIndexed;
+  // FContainer: {<C>} as PIndexed;
   public
     constructor Create(Container: PIndexed; Index, ItemCount: Integer);
     property LowBound: Integer read FLowBound;
     property HighBound: Integer read FHighBound;
   end;
 
-  ECollectionIndex = class(EIndex)
+  ECollectionIndex = class(EIndex{<PCollection>})
   private
-  { hold } FCollection: PCollection;
+    FCollection: PCollection; // specialize <C>
   public
     property Collection: PCollection read FCollection;
   end;
 
-  ECollectionRange = class(ERange)
+  ECollectionRange = class(ERange{<PCollection>})
   private
-  { hold } FCollection: PCollection;
+    FCollection: PCollection; // specialize <C>
   public
     property Collection: PCollection read FCollection;
   end;
@@ -401,7 +406,7 @@ type
   ECollection = EContainer; // future class of (EContainer)
 
   ECapacity = class(ECollection)
-  private
+  private                       
     FCollection: PCollection;
     FItemCount: Integer;
   public
@@ -426,8 +431,8 @@ uses
 
 type
   PCollectionCast = ^TCollectionCast;
-  TCollectionCast = object(TCollection)
-    Items: PAddress;
+  TCollectionCast = object(TCollection{<PAddress>})
+    Items: PAddress; // specialize <A>
     Props: Byte;
   end;
 
@@ -435,24 +440,24 @@ type
   TPointerArray = array[0..MaxInt div SizeOf(Pointer) - 1] of Pointer;
 
   PPointersCast = ^TPointersCast;
-  TPointersCast = object(TPointers)
-    Items: PPointerArray;
+  TPointersCast = object(TPointers{<PPointerArray>})
+    Items: PPointerArray; // specialize <A>
   end;
 
   PCollectionsCast = ^TCollectionsCast;
-  TCollectionsCast = object(TCollections)
-    Items: PCollection;
+  TCollectionsCast = object(TCollections{<PCollection>})
+    Items: PCollection; // specialize <A>
   end;
 
   PListCast = ^TListCast;
-  TListCast = object(TList)
-    First, Last: PAddress;
+  TListCast = object(TList{<PAddress>})
+    First, Last: PAddress; // specialize <I>
   end;
 
-  PListItem = ^TListItem;
-  TListItem = object
-    Owner: PListCast;
-    Prev, Next: PAddress;
+  PListItemCast = ^TListItemCast;
+  TListItemCast = object(TListItem{<PListCast, PAddress>})
+    Owner: PListCast;     // specialize <L>
+    Prev, Next: PAddress; // specialize <I>
   end;
 
 { Helper functions }
@@ -1159,7 +1164,7 @@ begin
     else
     begin
       Extract(Item);
-      PListItem(PAddress(Item) + ListInfo.ItemOffset).Owner := Pointer(@Self);
+      PListItemCast(PAddress(Item) + ListInfo.ItemOffset).Owner := Pointer(@Self);
       First := Item;
       Last := Item;
       Inc(FCount);
@@ -1173,14 +1178,14 @@ end;
 
 class procedure TList.AppendItem(Item, AfterItem: Pointer);
 var
-  After: PListItem;
+  After: PListItemCast;
 begin
-  with ListInfo, PListItem(PAddress(Item) + ItemOffset)^ do
+  with ListInfo, PListItemCast(PAddress(Item) + ItemOffset)^ do
   begin
     if Owner <> nil then
       Owner.Extract(Item);
     Prev := AfterItem;
-    After := PListItem(PAddress(AfterItem) + ItemOffset);
+    After := PListItemCast(PAddress(AfterItem) + ItemOffset);
     Next := After.Next;
     After.Next := Item;
     Owner := After.Owner;
@@ -1204,7 +1209,7 @@ class procedure TList.Delete(Item: Pointer);
 var
   DeleteMode: TItemMode;
 begin
-  DeleteMode := PListItem(PAddress(Item) + ListInfo.ItemOffset).Owner.ItemMode;
+  DeleteMode := PListItemCast(PAddress(Item) + ListInfo.ItemOffset).Owner.ItemMode;
   Extract(Item);
   case DeleteMode of
     imFreeMem:
@@ -1223,15 +1228,15 @@ end;
 
 class procedure TList.Extract(Item: Pointer);
 begin
-  with ListInfo, PListItem(PAddress(Item) + ItemOffset)^ do
+  with ListInfo, PListItemCast(PAddress(Item) + ItemOffset)^ do
   begin
     if Prev <> nil then
-      PListItem(PAddress(Prev) + ItemOffset).Next := Next
+      PListItemCast(PAddress(Prev) + ItemOffset).Next := Next
     else if Owner <> nil then
       Owner.First := Next;
 
     if Next <> nil then
-      PListItem(PAddress(Next) + ItemOffset).Prev := Prev
+      PListItemCast(PAddress(Next) + ItemOffset).Prev := Prev
     else if Owner <> nil then
       Owner.Last := Prev;
 
@@ -1268,7 +1273,7 @@ function TList.LastBackward(var Item: TItem): Boolean;
 begin
   with Item do
   begin
-    Instance := PListItem(PAddress(Instance) + ListInfo.ItemOffset).Prev;
+    Instance := PListItemCast(PAddress(Instance) + ListInfo.ItemOffset).Prev;
     Result := Instance = nil;
   end;
 end;
@@ -1277,7 +1282,7 @@ function TList.LastForward(var Item: TItem): Boolean;
 begin
   with Item do
   begin
-    Instance := PListItem(PAddress(Instance) + ListInfo.ItemOffset).Next;
+    Instance := PListItemCast(PAddress(Instance) + ListInfo.ItemOffset).Next;
     Result := Instance = nil;
   end;
 end;
