@@ -652,7 +652,7 @@ begin
   with FImage.Headers.OptionalHeader do
   begin
     Console.WriteLn(sOSVersionFmt, 0, [PLegacyChar(sRequiredOSVersion),
-      MajorOSVersion, MinorOSVersion, MajorSubsystemVersion, MinorSubsystemVersion]);
+      MajorOSVersion, MinorOSVersion, MajorSubsystemVersion, MinorSubsystemVersion]); // TODO: subsystem
     TmpFileName.AsHexadecimal(ImageBase, -8, False, CoreChar('0'));
     Console.WriteLn(sSectionAlignmentFmt, 0, [PLegacyChar(sSectionAlignment),
       SectionAlignment, FileAlignment]);
@@ -985,7 +985,7 @@ begin
         if roListSections in FOptions then
         begin
           ShowSections;
-          if (FLogStyle <> lsBrief) and (FileName.Prev <> nil) then
+          if (FLogStyle <> lsBrief) and ((FileName.Prev <> nil) or (FileName.Next <> nil)) then
             Console.WriteLn;
         end;
       except
