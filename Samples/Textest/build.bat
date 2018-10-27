@@ -1,7 +1,7 @@
 @echo off
 
-set System=..\..\..\..\System
-set Units=..\..\CoreLite;%System%\MMX.%DelphiVer%;%System%
+set Tricks=..\..\..\..\Tricks
+set Units=..\..\CoreLite;%Tricks%\MMX.%DelphiVer%;%Tricks%
 
 set Options=-b -gp -$C- -$I-
 set Exe=..\Textest.exe
