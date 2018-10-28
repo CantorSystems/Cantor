@@ -593,6 +593,7 @@ procedure TApplication.Run(CommandLine: PCoreChar);
 
 var
   TmpFileName: TFileName;
+  HexString: TCoreString;
   DestFileName, ImageFileName: PFileName;
   FileName: PFileNameListItem;
   Loaded: TLoadFileResult;
@@ -637,10 +638,12 @@ begin
       PLegacyChar(sSectionList), StrLen(sSectionList));
   end;
 
-  Console.WriteLn(sSectionFmt, 0, [PLegacyChar(sStubSection)], 0);
+  TmpFileName.AsHexadecimal(0, -8, False, CoreChar('0'));
+  Console.WriteLn(sSectionFmt, 0, [PLegacyChar(sStubSection), TmpFileName.RawData, TmpFileName.RawData], 0);
   Output.TransferStats(Loaded.FileSize, FImage.Stub.Size);
 
-  Console.WriteLn(sSectionFmt, 0, [PLegacyChar(sHeadersSection)], 0);
+  TmpFileName.AsHexadecimal(FImage.Stub.Header.Ext.NewHeaderOffset, -8, False, CoreChar('0'));
+  Console.WriteLn(sSectionFmt, 0, [PLegacyChar(sHeadersSection), TmpFileName.RawData, TmpFileName.RawData], 0);
   Output.TransferStats(Loaded.FileSize, FImage.HeadersSize +
     Cardinal(FImage.Count * SizeOf(TImageSectionHeader)));
 
@@ -650,7 +653,9 @@ begin
       L := StrLen(Header.Name, IMAGE_SIZEOF_SHORT_NAME);
       Move(Header.Name[0], TempSectionName, L);
       TempSectionName[L] := #0;
-      Console.WriteLn(sSectionFmt, 0, [@TempSectionName], 0);
+      TmpFileName.AsHexadecimal(Header.RawDataOffset, -8, False, CoreChar('0'));
+      HexString.AsHexadecimal(Header.VirtualAddress, -8, False, CoreChar('0'));
+      Console.WriteLn(sSectionFmt, 0, [@TempSectionName, TmpFileName.RawData, HexString.RawData], 0);
       Output.TransferStats(Loaded.FileSize, Size);
     end;
 
@@ -665,7 +670,9 @@ begin
     else
       S := nil;
     if S <> nil then
-      Console.WriteLn(sSubsystemFmt, 0, [S]);
+      Console.WriteLn(sSubsystemFmt, 0, [S])
+    else
+      Console.WriteLn;
     TmpFileName.AsHexadecimal(ImageBase, -8, False, CoreChar('0'));
     Console.WriteLn(sSectionAlignmentFmt, 0, [PLegacyChar(sSectionAlignment),
       SectionAlignment, FileAlignment]);
@@ -771,6 +778,7 @@ begin
   FImage.Create;
 
   TmpFileName.Create;
+  HexString.Create;
   Output.Create(@Console, MaxPromptWidth, FMaxWidth, FMaxFileSize);
   try
     TotalBytes := 0;
@@ -1022,6 +1030,7 @@ begin
     end;
   finally
     Output.Destroy;
+    HexString.Destroy;
     TmpFileName.Destroy;
   end;
 end;

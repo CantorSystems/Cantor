@@ -125,7 +125,7 @@ const
   sImageBaseTitle     = 'Image base';
   sImageOptions       = 'Image options';
 
-  sSectionFmt = '  %9hs';
+  sSectionFmt = '  %9hs  %s/%s';
 
   sStubSection        = '{stub}';
   sHeadersSection     = '{headers}';
