@@ -617,11 +617,18 @@ begin
 end;
 
 procedure ShowSections;
+type
+  KnownSubsystem = IMAGE_SUBSYSTEM_NATIVE..IMAGE_SUBSYSTEM_WINDOWS_BOOT_APPLICATION;
+const
+  SubsystemName: array[KnownSubsystem] of PLegacyChar =
+    (sNative, sGUI, sConsole, nil, sOS2, nil, sPOSIX, s9xDrv, sWindowsCE,
+     sEFIApp, sEFIBootDrv, sEFIRuntimeDrv, sEFIROM, sXbox, nil, sWindowsBootApp);
 var
   Opt: array[0..3] of PCoreChar;
   P: PPCoreChar;
   I, L: Integer;
   TempSectionName: array[0..IMAGE_SIZEOF_SHORT_NAME] of LegacyChar;
+  S: PLegacyChar;
 begin
   if FLogStyle <> lsBrief then
   begin
@@ -652,7 +659,13 @@ begin
   with FImage.Headers.OptionalHeader do
   begin
     Console.WriteLn(sOSVersionFmt, 0, [PLegacyChar(sRequiredOSVersion),
-      MajorOSVersion, MinorOSVersion, MajorSubsystemVersion, MinorSubsystemVersion]); // TODO: subsystem
+      MajorOSVersion, MinorOSVersion, MajorSubsystemVersion, MinorSubsystemVersion], 0);
+    if Subsystem in [Low(KnownSubsystem)..High(KnownSubsystem)] then
+      S := SubsystemName[Subsystem]
+    else
+      S := nil;
+    if S <> nil then
+      Console.WriteLn(sSubsystemFmt, 0, [S]);
     TmpFileName.AsHexadecimal(ImageBase, -8, False, CoreChar('0'));
     Console.WriteLn(sSectionAlignmentFmt, 0, [PLegacyChar(sSectionAlignment),
       SectionAlignment, FileAlignment]);

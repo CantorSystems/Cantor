@@ -116,6 +116,7 @@ const
   sPathEllipsis = '[...]';
 
   sOSVersionFmt         = '%17hs  %d.%d/%d.%d';
+  sSubsystemFmt         = '  %hs';
   sImageOptionsFmt      = '%17hs  %s %s %s %s';
   sSectionAlignmentFmt  = '%17hs  %X/%X';
 
@@ -128,6 +129,20 @@ const
 
   sStubSection        = '{stub}';
   sHeadersSection     = '{headers}';
+
+  sNative         = 'Native';
+  sGUI            = 'GUI';
+  sConsole        = 'Console';
+  sOS2            = 'OS/2';
+  sPOSIX          = 'POSIX';
+  s9xDrv          = '9x driver';
+  sWindowsCE      = 'Windows CE';
+  sEFIApp         = 'EFI application';
+  sEFIBootDrv     = 'EFI boot driver';
+  sEFIRuntimeDrv  = 'EFI runtime driver';
+  sEFIROM         = 'EFI ROM';
+  sXbox           = 'Xbox';
+  sWindowsBootApp = 'Windows boot';
 
   sLoading            = 'Loading';
   sChainedData        = 'Chained data';
