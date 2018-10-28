@@ -569,6 +569,7 @@ begin
         end;
       end;
     Checksum := 0;
+    QuadWord(DataDirectory[IMAGE_DIRECTORY_ENTRY_SECURITY]) := 0; // Fast core
   end;
   FHeaders.FileHeader.SectionCount := Count;
 {
