@@ -79,6 +79,10 @@ type
     stBoundImports, stIAT, stDelayImports, stCOM);
   TExeSectionData = (sdRaw, sdAlign, sdTruncLast);
 
+  TExeSectionsMax = record
+    RawDataOffset, RawDataSize, VirtualAddress, VirtualSize: LongWord;
+  end;
+
   PExeImage = ^TExeImage;
   TExeImage = object(TCollection{<PExeSectionArray>})
   private
@@ -115,6 +119,7 @@ type
     procedure Save(Dest: PWritableStream; TruncLastSection: Boolean = True);
     function SectionAlignBytes(Source: LongWord): LongWord;
     function SectionOf(SectionType: TExeSectionType): PExeSection;
+    function SectionsMax: TExeSectionsMax;
     function Size(TruncLastSection: Boolean = True): LongWord;
     procedure Strip(Options: TStripOptions = [soStub..soEmptySections]);
 
@@ -960,6 +965,25 @@ begin
     Result := @FSections[Idx]
   else
     Result := nil;
+end;
+
+function TExeImage.SectionsMax: TExeSectionsMax;
+var
+  I: Integer;
+begin
+  FillChar(Result, SizeOf(Result), 0);
+  for I := 0 to Count - 1 do
+    with FSections[I].FHeader do
+    begin
+      if RawDataOffset > Result.RawDataOffset then
+        Result.RawDataOffset := RawDataOffset;
+      if RawDataSize > Result.RawDataSize then
+        Result.RawDataSize := RawDataSize;
+      if VirtualAddress > Result.VirtualAddress then
+        Result.VirtualAddress := VirtualAddress;
+      if VirtualSize > Result.VirtualSize then
+        Result.VirtualSize := VirtualSize;
+    end;
 end;
 
 function TExeImage.Size(TruncLastSection: Boolean): LongWord;

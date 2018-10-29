@@ -627,7 +627,7 @@ const
 var
   Opt: array[0..3] of PCoreChar;
   P: PPCoreChar;
-  I, L: Integer;
+  I, L, R, V: Integer;
   TempSectionName: array[0..IMAGE_SIZEOF_SHORT_NAME] of LegacyChar;
   S: PLegacyChar;
 begin
@@ -638,12 +638,23 @@ begin
       PLegacyChar(sSectionList), StrLen(sSectionList));
   end;
 
-  TmpFileName.AsHexadecimal(0, -8, False, CoreChar('0'));
-  Console.WriteLn(sSectionFmt, 0, [PLegacyChar(sStubSection), TmpFileName.RawData, TmpFileName.RawData], 0);
+  with FImage.SectionsMax do
+  begin
+    R := -Ceil(Log2(RawDataOffset) / 4);
+    V := -Ceil(Log2(VirtualAddress) / 4);
+  end;
+
+  TmpFileName.AsHexadecimal(0, R, False, CoreChar('0'));
+  HexString.AsHexadecimal(0, V, False, CoreChar('0'));
+  Console.WriteLn(sSectionFmt, 0, [PLegacyChar(sStubSection), TmpFileName.RawData, HexString.RawData], 0);
   Output.TransferStats(Loaded.FileSize, FImage.Stub.Size);
 
-  TmpFileName.AsHexadecimal(FImage.Stub.Header.Ext.NewHeaderOffset, -8, False, CoreChar('0'));
-  Console.WriteLn(sSectionFmt, 0, [PLegacyChar(sHeadersSection), TmpFileName.RawData, TmpFileName.RawData], 0);
+  with FImage.Stub.Header.Ext do
+  begin
+    TmpFileName.AsHexadecimal(NewHeaderOffset, R, False, CoreChar('0'));
+    HexString.AsHexadecimal(NewHeaderOffset, V, False, CoreChar('0'));
+  end;
+  Console.WriteLn(sSectionFmt, 0, [PLegacyChar(sHeadersSection), TmpFileName.RawData, HexString.RawData], 0);
   Output.TransferStats(Loaded.FileSize, FImage.HeadersSize +
     Cardinal(FImage.Count * SizeOf(TImageSectionHeader)));
 
@@ -653,8 +664,8 @@ begin
       L := StrLen(Header.Name, IMAGE_SIZEOF_SHORT_NAME);
       Move(Header.Name[0], TempSectionName, L);
       TempSectionName[L] := #0;
-      TmpFileName.AsHexadecimal(Header.RawDataOffset, -8, False, CoreChar('0'));
-      HexString.AsHexadecimal(Header.VirtualAddress, -8, False, CoreChar('0'));
+      TmpFileName.AsHexadecimal(Header.RawDataOffset, R, False, CoreChar('0'));
+      HexString.AsHexadecimal(Header.VirtualAddress, V, False, CoreChar('0'));
       Console.WriteLn(sSectionFmt, 0, [@TempSectionName, TmpFileName.RawData, HexString.RawData], 0);
       Output.TransferStats(Loaded.FileSize, Size);
     end;
