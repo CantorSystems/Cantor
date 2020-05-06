@@ -115,7 +115,7 @@ type
     procedure OSVersion(MajorVersion: Word; MinorVersion: Word = 0);
     function RawData(VirtualAddress: LongWord): Pointer;
     function Rebase(VirtualAddress: LongWord; DeltaOffset: Integer): LongWord; overload;
-    function Rebase(Segment: Word): LongWord; overload;
+    function Rebase(NewAddress: LongWord): LongWord; overload;
     procedure Save(Dest: PWritableStream; TruncLastSection: Boolean = True);
     function SectionAlignBytes(Source: LongWord): LongWord;
     function SectionOf(SectionType: TExeSectionType): PExeSection;
@@ -901,10 +901,10 @@ begin
   end;
 end;
 
-function TExeImage.Rebase(Segment: Word): LongWord;
+function TExeImage.Rebase(NewAddress: LongWord): LongWord;
 begin
-  Result := Rebase(0, Segment shl 16 - FHeaders.OptionalHeader.ImageBase);
-  FHeaders.OptionalHeader.ImageBase := Segment shl 16;
+  Result := Rebase(0, NewAddress - FHeaders.OptionalHeader.ImageBase);
+  FHeaders.OptionalHeader.ImageBase := NewAddress;
 end;
 
 procedure TExeImage.Save(Dest: PWritableStream; TruncLastSection: Boolean);

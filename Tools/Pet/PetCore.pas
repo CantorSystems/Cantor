@@ -43,7 +43,7 @@ type
 
   TRunOption = (roPause, roNoLogo, roVersion, ro3GB, roASLR, roDEP, // ordered
     {roAuto,} roStrip, roTrunc, roTouch, roUnsafe, roDeep, roDir, roRaw,
-    {roMiniRes, roVerInfo, roMainIcon, roVerbose} roListSections);
+    {roMiniRes, roVerInfo, roMainIcon, roVerbose} roListSections, roRebase);
   TRunOptions = set of TRunOption;
 
   TApplication = object(TConsoleApplication{<TRunOptions>})
@@ -316,8 +316,8 @@ function TApplication.MaxFileNameWidth(MaxWidth: Integer): Integer;
 var
   K: TFileKind;
   Width: Integer;
-begin
-  Result := Byte(FRebaseAddress <> 0) * 8;
+begin                                       
+  Result := Byte(roRebase in FOptions) * 8;
   for K := Low(FFileNames) to High(FFileNames) do
   begin
     Width := FFileNames[K].Width(MaxWidth);
@@ -343,7 +343,7 @@ begin
       if Width > Result then
         Result := Width;
     end;
-    if FRebaseAddress <> 0 then
+    if roRebase in FOptions then
     begin
       Width := StrLen(sRebasingTo);
       if Width > Result then
@@ -382,7 +382,7 @@ end;
 procedure TApplication.ParseCommandLine(Source: PCoreChar);
 
 const
-  OptionKeys: array[TRunOption] of PCoreChar = (
+  OptionKeys: array[roPause..roListSections] of PCoreChar = (
     sPause, sNoLogo, sVersion, s3GB, sASLR, sDEP,
     sStrip, sTrunc, sTouch, sUnsafe, sDeep, sDir, sRaw,
     {sMiniRes, sVerInfo, sMainIcon, sVerbose,} sLS
@@ -490,7 +490,7 @@ begin
           CmdLine := Param.AsNextParam(@CmdLine);
           if Param.Count = 0 then
             raise ECommandLine.Create(sRebaseAddress);
-          if FRebaseAddress <> 0 then
+          if roRebase in FOptions then
             raise ECommandLine.CreateDuplicate(sRebaseAddress, @Param);
           if Param.RawData[0] = '$' then
           begin
@@ -503,11 +503,12 @@ begin
             FRebaseAddress := Param.AsHexadecimal;
           end
           else
+          begin
             FRebaseAddress := Param.AsInteger;
-          if FRebaseAddress < $10000 then
-            FRebaseAddress := FRebaseAddress * $10000
-          else if FRebaseAddress mod $10000 <> 0 then
-            raise EImageBase.Create(FRebaseAddress);
+            if (FRebaseAddress < 32) and (FRebaseAddress <> 0) then
+              FRebaseAddress := 1 shl FRebaseAddress;
+          end;
+          Include(FOptions, roRebase);
         end
         else if Key.Equals(sDropSect) then
         begin
@@ -571,7 +572,7 @@ begin
       FileName.AsRange(@ExeName, 0);
   end
   else if Console.Redirection = [] then
-    Include(FOptions, roPause)
+    Include(FOptions, roPause);
 end;
 
 function TApplication.PrepareFileName(Kind: TFileKind; FileName: PFileName): PFileName;
@@ -829,9 +830,7 @@ begin
           if not (roUnsafe in FOptions) then
           begin
             Console.EndOfLine;
-            Console.WriteLn({$IFDEF Locale} CP_LOCALIZATION, {$ENDIF}
-              PLegacyChar(sChainedDataFound), StrLen(sChainedDataFound)
-            );
+            Console.WriteLn(sUnsafeOperation, 0, [PLegacyChar(sChainedDataFound), PLegacyChar(sSafeStripping)]);
             if roListSections in FOptions then
             begin
               ShowSections;
@@ -880,14 +879,19 @@ begin
               Output.StripStats(OldSize, Size);
           end;
 
-        if FRebaseAddress <> 0 then
+        if roRebase in FOptions then
         begin
           if FLogStyle <> lsBrief then
           begin
             TmpFileName.AsHexadecimal(FRebaseAddress, -8, False, CoreChar('0'));
             Output.Action(sRebasingTo, @TmpFileName);
           end;
-          if FImage.Rebase(FRebaseAddress div $10000) = 0 then
+          if (FRebaseAddress mod $10000 <> 0) and (FRebaseAddress <> 0) and not (roUnsafe in FOptions) then
+          begin
+            Console.EndOfLine;
+            Console.WriteLn(sUnsafeOperation, 0, [PLegacyChar(sNonStandardRebase), PLegacyChar(sSafeRebasing)]);
+          end
+          else if FImage.Rebase(FRebaseAddress) = 0 then
             raise EBadImage.Create(sCannotRebaseImage)
           else if FLogStyle <> lsBrief then
             Console.WriteLn;

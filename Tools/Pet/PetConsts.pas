@@ -85,8 +85,9 @@ const
             #9'-osver <#[.#]>' +   #9#9'Set required OS version to <#> or <#.#>' + sLineBreak +
             #9'-raw' +           #9#9#9'Don''t align raw data size values at section' + sLineBreak +
                                #9#9#9#9'headers to avoid antivirus false positives' + sLineBreak +
-            #9'-rebase <[$]######[h]>'#9'Rebase image to <####>'+ TimesSign + '64K bound or to' + sLineBreak +
-                               #9#9#9#9'hexadecimal address <$########> or <########h>' + sLineBreak +
+            #9'-rebase <[$]######[h]>'#9'Rebase image to <##########> decimal address,' + sLineBreak +
+                               #9#9#9#9'to 2 power <##> when <##> in 1..31, or to' + sLineBreak +
+                               #9#9#9#9'hexadecimal address <$########> or <########h>,' + sLineBreak +
             #9'-stub [stub]|[.]' +   #9'Replace stub with one from [stub] file or take' + sLineBreak +
                                #9#9#9#9'stub from PE Tool itself' + sLineBreak +
             #9'-touch' +         #9#9#9'Don''t keep original file timestamp' + sLineBreak +
@@ -167,9 +168,14 @@ const
 
   sActionFmt = '%%%dhs  %%hs%%%ds';
   sStatsFmt = '  %%%di bytes  %%6hs';
+                                                        
+  sUnsafeOperation = '%hs, safe %hs stopped';
+  sChainedDataFound = 'Chained data found';
+  sNonStandardRebase = 'Rebase address is non-standard';
+  sSafeStripping = 'stripping';
+  sSafeRebasing = 'rebasing';
 
   sUnexpectedEndOfStream = '%hs from %s'; // Unexpected end of stream: read xx bytes instead of yy from <file>
-  sChainedDataFound = 'Chained data found, safe stripping stopped';
   sSectionList = 'Headers and sections';
   sTotalsMessage = '%u files, %d bytes (%hs)';
   sNoFilesFound = 'No files found';
