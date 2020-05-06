@@ -1,7 +1,7 @@
 (*
     Portable Executable (PE) Tool
 
-    Copyright (c) 2013-2016 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2013-2018, 2020 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
       * Debug -- Delphi IDE friendly exceptions

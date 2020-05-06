@@ -1,7 +1,7 @@
 (*
     Executable images object model
 
-    Copyright (c) 2013-2017 Vladislav Javadov (Freeman)
+    Copyright (c) 2013-2017, 2020 Vladislav Javadov (aka Freeman)
 *)
 
 unit ExeImages;

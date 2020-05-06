@@ -1,7 +1,7 @@
 (*
     PE Tool core
 
-    Copyright (c) 2013-2018 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2013-2018, 2020 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
       * Locale -- additional locale-dependent translations for console output

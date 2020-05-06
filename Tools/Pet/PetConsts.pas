@@ -1,7 +1,7 @@
 (*
     PE Tool strings and messages
 
-    Copyright (c) 2012-2018 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2012-2018, 2020 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
       * Locale -- use &times; sign in locale-dependent encoding or raw UTF-8
