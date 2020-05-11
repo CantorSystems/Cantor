@@ -43,7 +43,7 @@ type
 
   TRunOption = (roPause, roNoLogo, roVersion, ro3GB, roASLR, roDEP, // ordered
     {roAuto,} roStrip, roTrunc, roTouch, roUnsafe, roDeep, roDir, roRaw,
-    {roMiniRes, roVerInfo, roMainIcon, roVerbose} roListSections, roRebase);
+    {roMiniRes, roVerInfo, roMainIcon, roVerbose} roListSections, roOSVersion, roRebase);
   TRunOptions = set of TRunOption;
 
   TApplication = object(TConsoleApplication{<TRunOptions>})
@@ -468,7 +468,7 @@ begin
           CmdLine := Param.AsNextParam(@CmdLine);
           if Param.Count = 0 then
             raise ECommandLine.CreateMissing(sOSVersion);
-          if FMajorVersion <> 0 then
+          if roOSVersion in FOptions then
             raise ECommandLine.CreateDuplicate(sOSVersion, @Param);
           with Param do
           begin
@@ -484,6 +484,7 @@ begin
               FMinorVersion := 0;
             end;
           end;
+          Include(FOptions, roOSVersion);
         end
         else if Key.Equals(sRebase) then
         begin
@@ -967,7 +968,7 @@ begin
         try
           if TypeOf(DestFileName^) <> nil then
             try
-              if FMajorVersion <> 0 then
+              if roOSVersion in FOptions then
                 FImage.OSVersion(FMajorVersion, FMinorVersion);
               if ro3GB in FOptions then
                 FImage.LargeAddressAware;
