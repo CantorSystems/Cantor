@@ -958,6 +958,15 @@ begin
           RawData := TExeSectionData(Byte(roTrunc in FOptions) + 1);
         FImage.Build(Byte(roStrip in FOptions) * 512, RawData);
 
+        if roOSVersion in FOptions then
+          FImage.OSVersion(FMajorVersion, FMinorVersion);
+        if ro3GB in FOptions then
+          FImage.LargeAddressAware;
+        if (roASLR in FOptions) and not FImage.ASLRAware then
+          raise EBadImage.Create(sNoRelocationsForASLR);
+        if roDEP in FOptions then
+          FImage.DEPAware;
+
         if DestFileName.IsDotOrNull then
           DestFileName := FileName
         else if DestFileName = @FCurrentPath then
@@ -968,15 +977,6 @@ begin
         try
           if TypeOf(DestFileName^) <> nil then
             try
-              if roOSVersion in FOptions then
-                FImage.OSVersion(FMajorVersion, FMinorVersion);
-              if ro3GB in FOptions then
-                FImage.LargeAddressAware;
-              if (roASLR in FOptions) and not FImage.ASLRAware then
-                raise EBadImage.Create(sNoRelocationsForASLR);
-              if roDEP in FOptions then
-                FImage.DEPAware;
-
               if FFileNames[fkBackup].Count <> 0 then
               begin
                 if FLogStyle <> lsBrief then
