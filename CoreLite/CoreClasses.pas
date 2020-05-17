@@ -1,5 +1,5 @@
 (*
-    Lite Core Library (CoreLite mini)
+    Lite Core Library (CoreLite)
 
     Platform-independent general purpose classes
 

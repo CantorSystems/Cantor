@@ -1,5 +1,5 @@
 (*
-    Lite Core Library (CoreLite mini)
+    Lite Core Library (CoreLite)
 
     Lite streams declaration -- no virtual methods, only THandleStream
 

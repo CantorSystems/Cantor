@@ -1,5 +1,5 @@
 (*
-    Lite Core Library (CoreLite mini)
+    Lite Core Library (CoreLite)
 
     Core strings and character sets implementation
 

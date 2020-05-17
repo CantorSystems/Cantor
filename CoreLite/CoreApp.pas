@@ -1,9 +1,9 @@
 (*
-    Lite Core Library (CoreLite mini)
+    Lite Core Library (CoreLite)
 
     Console application abstraction layer
 
-    Copyright (c) 2015 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2015-2016 Vladislav Javadov (aka Freeman)
 *)
 
 unit CoreApp;

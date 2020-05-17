@@ -1,5 +1,5 @@
 (*
-    Lite Core Library (CoreLite mini)
+    Lite Core Library (CoreLite)
 
     Core library string messages
 

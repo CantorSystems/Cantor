@@ -1,5 +1,5 @@
 (*
-    Host application using core library sample (CoreLite mini)
+    Host application sample for core library
 
     Copyright (c) 2013, 2015 Vladislav Javadov (aka Freeman)
 
