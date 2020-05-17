@@ -179,7 +179,7 @@ const
   sSectionList = 'Headers and sections';
   sTotalsMessage = '%u files, %d bytes (%hs)';
   sNoFilesFound = 'No files found';
-  sSectionNotFound = 'Section ï¿½%sï¿½ not found';
+  sSectionNotFound = 'Section “%s” not found';
   sImageBaseUnaligned = 'Image base %08X is not on 64 KB boundary';
   sNoRelocationsForASLR = 'Dynamic image base feature (ASLR) is not available because relocations were' + sLineBreak +
     'stripped from this file';
