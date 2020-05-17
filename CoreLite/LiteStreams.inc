@@ -49,4 +49,3 @@ type
 
   PWritableStream = PHandleStream;
   TWritableStream = THandleStream;
-

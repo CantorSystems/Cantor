@@ -9,4 +9,6 @@
 *.dof
 *.dsk
 *.exe
+*.log
 *.map
+*.res

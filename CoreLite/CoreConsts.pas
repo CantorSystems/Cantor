@@ -11,7 +11,7 @@ unit CoreConsts;
 interface
 
 const
-  CP_LOCALIZATION = 1252; // we're using ï¿½ï¿½, but only in exception messages
+  CP_LOCALIZATION = 1252; // we're using “”, but only in exception messages
 
   sDivByZero          = 'Division by zero';
   sRangeError         = 'Range check error';
@@ -36,7 +36,7 @@ const
   sWriteAccess        = 'write';
 
   sAccessViolation = 'Access violation at address %p:%hs%s of address %p';
-  sModuleAccessViolation = 'Access violation at address %p in module ï¿½%sï¿½:%hs%hs of address %p';
+  sModuleAccessViolation = 'Access violation at address %p in module “%s”:%hs%hs of address %p';
 
   sAbstractInstance = '%s instance abstract method call';
   sAbstractClass    = '%s abstract class method call';
@@ -100,14 +100,14 @@ const
 
   sInteger = 'integer';
   sHexadecimal = 'hexadecimal';
-  sInvalidInteger = 'ï¿½%sï¿½ is not a valid %hs value';
+  sInvalidInteger = '“%s” is not a valid %hs value';
   sNullInteger = 'Null string is not a valid %s value';
 
   sNotNativeUTF16BE = 'UTF-16 Big-Endian is not native for Windows API';
   sUTF32notSupported = 'UTF-32 is not supported';
 
-  sSystemCPtoUTF16 = 'System error ï¿½%sï¿½ while converting code page %u (%s) to UTF-16';
-  sSystemUTF16toCP = 'System error ï¿½%sï¿½ while converting UTF-16 to code page %u (%s)';
+  sSystemCPtoUTF16 = 'System error “%s” while converting code page %u (%s) to UTF-16';
+  sSystemUTF16toCP = 'System error “%s” while converting UTF-16 to code page %u (%s)';
   sUnicodeToCP = 'Cannot convert %hs string to code page %u (%s)';
   sCPtoCP = 'Cannot convert string between code page %u (%s) and code page %u (%s)';
 
@@ -134,10 +134,10 @@ const
 
   sExeImage = 'executable image';
   sNotExecutableImage = 'Not an executable image';
-  sInvalidImageStub = 'Invalid image stub ï¿½ %u bytes on last page (max 512 allowed)';
+  sInvalidImageStub = 'Invalid image stub – %u bytes on last page (max 512 allowed)';
   sInvalidWin32Image = 'Invalid Win32 image';
   s64bitImage = '64-bit images are not supported';
-  sUnsupportedExeImage = 'Unsupported image extension ï¿½%c%cï¿½';
+  sUnsupportedExeImage = 'Unsupported image extension ‘%c%c’';
   sLegacyExeImage = 'Extended header not found, unsupported DOS/DPMI image';
   sInvalidRVA = 'Invalid RVA %08X';
   sUnsupportedRelocationFormat = 'Unsupported relocation format, code %2u';
@@ -152,9 +152,9 @@ const
 
   sIdentifier = 'identifier';
   sComment = 'comment';
-  sNotUnderstandable = '%hs ï¿½%sï¿½ is not understandable for international community';
-  sNotLocalizable = 'string ï¿½%sï¿½ is not localizable';
-  sDependsOnLocale = 'source file ï¿½%sï¿½ depends on locale character set';
+  sNotUnderstandable = '%hs “%s” is not understandable for international community';
+  sNotLocalizable = 'string “%s” is not localizable';
+  sDependsOnLocale = 'source file “%s” depends on locale character set';
 
 implementation
 
