@@ -1,7 +1,7 @@
-*.bat git-encoding=utf-8 working-tree-encoding=cp437
-*.inc git-encoding=utf-8 working-tree-encoding=windows-1252
-*.dfm git-encoding=utf-8 working-tree-encoding=windows-1252
-*.dpk git-encoding=utf-8 working-tree-encoding=windows-1252
-*.dpr git-encoding=utf-8 working-tree-encoding=windows-1252
-*.pas git-encoding=utf-8 working-tree-encoding=windows-1252
-*.rc  git-encoding=utf-8 working-tree-encoding=windows-1252
+*.bat git-encoding=utf-8 working-tree-encoding=866
+*.inc git-encoding=utf-8 working-tree-encoding=windows-1251
+*.dfm git-encoding=utf-8 working-tree-encoding=windows-1251
+*.dpk git-encoding=utf-8 working-tree-encoding=windows-1251
+*.dpr git-encoding=utf-8 working-tree-encoding=windows-1251
+*.pas git-encoding=utf-8 working-tree-encoding=windows-1251
+*.rc  git-encoding=utf-8 working-tree-encoding=windows-1251

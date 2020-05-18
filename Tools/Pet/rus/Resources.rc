@@ -1,0 +1,33 @@
+/* 
+    PE Tool's resource script
+*/
+
+#include "revision.inc"
+
+1 VERSIONINFO
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_APP
+FILEFLAGSMASK 0x3F
+PRODUCTVERSION 0,6,0,rev
+FILEVERSION 0,6,0,rev
+FILEFLAGS VS_FF_PRERELEASE 
+  #ifdef debug | VS_FF_DEBUG #endif
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "041904B0"
+    BEGIN
+      VALUE "CompanyName", "Владислав Джавадов\0"
+      VALUE "LegalCopyright", "Авторское право © 2013-2018 Владислав Джавадов\0"
+      VALUE "ProductName", "PE Tool\0"
+      VALUE "FileDescription", "Утилита пересборки PE-файлов\0"
+      VALUE "OriginalFilename", "Pet.exe\0"
+      VALUE "ProductVersion", "0.6\0"
+      VALUE "FileVersion", "r" textrev "\0"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x419 1200
+  END
+END
