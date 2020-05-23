@@ -1,0 +1,42 @@
+[Compiler]
+C=0
+I=0
+
+[Linker]
+MapFile=2
+
+[Directories]
+OutputDir=..\..\Bin\Samples
+UnitOutputDir=..\..\Bin
+SearchPath=..\..\CoreLite;$(Delphi)\Lib;X:\Delphi\DCP
+Packages=rtl;vcl;vclx
+Conditionals=CoreLiteVCL;Lite;Debug
+UsePackages=1
+
+[Excluded Packages]
+dclsmp60.bpl=Borland Sample Components
+dcl31w60.bpl=Delphi 1.0 Compatibility Components
+dclshlctrls60.bpl=Shell Control Property and Component Editors
+PropCalc60.bpl=Numeric property calculator
+dclado60.bpl=Borland ADO DB Components
+designdgm60.bpl=Borland Module Diagram Editview
+dcldb60.bpl=Borland Database Components
+dclnet60.bpl=Borland Internet Components
+dclact60.bpl=Borland ActionBar Components
+dclib60.bpl=InterBase Data Access Components
+dclie60.bpl=Internet Explorer Components
+dcloffice2k60.bpl=Microsoft Office 2000 Sample Automation Server Wrapper Components
+X:\Delphi\BPL\MirrorKOLPackageD6.bpl=KOL mirror controls for Delphi 6
+dclwebsnap60.bpl=Borland WebSnap Components
+dclwbm60.bpl=Borland InternetExpress Components
+dclbde60.bpl=Borland BDE DB Components
+dbx60.bpl=Borland SQL Explorer UI Package
+dclbdecds60.bpl=Borland Local BDE ClientDataset Components
+dclcds60.bpl=Borland Base Cached ClientDataset Component
+dclmid60.bpl=Borland MyBase DataAccess Components
+dcldbx60.bpl=Borland dbExpress Components
+dcldbxcds60.bpl=Borland Local DBX ClientDataset Components
+dcldss60.bpl=Borland Decision Cube Components
+dcltee60.bpl=TeeChart Components
+dclisp60.bpl=Borland Internet Solutions Pack Components
+dclsoap60.bpl=Borland SOAP Components

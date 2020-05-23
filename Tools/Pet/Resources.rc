@@ -2,16 +2,17 @@
     PE Tool's resource script
 */
 
-#include "revision.inc"
+#include "build.inc"
 
 1 VERSIONINFO
 FILEOS VOS_NT_WINDOWS32
 FILETYPE VFT_APP
 FILEFLAGSMASK 0x3F
-PRODUCTVERSION 0,6,0,rev
-FILEVERSION 0,6,0,rev
-FILEFLAGS VS_FF_PRERELEASE 
-  #ifdef debug | VS_FF_DEBUG #endif
+PRODUCTVERSION Major,Minor,Release
+FILEVERSION Major,Minor,Release,Build
+#ifdef Flags
+  FILEFLAGS Flags
+#endif
 BEGIN
   BLOCK "StringFileInfo"
   BEGIN
@@ -22,8 +23,9 @@ BEGIN
       VALUE "ProductName", "PE Tool\0"
       VALUE "FileDescription", "Portable executable (PE) rebuilding tool\0"
       VALUE "OriginalFilename", "Pet.exe\0"
-      VALUE "ProductVersion", "0.6\0"
-      VALUE "FileVersion", "r" textrev "\0"
+      VALUE "ProductVersion", MajorStr "." MinorStr "." ReleaseStr "\0"
+      VALUE "FileVersion", MajorStr "." MinorStr "." ReleaseStr "." BuildStr "\0"
+      VALUE "Comments", CommitHash "\0"
     END
   END
   BLOCK "VarFileInfo"

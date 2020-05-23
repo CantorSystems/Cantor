@@ -1,0 +1,12 @@
+[Compiler]
+T=1
+
+[Linker]
+MapFile=2
+
+[Directories]
+OutputDir=..\..\Bin\Pet
+UnitOutputDir..\..\Bin
+SearchPath=..\..\CoreLite
+Conditionals=Lite;Debug
+UsePackages=0

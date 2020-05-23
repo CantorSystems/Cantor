@@ -288,7 +288,7 @@ begin
     begin
       Create(FExeName.RawData);
       try
-        FormatVersion(Ver, sVersionAndRevision);
+        FormatVersion(Ver, sVersionAndBuild);
         if TranslationCount <> 0 then
           FConsole.WriteLn(LogoFmt, 0, [StringInfo(0, 'ProductName'), Ver,
             StringInfo(0, 'LegalCopyright')], 1 + Byte(not Result));

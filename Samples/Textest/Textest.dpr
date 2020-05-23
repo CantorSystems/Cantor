@@ -19,11 +19,7 @@ uses
 {$IFDEF Tricks}
   {$IFDEF ForceMMX} ShareMM, CoreConsts, {$ELSE} HeapMM, {$ENDIF}
 {$ENDIF}
-  Windows,
-  CoreExceptions,
-  CoreUtils,
-  TestConsts in 'TestConsts.pas',
-  TestCore in 'TestCore.pas';
+  Windows, CoreExceptions, CoreUtils, TestConsts, TestCore;
 
 var
   Application: TApplication;

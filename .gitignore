@@ -12,3 +12,5 @@
 *.log
 *.map
 *.res
+build.inc
+Bin/*

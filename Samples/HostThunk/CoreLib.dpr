@@ -19,10 +19,7 @@ uses
 {$IFDEF Tricks}
   HeapMM, // cannot start without a memory manager
 {$ENDIF}
-  HostThunk,
-  Windows,
-  CoreUtils,
-  CoreExceptions;
+  HostThunk, Windows, CoreUtils, CoreExceptions;
 
 type
   EFall = class(Exception);

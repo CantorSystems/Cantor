@@ -286,7 +286,7 @@ type
   TFormatVersionOptions = set of (fvProductVersion, fvSkipZeroRelease);
 
 const
-  fvDefault = [fvProductVersion..fvSkipZeroRelease];
+  fvDefault = [fvSkipZeroRelease];
   verDefault = [verDebug..verPatched];
 
 type

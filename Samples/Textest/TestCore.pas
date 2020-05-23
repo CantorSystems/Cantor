@@ -299,8 +299,9 @@ begin
 end;
 
 begin
-  Console.WriteLn(PLegacyChar(sTitle), StrLen(sTitle), 2);
   ParseCommandLine(CommandLine);
+  if Title(sTitle) then
+    Exit;
 
   if FSourceFileName.Count <> 0 then
   begin

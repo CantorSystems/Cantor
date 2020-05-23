@@ -1,0 +1,9 @@
+[Linker]
+MapFile=2
+
+[Directories]
+OutputDir=..\..\Bin\Samples
+UnitOutputDir=..\..\Bin
+SearchPath=..\..\CoreLite
+Conditionals=Lite;Debug
+UsePackages=0

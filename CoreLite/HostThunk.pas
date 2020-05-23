@@ -25,15 +25,23 @@ type
 
   THostThunk = packed record
     MemoryManager: THostMemoryManager;
+  {$IFDEF Tricks}
     ErrorMessage: procedure(Msg: PLegacyChar; Length: Integer); stdcall;
     ExceptionMessage: procedure(Msg: PWideChar); stdcall;
+  {$ELSE}
+    IsConsole: Boolean;
+  {$ENDIF}
     SuppressErrorMessages: Boolean;
   end;
 
   TThunk = packed record
     MemoryManager: TMemoryManager;
-    ErrorMessage: procedure(Msg: PLegacyChar; Length: Integer);
-    ExceptionMessage: procedure(Msg: PWideChar);
+  {$IFDEF Tricks}
+    ErrorMessage: procedure(Msg: PLegacyChar; Length: Integer); stdcall;
+    ExceptionMessage: procedure(Msg: PWideChar); stdcall;
+  {$ELSE}
+    IsConsole: Boolean;
+  {$ENDIF}
     SuppressErrorMessages: Boolean;
   end;
 
@@ -80,6 +88,7 @@ asm
         JMP HostApp.MemoryManager.ReallocMem
 end;
 
+{$IFDEF Tricks}
 procedure ErrorMessageThunk(Msg: PLegacyChar; Length: Integer);
 asm
         POP ECX
@@ -89,21 +98,27 @@ asm
         JMP HostApp.ErrorMessage
 end;
 
-procedure ExceptionMessageThunk(Msg: PWideChar);
+procedure ExceptionMessageThunk(Msg: PWideChar; Length: Integer);
 asm
         POP ECX
+        PUSH EDX
         PUSH EAX
         PUSH ECX
-        JMP HostApp.ExceptionMessage
+        JMP HostApp.ErrorMessage
 end;
+{$ENDIF}
 
 procedure StdCallInit(const Thunk: THostThunk);
 var
   MM: TMemoryManager;
 begin
   HostApp := Thunk;
+{$IFDEF Tricks}
   ErrorMessage := ErrorMessageThunk;
   ExceptionMessage := ExceptionMessageThunk;
+{$ELSE}
+  IsConsole := Thunk.IsConsole;
+{$ENDIF}
 {$IF defined(ForceMMX) and not defined(Tricks)}
   if not MMX_Supported then
     raise EMMX.Create; // until memory manager isn't set yet
@@ -120,8 +135,12 @@ end;
 
 procedure FastCallInit(const Thunk: TThunk);
 begin
+{$IFDEF Tricks}
   ErrorMessage := Thunk.ErrorMessage;
   ExceptionMessage := Thunk.ExceptionMessage;
+{$ELSE}
+  IsConsole := Thunk.IsConsole;
+{$ENDIF}
 {$IF Defined(ForceMMX) and not Defined(Tricks)}
   if not MMX_Supported then
     raise EMMX.Create; // until memory manager isn't set yet
@@ -135,13 +154,13 @@ begin
   with Result do
   begin
     GetMemoryManager(MemoryManager);
+  {$IFDEF Tricks}
     ErrorMessage := {$IFDEF Tricks} System {$ELSE} CoreUtils {$ENDIF}.ErrorMessage;
     ExceptionMessage := CoreExceptions.ExceptionMessage;
-  {$IFDEF Tricks}
-    SuppressErrorMessages := NoErrMsg;
   {$ELSE}
-    SuppressErrorMessages := False;
+    IsConsole := System.IsConsole;
   {$ENDIF}
+    SuppressErrorMessages := NoErrMsg;
   end;
 end;
 
@@ -150,7 +169,9 @@ initialization
 
 finalization
   SetMemoryManager(SaveMemoryManager);
+{$IFDEF Tricks}
   ErrorMessage := nil;
   ExceptionMessage := nil;
+{$ENDIF}
 
 end.

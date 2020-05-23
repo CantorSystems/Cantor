@@ -63,7 +63,6 @@ const
   sVS_VERSION_INFO = 'VS_VERSION_INFO';
   sFixedVersionInfo = 'fixed version info';
   sVersionAndBuild = '%s build %u';
-  sVersionAndRevision = '%s revision %u';
 
   sPerformanceCounter = 'performance counter';
   sPerformanceFrequency = 'performance frequency';

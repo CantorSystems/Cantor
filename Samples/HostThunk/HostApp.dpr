@@ -19,11 +19,7 @@ uses
 {$IFDEF Tricks}
   {$IFDEF ForceMMX} ShareMM, CoreConsts, {$ELSE} HeapMM, {$ENDIF}
 {$ENDIF}
-  HostThunk,
-  Windows,
-  CoreUtils,
-  CoreExceptions,
-  CoreWrappers;
+  HostThunk, Windows, CoreUtils, CoreExceptions, CoreWrappers;
 
 const
   CoreLib = 'CoreLib.dll';
@@ -32,6 +28,8 @@ const
 procedure InitCore(const Thunk: TThunk); external CoreLib name '@@Init';
 procedure Fall; external CoreLib;
 
+const
+  WaitEnter = 'Press ENTER to exit';
 var
   Console: TStreamConsole;
 begin
@@ -64,7 +62,7 @@ begin
     Create(True);
     try
       //CodePage := CP_UTF8;
-      ReadLn('Press ENTER to exit');
+      ReadLn(WaitEnter, StrLen(WaitEnter));
     finally
       Destroy;
     end;

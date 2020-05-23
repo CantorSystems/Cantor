@@ -17,10 +17,7 @@ uses
 {$IFDEF Tricks}
   HeapMM,
 {$ENDIF}
-  Windows,
-  CoreExceptions,
-  ConvCore in 'ConvCore.pas',
-  ConvConsts in 'ConvConsts.pas';
+  Windows, CoreExceptions, ConvCore, ConvConsts;
 
 var
   Application: TApplication;

@@ -184,7 +184,7 @@ procedure UseExceptionMessageBox;
 procedure UseExceptionMessageWrite;
 
 var
-  ExceptionMessage: procedure(Msg: PWideChar; Count: Integer) = DefaultExceptionMessage;
+  ExceptionMessage: procedure(Msg: PWideChar; Length: Integer) = DefaultExceptionMessage;
 
 implementation
 

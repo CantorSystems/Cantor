@@ -23,11 +23,7 @@ uses
 {$IFDEF Tricks}
   {$IFDEF ForceMMX} ShareMM, CoreConsts, {$ELSE} HeapMM, {$ENDIF}
 {$ENDIF}
-  Windows,
-  CoreExceptions,
-  CoreUtils,
-  PetCore in 'PetCore.pas',
-  PetConsts in 'PetConsts.pas';
+  Windows, CoreExceptions, CoreUtils, PetCore, PetConsts;
 
 {$I ..\..\CoreLite\ImageHelper.inc}
 {$SetPEOptFlags IMAGE_DLLCHARACTERISTICS_NX_COMPAT}

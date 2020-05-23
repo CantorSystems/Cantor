@@ -6,7 +6,7 @@ unit TestConsts;
 
 interface
 
-{$I Revision.inc} // use Revision.bat to generate
+{$I build.inc}
 
 { Do not localize }
 
@@ -19,7 +19,7 @@ const       // short Unicode strings
 { Localize }
 
 const
-  sTitle =  sLineBreak + 'Textest ' + Revision;
+  sTitle = 'Textest ' + Build;
 
   sUsage =
     'Usage:'#9'%s <source> [commands [options]]';
@@ -57,4 +57,3 @@ const
 implementation
 
 end.
-

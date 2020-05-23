@@ -6,7 +6,7 @@ unit ConvConsts;
 
 interface
 
-{$I Revision.inc} // use Revision.bat to generate
+{$I build.inc}
 
 { Do not localize }
 
@@ -30,7 +30,7 @@ const         // short Unicode strings
 { Localize }
 
 const
-  sTitle = 'LiteConv ' + Revision;
+  sTitle = 'LiteConv build ' + Build;
 
   sUsage  =
     'Usage:' + sLineBreak +
@@ -81,6 +81,3 @@ const
 implementation
 
 end.
-
-
-

@@ -1,22 +1,27 @@
 @echo off
 
-set Tricks=..\..\..\..\Tricks
-set Units=..\..\CoreLite;%Tricks%\MMX.%DelphiVer%;%Tricks%
-
-set Options=-b -gp -$C- -$I- -$T+
-set Exe=..\Pet.exe
-
-if /i "%1"=="debug" (
-  set Debug=debug
-)
-
-call BuildRes.bat %Debug%
-
-del %~dp0Pet.cfg
-dcc32 %~dp0Pet.dpr -d"Tricks;ForceMMX;Lite;%1" -e.. %Options% -u"%Units%"
+call "%~dp0..\build.bat" "%~dp0Pet" %*
 if errorlevel 1 goto exit
 
-call StripRes %~dp0%Exe%
-pet -nologo -strip -trunc %Exe% -into %Exe% -osver 5 -stub
+if "%1" neq "" goto exit
+
+set Pet=%~dp0..\..\Bin\Pet
+fasm "%~dp0Win32.asm" "%Pet%\Win32.exe"
+copy "%~dp0strip*.bat" "%Pet%" >nul
+"%Pet%\Pet.exe" -strip -trunc -aslr -osver 5 -ls -stub "%Pet%\Win32.exe" . -into "%Temp%\Pet.exe"
+if errorlevel 1 goto exit
+move /y "%Temp%\Pet.exe" "%Pet%" >nul
+if exist "%Pet%\Win32.exe" del "%Pet%\Win32.exe" >nul
+
+set Stubs=%Pet%\CustomStubs
+if not exist "%Stubs%" mkdir "%Stubs%"
+for %%f in (%~dp0CustomStubs\*.asm) do (
+  fasm "%%f"
+  if errorlevel 1 (
+    del "%~dp0CustomStubs\*.exe"
+    goto exit
+  )
+)
+move /y "%~dp0CustomStubs\*.exe" "%Stubs%" >nul
 
 :exit
