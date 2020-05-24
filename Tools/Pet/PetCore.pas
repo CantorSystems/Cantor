@@ -33,7 +33,7 @@ type
     procedure Action(Prompt: PLegacyChar; FileName: PFileName);
     procedure StripStats(SourceSize, StrippedSize: LongWord);
     procedure TotalStats(FileCount, TotalBytes, TotalWritten: LongWord);
-    procedure TransferStats(SourceSize, ActualSize: LongWord);
+    procedure TransferStats(SourceSize, ActualSize: LongWord; LineBreaks: Integer = 1);
   end;
 
   TFileKind = (fkNone, fkSource, fkInto, fkStub, fkExtract, fkBackup{, fkDump});
@@ -43,7 +43,7 @@ type
 
   TRunOption = (roPause, roNoLogo, roVersion, ro3GB, roASLR, roDEP, // ordered
     {roAuto,} roStrip, roTrunc, roTouch, roUnsafe, roDeep, roDir, roRaw,
-    {roMiniRes, roVerInfo, roMainIcon, roVerbose} roListSections, roOSVersion, roRebase);
+    {roMiniRes, roVerInfo, roMainIcon, roVerbose} roShowInfo, roOSVersion, roRebase);
   TRunOptions = set of TRunOption;
 
   TApplication = object(TConsoleApplication{<TRunOptions>})
@@ -239,7 +239,7 @@ begin
   FConsole.WriteLn(FActionBuf, WideFormatBuf(FActionFormat, [Prompt, nil, W], FActionBuf), 0);
 end;
 
-procedure TOutput.TransferStats(SourceSize, ActualSize: LongWord);
+procedure TOutput.TransferStats(SourceSize, ActualSize: LongWord; LineBreaks: Integer);
 var
   P: PLegacyChar;
 begin
@@ -250,7 +250,7 @@ begin
   end
   else
     P := nil;
-    FConsole.WriteLn(FStatsBuf, WideFormatBuf(FStatsFormat, [ActualSize, P], FStatsBuf));
+  FConsole.WriteLn(FStatsBuf, WideFormatBuf(FStatsFormat, [ActualSize, P], FStatsBuf), LineBreaks);
 end;
 
 procedure TOutput.StripStats(SourceSize, StrippedSize: LongWord);
@@ -382,7 +382,7 @@ end;
 procedure TApplication.ParseCommandLine(Source: PCoreChar);
 
 const
-  OptionKeys: array[roPause..roListSections] of PCoreChar = (
+  OptionKeys: array[roPause..roShowInfo] of PCoreChar = (
     sPause, sNoLogo, sVersion, s3GB, sASLR, sDEP,
     sStrip, sTrunc, sTouch, sUnsafe, sDeep, sDir, sRaw,
     {sMiniRes, sVerInfo, sMainIcon, sVerbose,} sLS
@@ -619,20 +619,103 @@ begin
   Console.WriteLn(Prompt, 0, [E.Message.AsString, ImageFileName.RawData]);
 end;
 
-procedure ShowSections;
+procedure ShowInfo;
 type
   KnownSubsystem = IMAGE_SUBSYSTEM_NATIVE..IMAGE_SUBSYSTEM_WINDOWS_BOOT_APPLICATION;
 const
-  SubsystemName: array[KnownSubsystem] of PLegacyChar =
+  SubsystemNames: array[KnownSubsystem] of PLegacyChar =
     (sNative, sGUI, sConsole, nil, sOS2, nil, sPOSIX, s9xDrv, sWindowsCE,
-     sEFIApp, sEFIBootDrv, sEFIRuntimeDrv, sEFIROM, sXbox, nil, sWindowsBootApp);
+     sEFIApp, sEFIBootDrv, sEFIRuntimeDrv, sEFIROM, sXbox, sUnknown, sWindowsBootApp);
 var
-  Opt: array[0..3] of PCoreChar;
-  P: PPCoreChar;
+  P: PCoreChar;
   I, L, R, V: Integer;
-  TempSectionName: array[0..IMAGE_SIZEOF_SHORT_NAME] of LegacyChar;
-  S: PLegacyChar;
+  TmpSectionName: array[0..IMAGE_SIZEOF_SHORT_NAME] of LegacyChar;
+  MachineName, SubsystemName: PLegacyChar;
+  W: WideChar;
 begin
+  if FLogStyle <> lsBrief then
+    Console.WriteLn;
+    
+  case FImage.Headers.FileHeader.Machine of
+    IMAGE_FILE_MACHINE_I386:      MachineName := sX86;
+    IMAGE_FILE_MACHINE_AMD64:     MachineName := sX64;
+    IMAGE_FILE_MACHINE_IA64:      MachineName := sItanium;
+    IMAGE_FILE_MACHINE_EBC:       MachineName := sEFI;
+    IMAGE_FILE_MACHINE_POWERPC:   MachineName := sPowerPC;
+    IMAGE_FILE_MACHINE_POWERPCFP: MachineName := sPowerPCFPU;
+    IMAGE_FILE_MACHINE_THUMB:     MachineName := sTumb;
+    IMAGE_FILE_MACHINE_ARM:       MachineName := sARM;
+    IMAGE_FILE_MACHINE_ARM64:     MachineName := sARM64;
+    IMAGE_FILE_MACHINE_ALPHA64:   MachineName := sAlpha64;
+    IMAGE_FILE_MACHINE_R3000:     MachineName := sR3000;
+    IMAGE_FILE_MACHINE_R4000:     MachineName := sR4000;
+    IMAGE_FILE_MACHINE_R10000:    MachineName := sR10000;
+    IMAGE_FILE_MACHINE_WCEMIPSV2: MachineName := sMIPSWCE2;
+    IMAGE_FILE_MACHINE_MIPSFPU:   MachineName := sMIPSFPU;
+    IMAGE_FILE_MACHINE_MIPSFPU16: MachineName := sMIPS16FPU;
+    IMAGE_FILE_MACHINE_MIPS16:    MachineName := sMIPS16;
+    IMAGE_FILE_MACHINE_RISCV32:   MachineName := sRISCV32;
+    IMAGE_FILE_MACHINE_RISCV64:   MachineName := sRISCV64;
+    IMAGE_FILE_MACHINE_RISCV128:  MachineName := sRISCV128;
+    IMAGE_FILE_MACHINE_SH3:       MachineName := sSH3;
+    IMAGE_FILE_MACHINE_SH3DSP:    MachineName := sSH3DSP;
+    IMAGE_FILE_MACHINE_SH4:       MachineName := sSH4;
+    IMAGE_FILE_MACHINE_SH5:       MachineName := sSH5;
+    IMAGE_FILE_MACHINE_AM33:      MachineName := sAM33;
+    IMAGE_FILE_MACHINE_M32R:      MachineName := sM32R;
+  else
+    MachineName := sUnknown;
+  end;
+
+  with FImage.Headers.OptionalHeader do
+  begin
+    if Subsystem in [Low(KnownSubsystem)..High(KnownSubsystem)] then
+      SubsystemName := SubsystemNames[Subsystem]
+    else
+      SubsystemName := sUnknown;
+    Console.WriteLn(sMachineTypeFmt, 0, [PLegacyChar(sMachineType), PLegacyChar(sPE), MachineName, SubsystemName]);
+    Console.WriteLn(sOSVersionFmt, 0, [PLegacyChar(sRequiredOSVersion),
+      MajorOSVersion, MinorOSVersion, MajorSubsystemVersion, MinorSubsystemVersion]);
+    HexString.AsHexadecimal(ImageBase, -8, False, CoreChar('0'));
+    Console.WriteLn(sImageOptionsFmt, 0, [PLegacyChar(sImageBaseTitle), HexString.RawData]);
+    Console.WriteLn(sHexDataFmt, 0, [PLegacyChar(sStackInfoTitle), StackCommitSize, StackReserveSize]);
+    Console.WriteLn(sHexDataFmt, 0, [PLegacyChar(sHeapInfoTitle), HeapCommitSize, HeapReserveSize]);
+  end;
+
+  TmpFileName.Clear;
+  W := ' ';
+  if FImage.IsLargeAddressAware then
+  begin
+    P := s3GB;
+    TmpFileName.Append(P + 1, PWord(P)^);
+  end;
+  if FImage.IsASLRAware then
+  begin
+    if TmpFileName.Count <> 0 then
+      TmpFileName.Append(@W, 1);
+    P := sASLR;
+    TmpFileName.Append(P + 1, PWord(P)^);
+  end;
+  if FImage.IsDEPAware then
+  begin
+    if TmpFileName.Count <> 0 then
+      TmpFileName.Append(@W, 1);
+    P := sDEP;
+    TmpFileName.Append(P + 1, PWord(P)^);
+  end;
+  if FImage.IsDotNETAware then
+  begin
+    if TmpFileName.Count <> 0 then
+      TmpFileName.Append(@W, 1);
+    P := sDotNET;
+    TmpFileName.Append(P + 1, PWord(P)^);
+  end;
+  if TmpFileName.Count <> 0 then
+    Console.WriteLn(sImageOptionsFmt, 0, [sImageOptions, TmpFileName.RawData]);
+
+  with FImage.Headers.OptionalHeader do
+    Console.WriteLn(sHexDataFmt, 0, [PLegacyChar(sSectionAlignment), FileAlignment, SectionAlignment]);
+
   if FLogStyle <> lsBrief then
   begin
     Console.WriteLn;
@@ -642,13 +725,14 @@ begin
 
   with FImage.SectionsMax do
   begin
-    R := -Ceil(Log2(RawDataOffset) / 4);
-    V := -Ceil(Log2(VirtualAddress) / 4);
+    R := -Ceil32(Log2(RawDataOffset) / 3.99); // 3.99 bits per character
+    V := -Ceil32(Log2(VirtualAddress) / 3.99);
   end;
 
   TmpFileName.AsHexadecimal(0, R, False, CoreChar('0'));
   HexString.AsHexadecimal(0, V, False, CoreChar('0'));
   Console.WriteLn(sSectionFmt, 0, [PLegacyChar(sStubSection), TmpFileName.RawData, HexString.RawData], 0);
+  Console.WriteLn({$IFDEF Locale} CP_LOCALIZATION, {$ENDIF} '  ', 2, 0);
   Output.TransferStats(Loaded.FileSize, FImage.Stub.Size);
 
   with FImage.Stub.Header.Ext do
@@ -657,68 +741,96 @@ begin
     HexString.AsHexadecimal(NewHeaderOffset, V, False, CoreChar('0'));
   end;
   Console.WriteLn(sSectionFmt, 0, [PLegacyChar(sHeadersSection), TmpFileName.RawData, HexString.RawData], 0);
-  Output.TransferStats(Loaded.FileSize, FImage.HeadersSize +
-    Cardinal(FImage.Count * SizeOf(TImageSectionHeader)));
+  Console.WriteLn({$IFDEF Locale} CP_LOCALIZATION, {$ENDIF} '  ', 2, 0);
+  Output.TransferStats(Loaded.FileSize, FImage.HeadersSize + Cardinal(FImage.Count * SizeOf(TImageSectionHeader)));
 
   for I := 0 to FImage.Count - 1 do
     with FImage.Sections[I] do
     begin
       L := StrLen(Header.Name, IMAGE_SIZEOF_SHORT_NAME);
-      Move(Header.Name[0], TempSectionName, L);
-      TempSectionName[L] := #0;
+      Move(Header.Name[0], TmpSectionName, L);
+      TmpSectionName[L] := #0;
       TmpFileName.AsHexadecimal(Header.RawDataOffset, R, False, CoreChar('0'));
       HexString.AsHexadecimal(Header.VirtualAddress, V, False, CoreChar('0'));
-      Console.WriteLn(sSectionFmt, 0, [@TempSectionName, TmpFileName.RawData, HexString.RawData], 0);
-      Output.TransferStats(Loaded.FileSize, Size);
-    end;
-
-  if FLogStyle <> lsBrief then
-    Console.WriteLn;
-  with FImage.Headers.OptionalHeader do
-  begin
-    Console.WriteLn(sOSVersionFmt, 0, [PLegacyChar(sRequiredOSVersion),
-      MajorOSVersion, MinorOSVersion, MajorSubsystemVersion, MinorSubsystemVersion], 0);
-    if Subsystem in [Low(KnownSubsystem)..High(KnownSubsystem)] then
-      S := SubsystemName[Subsystem]
-    else
-      S := nil;
-    if S <> nil then
-      Console.WriteLn(sSubsystemFmt, 0, [S])
-    else
-      Console.WriteLn;
-    TmpFileName.AsHexadecimal(ImageBase, -8, False, CoreChar('0'));
-    Console.WriteLn(sSectionAlignmentFmt, 0, [PLegacyChar(sSectionAlignment),
-      SectionAlignment, FileAlignment]);
-    Console.WriteLn(sImageOptionsFmt, 0, [PLegacyChar(sImageBaseTitle),
-      TmpFileName.RawData, nil, nil, nil]);
+      Console.WriteLn(sSectionFmt, 0, [@TmpSectionName, TmpFileName.RawData, HexString.RawData], 0);
+      Console.WriteLn({$IFDEF Locale} CP_LOCALIZATION, {$ENDIF} '  ', 2, 0);
+      Output.TransferStats(Loaded.FileSize, Size, 0);
+      TmpFileName.Clear;
+      W := ' ';
+      TmpFileName.Append(@W, 1);
+      TmpFileName.Append(@W, 1);
+      if Header.Characteristics and IMAGE_SCN_TYPE_NO_PAD <> 0 then
+        W := 'N'
+      else
+        W := MidDot;
+      TmpFileName.Append(@W, 1);
+      if Header.Characteristics and IMAGE_SCN_CNT_CODE <> 0 then
+        W := 'C'
+      else
+        W := MidDot;
+      TmpFileName.Append(@W, 1);
+      if Header.Characteristics and IMAGE_SCN_CNT_INITIALIZED_DATA <> 0 then
+        W := 'D'
+      else
+        W := MidDot;
+      TmpFileName.Append(@W, 1);
+      if Header.Characteristics and IMAGE_SCN_CNT_UNINITIALIZED_DATA <> 0 then
+        W := 'U'
+      else
+        W := MidDot;
+      TmpFileName.Append(@W, 1);
+      if Header.Characteristics and IMAGE_SCN_NO_DEFER_SPEC_EXC <> 0 then
+        W := 'E'
+      else
+        W := MidDot;
+      TmpFileName.Append(@W, 1);
+      if Header.Characteristics and IMAGE_SCN_GPREL <> 0 then
+        W := 'G'
+      else
+        W := MidDot;
+      TmpFileName.Append(@W, 1);
+      if Header.Characteristics and IMAGE_SCN_LNK_NRELOC_OVFL <> 0 then
+        W := 'L'
+      else
+        W := MidDot;
+      TmpFileName.Append(@W, 1);
+      if Header.Characteristics and IMAGE_SCN_MEM_DISCARDABLE <> 0 then
+        W := 'A'
+      else
+        W := MidDot;
+      TmpFileName.Append(@W, 1);
+      if Header.Characteristics and IMAGE_SCN_MEM_NOT_CACHED <> 0 then
+        W := 'H'
+      else
+        W := MidDot;
+      TmpFileName.Append(@W, 1);
+      if Header.Characteristics and IMAGE_SCN_MEM_NOT_PAGED  <> 0 then
+        W := 'P'
+      else
+        W := MidDot;
+      TmpFileName.Append(@W, 1);
+      if Header.Characteristics and IMAGE_SCN_MEM_SHARED <> 0 then
+        W := 'S'
+      else
+        W := MidDot;
+      TmpFileName.Append(@W, 1);
+      if Header.Characteristics and IMAGE_SCN_MEM_EXECUTE <> 0 then
+        W := 'X'
+      else
+        W := MidDot;
+      TmpFileName.Append(@W, 1);
+      if Header.Characteristics and IMAGE_SCN_MEM_READ <> 0 then
+        W := 'R'
+      else
+        W := MidDot;
+      TmpFileName.Append(@W, 1);
+      if Header.Characteristics and IMAGE_SCN_MEM_WRITE <> 0 then
+        W := 'W'
+      else
+        W := MidDot;
+      TmpFileName.Append(@W, 1);
+      Console.WriteLn(TmpFileName.RawData, TmpFileName.Count);
   end;
-
-  FillChar(Opt, SizeOf(Opt), 0);
-  P := @Opt[0];
-  if FImage.IsLargeAddressAware then
-  begin
-    P^ := s3GB;
-    Inc(P^);
-    Inc(P);
-  end;
-  if FImage.IsASLRAware then
-  begin
-    P^ := sASLR;
-    Inc(P^);
-    Inc(P);
-  end;
-  if FImage.IsDEPAware then
-  begin
-    P^ := sDEP;
-    Inc(P^);
-  end;
-  if FImage.IsDotNETAware then
-  begin
-    P^ := sDotNET;
-    Inc(P^);
-  end;
-  if Opt[0] <> nil then
-    Console.WriteLn(sImageOptionsFmt, 0, [sImageOptions, Opt[0], Opt[1], Opt[2], Opt[3]]);
 end;
 
 const
@@ -832,9 +944,9 @@ begin
           begin
             Console.EndOfLine;
             Console.WriteLn(sUnsafeOperation, 0, [PLegacyChar(sChainedDataFound), PLegacyChar(sSafeStripping)]);
-            if roListSections in FOptions then
+            if roShowInfo in FOptions then
             begin
-              ShowSections;
+              ShowInfo;
               if FileName.Next <> nil then
                 Console.WriteLn;
             end;
@@ -1019,9 +1131,9 @@ begin
           Inc(TotalWritten, Saved.BytesWritten);
         end;
 
-        if roListSections in FOptions then
+        if roShowInfo in FOptions then
         begin
-          ShowSections;
+          ShowInfo;
           if (FLogStyle <> lsBrief) and ((FileName.Prev <> nil) or (FileName.Next <> nil)) then
             Console.WriteLn;
         end;
@@ -1035,7 +1147,7 @@ begin
       end;
 
       FileName := FileName.Next;
-      if (FileName <> nil) and ((FLogStyle <> lsBrief) or (roListSections in FOptions)) then
+      if (FileName <> nil) and ((FLogStyle <> lsBrief) or (roShowInfo in FOptions)) then
         Console.WriteLn;
     end;
 

@@ -197,12 +197,12 @@ begin
       SetDataSize(AlignToLongWord(L));
       Move(FData^, PLegacyChar(FData)[ExtBytes], L);
       Move(FHeader.Ext, FData^, ExtBytes);
-      FillChar(FHeader.Ext, ExtBytes, 0); // goodbye, ï¿½*ï¿½Rich<ï¿½*ï¿½
+      FillChar(FHeader.Ext, ExtBytes, 0); // goodbye, ð*ùRich<ð*ù
     end
     else
     begin
       SetDataSize(SizeOf(FHeader.Ext));
-      FillChar(PLegacyChar(@FHeader)[L], SizeOf(FHeader) - L, 0); // also ï¿½*ï¿½Rich<ï¿½*ï¿½
+      FillChar(PLegacyChar(@FHeader)[L], SizeOf(FHeader) - L, 0); // also ð*ùRich<ð*ù
     end;
   end
   else

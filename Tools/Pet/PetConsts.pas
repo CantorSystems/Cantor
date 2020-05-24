@@ -21,13 +21,13 @@ const         // short Unicode strings
   sDump       = #4'dump';
   sVersion    = #7'version';
 
+  sDotNET     = #4'.NET';
   s3GB        = #3'3GB';
   sASLR       = #4'ASLR';
   sAuto       = #4'auto';
   sDir        = #3'dir';
   sDeep       = #4'deep';
   sDEP        = #3'DEP';
-  sDotNet     = #4'.NET';
   sDropSect   = #8'dropsect';
   sLS         = #2'ls';
   sLog        = #3'log';
@@ -52,6 +52,8 @@ const         // short Unicode strings
     '   /~__;==t==/    %s' + sLineBreak +
     '  (_____)_m_m)';
 
+  MidDot = '·';  
+
 { Localize }
 
 const
@@ -66,16 +68,12 @@ const
             #9'-extract <stub>' +  #9#9'Extract <source> stub to <stub> file' + sLineBreak +
             #9'-into [dest]|[.]' +   #9'Save result to [dest] file or replace source' + sLineBreak +
             #9'-version' +         #9#9'Show version and exit' + sLineBreak + sLineBreak +
-    'Option for -extract and -into commands' + sLineBreak +
+    'Option for estimation, -extract and -into commands' + sLineBreak +
             #9'-strip' +         #9#9#9'Strip headers, exports, debug information,' + sLineBreak +
                                #9#9#9#9'relocations and empty sections when possible' + sLineBreak + sLineBreak +
     'Options for estimation and -into command' + sLineBreak +
             #9'-3gb' +           #9#9#9'Enable large address' + sLineBreak +
             #9'-aslr' +          #9#9#9'Enable dynamic image base (ASLR)' + sLineBreak +
-            {#9'-auto [#[%]]|[.]'    +#9'Using '#$E2#$80#$9C'-keep -strip -trunc -stub'#$E2#$80#$9D' mode, replace' + sLineBreak +
-                               #9#9#9#9'original file when stripped size is equal or' + sLineBreak +
-                               #9#9#9#9'greater given number of bytes, percent or' + sLineBreak +
-                               #9#9#9#9'volume cluster size' + sLineBreak +}
             #9'-deep' +          #9#9#9'Strip orphaned sections (unsafe!)' + sLineBreak +
             #9'-dep' +           #9#9#9'Enable data execution prevention (DEP)' + sLineBreak +
             #9'-dir' +           #9#9#9'Strip data directory (lesser compatibility)' + sLineBreak +
@@ -96,7 +94,16 @@ const
             #9'-unsafe' +        #9#9#9'Strip chained certificate and other data' + sLineBreak + sLineBreak +
     'Miscellaneous options' + sLineBreak +
             #9'-nologo' +        #9#9#9'Don''t display logo and copyright' + sLineBreak +
-            #9'-pause' +         #9#9#9'Wait for ENTER key to exit';
+            #9'-pause' +         #9#9#9'Wait for ENTER key to exit'  + sLineBreak + sLineBreak +
+    'Section flags'  + sLineBreak +
+            #9'A  Discardable'#9#9#9 +          'N  No pad' + sLineBreak +
+            #9'C  Code'#9#9#9#9 +               'P  Not paged' + sLineBreak +
+            #9'D  Initialized data'#9#9 +       'R  Readable' + sLineBreak +
+            #9'E  Reset TLB SEH bits'#9#9 +     'S  Shared' + sLineBreak +
+            #9'G  Globally pointed data'#9 +    'U  Uninitialized data' + sLineBreak +
+            #9'H  Not cached'#9#9#9 +           'W  Writable' + sLineBreak +
+            #9'L  Extended relocations'#9#9 +   'X  Executable';
+
 
   sMissingParam = 'Missing %s';
   sDuplicateParam = 'Duplicate %hs: %s';
@@ -116,14 +123,48 @@ const
 
   sPathEllipsis = '[...]';
 
-  sOSVersionFmt         = '%17hs  %d.%d/%d.%d';
-  sSubsystemFmt         = '  %hs';
-  sImageOptionsFmt      = '%17hs  %s %s %s %s';
-  sSectionAlignmentFmt  = '%17hs  %X/%X';
+  sUnknown    = 'Unknown';
+  sX86        = 'x86';
+  sR3000      = 'MIPS R3000';
+  sR4000      = 'MIPS R4000';
+  sR10000     = 'MIPS R10000';
+  sMIPSWCE2   = 'MIPS WCE v2';
+  sSH3        = 'SH-3';
+  sSH3DSP     = 'SH-3 DSP';
+  sSH4        = 'SH-4';
+  sSH5        = 'SH-5';
+  sARM        = 'ARM';
+  sTumb       = 'ARM Thumb';
+  sAM33       = 'AM33';
+  sPowerPC    = 'Power PC';
+  sPowerPCFPU = 'Power PC with FPU';
+  sItanium    = 'IA-64';
+  sMIPS16     = 'MIPS16';
+  sEFI        = 'EFI byte code';
+  sAlpha64    = 'Alpha 64';
+  sMIPSFPU    = 'MIPS with FPU';
+  sMIPS16FPU  = 'MIPS16 with FPU';
+  sRISCV32    = 'RISC-V 32-bit';
+  sRISCV64    = 'RISC-V 64-bit';
+  sRISCV128   = 'RISC-V 128-bit';
+  sX64        = 'x64';
+  sM32R       = 'M32R';
+  sARM64      = 'ARM64';
 
-  sRequiredOSVersion  = 'OS Version';
-  sSectionAlignment   = 'Section alignment';
+  sPE   = 'PE';
+  sPE64 = 'PE64';
+
+  sMachineTypeFmt       = '%28hs  %hs/%hs/%hs';
+  sOSVersionFmt         = '%28hs  %d.%d/%d.%d';
+  sImageOptionsFmt      = '%28hs  %s';
+  sHexDataFmt           = '%28hs  %X/%X';
+
+  sMachineType        = 'Image/machine/subsystem type';
+  sRequiredOSVersion  = 'OS/subsystem version';
+  sSectionAlignment   = 'Section alignment (file/RVA)';
   sImageBaseTitle     = 'Image base';
+  sStackInfoTitle     = 'Stack commit/reserve';
+  sHeapInfoTitle      = 'Heap commit/reserve';
   sImageOptions       = 'Image options';
 
   sSectionFmt = '  %9hs  %s/%s';
@@ -142,8 +183,8 @@ const
   sEFIBootDrv     = 'EFI boot driver';
   sEFIRuntimeDrv  = 'EFI runtime driver';
   sEFIROM         = 'EFI ROM';
-  sXbox           = 'Xbox';
-  sWindowsBootApp = 'Windows boot';
+  sXbox           = 'XBOX';
+  sWindowsBootApp = 'Boot';
 
   sLoading            = 'Loading';
   sChainedData        = 'Chained data';
@@ -176,7 +217,7 @@ const
   sSafeRebasing = 'rebasing';
 
   sUnexpectedEndOfStream = '%hs from %s'; // Unexpected end of stream: read xx bytes instead of yy from <file>
-  sSectionList = 'Headers and sections';
+  sSectionList = 'Headers and sections (file/RVA)';
   sTotalsMessage = '%u files, %d bytes (%hs)';
   sNoFilesFound = 'No files found';
   sSectionNotFound = 'Section “%s” not found';
