@@ -1616,15 +1616,15 @@ end;
 function IsNan(const Value: Double): Boolean;
 begin
   Result :=
-    ((PInt64(@Value)^ and $7FF0000000000000) =  $7FF0000000000000) and
-    ((PInt64(@Value)^ and $000FFFFFFFFFFFFF) <> $0000000000000000);
+    ((PQuadWord(@Value)^ and $7FF0000000000000) = $7FF0000000000000) and
+    ((PQuadWord(@Value)^ and $000FFFFFFFFFFFFF) <> $0000000000000000);
 end;
 
 function IsInfinite(const Value: Double): Boolean;
 begin
   Result :=
-    ((PInt64(@Value)^ and $7FF0000000000000) = $7FF0000000000000) and
-    ((PInt64(@Value)^ and $000FFFFFFFFFFFFF) = $0000000000000000);
+    ((PQuadWord(@Value)^ and $7FF0000000000000) = $7FF0000000000000) and
+    ((PQuadWord(@Value)^ and $000FFFFFFFFFFFFF) = $0000000000000000);
 end;
 
 {$I FastCode\Ceil.inc}
