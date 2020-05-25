@@ -626,6 +626,7 @@ const
   SubsystemNames: array[KnownSubsystem] of PLegacyChar =
     (sNative, sGUI, sConsole, nil, sOS2, nil, sPOSIX, s9xDrv, sWindowsCE,
      sEFIApp, sEFIBootDrv, sEFIRuntimeDrv, sEFIROM, sXbox, sUnknown, sWindowsBootApp);
+  TwoSpaces: array[0..1] of WideChar = (WideChar(' '), WideChar(' '));
 var
   P: PCoreChar;
   I, L, R, V: Integer;
@@ -692,21 +693,21 @@ begin
   if FImage.IsASLRAware then
   begin
     if TmpFileName.Count <> 0 then
-      TmpFileName.Append(@W, 1);
+      TmpFileName.Append(W);
     P := sASLR;
     TmpFileName.Append(P + 1, PWord(P)^);
   end;
   if FImage.IsDEPAware then
   begin
     if TmpFileName.Count <> 0 then
-      TmpFileName.Append(@W, 1);
+      TmpFileName.Append(W);
     P := sDEP;
     TmpFileName.Append(P + 1, PWord(P)^);
   end;
   if FImage.IsDotNETAware then
   begin
     if TmpFileName.Count <> 0 then
-      TmpFileName.Append(@W, 1);
+      TmpFileName.Append(W);
     P := sDotNET;
     TmpFileName.Append(P + 1, PWord(P)^);
   end;
@@ -756,79 +757,77 @@ begin
       Console.WriteLn({$IFDEF Locale} CP_LOCALIZATION, {$ENDIF} '  ', 2, 0);
       Output.TransferStats(Loaded.FileSize, Size, 0);
       TmpFileName.Clear;
-      W := ' ';
-      TmpFileName.Append(@W, 1);
-      TmpFileName.Append(@W, 1);
+      TmpFileName.Append(TwoSpaces, Length(TwoSpaces));
       if Header.Characteristics and IMAGE_SCN_TYPE_NO_PAD <> 0 then
         W := 'N'
       else
         W := MidDot;
-      TmpFileName.Append(@W, 1);
+      TmpFileName.Append(W);
       if Header.Characteristics and IMAGE_SCN_CNT_CODE <> 0 then
         W := 'C'
       else
         W := MidDot;
-      TmpFileName.Append(@W, 1);
+      TmpFileName.Append(W);
       if Header.Characteristics and IMAGE_SCN_CNT_INITIALIZED_DATA <> 0 then
         W := 'D'
       else
         W := MidDot;
-      TmpFileName.Append(@W, 1);
+      TmpFileName.Append(W);
       if Header.Characteristics and IMAGE_SCN_CNT_UNINITIALIZED_DATA <> 0 then
         W := 'U'
       else
         W := MidDot;
-      TmpFileName.Append(@W, 1);
+      TmpFileName.Append(W);
       if Header.Characteristics and IMAGE_SCN_NO_DEFER_SPEC_EXC <> 0 then
         W := 'E'
       else
         W := MidDot;
-      TmpFileName.Append(@W, 1);
+      TmpFileName.Append(W);
       if Header.Characteristics and IMAGE_SCN_GPREL <> 0 then
         W := 'G'
       else
         W := MidDot;
-      TmpFileName.Append(@W, 1);
+      TmpFileName.Append(W);
       if Header.Characteristics and IMAGE_SCN_LNK_NRELOC_OVFL <> 0 then
         W := 'L'
       else
         W := MidDot;
-      TmpFileName.Append(@W, 1);
+      TmpFileName.Append(W);
       if Header.Characteristics and IMAGE_SCN_MEM_DISCARDABLE <> 0 then
         W := 'A'
       else
         W := MidDot;
-      TmpFileName.Append(@W, 1);
+      TmpFileName.Append(W);
       if Header.Characteristics and IMAGE_SCN_MEM_NOT_CACHED <> 0 then
         W := 'H'
       else
         W := MidDot;
-      TmpFileName.Append(@W, 1);
+      TmpFileName.Append(W);
       if Header.Characteristics and IMAGE_SCN_MEM_NOT_PAGED  <> 0 then
         W := 'P'
       else
         W := MidDot;
-      TmpFileName.Append(@W, 1);
+      TmpFileName.Append(W);
       if Header.Characteristics and IMAGE_SCN_MEM_SHARED <> 0 then
         W := 'S'
       else
         W := MidDot;
-      TmpFileName.Append(@W, 1);
+      TmpFileName.Append(W);
       if Header.Characteristics and IMAGE_SCN_MEM_EXECUTE <> 0 then
         W := 'X'
       else
         W := MidDot;
-      TmpFileName.Append(@W, 1);
+      TmpFileName.Append(W);
       if Header.Characteristics and IMAGE_SCN_MEM_READ <> 0 then
         W := 'R'
       else
         W := MidDot;
-      TmpFileName.Append(@W, 1);
+      TmpFileName.Append(W);
       if Header.Characteristics and IMAGE_SCN_MEM_WRITE <> 0 then
         W := 'W'
       else
         W := MidDot;
-      TmpFileName.Append(@W, 1);
+      TmpFileName.Append(W);
       Console.WriteLn(TmpFileName.RawData, TmpFileName.Count);
   end;
 end;

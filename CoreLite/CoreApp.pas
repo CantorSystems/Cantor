@@ -198,7 +198,7 @@ begin
     Detach
   else
   begin
-    Append(PathDelimiter, 1);
+    Append(PathDelimiter);
     FNameIndex := Count;
   end;
 end;

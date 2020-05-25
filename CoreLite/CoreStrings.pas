@@ -199,6 +199,7 @@ type
     procedure SetUnicodeString(Value: UnicodeString); virtual;
   {$ENDIF}
   public
+    procedure Append(Source: LegacyChar); overload;
     procedure Append(Source: PLegacyChar; Length: Integer); overload;
 
     procedure AsHexBuffer(const Value; Length: Integer;
@@ -305,6 +306,7 @@ type
     procedure SetUnicodeString(Value: UnicodeString); virtual;
   {$ENDIF}
   public
+    procedure Append(Source: WideChar); overload;
     procedure Append(Source: PWideChar; Length: Integer); overload;
 
     procedure AsHexBuffer(const Value; Length: Integer;
@@ -1251,6 +1253,11 @@ begin
   end;
 end;
 
+procedure TLegacyString.Append(Source: LegacyChar);
+begin
+  Append(@Source, 1);
+end;
+
 procedure TLegacyString.Append(Source: PLegacyChar; Length: Integer);
 begin
   inherited Append(Source, Length, Length + 1);
@@ -2178,6 +2185,11 @@ begin
     ClassName := sWideString;
     ItemSize := SizeOf(WideChar);
   end;
+end;
+
+procedure TWideString.Append(Source: WideChar);
+begin
+  Append(@Source, 1);
 end;
 
 procedure TWideString.Append(Source: PWideChar; Length: Integer);
