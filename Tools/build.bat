@@ -87,6 +87,11 @@ if "%Flags%" neq "" (
 )
 
 :res
+brcc32 "%~dp1Resources.rc" -fo"%~dp1Resources.res" -l409
+if errorlevel 1 goto exit
+
+if "%2" == "-inc" goto exit
+
 set Bin=%~dp0..\Bin
 if not exist "%Bin%" mkdir "%Bin%"
 if errorlevel 1 goto exit
@@ -95,10 +100,7 @@ set Bin=%Bin%\%Target%
 if not exist "%Bin%" mkdir "%Bin%"
 if errorlevel 1 goto exit
 
-brcc32 "%~dp1Resources.rc" -fo"%~dp1Resources.res" -l409
-if errorlevel 1 goto exit
-
-if "%2" == "-inc" goto exit
+copy "%~dp0..\license.md" "%Bin%" >nul
 
 set TypedAddr=-$T+
 set ASLR=-aslr
