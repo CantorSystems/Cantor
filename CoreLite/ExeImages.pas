@@ -68,8 +68,8 @@ type
     property Header: TImageSectionHeader read FHeader;
   end;
 
-  TStripOptions = set of (soStub, soDebug, soRelocations, soExports, soSlashes, soVersionInfo,
-    soSectionData, soPadding, soEmptySections, soOrphanedSections, soDataDirectory);
+  TStripOptions = set of (soStub, soDebug, soRelocations, soExports, soSectionData,
+    soPadding, soEmptySections, soOrphanedSections, soSlashes, soDataDirectory{, soVersionInfo});
 
   PExeSectionArray = ^TExeSectionArray;
   TExeSectionArray = array[0..MaxInt div SizeOf(TExeSection) - 1] of TExeSection;
