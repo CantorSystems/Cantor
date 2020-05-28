@@ -60,7 +60,6 @@ type
     FCurrentPath: TFileName;
     FMaxWidth: Integer;
     FMaxFileSize: QuadWord;
-    FACP: TCodePage;
     procedure AddFile(const Data: TWin32FindDataW; var Found: Boolean);
     function MaxFileNameWidth(MaxWidth: Integer): Integer;
     function MaxPromptWidth: Integer;
@@ -518,8 +517,7 @@ begin
             raise ECommandLine.Create(sSectionNames);
           if TypeOf(FDropSections) = nil then
             FDropSections.Create;
-          FACP.Create;
-          LoadText(FDropSections.Append, @Param, CoreChar(','), @FACP);
+          LoadText(FDropSections.Append, @Param, CoreChar(','));
         end
         else if Key.Equals(sLog) then
         begin
