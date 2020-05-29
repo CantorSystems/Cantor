@@ -91,7 +91,7 @@ const
             #9'-touch' +         #9#9#9'Don''t keep original file timestamp' + sLineBreak +
             #9'-trunc' +         #9#9#9'When possible, don''t align last section,' + sLineBreak +
                                #9#9#9#9'truncate file immediately after data end' + sLineBreak +
-            #9'-unsafe' +        #9#9#9'Strip chained certificate and other data' + sLineBreak + sLineBreak +
+            #9'-unsafe' +        #9#9#9'Enable unsafe stripping and rebasing' + sLineBreak + sLineBreak +
     'Miscellaneous options' + sLineBreak +
             #9'-nologo' +        #9#9#9'Don''t display logo and copyright' + sLineBreak +
             #9'-pause' +         #9#9#9'Wait for ENTER key to exit'  + sLineBreak + sLineBreak +
@@ -103,7 +103,6 @@ const
             #9'G  Globally pointed data'#9 +    'U  Uninitialized data' + sLineBreak +
             #9'H  Not cached'#9#9#9 +           'W  Writable' + sLineBreak +
             #9'L  Extended relocations'#9#9 +   'X  Executable';
-
 
   sMissingParam = 'Missing %s';
   sDuplicateParam = 'Duplicate %hs: %s';
