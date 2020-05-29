@@ -9,4 +9,8 @@
 *.dof
 *.dsk
 *.exe
+*.log
 *.map
+*.res
+build.inc
+Bin/*
