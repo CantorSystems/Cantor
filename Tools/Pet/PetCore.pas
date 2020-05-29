@@ -503,11 +503,7 @@ begin
             FRebaseAddress := Param.AsHexadecimal;
           end
           else
-          begin
             FRebaseAddress := Param.AsInteger;
-            if (FRebaseAddress < 32) and (FRebaseAddress <> 0) then
-              FRebaseAddress := 1 shl FRebaseAddress;
-          end;
           Include(FOptions, roRebase);
         end
         else if Key.Equals(sDropSect) then

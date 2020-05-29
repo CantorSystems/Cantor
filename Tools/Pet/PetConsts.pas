@@ -84,8 +84,7 @@ const
             #9'-raw' +           #9#9#9'Don''t align raw data size values at section' + sLineBreak +
                                #9#9#9#9'headers to avoid antivirus false positives' + sLineBreak +
             #9'-rebase <[$]######[h]>'#9'Rebase image to <##########> decimal address,' + sLineBreak +
-                               #9#9#9#9'to 2 power <##> when <##> in 1..31, or to' + sLineBreak +
-                               #9#9#9#9'hexadecimal address <$########> or <########h>,' + sLineBreak +
+                               #9#9#9#9'or to <$########> or <########h> hex address,' + sLineBreak +
             #9'-stub [stub]|[.]' +   #9'Replace stub with one from [stub] file or take' + sLineBreak +
                                #9#9#9#9'stub from PE Tool itself' + sLineBreak +
             #9'-touch' +         #9#9#9'Don''t keep original file timestamp' + sLineBreak +
