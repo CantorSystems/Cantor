@@ -16,14 +16,13 @@ interface
 uses
   Windows, CoreUtils, CoreExceptions;
 
-const
-  InstanceSizeIndex = -8; // only for Delphi 6-2007 or always?
-
 type
   PCoreObject = ^TCoreObject;
   TCoreObject = object
+{$IFNDEF Tricks}
   protected
     procedure InitInstance;
+{$ENDIF}
   public
     constructor Create;
     destructor Destroy; virtual; abstract;
@@ -549,7 +548,7 @@ end;
 
 constructor TCoreObject.Create;
 begin
-  InitInstance;
+  {$IFNDEF Tricks} InitInstance; {$ENDIF}
 end;
 
 procedure TCoreObject.Finalize;
@@ -569,20 +568,17 @@ begin
   end;
 end;
 
+{$IFNDEF Tricks}
 procedure TCoreObject.InitInstance;
 begin
-{$IFDEF Lite}
   FillChar(PEnumerable(@Self).FCount, InstanceSize - SizeOf(Pointer), 0);
-{$ELSE}
-  with PEnumerable(@Self)^ do
-    FillChar(FCount, InstanceSize - (PAddress(@FCount) - PAddress(@Self)), 0);
-{$ENDIF}     // ^--- first field after VMT
 end;
+{$ENDIF}
 
 function TCoreObject.InstanceSize: Integer;
 begin
-  if (@Self <> nil) and (TypeOf(Self) <> nil) then  // Fast core
-    Result := PInteger(PAddress(TypeOf(Self)) + InstanceSizeIndex)^
+  if (@Self <> nil) and (TypeOf(Self) <> nil) then 
+    Result := PInteger(PAddress(TypeOf(Self)) - 8)^
   else
     Result := 0;
 end;
@@ -641,7 +637,7 @@ end;
 
 constructor TCollection.Create(CollectionItemMode: TItemMode);
 begin
-  InitInstance;
+  inherited Create;
   FItemMode := CollectionItemMode;
 end;
 
@@ -1152,7 +1148,7 @@ end;
 
 constructor TList.Create(ListItemMode: TItemMode);
 begin
-  InitInstance;
+  {$IFNDEF Tricks} InitInstance; {$ENDIF}
   FItemMode := ListItemMode;
 end;
 

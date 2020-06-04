@@ -187,7 +187,7 @@ constructor TOutput.Create(Dest: PStreamConsole;
 var
   StatBytesWidth: Integer;
 begin
-  InitInstance;
+  {$IFNDEF Tricks} InitInstance; {$ENDIF}
   FConsole := Dest;
   FPercentage.Create;
   FPercentage.ExternalBuffer(@FPercentageBuf, Length(FPercentageBuf));
