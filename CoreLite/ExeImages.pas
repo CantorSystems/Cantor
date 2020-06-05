@@ -29,7 +29,7 @@ type
     procedure Load(Source: PReadableStream); overload;
     procedure Save(Dest: PWritableStream);
     function Size: LongWord;
-    procedure Strip(Heuristics: Boolean = True);
+    procedure Strip(SectionAlignment: LongWord; Heuristics: Boolean = True);
 
     property Data: Pointer read FData;
     property DataSize: LongWord read GetDataSize write SetDataSize;
@@ -297,10 +297,10 @@ begin
       Result := FilePages * LegacyPageLength;
 end;
 
-procedure TExeStub.Strip(Heuristics: Boolean);
+procedure TExeStub.Strip(SectionAlignment: LongWord; Heuristics: Boolean);
 var
   NewSize, L: LongWord;
-  P, Limit: PLegacyChar;
+  P, Limit: PAddress;
 begin
   if FHeader.HeaderParagraphs >= MinParagraphs then
   begin
@@ -313,15 +313,19 @@ begin
       begin
         if Heuristics then
         begin
-          Limit := PLegacyChar(FData) + L;
-          P := PLegacyChar(FData) + FHeader.HeaderParagraphs * LegacyParagraphLength - SizeOf(FHeader);
-          P := StrScan(P, Limit - P, #$4C);               // MOV AX, 4C01h
-          if (P <> nil) and (PWord(P + 1)^ = $21CD) then  // INT 21h
+          Limit := PAddress(FData) + L;
+          P := PAddress(FData) + FHeader.HeaderParagraphs * LegacyParagraphLength;
+          if Limit - P <= LongInt(SectionAlignment) then
           begin
-            Inc(P, 3);
-            P := StrScan(P, Limit - P, '$');
-            if P <> nil then
-              NewSize := P - PLegacyChar(FData) + 1;
+            Dec(P, SizeOf(FHeader));
+            P := StrRScan(P, Limit - P, #$4C);              // MOV AX, 4C01h
+            if (P <> nil) and (PWord(P + 1)^ = $21CD) then  // INT 21h
+            begin
+              Inc(P, 3);
+              P := StrScan(P, Limit - P, '$');
+              if P <> nil then
+                NewSize := P - PAddress(FData) + 1;
+            end;
           end;
         end;
         SetDataSize(NewSize);
@@ -1008,7 +1012,7 @@ var
   I: Integer;
 begin
   if soStub in Options then
-    FStub.Strip;
+    FStub.Strip(FHeaders.OptionalHeader.SectionAlignment);
 
   if soDebug in Options then
     DeleteExisting(IndexOf(IMAGE_DIRECTORY_ENTRY_DEBUG));

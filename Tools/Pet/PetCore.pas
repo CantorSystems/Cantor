@@ -963,7 +963,7 @@ begin
             with Stub do
             begin
               Load(@FImage.Stub);
-              Strip(roStrip in FOptions);
+              Strip(FImage.Headers.OptionalHeader.SectionAlignment, roStrip in FOptions);
               Saved := CoreWrappers.SaveFile(Save, ExtractFileName.RawData, Size);
             end;
             if FLogStyle <> lsBrief then
@@ -1052,7 +1052,7 @@ begin
             if FLogStyle <> lsBrief then
               Output.Action(sFixingStub, nil);
             OldSize := Size;
-            Strip(False);
+            Strip(FImage.Headers.OptionalHeader.SectionAlignment, False);
             if FLogStyle <> lsBrief then
               Output.StripStats(OldSize, Size);
           end;
