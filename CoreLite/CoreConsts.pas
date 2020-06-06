@@ -3,7 +3,7 @@
 
     Core library string messages
 
-    Copyright (c) 2008-2018 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2008-2018, 2020 Vladislav Javadov (aka Freeman)
 *)
 
 unit CoreConsts;
@@ -140,6 +140,10 @@ const
   sLegacyExeImage = 'Extended header not found, unsupported DOS/DPMI image';
   sInvalidRVA = 'Invalid RVA %08X';
   sUnsupportedRelocationFormat = 'Unsupported relocation format, code %2u';
+
+  sLarger = 'larger';
+  sSmaller = 'smaller';
+  sCannotReplaceStub = 'Cannot build image with stub replaced by a %hs one%hs(%d to %d bytes)';
 
   sAvoidCharCorruption = 'This program uses UTF-8 console. To avoid on-screen Unicode character' + sLineBreak +
     'corruption, please set a TrueType/OpenType font for console window.';

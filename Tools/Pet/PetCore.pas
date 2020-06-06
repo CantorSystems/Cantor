@@ -985,6 +985,8 @@ begin
               Output.StripStats(OldSize, Size);
           end;
 
+        ImageFileName := @FFileNames[fkInto];
+
         if roRebase in FOptions then
         begin
           if FLogStyle <> lsBrief then

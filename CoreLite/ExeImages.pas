@@ -197,12 +197,12 @@ begin
       SetDataSize(AlignToLongWord(L));
       Move(FData^, PLegacyChar(FData)[ExtBytes], L);
       Move(FHeader.Ext, FData^, ExtBytes);
-      FillChar(FHeader.Ext, ExtBytes, 0); // goodbye, ð*ùRich<ð*ù
+      FillChar(FHeader.Ext, ExtBytes, 0); // goodbye, ï¿½*ï¿½Rich<ï¿½*ï¿½
     end
     else
     begin
       SetDataSize(SizeOf(FHeader.Ext));
-      FillChar(PLegacyChar(@FHeader)[L], SizeOf(FHeader) - L, 0); // also ð*ùRich<ð*ù
+      FillChar(PLegacyChar(@FHeader)[L], SizeOf(FHeader) - L, 0); // also ï¿½*ï¿½Rich<ï¿½*ï¿½
     end;
   end
   else
@@ -318,7 +318,7 @@ begin
           if Limit - P <= LongInt(SectionAlignment) then
           begin
             Dec(P, SizeOf(FHeader));
-            P := StrRScan(P, Limit - P, #$4C);              // MOV AX, 4C01h
+            P := StrScan(P, Limit - P, #$4C);               // MOV AX, 4C01h
             if (P <> nil) and (PWord(P + 1)^ = $21CD) then  // INT 21h
             begin
               Inc(P, 3);
@@ -526,7 +526,7 @@ const
   FixedOptHeaderSize = SizeOf(TImageOptionalHeader) -
     IMAGE_NUMBEROF_DIRECTORY_ENTRIES * SizeOf(TImageDataDirectory);
 var
-  Offset: LongWord;
+  Offset, StubSize: LongWord;
   I: Integer;
 begin
   if Alignment <> 0 then
@@ -545,11 +545,12 @@ begin
   with FStub do
   begin
     Expand;
-    Inc(Offset, Size);
+    StubSize := FStub.Size;
+    Inc(Offset, StubSize);
     if LongWord(FHeaders.Magic) = IMAGE_NT_SIGNATURE then
       FHeader.Ext.NewHeaderOffset := Offset
     else if LongWord(FHeaders.Magic) <> 0 then
-      raise EUnknownImage.Create(FHeaders);
+      raise EUnknownImage.Create(FHeaders)
   end;
 
   Inc(Offset, HeadersSize + SizeOf(TImageSectionHeader) * LongWord(Count));
@@ -557,6 +558,26 @@ begin
   with FHeaders.OptionalHeader do
   begin
     HeadersSize := Offset;
+
+    with FSections[0].FHeader do
+      if RawDataOffset + SectionAlignBytes(RawDataOffset) > Offset + SectionAlignBytes(Offset) then
+        raise EBadImage.Create(sCannotReplaceStub,
+          [PLegacyChar(sSmaller), WhitespaceOrLineBreak[IsConsole], RawDataOffset - Offset, StubSize])
+      else if StubSize > VirtualAddress then
+        raise EBadImage.Create(sCannotReplaceStub,
+          [PLegacyChar(sLarger), WhitespaceOrLineBreak[IsConsole], RawDataOffset - FHeaders.OptionalHeader.FileAlignment, StubSize]);
+      {if RawDataOffset > Offset then
+      begin
+        OldSize := RawDataSize;
+        Inc(RawDataSize, Offset);
+        ReallocMem(FData, RawDataSize);
+        Move(FData^, (PAddress(FData) + OldSize)^, OldSize);
+        FillChar(FData^, RawDataSize - OldSize, 0);
+        Inc(VirtualSize, VirtualAddress - SectionAlignBytes(Offset));
+        Inc(VirtualSize, SectionAlignBytes(VirtualSize));
+        VirtualAddress := SectionAlignBytes(Offset);
+      end;}
+
     for I := 0 to Count - 1 do
       with FSections[I] do
       begin
