@@ -3,7 +3,7 @@
 
     Core strings and character sets implementation
 
-    Copyright (c) 2015-2018 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2015-2018, 2020 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
       * CoreLiteVCL -- TCoreString and UnicodeString types for VCL applications
@@ -219,6 +219,7 @@ type
 
     function AsRange(Index: Integer): TLegacyString; overload;
     function AsRange(Index, MaxCount: Integer): TLegacyString; overload;
+    procedure AsRange(Source: PLegacyChar; Length: Integer); overload;
 
     procedure AsString(Source: PLegacyChar; Length: Integer;
       SourceOptions: TRawByteSource = soFromTheWild); overload;
@@ -326,6 +327,7 @@ type
 
     function AsRange(Index: Integer): TWideString; overload;
     function AsRange(Index, MaxCount: Integer): TWideString; overload;
+    procedure AsRange(Source: PWideChar; Length: Integer); overload;
 
     procedure AsString(Source: PLegacyString; EncodeOptions: TEncodeUTF16 = coUTF16);
     procedure AsWideString(Source: PWideChar; Length: Integer;
@@ -1685,6 +1687,16 @@ begin
   Result.AsRange(@Self, Index, MaxCount);
 end;
 
+procedure TLegacyString.AsRange(Source: PLegacyChar; Length: Integer);
+begin
+  Capacity := 0;
+  RawBufferKind := bkAttached;
+  RawCount := Length;
+  if Source[Length] = #0 then
+    Inc(Length);
+  RawCapacity := Length;
+end;
+
 procedure TLegacyString.AsString(Source: PLegacyChar; Length: Integer;
   SourceOptions: TRawByteSource);
 begin
@@ -2638,6 +2650,16 @@ function TWideString.AsRange(Index, MaxCount: Integer): TWideString;
 begin
   Result.Create;
   Result.AsRange(@Self, Index, MaxCount);
+end;
+
+procedure TWideString.AsRange(Source: PWideChar; Length: Integer);
+begin
+  Capacity := 0;
+  RawBufferKind := bkAttached;
+  RawCount := Length;
+  if Source[Length] = #0 then
+    Inc(Length);
+  RawCapacity := Length;
 end;
 
 procedure TWideString.AsString(Source: PLegacyString; EncodeOptions: TEncodeUTF16);

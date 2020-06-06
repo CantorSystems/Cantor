@@ -3,7 +3,7 @@
 
     Platform-independent general purpose classes
 
-    Copyright (c) 2015-2018 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2015-2018, 2020 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
       * Lite -- TCoreObject.InitInstance with built-in SizeOf(Pointer)
@@ -49,6 +49,8 @@ type
   TEnumerable = object(TContainer)
   private
     FCount: Integer;
+  protected
+    property RawCount: Integer read FCount write FCount;
   public
     procedure Clear; virtual;
     property Count: Integer read FCount;
@@ -88,8 +90,8 @@ type
   TCollection{<A>} = object(TIndexed)
   private
     FCapacity, FDelta: Integer;
-    FItemMode: TItemMode;
     FBufferKind: TBufferKind;
+    FItemMode: TItemMode;
   // FItems: generic <A> as Pointer;
     procedure Copy(Index: Integer; Collection: PCollection; Capture: Boolean);
     procedure Expand(Index, ItemCount: Integer);
@@ -106,6 +108,9 @@ type
     procedure CheckCapacity(ItemCount: Integer);
     procedure Cut(Index: Integer; ItemCount: Integer = 1); virtual;
     procedure Insert(Index: Integer; ItemCount: Integer = 1); overload;
+
+    property RawBufferKind: TBufferKind read FBufferKind write FBufferKind;
+    property RawCapacity: Integer read FCapacity write FCapacity;
   public
     constructor Create(CollectionItemMode: TItemMode = imInline);
     destructor Destroy; virtual;
