@@ -27,7 +27,7 @@ type
     MemoryManager: THostMemoryManager;
   {$IFDEF Tricks}
     ErrorMessage: procedure(Msg: PLegacyChar; Length: Integer); stdcall;
-    ExceptionMessage: procedure(Msg: PWideChar); stdcall;
+    ExceptionMessage: procedure(Msg: PWideChar; Length: Integer); stdcall;
   {$ELSE}
     IsConsole: Boolean;
   {$ENDIF}
@@ -37,8 +37,8 @@ type
   TThunk = packed record
     MemoryManager: TMemoryManager;
   {$IFDEF Tricks}
-    ErrorMessage: procedure(Msg: PLegacyChar; Length: Integer); stdcall;
-    ExceptionMessage: procedure(Msg: PWideChar); stdcall;
+    ErrorMessage: procedure(Msg: PLegacyChar; Length: Integer);
+    ExceptionMessage: procedure(Msg: PWideChar; Length: Integer);
   {$ELSE}
     IsConsole: Boolean;
   {$ENDIF}
