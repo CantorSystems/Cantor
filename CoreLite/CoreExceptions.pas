@@ -3,7 +3,7 @@
 
     Core exceptions implementation
 
-    Copyright (c) 2008-2015 Vladislav Javadov (aka Freeman)
+    Copyright (c) 2008-2015, 2020 Vladislav Javadov (aka Freeman)
 
     Conditional defines:
       * CoreLiteVCL -- to use in VCL-based projects
@@ -344,8 +344,7 @@ begin
             [ExceptionAddress, @Value[FileNameIndex], WhitespaceOrLineBreak[IsConsole], AccessOp, AccessAddress]);
           Exit;
         end;
-    Result := EAccessViolation.Create(sAccessViolation,
-      [ExceptionAddress, WhitespaceOrLineBreak[IsConsole], AccessOp, AccessAddress]);
+    Result := EAccessViolation.Create(sAccessViolation, [ExceptionAddress, AccessOp, AccessAddress]);
   end;
 end;
 
