@@ -407,8 +407,6 @@ function Trunc(const X: Extended): Int64; overload;
 function Trunc(const X: Double): Int64; overload;
 function Trunc(const X: Single): Int64; overload;
 
-function Pow10(X: Extended; Power: Integer): Extended;
-
 function Log10(const X: Extended): Extended;
 function Log2(const X: Extended): Extended;
 function LogN(const Base, X: Extended): Extended;
@@ -1645,11 +1643,6 @@ end;
 {$I FastCode\Min.inc}
 {$I FastCode\Min64.inc}
 {$I FastCode\MinFP.inc}
-
-function Pow10(X: Extended; Power: Integer): Extended;
-asm
-        JMP System.@Pow10
-end;
 
 function Log10(const X: Extended): Extended;
 // Log.10(X) := Log.2(X) * Log.10(2)
