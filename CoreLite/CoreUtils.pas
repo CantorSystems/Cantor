@@ -20,8 +20,10 @@ interface
 uses
   Windows, CoreConsts;
 
+{$IFNDEF Tricks}
 const
-  UnicodeRTL = RTLVersion >= 20.0;
+  UnicodeCompiler = CompilerVersion >= 20.0;
+{$ENDIF}
 
 type
 {$IF CompilerVersion < 23}
@@ -156,7 +158,7 @@ const
   HexDigits: array [$0..$F] of LegacyChar = '0123456789ABCDEF';
 var
   MainWindow: THandle;
-{$IF not UnicodeRTL}
+{$IF not UnicodeCompiler}
   DefaultSystemCodePage: Word = CP_LOCALIZATION;
 {$IFEND}
   NeedEOL: Boolean;
@@ -239,7 +241,7 @@ procedure WideStrCopy(Dest, Source: PWideChar; Length: Integer); overload;
 procedure QuadStrCopy(Dest, Source: PQuadChar); overload;
 procedure QuadStrCopy(Dest, Source: PQuadChar; Length: Integer); overload;
 
-function StrLen(Str: PLegacyChar): Integer; overload; {$IFDEF UnicodeRTL} inline; {$ENDIF}
+function StrLen(Str: PLegacyChar): Integer; overload; {$IFDEF UnicodeComplier} inline; {$ENDIF}
 function StrLen(Str: PLegacyChar; MaxLength: Integer): Integer; overload;
 function WideStrLen(Str: PWideChar): Integer; overload;
 function WideStrLen(Str: PWideChar; MaxLength: Integer): Integer; overload;
@@ -281,7 +283,7 @@ function WideStrComp(Str1: PWideChar; Count1: Integer; Str2: PWideChar; Count2: 
 const
   CP_GB18030 = 54936;
 
-{$IF not UnicodeRTL}
+{$IF not UnicodeCompiler}
   CSTR_LESS_THAN    = 1;
   CSTR_EQUAL        = 2;
   CSTR_GREATER_THAN = 3;
@@ -293,7 +295,7 @@ const
 type
   TCodePageName = array[0..MAX_PATH - 1] of CoreChar;
 
-{$IF not UnicodeRTL}
+{$IF not UnicodeCompiler}
   TCPInfoEx = packed record
     MaxCharSize: LongWord;
     DefaultChar: array[0..MAX_DEFAULTCHAR - 1] of LegacyChar;
@@ -670,11 +672,10 @@ begin
     {$IF defined(Debug) or defined(CoreLiteVCL)}
       vtString:
         Inc(Result, PByte(TVarRec(Args[I]).VString)^);
-      {$IFDEF UnicodeRTL} vtUnicodeString, {$ENDIF}
       vtAnsiString:
         Inc(Result, PInteger(PAddress(TVarRec(Args[I]).VAnsiString) - SizeOf(Integer))^);
-      vtWideString:
-        Inc(Result, PLongInt(PAddress(TVarRec(Args[I]).VWideString) - SizeOf(LongInt))^ div SizeOf(WideChar));
+      vtWideString {$IFDEF UnicodeCompiler}, vtUnicodeString {$ENDIF}:
+        Inc(Result, PLongInt(PAddress(TVarRec(Args[I]).VWideString) - SizeOf(Integer))^ * SizeOf(WideChar));
     {$IFEND}
     end;
 end;
@@ -781,7 +782,7 @@ begin
 end;
 
 function StrLen(Str: PLegacyChar): Integer;
-{$IF defined(CoreLiteVCL) and UnicodeRTL}
+{$IF defined(CoreLiteVCL) and UnicodeCompiler}
 begin
   Result := SysUtils.StrLen(Str);
 end;
@@ -1300,7 +1301,7 @@ end;
 
 { Legacy Windows service }
 
-{$IF not UnicodeRTL}
+{$IF not UnicodeCompiler}
 function GetCPInfoEx(CodePage, Flags: LongWord; var CPInfoEx: TCPInfoEx): BOOL; stdcall;
   external kernel32 name 'GetCPInfoExW';
 {$IFEND}
@@ -1675,7 +1676,7 @@ asm
 end;
 
 initialization
-{$IF defined(Tricks) or UnicodeRTL}
+{$IF defined(Tricks) or UnicodeCompiler}
   DefaultSystemCodePage := CP_LOCALIZATION;
 {$IFEND}
 

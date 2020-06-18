@@ -97,7 +97,7 @@ type
     ErrorInfo: TErrorInfo;
   end;
 
-{$IF defined(CoreLiteVCL) and not UnicodeRTL}
+{$IF defined(CoreLiteVCL) and not UnicodeCompiler}
   RawByteString = AnsiString;
   UnicodeString = WideString;
 {$IFEND}
@@ -2103,12 +2103,12 @@ end;
 
 {$IFDEF CoreLiteVCL}
 function TLegacyString.GetRawByteString: RawByteString;
-{$IF UnicodeRTL}
+{$IF UnicodeCompiler}
   var CP: Word;
 {$IFEND}
 begin
   SetString(Result, FData, Count);
-{$IF UnicodeRTL}
+{$IF UnicodeCompiler}
   if FCodePage <> nil then
     CP := FCodePage.Number
   else
@@ -2967,19 +2967,19 @@ end;
 function TWideString.GetRawByteString: RawByteString;
 var
   S: TLegacyString;
-{$IF not UnicodeRTL}
+{$IF not UnicodeCompiler}
   CP: TCodePage;
 {$IFEND}
 begin
   S.Create;
   try
-  {$IF not UnicodeRTL}
+  {$IF not UnicodeCompiler}
     CP.Create;
     S.FCodePage := @CP;
   {$IFEND}
     S.AsWideString(@Self);
     SetString(Result, S.FData, S.Count);
-  {$IF UnicodeRTL}
+  {$IF UnicodeCompiler}
     System.SetCodePage(Result, CP.Number, False);
   {$IFEND}
   finally
@@ -2995,7 +2995,7 @@ var
 begin
   S.Create;
   try
-  {$IF UnicodeRTL}
+  {$IF UnicodeCompiler}
     CPNum := StringCodePage(Value);
   {$ELSE}
     CPNum := CP_ACP;

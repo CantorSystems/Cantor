@@ -607,7 +607,7 @@ begin
   else
   begin
     with Exception(E) do
-    {$IF UnicodeRTL}
+    {$IF UnicodeCompiler}
       ExceptionMessage(Pointer(FDelphiMsg), Length(FDelphiMsg));
     {$ELSE}
       ErrorMessage(Pointer(FDelphiMsg), Length(FDelphiMsg));
@@ -619,7 +619,7 @@ begin
     else if E is SysUtils.Exception then
     begin
       with SysUtils.Exception(E) do
-      {$IF UnicodeRTL}
+      {$IF UnicodeCompiler}
         ExceptionMessage(Pointer(Message), Length(Message));
       {$ELSE}
         ErrorMessage(Pointer(Message), Length(Message));
@@ -644,7 +644,7 @@ end;
 
 function DelphiString(Source: PWideChar; Count: Integer): string;
 begin
-{$IF UnicodeRTL}
+{$IF UnicodeCompiler}
   SetString(Result, Source, Count);
 {$ELSE}
   SetLength(Result, Count * MaxCharBytes(CP_ACP));
