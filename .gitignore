@@ -13,4 +13,5 @@
 *.map
 *.res
 build.inc
+3rdParty/*
 Bin/*
