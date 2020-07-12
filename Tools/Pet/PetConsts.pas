@@ -122,6 +122,7 @@ const
   sPathEllipsis = '[...]';
 
   sUnknown    = 'Unknown';
+  sTargetHost = 'Target Host';
   sX86        = 'x86';
   sR3000      = 'MIPS R3000';
   sR4000      = 'MIPS R4000';
@@ -129,10 +130,12 @@ const
   sMIPSWCE2   = 'MIPS WCE v2';
   sSH3        = 'SH-3';
   sSH3DSP     = 'SH-3 DSP';
+  sSH3E       = 'SH3-E';
   sSH4        = 'SH-4';
   sSH5        = 'SH-5';
   sARM        = 'ARM';
-  sTumb       = 'ARM Thumb';
+  sThumb      = 'ARM Thumb';
+  sARMNT      = 'ARM Thumb-2';
   sAM33       = 'AM33';
   sPowerPC    = 'Power PC';
   sPowerPCFPU = 'Power PC with FPU';
@@ -142,12 +145,15 @@ const
   sAlpha64    = 'Alpha 64';
   sMIPSFPU    = 'MIPS with FPU';
   sMIPS16FPU  = 'MIPS16 with FPU';
+  sTriCore    = 'TriCore';
+  sCEF        = 'CEF';
   sRISCV32    = 'RISC-V 32-bit';
   sRISCV64    = 'RISC-V 64-bit';
   sRISCV128   = 'RISC-V 128-bit';
   sX64        = 'x64';
   sM32R       = 'M32R';
   sARM64      = 'ARM64';
+  sCEE        = 'CEE';
 
   sPE   = 'PE';
   sPE64 = 'PE64';

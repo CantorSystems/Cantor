@@ -630,34 +630,40 @@ var
 begin
   if FLogStyle <> lsBrief then
     Console.WriteLn;
-    
+
   case FImage.Headers.FileHeader.Machine of
-    IMAGE_FILE_MACHINE_I386:      MachineName := sX86;
-    IMAGE_FILE_MACHINE_AMD64:     MachineName := sX64;
-    IMAGE_FILE_MACHINE_IA64:      MachineName := sItanium;
-    IMAGE_FILE_MACHINE_EBC:       MachineName := sEFI;
-    IMAGE_FILE_MACHINE_POWERPC:   MachineName := sPowerPC;
-    IMAGE_FILE_MACHINE_POWERPCFP: MachineName := sPowerPCFPU;
-    IMAGE_FILE_MACHINE_THUMB:     MachineName := sTumb;
-    IMAGE_FILE_MACHINE_ARM:       MachineName := sARM;
-    IMAGE_FILE_MACHINE_ARM64:     MachineName := sARM64;
-    IMAGE_FILE_MACHINE_ALPHA64:   MachineName := sAlpha64;
-    IMAGE_FILE_MACHINE_R3000:     MachineName := sR3000;
-    IMAGE_FILE_MACHINE_R4000:     MachineName := sR4000;
-    IMAGE_FILE_MACHINE_R10000:    MachineName := sR10000;
-    IMAGE_FILE_MACHINE_WCEMIPSV2: MachineName := sMIPSWCE2;
-    IMAGE_FILE_MACHINE_MIPSFPU:   MachineName := sMIPSFPU;
-    IMAGE_FILE_MACHINE_MIPSFPU16: MachineName := sMIPS16FPU;
-    IMAGE_FILE_MACHINE_MIPS16:    MachineName := sMIPS16;
-    IMAGE_FILE_MACHINE_RISCV32:   MachineName := sRISCV32;
-    IMAGE_FILE_MACHINE_RISCV64:   MachineName := sRISCV64;
-    IMAGE_FILE_MACHINE_RISCV128:  MachineName := sRISCV128;
-    IMAGE_FILE_MACHINE_SH3:       MachineName := sSH3;
-    IMAGE_FILE_MACHINE_SH3DSP:    MachineName := sSH3DSP;
-    IMAGE_FILE_MACHINE_SH4:       MachineName := sSH4;
-    IMAGE_FILE_MACHINE_SH5:       MachineName := sSH5;
-    IMAGE_FILE_MACHINE_AM33:      MachineName := sAM33;
-    IMAGE_FILE_MACHINE_M32R:      MachineName := sM32R;
+    IMAGE_FILE_MACHINE_I386:        MachineName := sX86;
+    IMAGE_FILE_MACHINE_AMD64:       MachineName := sX64;
+    IMAGE_FILE_MACHINE_ARMNT:       MachineName := sARMNT;
+    IMAGE_FILE_MACHINE_ARM64:       MachineName := sARM64;
+    IMAGE_FILE_MACHINE_IA64:        MachineName := sItanium;
+    IMAGE_FILE_MACHINE_TARGET_HOST: MachineName := sTargetHost;
+    IMAGE_FILE_MACHINE_EBC:         MachineName := sEFI;
+    IMAGE_FILE_MACHINE_POWERPC:     MachineName := sPowerPC;
+    IMAGE_FILE_MACHINE_POWERPCFP:   MachineName := sPowerPCFPU;
+    IMAGE_FILE_MACHINE_THUMB:       MachineName := sThumb;
+    IMAGE_FILE_MACHINE_ARM:         MachineName := sARM;
+    IMAGE_FILE_MACHINE_ALPHA64:     MachineName := sAlpha64;
+    IMAGE_FILE_MACHINE_R3000:       MachineName := sR3000;
+    IMAGE_FILE_MACHINE_R4000:       MachineName := sR4000;
+    IMAGE_FILE_MACHINE_R10000:      MachineName := sR10000;
+    IMAGE_FILE_MACHINE_WCEMIPSV2:   MachineName := sMIPSWCE2;
+    IMAGE_FILE_MACHINE_MIPSFPU:     MachineName := sMIPSFPU;
+    IMAGE_FILE_MACHINE_MIPSFPU16:   MachineName := sMIPS16FPU;
+    IMAGE_FILE_MACHINE_MIPS16:      MachineName := sMIPS16;
+    IMAGE_FILE_MACHINE_RISCV32:     MachineName := sRISCV32;
+    IMAGE_FILE_MACHINE_RISCV64:     MachineName := sRISCV64;
+    IMAGE_FILE_MACHINE_RISCV128:    MachineName := sRISCV128;
+    IMAGE_FILE_MACHINE_TRICORE:     MachineName := sTriCore;
+    IMAGE_FILE_MACHINE_CEF:         MachineName := sCEF;
+    IMAGE_FILE_MACHINE_CEE:         MachineName := sCEE;
+    IMAGE_FILE_MACHINE_SH3:         MachineName := sSH3;
+    IMAGE_FILE_MACHINE_SH3DSP:      MachineName := sSH3DSP;
+    IMAGE_FILE_MACHINE_SH3E:        MachineName := sSH3E;
+    IMAGE_FILE_MACHINE_SH4:         MachineName := sSH4;
+    IMAGE_FILE_MACHINE_SH5:         MachineName := sSH5;
+    IMAGE_FILE_MACHINE_AM33:        MachineName := sAM33;
+    IMAGE_FILE_MACHINE_M32R:        MachineName := sM32R;
   else
     MachineName := sUnknown;
   end;
